@@ -1,0 +1,83 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createServiceClient } from '@/lib/supabase';
+
+// GET — obtener reservas del usuario autenticado
+export async function GET(req: NextRequest) {
+  const token = req.headers.get('authorization')?.replace('Bearer ', '');
+  if (!token) return NextResponse.json([]);
+
+  const sb = createServiceClient();
+  const { data: { user }, error: authError } = await sb.auth.getUser(token);
+  if (authError || !user) return NextResponse.json([]);
+
+  const { data, error } = await sb
+    .from('reservas')
+    .select('*')
+    .eq('usuario_id', user.id)
+    .order('creado_en', { ascending: false });
+
+  if (error) return NextResponse.json([], { status: 200 });
+  return NextResponse.json(data ?? []);
+}
+
+// POST — crear nueva reserva
+export async function POST(req: NextRequest) {
+  const token = req.headers.get('authorization')?.replace('Bearer ', '');
+  const sb = createServiceClient();
+
+  let usuarioId: string | null = null;
+  let usuarioNombre = 'Invitado';
+  let usuarioEmail  = '';
+  let usuarioTelefono = '';
+
+  if (token) {
+    const { data: { user }, error: authError } = await sb.auth.getUser(token);
+    if (user && !authError) {
+      usuarioId = user.id;
+      usuarioNombre = user.user_metadata?.nombre ?? user.email ?? 'Invitado';
+      usuarioEmail = user.email ?? '';
+      usuarioTelefono = user.user_metadata?.telefono ?? '';
+    }
+  }
+
+  const body = await req.json();
+  const { canchaId, canchaNombre, fecha, hora, precio, precioOriginal, cuponId, metodoPago, comprobanteUrl } = body;
+
+  // Validar datos requeridos
+  if (!canchaId || !canchaNombre || !fecha || !hora || !precio || !metodoPago) {
+    return NextResponse.json({ error: 'Faltan datos requeridos' }, { status: 400 });
+  }
+
+  // Insertar reserva
+  const { data: reserva, error } = await sb.from('reservas').insert({
+    cancha_id:        canchaId,
+    usuario_id:       usuarioId,
+    usuario_nombre:   usuarioNombre,
+    usuario_email:    usuarioEmail,
+    usuario_telefono: usuarioTelefono,
+    cancha_nombre:    canchaNombre,
+    fecha,
+    hora,
+    precio,
+    precio_original:  precioOriginal ?? precio,
+    cupon_aplicado:   !!cuponId,
+    metodo_pago:      metodoPago,
+    comprobante_url:  comprobanteUrl,
+    estado:           'pendiente',
+  }).select().single();
+
+  if (error) {
+    console.error('Error al crear reserva:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  // Marcar cupón como usado
+  if (cuponId && usuarioId) {
+    await sb.from('cupones')
+      .update({ usado: true, usado_en: new Date().toISOString() })
+      .eq('id', cuponId)
+      .eq('usuario_id', usuarioId);
+  }
+
+  return NextResponse.json(reserva);
+}

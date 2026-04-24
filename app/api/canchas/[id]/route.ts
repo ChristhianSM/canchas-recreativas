@@ -1,0 +1,45 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createServiceClient } from '@/lib/supabase';
+
+export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+  const sb = createServiceClient();
+
+  const { data, error } = await sb
+    .from('canchas')
+    .select('*')
+    .eq('id', params.id)
+    .single();
+
+  if (error || !data) return NextResponse.json({ error: 'Cancha no encontrada' }, { status: 404 });
+
+  // Horarios bloqueados por el dueño
+  const { data: horariosBloqueados } = await sb
+    .from('horarios_bloqueados')
+    .select('hora')
+    .eq('cancha_id', params.id);
+
+  // Reservas activas (pendiente o confirmada) para los próximos 14 días
+  const hoy = new Date().toISOString().split('T')[0];
+  const en14 = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+  const { data: reservas } = await sb
+    .from('reservas')
+    .select('fecha, hora, estado')
+    .eq('cancha_id', params.id)
+    .in('estado', ['pendiente', 'confirmada'])
+    .gte('fecha', hoy)
+    .lte('fecha', en14);
+
+  // Construir mapa: "fecha|hora" → estado
+  const ocupados: Record<string, 'reservado' | 'en_proceso'> = {};
+  for (const r of reservas ?? []) {
+    const key = `${r.fecha}|${r.hora}`;
+    ocupados[key] = r.estado === 'confirmada' ? 'reservado' : 'en_proceso';
+  }
+
+  return NextResponse.json({
+    ...data,
+    horariosRestringidos: (horariosBloqueados ?? []).map(h => h.hora),
+    horariosOcupados: ocupados,
+  });
+}
