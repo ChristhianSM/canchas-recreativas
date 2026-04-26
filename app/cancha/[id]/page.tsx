@@ -48,7 +48,11 @@ function buildSchedule(
   for (let i = 0; i < 14; i++) {
     const d = new Date(today);
     d.setDate(today.getDate() + i);
-    const dateStr = d.toISOString().split('T')[0];
+    // Usar fecha local (no UTC) para evitar desfase de zona horaria
+    const year  = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day   = String(d.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
     schedule[dateStr] = HORAS.map((time, idx) => {
       const key = `${dateStr}|${time}`;
       const ocupado = horariosOcupados[key];
@@ -183,6 +187,36 @@ export default function CanchaDetailPage() {
     }
   };
 
+  const handleShare = async () => {
+    if (!cancha) return;
+    
+    const shareUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/cancha/${cancha.id}`;
+    const shareData = {
+      title: cancha.nombre,
+      text: `Mira esta cancha: ${cancha.nombre} - S/ ${cancha.precio_por_hora}/hora`,
+      url: shareUrl,
+    };
+
+    // Usar Web Share API si está disponible (móviles)
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch (err: any) {
+        // Usuario canceló el compartir, no hacer nada
+        if (err.name !== 'AbortError') console.error('Error al compartir:', err);
+      }
+    } else {
+      // Fallback: copiar al portapapeles
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        alert('Link copiado al portapapeles');
+      } catch (err) {
+        console.error('Error al copiar:', err);
+        alert('No se pudo copiar el link');
+      }
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
@@ -302,7 +336,7 @@ export default function CanchaDetailPage() {
           <Button variant="ghost" size="icon" onClick={handleToggleFavorite}>
             <Heart className={`h-5 w-5 ${isFav ? 'fill-destructive text-destructive' : ''}`} />
           </Button>
-          <Button variant="ghost" size="icon">
+          <Button variant="ghost" size="icon" onClick={handleShare}>
             <Share2 className="h-5 w-5" />
           </Button>
         </div>

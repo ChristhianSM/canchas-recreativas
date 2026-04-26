@@ -3,7 +3,7 @@
 // Tipos compartidos — los datos van a Supabase via API, no a localStorage.
 
 export type ReservaEstado = 'pendiente' | 'confirmada' | 'rechazada' | 'cancelada';
-export type MetodoPago = 'yape' | 'plin';
+export type MetodoPago = 'yape' | 'Plin';
 
 export interface Reserva {
   id: string;

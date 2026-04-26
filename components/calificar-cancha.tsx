@@ -14,10 +14,11 @@ interface ResenaData {
   total: number;
   promedio: number;
   distribucion: Record<number, number>;
+  miCalificacion: number | null;
 }
 
 export default function CalificarCancha({ canchaId }: Props) {
-  const [data, setData]           = useState<ResenaData>({ total: 0, promedio: 0, distribucion: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } });
+  const [data, setData]           = useState<ResenaData>({ total: 0, promedio: 0, distribucion: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }, miCalificacion: null });
   const [seleccion, setSeleccion] = useState(0);
   const [loading, setLoading]     = useState(false);
   const [enviado, setEnviado]     = useState(false);
@@ -28,15 +29,23 @@ export default function CalificarCancha({ canchaId }: Props) {
     const token = getToken();
     setUsuario(!!token);
 
-    fetch(`/api/resenas?cancha_id=${canchaId}`)
+    fetch(`/api/resenas?cancha_id=${canchaId}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
       .then(r => r.json())
       .then(d => {
         if (d.total !== undefined) {
-          setData({ 
-            total: d.total, 
+          setData({
+            total: d.total,
             promedio: d.promedio,
-            distribucion: d.distribucion ?? { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
+            distribucion: d.distribucion ?? { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+            miCalificacion: d.miCalificacion ?? null,
           });
+          // Si ya calificó, marcar como enviado
+          if (d.miCalificacion) {
+            setSeleccion(d.miCalificacion);
+            setEnviado(true);
+          }
         }
       });
   }, [canchaId]);
@@ -118,9 +127,12 @@ export default function CalificarCancha({ canchaId }: Props) {
           <a href="/login" className="text-primary hover:underline font-medium">Inicia sesión</a> para calificar esta cancha
         </p>
       ) : enviado ? (
-        <div className="text-center space-y-1">
-          <p className="text-sm font-medium text-green-600">✅ ¡Gracias por tu calificación!</p>
+        <div className="text-center space-y-2">
+          <p className="text-sm font-medium text-green-600">✅ Ya calificaste esta cancha</p>
           <StarRating value={seleccion} readonly size="md" />
+          <p className="text-xs text-muted-foreground">
+            Le diste {seleccion} estrella{seleccion > 1 ? 's' : ''}. No es posible cambiar la calificación.
+          </p>
         </div>
       ) : (
         <div className="space-y-3">

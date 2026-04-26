@@ -17,17 +17,26 @@ export async function GET(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // Calcular promedio y distribución por estrella
   const total    = data?.length ?? 0;
   const promedio = total > 0
     ? Math.round((data!.reduce((s, r) => s + r.estrellas, 0) / total) * 10) / 10
     : 0;
 
-  // Contar cuántas calificaciones hay por cada estrella (1-5)
   const distribucion: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
   data?.forEach(r => { distribucion[r.estrellas] = (distribucion[r.estrellas] || 0) + 1; });
 
-  return NextResponse.json({ resenas: data ?? [], total, promedio, distribucion });
+  // Verificar si el usuario autenticado ya calificó
+  let miCalificacion: number | null = null;
+  const token = req.headers.get('authorization')?.replace('Bearer ', '');
+  if (token) {
+    const { data: { user } } = await sb.auth.getUser(token);
+    if (user) {
+      const miResena = data?.find(r => r.usuario_id === user.id);
+      if (miResena) miCalificacion = miResena.estrellas;
+    }
+  }
+
+  return NextResponse.json({ resenas: data ?? [], total, promedio, distribucion, miCalificacion });
 }
 
 // POST — crear o actualizar reseña (solo usuarios con reserva confirmada)
@@ -66,15 +75,31 @@ export async function POST(req: NextRequest) {
     }, { status: 403 });
   }
 
-  // Upsert — si ya calificó, actualiza; si no, crea
+  // Verificar que el usuario NO haya calificado ya esta cancha
+  const { data: resenaExistente } = await sb
+    .from('resenas')
+    .select('id, estrellas')
+    .eq('cancha_id', canchaId)
+    .eq('usuario_id', user.id)
+    .single();
+
+  if (resenaExistente) {
+    return NextResponse.json({
+      error: 'Ya calificaste esta cancha. Solo se permite una calificación por cancha.',
+      yaCalificado: true,
+      estrellas: resenaExistente.estrellas,
+    }, { status: 400 });
+  }
+
+  // Insertar nueva reseña (sin upsert — ya verificamos que no existe)
   const { data: resena, error } = await sb
     .from('resenas')
-    .upsert({
+    .insert({
       cancha_id:  canchaId,
       usuario_id: user.id,
       reserva_id: reserva.id,
       estrellas,
-    }, { onConflict: 'usuario_id,cancha_id' })
+    })
     .select()
     .single();
 

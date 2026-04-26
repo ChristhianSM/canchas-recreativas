@@ -46,11 +46,31 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 
   const body = await req.json();
-  const { descripcion, telefono, precioHora, amenidades, imagenes, horariosRestringidos } = body;
+  console.log('📍 BODY COMPLETO RECIBIDO:', JSON.stringify(body, null, 2));
+  
+  const { descripcion, telefono, precioHora, amenidades, imagenes, horariosRestringidos, lat, lng, direccion, distrito } = body;
+
+  console.log('Distrito recibido:', distrito);
+  console.log('Tipo de distrito:', typeof distrito);
+
+  const updateData: any = { 
+    descripcion, 
+    telefono, 
+    precio_por_hora: precioHora, 
+    amenidades, 
+    imagenes 
+  };
+
+  if (lat !== undefined) updateData.lat = lat;
+  if (lng !== undefined) updateData.lng = lng;
+  if (direccion !== undefined) updateData.direccion = direccion;
+  if (distrito !== undefined) updateData.distrito = distrito;
+
+  console.log('UpdateData que se va a guardar:', updateData);
 
   const { error: canchaError } = await sb
     .from('canchas')
-    .update({ descripcion, telefono, precio_por_hora: precioHora, amenidades, imagenes })
+    .update(updateData)
     .eq('id', params.id);
 
   if (canchaError) return NextResponse.json({ error: canchaError.message }, { status: 500 });
@@ -62,5 +82,5 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     );
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, distrito });
 }

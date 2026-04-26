@@ -31,10 +31,14 @@ function formatDate(dateString: string): { day: string; date: number; month: str
 
 // Devuelve true si el slot ya pasó hoy (solo aplica cuando la fecha seleccionada es hoy)
 function isSlotPasado(selectedDate: string, slotTime: string): boolean {
-  const todayStr = new Date().toISOString().split('T')[0];
+  const now = new Date();
+  // Usar fecha local para evitar desfase de zona horaria (Perú UTC-5)
+  const year  = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day   = String(now.getDate()).padStart(2, '0');
+  const todayStr = `${year}-${month}-${day}`;
   if (selectedDate !== todayStr) return false;
 
-  const now = new Date();
   const [hours, minutes] = slotTime.split(':').map(Number);
   const slotDate = new Date();
   slotDate.setHours(hours, minutes, 0, 0);

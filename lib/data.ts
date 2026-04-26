@@ -9,11 +9,13 @@ function generateTimeSlots(date: string): TimeSlot[] {
   ];
   
   hours.forEach((time, index) => {
+    const isAvailable = Math.random() > 0.3;
     slots.push({
       id: `${date}-${index}`,
       time,
-      available: Math.random() > 0.3,
+      available: isAvailable,
       price: time >= '18:00' ? 80 : 60,
+      status: isAvailable ? 'disponible' : 'reservado',
     });
   });
   

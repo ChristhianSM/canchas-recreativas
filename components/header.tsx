@@ -98,6 +98,12 @@ export function Header() {
                     Mis Reservas
                   </Link>
                 </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/perfil" className="flex items-center gap-2 cursor-pointer">
+                    <User className="h-4 w-4" />
+                    Mi Perfil
+                  </Link>
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-destructive focus:text-destructive">
                   <LogOut className="mr-2 h-4 w-4" />

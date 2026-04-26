@@ -46,10 +46,30 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const isLoginPage = pathname === '/admin/login';
 
-  // Verificar auth solo al montar, y solo si no estamos en login
+  // Verificar auth y refrescar token si expiró
   useEffect(() => {
     if (isLoginPage) return;
-    if (!isAdmin()) router.replace('/admin/login');
+    const token = getAdminToken();
+    if (!token) {
+      router.replace('/admin/login');
+      return;
+    }
+
+    import('@supabase/ssr').then(({ createBrowserClient }) => {
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.access_token && session.access_token !== token) {
+          localStorage.setItem('cp_admin_token', session.access_token);
+        } else if (!session) {
+          localStorage.removeItem('cp_admin_token');
+          localStorage.removeItem('cp_admin_user');
+          router.replace('/admin/login');
+        }
+      });
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

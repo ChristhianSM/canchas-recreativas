@@ -67,7 +67,7 @@ create table public.reservas (
   precio            int not null,
   precio_original   int,
   cupon_aplicado    boolean default false,
-  metodo_pago       text check (metodo_pago in ('yape','plin')),
+  metodo_pago       text check (metodo_pago in ('yape','Plim')),
   comprobante_url   text,
   estado            text default 'pendiente' check (estado in ('pendiente','confirmada','rechazada','cancelada')),
   creado_en         timestamptz default now()

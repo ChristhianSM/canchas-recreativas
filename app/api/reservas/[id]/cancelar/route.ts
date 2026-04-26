@@ -115,23 +115,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   try {
-    // Actualizar reserva a cancelada
+    // Actualizar reserva a cancelada con todos los datos de una sola vez
     const { error: updateError } = await sb
       .from('reservas')
-      .update({ estado: 'cancelada' })
+      .update({
+        estado: 'cancelada',
+        cancelado_en: new Date().toISOString(),
+        devolucion_calculada: resultado.devolucion,
+        penalidad_aplicada: resultado.penalidad,
+        porcentaje_devolucion: resultado.porcentaje_devolucion
+      })
       .eq('id', id);
 
     if (updateError) throw updateError;
-
-    // Intentar guardar datos de cancelación (requiere migración SQL)
-    await sb.from('reservas').update({
-      cancelado_en: new Date().toISOString(),
-      devolucion_calculada: resultado.devolucion,
-      penalidad_aplicada: resultado.penalidad,
-      porcentaje_devolucion: resultado.porcentaje_devolucion
-    }).eq('id', id).then(() => {}).catch(() => {
-      // Ignorar si las columnas no existen aún (migración pendiente)
-    });
 
     // Crear notificación para el usuario
     const fechaLabel = new Date(reserva.fecha).toLocaleDateString('es-PE', { 
@@ -158,7 +154,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       const { data: admins } = await sb
         .from('usuarios')
         .select('id')
-        .eq('rol', 'admin');
+        .eq('rol', 'superadmin');
 
       if (admins && admins.length > 0) {
         await sb.from('notificaciones').insert(
@@ -169,6 +165,56 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             tipo: 'cancelada'
           }))
         );
+      }
+    }
+
+    // Restar sello de loyalty si la reserva estaba confirmada
+    if (reserva.estado === 'confirmada' && userId) {
+      const { data: loyalty } = await sb
+        .from('loyalty')
+        .select('*')
+        .eq('usuario_id', userId)
+        .single();
+
+      if (loyalty && loyalty.sellos > 0) {
+        // Verificar si al confirmar esta reserva se generó un cupón
+        // (eso ocurre cuando los sellos llegaron a 6 y se resetearon a 0)
+        // Si sellos actuales son 0, significa que se generó un cupón recientemente
+        const seGeneroCupon = loyalty.sellos === 0;
+
+        if (seGeneroCupon) {
+          // Buscar el cupón más reciente no usado de este usuario
+          const { data: cuponReciente } = await sb
+            .from('cupones')
+            .select('id, usado')
+            .eq('usuario_id', userId)
+            .eq('usado', false)
+            .order('generado_en', { ascending: false })
+            .limit(1)
+            .single();
+
+          if (cuponReciente && !cuponReciente.usado) {
+            // Eliminar el cupón que se generó por esta reserva
+            await sb.from('cupones').delete().eq('id', cuponReciente.id);
+            // Volver a 5 sellos (justo antes de completar los 6)
+            await sb.from('loyalty').update({
+              sellos: 5,
+              total_reservas: Math.max(0, loyalty.total_reservas - 1),
+            }).eq('usuario_id', userId);
+          } else {
+            // El cupón ya fue usado — solo restar el sello y total
+            await sb.from('loyalty').update({
+              sellos: 5,
+              total_reservas: Math.max(0, loyalty.total_reservas - 1),
+            }).eq('usuario_id', userId);
+          }
+        } else {
+          // No se generó cupón — simplemente restar 1 sello
+          await sb.from('loyalty').update({
+            sellos: loyalty.sellos - 1,
+            total_reservas: Math.max(0, loyalty.total_reservas - 1),
+          }).eq('usuario_id', userId);
+        }
       }
     }
 

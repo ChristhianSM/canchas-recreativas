@@ -16,5 +16,21 @@ export async function GET(req: NextRequest) {
     .eq('id', user.id)
     .single();
 
-  return NextResponse.json(perfil);
+  // Si no hay perfil en la tabla, devolver datos básicos de user_metadata
+  if (!perfil) {
+    return NextResponse.json({
+      id: user.id,
+      email: user.email,
+      nombre: user.user_metadata?.nombre ?? user.user_metadata?.full_name ?? '',
+      telefono: user.user_metadata?.telefono ?? '',
+      rol: 'usuario',
+    });
+  }
+
+  // Combinar: usar el teléfono de la tabla usuarios (fuente de verdad)
+  // Solo si está explícitamente null/vacío en la tabla, no buscar en user_metadata
+  return NextResponse.json({
+    ...perfil,
+    telefono: perfil.telefono ?? '',
+  });
 }

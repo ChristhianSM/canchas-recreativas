@@ -84,7 +84,12 @@ export async function apiGetReservas() {
 export async function apiCrearReserva(data: {
   canchaId: string; canchaNombre: string; fecha: string; hora: string;
   precio: number; precioOriginal?: number; cuponId?: string | null;
-  metodoPago: string; comprobanteUrl?: string | null; emailInvitado?: string;
+  metodoPago: string; comprobanteUrl?: string | null;
+  emailInvitado?: string; telefonoInvitado?: string;
+  metodoDevolucion?: string;
+  telefonoDevolucion?: string;
+  actualizarTelefono?: boolean;
+  nuevoTelefono?: string;
 }) {
   const res = await fetch('/api/reservas', {
     method: 'POST',

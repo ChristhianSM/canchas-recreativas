@@ -37,6 +37,31 @@ function getOwnerToken() {
   return localStorage.getItem('cp_owner_token');
 }
 
+// Extrae el método de devolución desde el campo usuario_telefono
+// Formatos posibles: "959686193 (plin)", "Mismo número de yape", "959686193 (yape)"
+function getMetodoDevolucion(telefono: string | null, metodoPago: string): { metodo: string; label: string; esDiferente: boolean } {
+  const tel = (telefono ?? '').toLowerCase();
+  let metodo = metodoPago; // por defecto, el mismo método de pago
+
+  // Buscar si el teléfono indica un método específico
+  if (tel.includes('(plin)') || tel.includes('de plin') || tel.includes('mismo número de plin')) {
+    metodo = 'plin';
+  } else if (tel.includes('(yape)') || tel.includes('de yape') || tel.includes('mismo número de yape')) {
+    metodo = 'yape';
+  }
+
+  const label = metodo === 'plin' ? 'Plin' : 'Yape';
+  const esDiferente = metodo !== metodoPago;
+  return { metodo, label, esDiferente };
+}
+
+// Extrae solo el número del campo usuario_telefono (sin el método entre paréntesis)
+function getNumeroLimpio(telefono: string | null): string {
+  if (!telefono) return '';
+  // Quitar "(plin)", "(yape)", "Mismo número de X"
+  return telefono.replace(/\s*\(.*?\)/g, '').replace(/mismo número de \w+/gi, '').trim();
+}
+
 export default function OwnerReservasPage() {
   const [reservas, setReservas]         = useState<Reserva[]>([]);
   const [selected, setSelected]         = useState<Reserva | null>(null);
@@ -216,9 +241,25 @@ export default function OwnerReservasPage() {
                     <p className="text-sm text-orange-700">
                       • <span className="font-medium">{r.usuario_nombre}</span> — devolver{' '}
                       <span className="font-bold">S/ {r.devolucion_calculada}</span> por{' '}
-                      {r.metodo_pago === 'yape' ? 'Yape' : 'Plin'}
-                      {r.usuario_telefono && <span className="text-orange-600"> al {r.usuario_telefono}</span>}
+                      {(() => {
+                        const { label, esDiferente } = getMetodoDevolucion(r.usuario_telefono, r.metodo_pago);
+                        const numero = getNumeroLimpio(r.usuario_telefono);
+                        return (
+                          <>
+                            <span className={esDiferente ? 'font-bold text-red-600 underline' : 'font-medium'}>
+                              {label}
+                            </span>
+                            {esDiferente && <span className="text-red-600 text-xs ml-1">(⚠️ pagó con {r.metodo_pago})</span>}
+                            {numero && <span className="text-orange-600"> al {numero}</span>}
+                          </>
+                        );
+                      })()}
                     </p>
+                    {r.cancelado_en && (
+                      <p className="text-xs text-orange-500 mt-0.5 ml-3">
+                        Canceló el {new Date(r.cancelado_en).toLocaleDateString('es-PE', { day: 'numeric', month: 'long' })} a las {new Date(r.cancelado_en).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    )}
                     <Button
                       size="sm"
                       variant="outline"
@@ -315,6 +356,12 @@ export default function OwnerReservasPage() {
                     }
                   </div>
 
+                  {selected.cancelado_en && (
+                    <p className="text-xs text-muted-foreground">
+                      Cancelado el {new Date(selected.cancelado_en).toLocaleDateString('es-PE', { day: 'numeric', month: 'long', year: 'numeric' })} a las {new Date(selected.cancelado_en).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  )}
+
                   {/* Resumen montos */}
                   <div className="grid grid-cols-3 gap-2 text-center text-sm">
                     <div>
@@ -337,10 +384,23 @@ export default function OwnerReservasPage() {
                   {!selected.devolucion_procesada ? (
                     <>
                       <p className="text-xs text-orange-700 font-medium">
-                        Transfiere S/ {selected.devolucion_calculada} a{' '}
-                        <span className="font-bold">{selected.usuario_nombre}</span> por{' '}
-                        {selected.metodo_pago === 'yape' ? 'Yape' : 'Plin'}
-                        {selected.usuario_telefono && ` al número ${selected.usuario_telefono}`}
+                        {(() => {
+                          const { label, esDiferente } = getMetodoDevolucion(selected.usuario_telefono, selected.metodo_pago);
+                          const numero = getNumeroLimpio(selected.usuario_telefono);
+                          return (
+                            <>
+                              Transfiere S/ {selected.devolucion_calculada} a{' '}
+                              <span className="font-bold">{selected.usuario_nombre}</span> por{' '}
+                              <span className={esDiferente ? 'font-bold text-red-600 underline' : 'font-bold'}>
+                                {label}
+                              </span>
+                              {esDiferente && (
+                                <span className="ml-1 text-red-600">(⚠️ pagó con {selected.metodo_pago}, devolver por {label})</span>
+                              )}
+                              {numero && ` al número ${numero}`}
+                            </>
+                          );
+                        })()}
                       </p>
                       <Button
                         className="w-full bg-green-600 hover:bg-green-700 text-white"

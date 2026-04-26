@@ -4,10 +4,14 @@ import { useState, useEffect, useMemo } from 'react';
 import { MapPin } from 'lucide-react';
 import { Header } from '@/components/header';
 import { CanchaCard } from '@/components/cancha-card';
-import { SportFilter } from '@/components/sport-filter';
+import { AdvancedFiltersComponent } from '@/components/advanced-filters';
 import { SearchBar } from '@/components/search-bar';
-import { SportType } from '@/lib/types';
+import { SportType, AdvancedFilters, DEFAULT_FILTERS } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  filterCanchas, sortCanchas, getAllAmenities, getAllDistricts, getPriceRange,
+  SortOption,
+} from '@/lib/filter-utils';
 
 type Cancha = {
   id: string; nombre: string; tipo: SportType; direccion: string;
@@ -27,37 +31,64 @@ function adaptCancha(c: Cancha) {
   };
 }
 
-type SortOption = 'rating' | 'price-low' | 'price-high' | 'reviews';
-
 export default function CanchasPage() {
   const [canchas, setCanchas]         = useState<Cancha[]>([]);
   const [loading, setLoading]         = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedSport, setSelectedSport] = useState<SportType | 'all'>('all');
-  const [sortBy, setSortBy]           = useState<SortOption>('rating');
+  const [filters, setFilters]         = useState<AdvancedFilters>(DEFAULT_FILTERS);
+  const [sortBy, setSortBy]           = useState<SortOption>('relevancia');
 
-  useEffect(() => {
+  // Datos para los filtros
+  const [allAmenities, setAllAmenities] = useState<string[]>([]);
+  const [allDistricts, setAllDistricts] = useState<string[]>([]);
+  const [priceRange, setPriceRange]     = useState<[number, number]>([0, 100]);
+  const [sports, setSports]             = useState<SportType[]>([]);
+
+  const loadCanchas = () => {
+    setLoading(true);
     fetch('/api/canchas/list')
       .then(r => r.json())
-      .then(data => { setCanchas(Array.isArray(data) ? data : []); setLoading(false); });
+      .then(data => {
+        const list = Array.isArray(data) ? data : [];
+        setCanchas(list);
+        
+        // Calcular datos para los filtros
+        const adaptedList = list.map(adaptCancha);
+        setAllAmenities(getAllAmenities(adaptedList));
+        setAllDistricts(getAllDistricts(adaptedList));
+        setPriceRange(getPriceRange(adaptedList));
+        
+        // Obtener deportes únicos
+        const sportsSet = new Set(list.map((c: Cancha) => c.tipo));
+        setSports(Array.from(sportsSet) as SportType[]);
+        
+        setLoading(false);
+      });
+  };
+
+  useEffect(() => {
+    loadCanchas();
   }, []);
 
+  // Aplicar filtros y ordenamiento
   const filtered = useMemo(() => {
-    let list = canchas.filter(c => {
-      const matchSport  = selectedSport === 'all' || c.tipo === selectedSport;
-      const q = searchQuery.toLowerCase();
-      const matchSearch = !q || c.nombre.toLowerCase().includes(q) ||
-        c.direccion.toLowerCase().includes(q) || c.distrito.toLowerCase().includes(q);
-      return matchSport && matchSearch;
-    });
-    switch (sortBy) {
-      case 'rating':     return [...list].sort((a, b) => b.rating - a.rating);
-      case 'price-low':  return [...list].sort((a, b) => a.precio_por_hora - b.precio_por_hora);
-      case 'price-high': return [...list].sort((a, b) => b.precio_por_hora - a.precio_por_hora);
-      case 'reviews':    return [...list].sort((a, b) => b.total_resenas - a.total_resenas);
-      default:           return list;
-    }
-  }, [canchas, selectedSport, searchQuery, sortBy]);
+    const adaptedList = canchas.map(adaptCancha);
+    const filtered = filterCanchas(adaptedList, filters);
+    return sortCanchas(filtered, sortBy);
+  }, [canchas, filters, sortBy]);
+
+  // Contar filtros activos
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (filters.sports.length > 0) count++;
+    if (filters.priceRange[0] !== priceRange[0] || filters.priceRange[1] !== priceRange[1]) count++;
+    if (filters.minRating > 0) count++;
+    if (filters.amenities.length > 0) count++;
+    if (filters.districts.length > 0) count++;
+    if (filters.availableHours.length > 0) count++;
+    if (filters.onlyFeatured) count++;
+    if (filters.searchQuery.trim()) count++;
+    return count;
+  }, [filters, priceRange]);
 
   return (
     <div className="flex flex-col flex-1 bg-background">
@@ -70,18 +101,27 @@ export default function CanchasPage() {
             <p className="text-muted-foreground">Encuentra el espacio perfecto para tu deporte</p>
           </div>
           <div className="space-y-4">
-            <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Buscar por nombre, distrito o dirección..." />
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <SportFilter selectedSport={selectedSport} onSelectSport={setSelectedSport} />
+            <AdvancedFiltersComponent
+              filters={filters}
+              onFiltersChange={setFilters}
+              allAmenities={allAmenities}
+              allDistricts={allDistricts}
+              priceRange={priceRange}
+              sports={sports}
+              activeFilterCount={activeFilterCount}
+              onRefresh={loadCanchas}
+            />
+            <div className="flex justify-end">
               <Select value={sortBy} onValueChange={v => setSortBy(v as SortOption)}>
                 <SelectTrigger className="w-full sm:w-48 bg-secondary border-border">
                   <SelectValue placeholder="Ordenar por" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="relevancia">Relevancia</SelectItem>
+                  <SelectItem value="precio-asc">Menor precio</SelectItem>
+                  <SelectItem value="precio-desc">Mayor precio</SelectItem>
                   <SelectItem value="rating">Mejor puntuación</SelectItem>
-                  <SelectItem value="price-low">Menor precio</SelectItem>
-                  <SelectItem value="price-high">Mayor precio</SelectItem>
-                  <SelectItem value="reviews">Más reseñas</SelectItem>
+                  <SelectItem value="nombre">Nombre (A-Z)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -101,7 +141,7 @@ export default function CanchasPage() {
             </div>
           ) : filtered.length > 0 ? (
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {filtered.map(c => <CanchaCard key={c.id} cancha={adaptCancha(c)} />)}
+              {filtered.map(c => <CanchaCard key={c.id} cancha={c} />)}
             </div>
           ) : (
             <div className="py-16 text-center">

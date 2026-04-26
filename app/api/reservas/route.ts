@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
   const sb = createServiceClient();
 
   const body = await req.json();
-  const { canchaId, canchaNombre, fecha, hora, precio, precioOriginal, cuponId, metodoPago, comprobanteUrl, emailInvitado } = body;
+  const { canchaId, canchaNombre, fecha, hora, precio, precioOriginal, cuponId, metodoPago, comprobanteUrl, emailInvitado, telefonoInvitado, metodoDevolucion, telefonoDevolucion, actualizarTelefono, nuevoTelefono } = body;
 
   let usuarioId: string | null = null;
   let usuarioNombre = 'Invitado';
@@ -40,11 +40,23 @@ export async function POST(req: NextRequest) {
       usuarioId = user.id;
       usuarioNombre = user.user_metadata?.nombre ?? user.email ?? 'Invitado';
       usuarioEmail = user.email ?? '';
-      usuarioTelefono = user.user_metadata?.telefono ?? '';
+      // Usar teléfono de devolución si se proporcionó, sino el del perfil
+      usuarioTelefono = telefonoDevolucion || user.user_metadata?.telefono || '';
+
+      // Si el usuario quiere actualizar su teléfono en el perfil
+      if (actualizarTelefono && nuevoTelefono) {
+        await sb.from('usuarios').update({ telefono: nuevoTelefono }).eq('id', user.id);
+      }
     }
   } else if (emailInvitado) {
-    // Usuario invitado que proporcionó su email para recibir confirmación
-    usuarioEmail = emailInvitado;
+    usuarioEmail    = emailInvitado;
+    // Construir el texto del teléfono con método de devolución
+    if (telefonoInvitado === 'MISMO_NUMERO_PAGO') {
+      usuarioTelefono = `Mismo número de ${metodoPago}`;
+    } else {
+      const metodo = metodoDevolucion ?? 'yape';
+      usuarioTelefono = `${telefonoInvitado} (${metodo})`;
+    }
   }
 
   // Validar datos requeridos

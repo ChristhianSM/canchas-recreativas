@@ -58,7 +58,10 @@ export async function PATCH(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { descripcion, telefono, precioHora, amenidades, imagenes, horariosRestringidos, lat, lng, direccion } = body;
+  const { descripcion, telefono, precioHora, amenidades, imagenes, horariosRestringidos, lat, lng, direccion, distrito } = body;
+
+  console.log('📍 PATCH /api/admin-cancha/cancha');
+  console.log('Distrito recibido:', distrito);
 
   const updateData: Record<string, any> = {
     descripcion, telefono, precio_por_hora: precioHora, amenidades, imagenes,
@@ -66,6 +69,9 @@ export async function PATCH(req: NextRequest) {
   if (lat !== undefined) updateData.lat = lat;
   if (lng !== undefined) updateData.lng = lng;
   if (direccion !== undefined) updateData.direccion = direccion;
+  if (distrito !== undefined) updateData.distrito = distrito;
+
+  console.log('UpdateData:', updateData);
 
   const { error: canchaError } = await sb
     .from('canchas')
@@ -81,5 +87,5 @@ export async function PATCH(req: NextRequest) {
     );
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, distrito });
 }

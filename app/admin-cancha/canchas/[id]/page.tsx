@@ -31,13 +31,15 @@ function getOwnerToken() {
 
 // ── Pestaña de ubicación ────────────────────────────────────────
 function UbicacionTab({
-  direccion, lat, lng, onDireccionChange, onCoordsChange,
+  direccion, lat, lng, onDireccionChange, onCoordsChange, distrito, onDistritoChange,
 }: {
   direccion: string;
   lat: string;
   lng: string;
+  distrito: string;
   onDireccionChange: (v: string) => void;
-  onCoordsChange: (lat: string, lng: string) => void;
+  onCoordsChange: (lat: string, lng: string, distrito?: string) => void;
+  onDistritoChange: (v: string) => void;
 }) {
   const [buscando, setBuscando] = useState(false);
   const [error, setError]       = useState('');
@@ -55,7 +57,7 @@ function UbicacionTab({
     setBuscando(true);
     setError('');
     try {
-      const query = encodeURIComponent(`${direccion}, Piura, Peru`);
+      const query = encodeURIComponent(direccion);
       const res = await fetch(
         `https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1`,
         { headers: { 'Accept-Language': 'es' } }
@@ -64,7 +66,9 @@ function UbicacionTab({
       if (data.length === 0) {
         setError('No se encontró la dirección. Intenta ser más específico.');
       } else {
-        onCoordsChange(data[0].lat, data[0].lon);
+        const lat = data[0].lat;
+        const lon = data[0].lon;
+        onCoordsChange(lat, lon);
       }
     } catch {
       setError('Error al buscar la dirección. Verifica tu conexión.');
@@ -94,7 +98,7 @@ function UbicacionTab({
           <Input
             value={direccion}
             onChange={e => onDireccionChange(e.target.value)}
-            placeholder="Ej: Av. Los Algarrobos 1250, Piura"
+            placeholder="Ej: Av. Los Algarrobos 1250, Chiclayo"
             onKeyDown={e => { if (e.key === 'Enter') buscarDireccion(); }}
             className="flex-1"
           />
@@ -110,6 +114,20 @@ function UbicacionTab({
           </Button>
         </div>
         {error && <p className="text-sm text-destructive">{error}</p>}
+      </div>
+
+      {/* Campo de distrito editable */}
+      <div className="space-y-1.5">
+        <label className="text-sm font-medium text-foreground">Distrito</label>
+        <Input
+          value={distrito}
+          onChange={e => onDistritoChange(e.target.value)}
+          placeholder="Ej: Chiclayo, Piura, Tambogrande..."
+          className="bg-blue-500/5 border-blue-500/20"
+        />
+        <p className="text-xs text-muted-foreground">
+          💡 Escribe el distrito manualmente. Se guardará tal como lo escribas.
+        </p>
       </div>
 
       {/* Mapa interactivo */}
@@ -184,6 +202,7 @@ export default function OwnerEditarCanchaPage() {
   const [lat, setLat]               = useState('');
   const [lng, setLng]               = useState('');
   const [direccion, setDireccion]   = useState('');
+  const [distrito, setDistrito]     = useState('');
 
   useEffect(() => {
     const token = getOwnerToken();
@@ -213,6 +232,7 @@ export default function OwnerEditarCanchaPage() {
         setLat(String(canchaData.lat ?? ''));
         setLng(String(canchaData.lng ?? ''));
         setDireccion(canchaData.direccion ?? '');
+        setDistrito(canchaData.distrito ?? '');
       })
       .catch(err => {
         console.error('Error de red:', err);
@@ -225,6 +245,15 @@ export default function OwnerEditarCanchaPage() {
     if (!token) return;
     setSaving(true);
     setSaveError('');
+
+    console.log('🔍 handleSave - Valores a enviar:');
+    console.log('  descripcion:', description);
+    console.log('  telefono:', phone);
+    console.log('  precioHora:', price);
+    console.log('  lat:', lat);
+    console.log('  lng:', lng);
+    console.log('  direccion:', direccion);
+    console.log('  distrito:', distrito);
 
     const res = await fetch(`/api/admin-cancha/cancha?id=${id}`, {
       method: 'PATCH',
@@ -239,6 +268,7 @@ export default function OwnerEditarCanchaPage() {
         lat: lat ? Number(lat) : undefined,
         lng: lng ? Number(lng) : undefined,
         direccion: direccion || undefined,
+        distrito: distrito || undefined,
       }),
     });
 
@@ -432,8 +462,14 @@ export default function OwnerEditarCanchaPage() {
             direccion={direccion}
             lat={lat}
             lng={lng}
+            distrito={distrito}
             onDireccionChange={setDireccion}
-            onCoordsChange={(newLat, newLng) => { setLat(newLat); setLng(newLng); }}
+            onDistritoChange={setDistrito}
+            onCoordsChange={(newLat, newLng, newDistrito) => { 
+              setLat(newLat); 
+              setLng(newLng);
+              if (newDistrito) setDistrito(newDistrito);
+            }}
           />
         </TabsContent>
 

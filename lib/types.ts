@@ -46,3 +46,26 @@ export const sportIcons: Record<SportType, string> = {
   tenis: '🎾',
   futsal: '⚽',
 };
+
+// Filtros avanzados
+export interface AdvancedFilters {
+  sports: SportType[];
+  priceRange: [number, number];
+  minRating: number;
+  amenities: string[];
+  districts: string[];
+  availableHours: string[];
+  onlyFeatured: boolean;
+  searchQuery: string;
+}
+
+export const DEFAULT_FILTERS: AdvancedFilters = {
+  sports: [],
+  priceRange: [0, 200],
+  minRating: 0,
+  amenities: [],
+  districts: [],
+  availableHours: [],
+  onlyFeatured: false,
+  searchQuery: '',
+};
