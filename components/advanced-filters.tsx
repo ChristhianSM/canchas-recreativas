@@ -2,12 +2,10 @@
 
 import { useState, useMemo } from 'react';
 import {
-  Filter, X, ChevronDown, Sliders, ChevronLeft, ChevronRight,
-  Search, Calendar, Clock, Trophy, DollarSign, Star, MapPin, Zap
+  X, Sliders, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
@@ -171,7 +169,7 @@ export function AdvancedFiltersComponent({
               </Button>
               
               <div className="mx-10 overflow-hidden">
-                <div className="flex gap-2">
+                <div className="flex gap-1.5">
                   {next6Days.slice(dateStartIndex, dateStartIndex + 4).map(date => {
                     const { day, date: dateNum, isToday } = formatDateDisplay(date);
                     const isSelected = filters.selectedDate === date;
@@ -182,18 +180,10 @@ export function AdvancedFiltersComponent({
                         variant={isSelected ? 'default' : 'outline'}
                         size="sm"
                         onClick={() => handleDateChange(date)}
-                        className="flex-1 h-20 flex flex-col gap-1 px-2 py-3 rounded-xl"
+                        className="flex-1 h-16 flex flex-col gap-1 px-4 py-2 rounded-xl"
                       >
-                        <span className="font-medium text-sm">{day}</span>
+                        <span className="font-medium text-sm">{isToday ? 'Hoy' : day}</span>
                         <span className="font-bold text-xl">{dateNum}</span>
-                        {isToday && (
-                          <span className={cn(
-                            "text-[11px] font-medium",
-                            isSelected ? "text-white" : "text-primary"
-                          )}>
-                            Hoy
-                          </span>
-                        )}
                       </Button>
                     );
                   })}
@@ -217,7 +207,7 @@ export function AdvancedFiltersComponent({
           {/* Horarios - Mostrar todos */}
           <div>
             <div className="text-xs text-muted-foreground mb-2">
-              Horarios para {formatDateDisplay(filters.selectedDate).day} {formatDateDisplay(filters.selectedDate).date}
+              Horarios para el {new Date(filters.selectedDate + 'T00:00:00').toLocaleDateString('es-PE', { weekday: 'long' })} {formatDateDisplay(filters.selectedDate).date}
             </div>
             <div className="grid grid-cols-4 gap-1">
               {HOURS.map(hour => (
@@ -273,16 +263,10 @@ export function AdvancedFiltersComponent({
                           variant={isSelected ? 'default' : 'outline'}
                           size="sm"
                           onClick={() => handleDateChange(date)}
-                          className="text-xs h-16 px-2 py-1.5 flex flex-col items-center justify-center gap-0.5 shrink-0 w-16"
+                          className="text-xs h-16 px-1.5 py-1.5 flex flex-col items-center justify-center gap-0.5 shrink-0 w-14"
                         >
-                          <span className="font-semibold text-xs">{day}</span>
+                          <span className="font-semibold text-xs">{isToday ? 'Hoy' : day}</span>
                           <span className="text-xs font-bold">{dateNum}</span>
-                          <span className={cn(
-                            "text-[10px] h-3 flex items-center justify-center",
-                            isSelected ? "text-white" : "text-muted-foreground"
-                          )}>
-                            {isToday ? 'Hoy' : ''}
-                          </span>
                         </Button>
                       );
                     })}
@@ -308,7 +292,7 @@ export function AdvancedFiltersComponent({
 
             <div>
               <div className="text-xs text-muted-foreground mb-2">
-                Horarios para {formatDateDisplay(filters.selectedDate).day} {formatDateDisplay(filters.selectedDate).date}
+                Horarios para el {new Date(filters.selectedDate + 'T00:00:00').toLocaleDateString('es-PE', { weekday: 'long' })} {formatDateDisplay(filters.selectedDate).date}
               </div>
               <div className="grid grid-cols-4 gap-2">
                 {HOURS.map(hour => (

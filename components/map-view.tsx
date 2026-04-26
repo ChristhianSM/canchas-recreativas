@@ -16,10 +16,19 @@ export function MapView({ lat, lng, nombre }: MapViewProps) {
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
-    // Leaflet marca el div con _leaflet_id cuando ya está inicializado
-    if ((containerRef.current as any)._leaflet_id) return;
+    
+    // Verificar si el contenedor ya está inicializado por Leaflet
+    if ((containerRef.current as any)._leaflet_id) {
+      // Si ya está inicializado, limpiar primero
+      const container = containerRef.current;
+      container.innerHTML = '';
+      delete (container as any)._leaflet_id;
+    }
 
     import('leaflet').then(L => {
+      // Verificar nuevamente después del import dinámico
+      if (!containerRef.current || mapRef.current) return;
+      
       // Fix íconos con Next.js
       // @ts-ignore
       delete L.Icon.Default.prototype._getIconUrl;
@@ -29,66 +38,84 @@ export function MapView({ lat, lng, nombre }: MapViewProps) {
         shadowUrl:     'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
       });
 
-      const map = L.map(containerRef.current!, { zoomControl: true }).setView([lat, lng], 17);
-      mapRef.current = map;
+      try {
+        const map = L.map(containerRef.current!, { zoomControl: true }).setView([lat, lng], 17);
+        mapRef.current = map;
 
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors',
-      }).addTo(map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© OpenStreetMap contributors',
+        }).addTo(map);
 
-      // Marcador con popup
-      L.marker([lat, lng])
-        .addTo(map)
-        .bindPopup(`<strong>${nombre}</strong>`);
+        // Marcador con popup
+        L.marker([lat, lng])
+          .addTo(map)
+          .bindPopup(`<strong>${nombre}</strong>`);
 
-      // Botón "Volver a la cancha" como Leaflet Control (vive dentro del mapa)
-      const RecentrarControl = L.Control.extend({
-        options: { position: 'bottomleft' },
-        onAdd() {
-          const btn = L.DomUtil.create('button', '');
-          btn.innerHTML = '📍 Volver a la cancha';
-          btn.style.cssText = `
-            display: none;
-            background: white;
-            border: 1px solid #e5e7eb;
-            border-radius: 9999px;
-            padding: 6px 16px;
-            font-size: 13px;
-            font-weight: 500;
-            cursor: pointer;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-            white-space: nowrap;
-          `;
-          btn.id = 'recentrar-btn';
-          L.DomEvent.on(btn, 'click', (e) => {
-            L.DomEvent.stopPropagation(e);
-            map.flyTo(L.latLng(lat, lng), 17, { duration: 1 });
-            btn.style.display = 'none';
-            movedRef.current = false;
-            setMoved(false);
-          });
-          return btn;
-        },
-      });
+        // Botón "Volver a la cancha" como Leaflet Control (vive dentro del mapa)
+        const RecentrarControl = L.Control.extend({
+          options: { position: 'bottomleft' },
+          onAdd() {
+            const btn = L.DomUtil.create('button', '');
+            btn.innerHTML = '📍 Volver a la cancha';
+            btn.style.cssText = `
+              display: none;
+              background: white;
+              border: 1px solid #e5e7eb;
+              border-radius: 9999px;
+              padding: 6px 16px;
+              font-size: 13px;
+              font-weight: 500;
+              cursor: pointer;
+              box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+              white-space: nowrap;
+            `;
+            btn.id = 'recentrar-btn';
+            L.DomEvent.on(btn, 'click', (e) => {
+              L.DomEvent.stopPropagation(e);
+              map.flyTo(L.latLng(lat, lng), 17, { duration: 1 });
+              btn.style.display = 'none';
+              movedRef.current = false;
+              setMoved(false);
+            });
+            return btn;
+          },
+        });
 
-      new RecentrarControl().addTo(map);
+        new RecentrarControl().addTo(map);
 
-      // Mostrar/ocultar botón según distancia
-      map.on('moveend', () => {
-        const center = map.getCenter();
-        const dist = center.distanceTo(L.latLng(lat, lng));
-        const btn = document.getElementById('recentrar-btn');
-        if (btn) {
-          btn.style.display = dist > 100 ? 'block' : 'none';
+        // Mostrar/ocultar botón según distancia
+        map.on('moveend', () => {
+          const center = map.getCenter();
+          const dist = center.distanceTo(L.latLng(lat, lng));
+          const btn = document.getElementById('recentrar-btn');
+          if (btn) {
+            btn.style.display = dist > 100 ? 'block' : 'none';
+          }
+          setMoved(dist > 100);
+        });
+      } catch (error) {
+        console.error('Error inicializando mapa:', error);
+        // Si hay error, limpiar el contenedor para el próximo intento
+        if (containerRef.current) {
+          containerRef.current.innerHTML = '';
+          delete (containerRef.current as any)._leaflet_id;
         }
-        setMoved(dist > 100);
-      });
+      }
     });
 
     return () => {
       if (mapRef.current) {
-        mapRef.current.remove();
+        try {
+          mapRef.current.remove();
+        } catch (error) {
+          console.error('Error removiendo mapa:', error);
+        }
         mapRef.current = null;
+      }
+      // Limpiar el contenedor al desmontar
+      if (containerRef.current) {
+        containerRef.current.innerHTML = '';
+        delete (containerRef.current as any)._leaflet_id;
       }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
