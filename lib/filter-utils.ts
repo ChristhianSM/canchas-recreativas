@@ -6,7 +6,11 @@ import { Cancha, AdvancedFilters } from './types';
 export function getAllAmenities(canchas: Cancha[]): string[] {
   const amenitiesSet = new Set<string>();
   canchas.forEach(cancha => {
-    cancha.amenities.forEach(a => amenitiesSet.add(a));
+    if (cancha.amenities && Array.isArray(cancha.amenities)) {
+      cancha.amenities.forEach(a => {
+        if (a && a.trim()) amenitiesSet.add(a.trim());
+      });
+    }
   });
   return Array.from(amenitiesSet).sort();
 }
@@ -15,7 +19,12 @@ export function getAllAmenities(canchas: Cancha[]): string[] {
  * Obtiene todos los distritos únicos
  */
 export function getAllDistricts(canchas: Cancha[]): string[] {
-  const districtsSet = new Set(canchas.map(c => c.district));
+  const districtsSet = new Set<string>();
+  canchas.forEach(cancha => {
+    if (cancha.district && cancha.district.trim()) {
+      districtsSet.add(cancha.district.trim());
+    }
+  });
   return Array.from(districtsSet).sort();
 }
 
@@ -24,64 +33,131 @@ export function getAllDistricts(canchas: Cancha[]): string[] {
  */
 export function getPriceRange(canchas: Cancha[]): [number, number] {
   if (canchas.length === 0) return [0, 100];
-  const prices = canchas.map(c => c.pricePerHour);
+  const prices = canchas
+    .map(c => c.pricePerHour)
+    .filter(p => typeof p === 'number' && p > 0);
+  if (prices.length === 0) return [0, 100];
   return [Math.min(...prices), Math.max(...prices)];
 }
 
 /**
+ * Verifica si una hora ya pasó (comparada con la hora actual)
+ */
+export function hasHourPassed(hour: string, date?: string): boolean {
+  // Si no se especifica fecha, usar hoy
+  if (!date) {
+    date = new Date().toISOString().split('T')[0];
+  }
+
+  const today = new Date().toISOString().split('T')[0];
+  
+  // Si la fecha es anterior a hoy, la hora ya pasó
+  if (date < today) {
+    return true;
+  }
+
+  // Si es hoy, comparar con la hora actual
+  if (date === today) {
+    const now = new Date();
+    const currentHour = String(now.getHours()).padStart(2, '0');
+    const currentMinute = String(now.getMinutes()).padStart(2, '0');
+    const currentTime = `${currentHour}:${currentMinute}`;
+    
+    // Si la hora seleccionada es menor o igual a la hora actual, ya pasó
+    return hour <= currentTime;
+  }
+
+  // Si la fecha es futura, la hora no ha pasado
+  return false;
+}
+
+/**
  * Verifica si una cancha tiene disponibilidad en una hora específica
+ * Considera: horarios pasados, horarios de funcionamiento y reservas
  */
 export function hasAvailabilityAtHour(cancha: Cancha, hour: string, date?: string): boolean {
   // Si no se especifica fecha, usar hoy
   if (!date) {
-    const today = new Date().toISOString().split('T')[0];
-    date = today;
+    date = new Date().toISOString().split('T')[0];
+  }
+
+  // 1. Verificar si la hora ya pasó
+  if (hasHourPassed(hour, date)) {
+    return false;
+  }
+
+  // Si no hay schedule, asumir que está disponible
+  if (!cancha.schedule || Object.keys(cancha.schedule).length === 0) {
+    return true;
   }
 
   const daySchedule = cancha.schedule[date];
-  if (!daySchedule) return false;
+  if (!daySchedule) return true; // Si no hay datos para ese día, asumir disponible
 
   const slot = daySchedule.find(s => s.time === hour);
-  return slot ? slot.available : false;
+  
+  // 2. Verificar si el slot existe y está disponible
+  if (!slot) {
+    return true; // Si no hay slot, asumir disponible
+  }
+
+  // 3. Retornar la disponibilidad del slot (considera reservas y horarios bloqueados)
+  return slot.available;
 }
 
 /**
  * Filtra canchas según los criterios especificados
  */
 export function filterCanchas(canchas: Cancha[], filters: AdvancedFilters, date?: string): Cancha[] {
+  // Usar la fecha del filtro si no se proporciona
+  const targetDate = date || filters.selectedDate || new Date().toISOString().split('T')[0];
+
   return canchas.filter(cancha => {
+    // Validar que la cancha tenga datos básicos
+    if (!cancha.id || !cancha.name) {
+      return false;
+    }
+
     // Filtro por deporte
     if (filters.sports.length > 0 && !filters.sports.includes(cancha.type)) {
       return false;
     }
 
     // Filtro por rango de precio
-    if (cancha.pricePerHour < filters.priceRange[0] || cancha.pricePerHour > filters.priceRange[1]) {
+    const price = cancha.pricePerHour || 0;
+    if (price < filters.priceRange[0] || price > filters.priceRange[1]) {
       return false;
     }
 
     // Filtro por rating mínimo
-    if (cancha.rating < filters.minRating) {
+    const rating = cancha.rating || 0;
+    if (rating < filters.minRating) {
       return false;
     }
 
     // Filtro por amenidades (debe tener TODAS las seleccionadas)
     if (filters.amenities.length > 0) {
+      const canchAmenities = cancha.amenities || [];
       const hasAllAmenities = filters.amenities.every(amenity =>
-        cancha.amenities.includes(amenity)
+        canchAmenities.some(a => a && a.trim().toLowerCase() === amenity.trim().toLowerCase())
       );
       if (!hasAllAmenities) return false;
     }
 
-    // Filtro por distritos
-    if (filters.districts.length > 0 && !filters.districts.includes(cancha.district)) {
-      return false;
+    // Filtro por distritos (case-insensitive)
+    if (filters.districts.length > 0) {
+      const canchDistrict = (cancha.district || '').trim().toLowerCase();
+      const matchesDistrict = filters.districts.some(d =>
+        d.trim().toLowerCase() === canchDistrict
+      );
+      if (!matchesDistrict) return false;
     }
 
-    // Filtro por horas disponibles
+    // Filtro por horas disponibles (con fecha específica)
     if (filters.availableHours.length > 0) {
+      // Verificar si al menos UNA hora está disponible
       const hasAvailableHour = filters.availableHours.some(hour =>
-        hasAvailabilityAtHour(cancha, hour, date)
+        hasAvailabilityAtHour(cancha, hour, targetDate)
       );
       if (!hasAvailableHour) return false;
     }
@@ -94,10 +170,10 @@ export function filterCanchas(canchas: Cancha[], filters: AdvancedFilters, date?
     // Filtro por búsqueda de texto
     if (filters.searchQuery.trim()) {
       const query = filters.searchQuery.toLowerCase();
-      const matchesName = cancha.name.toLowerCase().includes(query);
-      const matchesAddress = cancha.address.toLowerCase().includes(query);
-      const matchesDistrict = cancha.district.toLowerCase().includes(query);
-      const matchesDescription = cancha.description.toLowerCase().includes(query);
+      const matchesName = (cancha.name || '').toLowerCase().includes(query);
+      const matchesAddress = (cancha.address || '').toLowerCase().includes(query);
+      const matchesDistrict = (cancha.district || '').toLowerCase().includes(query);
+      const matchesDescription = (cancha.description || '').toLowerCase().includes(query);
 
       if (!matchesName && !matchesAddress && !matchesDistrict && !matchesDescription) {
         return false;
@@ -118,13 +194,13 @@ export function sortCanchas(canchas: Cancha[], sortBy: SortOption): Cancha[] {
 
   switch (sortBy) {
     case 'precio-asc':
-      return sorted.sort((a, b) => a.pricePerHour - b.pricePerHour);
+      return sorted.sort((a, b) => (a.pricePerHour || 0) - (b.pricePerHour || 0));
     case 'precio-desc':
-      return sorted.sort((a, b) => b.pricePerHour - a.pricePerHour);
+      return sorted.sort((a, b) => (b.pricePerHour || 0) - (a.pricePerHour || 0));
     case 'rating':
-      return sorted.sort((a, b) => b.rating - a.rating);
+      return sorted.sort((a, b) => (b.rating || 0) - (a.rating || 0));
     case 'nombre':
-      return sorted.sort((a, b) => a.name.localeCompare(b.name));
+      return sorted.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     case 'relevancia':
     default:
       return sorted;

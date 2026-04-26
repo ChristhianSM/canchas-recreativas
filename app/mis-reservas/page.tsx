@@ -80,6 +80,17 @@ function ReservaCard({
   const imagen = canchaLocal?.images[0] ?? 'https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=800&h=600&fit=crop';
   const direccion = canchaLocal?.address ?? null;
 
+  // Verificar si la fecha y hora ya pasaron
+  const fechaHoraPasada = (() => {
+    const [year, month, day] = r.fecha.split('-').map(Number);
+    const [horaNum, minNum] = r.hora.split(':').map(Number);
+    
+    const fechaReserva = new Date(year, month - 1, day, horaNum, minNum, 0);
+    const ahora = new Date();
+    
+    return fechaReserva < ahora;
+  })();
+
   return (
     <Card className="overflow-hidden border-border">
       <div className="flex flex-col sm:flex-row">
@@ -90,9 +101,16 @@ function ReservaCard({
         <div className="flex flex-1 flex-col p-4">
           <div className="mb-2 flex items-start justify-between gap-2">
             <div>
-              <Badge variant="outline" className={estadoClass[r.estado]}>
-                {estadoLabel[r.estado]}
-              </Badge>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className={estadoClass[r.estado]}>
+                  {estadoLabel[r.estado]}
+                </Badge>
+                {fechaHoraPasada && r.estado === 'confirmada' && (
+                  <Badge variant="outline" className="bg-orange-500/10 text-orange-600 border-orange-500/20">
+                    Finalizada
+                  </Badge>
+                )}
+              </div>
               <Link href={`/cancha/${r.canchaId}`} className="mt-2 block font-semibold text-foreground hover:text-primary transition-colors">
                 {r.canchaName}
               </Link>
@@ -120,7 +138,8 @@ function ReservaCard({
             )}
           </div>
 
-          {(r.estado === 'pendiente' || r.estado === 'confirmada') && (
+          {/* Solo mostrar botones de acción si no ha pasado la fecha */}
+          {(r.estado === 'pendiente' || (r.estado === 'confirmada' && !fechaHoraPasada)) && (
             <div className="mt-4 flex flex-col sm:flex-row gap-2">
               <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => onDetalle(r)}>
                 Detalles de la reservación
@@ -148,7 +167,9 @@ function ReservaCard({
               </Button>
             </div>
           )}
-          {(r.estado === 'rechazada' || r.estado === 'cancelada') && (
+          
+          {/* Mostrar botón de reservar de nuevo para reservas finalizadas o canceladas */}
+          {(r.estado === 'rechazada' || r.estado === 'cancelada' || (r.estado === 'confirmada' && fechaHoraPasada)) && (
             <div className="mt-4">
               <Button variant="outline" size="sm" asChild>
                 <Link href={`/cancha/${r.canchaId}`}>Reservar de nuevo</Link>
@@ -266,9 +287,31 @@ export default function MisReservasPage() {
 
   const favoriteCanchas = canchas.filter(c => favoriteIds.includes(c.id));
 
-  // Reservas filtradas por estado
-  const proximas   = reservas.filter(r => r.estado === 'pendiente' || r.estado === 'confirmada');
-  const historial  = reservas.filter(r => r.estado === 'rechazada' || r.estado === 'cancelada');
+  // Función para verificar si una fecha y hora ya pasaron
+  const fechaHoraPasada = (fecha: string, hora: string): boolean => {
+    // Convertir fecha (YYYY-MM-DD) y hora (HH:MM) a un objeto Date
+    const [year, month, day] = fecha.split('-').map(Number);
+    const [horaNum, minNum] = hora.split(':').map(Number);
+    
+    const fechaReserva = new Date(year, month - 1, day, horaNum, minNum, 0);
+    const ahora = new Date();
+    
+    return fechaReserva < ahora;
+  };
+
+  // Reservas filtradas por estado Y fecha/hora
+  const proximas = reservas.filter(r => {
+    // Solo pendientes y confirmadas que NO hayan pasado
+    if (r.estado !== 'pendiente' && r.estado !== 'confirmada') return false;
+    return !fechaHoraPasada(r.fecha, r.hora);
+  });
+
+  const historial = reservas.filter(r => {
+    // Rechazadas, canceladas, O confirmadas que ya pasaron
+    return r.estado === 'rechazada' || 
+           r.estado === 'cancelada' || 
+           (r.estado === 'confirmada' && fechaHoraPasada(r.fecha, r.hora));
+  });
 
   // Mientras se lee localStorage o cargan las reservas, mostrar skeleton
   if (!hydrated || loading) {

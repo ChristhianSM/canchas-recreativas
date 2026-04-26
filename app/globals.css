@@ -150,3 +150,12 @@
 .leaflet-popup-pane {
   z-index: 12 !important;
 }
+/* Ocultar scrollbar */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}

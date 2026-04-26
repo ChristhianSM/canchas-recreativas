@@ -54,6 +54,7 @@ export interface AdvancedFilters {
   minRating: number;
   amenities: string[];
   districts: string[];
+  selectedDate: string; // Fecha seleccionada (YYYY-MM-DD)
   availableHours: string[];
   onlyFeatured: boolean;
   searchQuery: string;
@@ -65,6 +66,7 @@ export const DEFAULT_FILTERS: AdvancedFilters = {
   minRating: 0,
   amenities: [],
   districts: [],
+  selectedDate: new Date().toISOString().split('T')[0], // Hoy por defecto
   availableHours: [],
   onlyFeatured: false,
   searchQuery: '',

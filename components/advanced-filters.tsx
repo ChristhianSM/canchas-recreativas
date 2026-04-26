@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
-  Filter, X, ChevronDown, Sliders,
+  Filter, X, ChevronDown, Sliders, ChevronLeft, ChevronRight,
+  Search, Calendar, Clock, Trophy, DollarSign, Star, MapPin, Zap
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -28,6 +29,7 @@ interface AdvancedFiltersProps {
   sports: SportType[];
   activeFilterCount: number;
   onRefresh?: () => void;
+  isSidebar?: boolean; // Nueva prop para determinar si es sidebar o sheet
 }
 
 const HOURS = [
@@ -35,6 +37,30 @@ const HOURS = [
   '12:00', '13:00', '14:00', '15:00', '16:00', '17:00',
   '18:00', '19:00', '20:00', '21:00', '22:00', '23:00',
 ];
+
+// Generar próximos 6 días incluyendo hoy
+function getNext6Days(): string[] {
+  const days: string[] = [];
+  for (let i = 0; i < 6; i++) {
+    const date = new Date();
+    date.setDate(date.getDate() + i);
+    days.push(date.toISOString().split('T')[0]);
+  }
+  return days;
+}
+
+// Formatear fecha para mostrar
+function formatDateDisplay(dateStr: string): { day: string; date: number; isToday: boolean } {
+  const date = new Date(dateStr + 'T00:00:00');
+  const today = new Date().toISOString().split('T')[0];
+  const dayName = date.toLocaleDateString('es-PE', { weekday: 'short' });
+  
+  return {
+    day: dayName.charAt(0).toUpperCase() + dayName.slice(1),
+    date: date.getDate(),
+    isToday: dateStr === today,
+  };
+}
 
 export function AdvancedFiltersComponent({
   filters,
@@ -45,8 +71,11 @@ export function AdvancedFiltersComponent({
   sports,
   activeFilterCount,
   onRefresh,
+  isSidebar = false,
 }: AdvancedFiltersProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [dateStartIndex, setDateStartIndex] = useState(0);
+  const next6Days = useMemo(() => getNext6Days(), []);
 
   const handleSportToggle = (sport: SportType) => {
     const newSports = filters.sports.includes(sport)
@@ -76,6 +105,10 @@ export function AdvancedFiltersComponent({
     onFiltersChange({ ...filters, availableHours: newHours });
   };
 
+  const handleDateChange = (date: string) => {
+    onFiltersChange({ ...filters, selectedDate: date, availableHours: [] });
+  };
+
   const handlePriceChange = (value: number[]) => {
     onFiltersChange({ ...filters, priceRange: [value[0], value[1]] });
   };
@@ -91,6 +124,7 @@ export function AdvancedFiltersComponent({
       minRating: 0,
       amenities: [],
       districts: [],
+      selectedDate: new Date().toISOString().split('T')[0],
       availableHours: [],
       onlyFeatured: false,
       searchQuery: '',
@@ -98,28 +132,216 @@ export function AdvancedFiltersComponent({
   };
 
   const filterContent = (
-    <div className="space-y-6">
+    <div className={cn("space-y-4", isSidebar && "space-y-5")}>
       {/* Búsqueda */}
       <div>
-        <label className="text-sm font-semibold text-foreground">Buscar</label>
+        <label className="text-sm font-medium text-foreground flex items-center gap-2 mb-2">
+          <span className="text-sm">🔍</span>
+          Buscar
+        </label>
         <Input
-          placeholder="Nombre, dirección, distrito..."
+          placeholder="Nombre, dirección..."
           value={filters.searchQuery}
           onChange={(e) => onFiltersChange({ ...filters, searchQuery: e.target.value })}
-          className="mt-2"
+          className="h-9"
         />
       </div>
 
-      {/* Deportes */}
+      {/* Selector de Fecha y Horarios - Compacto para sidebar */}
+      {isSidebar ? (
+        <div>
+          <label className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
+            <span className="text-sm">📅</span>
+            Fecha y horarios
+          </label>
+          
+          {/* Días con slider mejorado */}
+          <div className="relative mb-4">
+            <div className="flex items-center">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute left-0 z-10 h-8 w-8 rounded-full bg-background shadow-md border"
+                onClick={() => {
+                  setDateStartIndex(Math.max(0, dateStartIndex - 1));
+                }}
+                disabled={dateStartIndex === 0}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              
+              <div className="mx-10 overflow-hidden">
+                <div className="flex gap-2">
+                  {next6Days.slice(dateStartIndex, dateStartIndex + 4).map(date => {
+                    const { day, date: dateNum, isToday } = formatDateDisplay(date);
+                    const isSelected = filters.selectedDate === date;
+
+                    return (
+                      <Button
+                        key={date}
+                        variant={isSelected ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => handleDateChange(date)}
+                        className="flex-1 h-20 flex flex-col gap-1 px-2 py-3 rounded-xl"
+                      >
+                        <span className="font-medium text-sm">{day}</span>
+                        <span className="font-bold text-xl">{dateNum}</span>
+                        {isToday && (
+                          <span className={cn(
+                            "text-[11px] font-medium",
+                            isSelected ? "text-white" : "text-primary"
+                          )}>
+                            Hoy
+                          </span>
+                        )}
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-0 z-10 h-8 w-8 rounded-full bg-background shadow-md border"
+                onClick={() => {
+                  setDateStartIndex(Math.min(next6Days.length - 4, dateStartIndex + 1));
+                }}
+                disabled={dateStartIndex >= next6Days.length - 4}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Horarios - Mostrar todos */}
+          <div>
+            <div className="text-xs text-muted-foreground mb-2">
+              Horarios para {formatDateDisplay(filters.selectedDate).day} {formatDateDisplay(filters.selectedDate).date}
+            </div>
+            <div className="grid grid-cols-4 gap-1">
+              {HOURS.map(hour => (
+                <Button
+                  key={hour}
+                  variant={filters.availableHours.includes(hour) ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => handleHourToggle(hour)}
+                  className="h-8 text-xs p-1"
+                >
+                  {hour}
+                </Button>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* Versión completa para mobile */
+        <div>
+          <label className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+            <span className="text-base">📅</span>
+            Selecciona fecha y horarios
+          </label>
+          
+          <div className="space-y-4">
+            {/* Días con slider */}
+            <div className="relative">
+              <div className="flex items-center">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute left-0 z-10 h-8 w-8 rounded-full bg-background shadow-md"
+                  onClick={() => {
+                    const currentIndex = next6Days.findIndex(d => d === filters.selectedDate);
+                    if (currentIndex > 0) {
+                      handleDateChange(next6Days[currentIndex - 1]);
+                    }
+                  }}
+                  disabled={next6Days.findIndex(d => d === filters.selectedDate) === 0}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                
+                <div className="mx-10 overflow-hidden">
+                  <div className="flex gap-1.5 justify-center">
+                    {next6Days.slice(0, 4).map(date => {
+                      const { day, date: dateNum, isToday } = formatDateDisplay(date);
+                      const isSelected = filters.selectedDate === date;
+
+                      return (
+                        <Button
+                          key={date}
+                          variant={isSelected ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => handleDateChange(date)}
+                          className="text-xs h-16 px-2 py-1.5 flex flex-col items-center justify-center gap-0.5 shrink-0 w-16"
+                        >
+                          <span className="font-semibold text-xs">{day}</span>
+                          <span className="text-xs font-bold">{dateNum}</span>
+                          <span className={cn(
+                            "text-[10px] h-3 flex items-center justify-center",
+                            isSelected ? "text-white" : "text-muted-foreground"
+                          )}>
+                            {isToday ? 'Hoy' : ''}
+                          </span>
+                        </Button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 z-10 h-8 w-8 rounded-full bg-background shadow-md"
+                  onClick={() => {
+                    const currentIndex = next6Days.findIndex(d => d === filters.selectedDate);
+                    if (currentIndex < next6Days.length - 1) {
+                      handleDateChange(next6Days[currentIndex + 1]);
+                    }
+                  }}
+                  disabled={next6Days.findIndex(d => d === filters.selectedDate) === next6Days.length - 1}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            <div>
+              <div className="text-xs text-muted-foreground mb-2">
+                Horarios para {formatDateDisplay(filters.selectedDate).day} {formatDateDisplay(filters.selectedDate).date}
+              </div>
+              <div className="grid grid-cols-4 gap-2">
+                {HOURS.map(hour => (
+                  <Button
+                    key={hour}
+                    variant={filters.availableHours.includes(hour) ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => handleHourToggle(hour)}
+                    className="text-xs"
+                  >
+                    {hour}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Deportes - Compacto */}
       <div>
-        <label className="text-sm font-semibold text-foreground">Tipo de deporte</label>
-        <div className="mt-3 space-y-2">
+        <label className="text-sm font-medium text-foreground flex items-center gap-2 mb-2">
+          <span className="text-sm">⚽</span>
+          Deporte
+        </label>
+        <div className="space-y-2">
           {sports.map(sport => (
             <div key={sport} className="flex items-center gap-2">
               <Checkbox
                 id={`sport-${sport}`}
                 checked={filters.sports.includes(sport)}
                 onCheckedChange={() => handleSportToggle(sport)}
+                className="h-4 w-4"
               />
               <label htmlFor={`sport-${sport}`} className="text-sm cursor-pointer">
                 {sportLabels[sport]}
@@ -129,10 +351,11 @@ export function AdvancedFiltersComponent({
         </div>
       </div>
 
-      {/* Precio */}
+      {/* Precio - Compacto */}
       <div>
-        <label className="text-sm font-semibold text-foreground">
-          Rango de precio: S/ {filters.priceRange[0]} - S/ {filters.priceRange[1]}
+        <label className="text-sm font-medium text-foreground flex items-center gap-2 mb-2">
+          <span className="text-sm">💰</span>
+          S/ {filters.priceRange[0]} - S/ {filters.priceRange[1]}
         </label>
         <Slider
           min={priceRange[0]}
@@ -140,86 +363,88 @@ export function AdvancedFiltersComponent({
           step={5}
           value={filters.priceRange}
           onValueChange={handlePriceChange}
-          className="mt-3"
+          className="py-2"
         />
       </div>
 
-      {/* Rating */}
+      {/* Rating - Compacto */}
       <div>
-        <label className="text-sm font-semibold text-foreground">Rating mínimo</label>
-        <Select value={filters.minRating.toString()}>
-          <SelectTrigger className="mt-2">
+        <label className="text-sm font-medium text-foreground flex items-center gap-2 mb-2">
+          <span className="text-sm">⭐</span>
+          Rating
+        </label>
+        <Select value={filters.minRating.toString()} onValueChange={handleRatingChange}>
+          <SelectTrigger className="h-9">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="0">Cualquier rating</SelectItem>
+            <SelectItem value="0">Cualquiera</SelectItem>
             <SelectItem value="3">3+ ⭐</SelectItem>
-            <SelectItem value="3.5">3.5+ ⭐</SelectItem>
             <SelectItem value="4">4+ ⭐</SelectItem>
             <SelectItem value="4.5">4.5+ ⭐</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
-      {/* Distritos */}
+      {/* Distritos - Compacto */}
       {allDistricts.length > 0 && (
         <div>
-          <label className="text-sm font-semibold text-foreground">Distritos</label>
-          <div className="mt-3 space-y-2 max-h-40 overflow-y-auto">
-            {allDistricts.map(district => (
+          <label className="text-sm font-medium text-foreground flex items-center gap-2 mb-2">
+            <span className="text-sm">📍</span>
+            Distritos
+          </label>
+          <div className="space-y-2">
+            {allDistricts.slice(0, isSidebar ? 5 : allDistricts.length).map(district => (
               <div key={district} className="flex items-center gap-2">
                 <Checkbox
                   id={`district-${district}`}
                   checked={filters.districts.includes(district)}
                   onCheckedChange={() => handleDistrictToggle(district)}
+                  className="h-4 w-4"
                 />
                 <label htmlFor={`district-${district}`} className="text-sm cursor-pointer">
                   {district}
                 </label>
               </div>
             ))}
+            {isSidebar && allDistricts.length > 5 && (
+              <div className="text-xs text-muted-foreground">
+                +{allDistricts.length - 5} más
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* Amenidades */}
+      {/* Amenidades - Compacto */}
       {allAmenities.length > 0 && (
         <div>
-          <label className="text-sm font-semibold text-foreground">Amenidades</label>
-          <div className="mt-3 space-y-2 max-h-40 overflow-y-auto">
-            {allAmenities.map(amenity => (
+          <label className="text-sm font-medium text-foreground flex items-center gap-2 mb-2">
+            <span className="text-sm">⚡</span>
+            Servicios
+          </label>
+          <div className="space-y-2">
+            {allAmenities.slice(0, isSidebar ? 5 : allAmenities.length).map(amenity => (
               <div key={amenity} className="flex items-center gap-2">
                 <Checkbox
                   id={`amenity-${amenity}`}
                   checked={filters.amenities.includes(amenity)}
                   onCheckedChange={() => handleAmenityToggle(amenity)}
+                  className="h-4 w-4"
                 />
                 <label htmlFor={`amenity-${amenity}`} className="text-sm cursor-pointer">
                   {amenity}
                 </label>
               </div>
             ))}
+            {isSidebar && allAmenities.length > 5 && (
+              <div className="text-xs text-muted-foreground">
+                +{allAmenities.length - 5} más
+              </div>
+            )}
           </div>
         </div>
       )}
-
-      {/* Horas disponibles */}
-      <div>
-        <label className="text-sm font-semibold text-foreground">Horas disponibles</label>
-        <div className="mt-3 grid grid-cols-3 gap-2">
-          {HOURS.map(hour => (
-            <Button
-              key={hour}
-              variant={filters.availableHours.includes(hour) ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => handleHourToggle(hour)}
-              className="text-xs"
-            >
-              {hour}
-            </Button>
-          ))}
-        </div>
-      </div>
 
       {/* Destacadas */}
       <div className="flex items-center gap-2">
@@ -229,29 +454,33 @@ export function AdvancedFiltersComponent({
           onCheckedChange={(checked) =>
             onFiltersChange({ ...filters, onlyFeatured: checked as boolean })
           }
+          className="h-4 w-4"
         />
         <label htmlFor="featured" className="text-sm cursor-pointer">
-          Solo canchas destacadas
+          Solo destacadas
         </label>
       </div>
 
-      {/* Botones de acción */}
-      <div className="flex gap-2 pt-4">
+      {/* Botones de acción - Compactos */}
+      <div className="flex gap-2 pt-2">
         <Button
           variant="outline"
-          className="flex-1"
+          size="sm"
+          className="flex-1 h-8"
           onClick={handleClearFilters}
+          disabled={activeFilterCount === 0}
         >
-          Limpiar filtros
+          Limpiar
         </Button>
         {onRefresh && (
           <Button
             variant="outline"
-            size="icon"
+            size="sm"
+            className="h-8 w-8 p-0"
             onClick={onRefresh}
-            title="Recargar datos"
+            title="Recargar"
           >
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
           </Button>
@@ -260,6 +489,12 @@ export function AdvancedFiltersComponent({
     </div>
   );
 
+  // Si es sidebar, renderizar directamente el contenido
+  if (isSidebar) {
+    return filterContent;
+  }
+
+  // Si no es sidebar, usar el Sheet (mobile)
   return (
     <div className="space-y-4">
       {/* Barra de filtros rápidos */}
@@ -277,10 +512,10 @@ export function AdvancedFiltersComponent({
             </Button>
           </SheetTrigger>
           <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto p-6">
-            <SheetHeader className="mb-6">
+            <SheetHeader>
               <SheetTitle>Filtros avanzados</SheetTitle>
             </SheetHeader>
-            <div className="mt-6 pr-4">
+            <div className="pr-4">
               {filterContent}
             </div>
           </SheetContent>
@@ -322,6 +557,12 @@ export function AdvancedFiltersComponent({
         {filters.amenities.length > 0 && (
           <Badge variant="secondary" className="shrink-0">
             {filters.amenities.length} amenidades
+          </Badge>
+        )}
+
+        {filters.availableHours.length > 0 && (
+          <Badge variant="secondary" className="shrink-0">
+            {filters.availableHours.length} horas
           </Badge>
         )}
       </div>

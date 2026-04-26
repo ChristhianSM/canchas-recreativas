@@ -221,28 +221,14 @@ function PagoContent() {
       apiGetLoyalty().then(data => {
         setCupones((data.cupones ?? []).filter((c: Cupon) => !c.usado));
       });
-      // Obtener teléfono del perfil del usuario
-      // Primero intentar refrescar el token con Supabase
-      import('@supabase/ssr').then(({ createBrowserClient }) => {
-        const supabase = createBrowserClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-        );
-        supabase.auth.getSession().then(({ data: { session } }) => {
-          // Usar el token de la sesión activa (puede ser diferente al guardado)
-          const tokenActivo = session?.access_token || token;
-          if (session?.access_token && session.access_token !== token) {
-            localStorage.setItem('cp_token', session.access_token);
-          }
-          fetch('/api/auth/me', { headers: { Authorization: `Bearer ${tokenActivo}` } })
-            .then(r => r.json())
-            .then(perfil => {
-              const tel = perfil?.telefono || '';
-              if (tel) setTelefonoRegistrado(tel);
-            })
-            .catch(err => console.error('Error al obtener perfil:', err));
-        });
-      });
+      // Obtener teléfono del perfil del usuario usando el token actual
+      fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.json())
+        .then(perfil => {
+          const tel = perfil?.telefono || '';
+          if (tel) setTelefonoRegistrado(tel);
+        })
+        .catch(err => console.error('Error al obtener perfil:', err));
     } else {
       setEsInvitado(true);
     }

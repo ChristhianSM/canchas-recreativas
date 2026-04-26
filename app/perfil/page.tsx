@@ -28,6 +28,12 @@ export default function PerfilPage() {
   const [guardado, setGuardado]   = useState(false);
   const [errores, setErrores]     = useState<{ nombre?: string; telefono?: string }>({});
 
+  // Verificar si hay cambios
+  const hayChanges = perfil && (
+    nombre.trim() !== (perfil.nombre || '') ||
+    telefono.trim() !== (perfil.telefono || '')
+  );
+
   useEffect(() => {
     const token = getToken();
     if (!token) {
@@ -35,27 +41,16 @@ export default function PerfilPage() {
       return;
     }
 
-    // Refrescar token con Supabase antes de llamar al endpoint
-    import('@supabase/ssr').then(({ createBrowserClient }) => {
-      const supabase = createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      );
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        const tokenActivo = session?.access_token || token;
-        if (session?.access_token) localStorage.setItem('cp_token', session.access_token);
-
-        fetch('/api/auth/me', { headers: { Authorization: `Bearer ${tokenActivo}` } })
-          .then(r => r.json())
-          .then(data => {
-            if (data.error) { window.location.href = '/login'; return; }
-            setPerfil(data);
-            setNombre(data.nombre || '');
-            setTelefono(data.telefono || '');
-          })
-          .finally(() => setLoading(false));
-      });
-    });
+    // Usar el token actual sin refrescar con Supabase
+    fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) { window.location.href = '/login'; return; }
+        setPerfil(data);
+        setNombre(data.nombre || '');
+        setTelefono(data.telefono || '');
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   const validar = () => {
@@ -67,6 +62,12 @@ export default function PerfilPage() {
   };
 
   const handleGuardar = async () => {
+    // Verificar si hay cambios
+    if (!hayChanges) {
+      setErrores({ nombre: 'No hay cambios para guardar' });
+      return;
+    }
+
     if (!validar()) return;
     setGuardando(true);
 
@@ -205,7 +206,7 @@ export default function PerfilPage() {
 
             <Button
               onClick={handleGuardar}
-              disabled={guardando || guardado}
+              disabled={guardando || guardado || !hayChanges}
               className="w-full"
             >
               {guardado ? (
@@ -215,6 +216,8 @@ export default function PerfilPage() {
                 </>
               ) : guardando ? (
                 'Guardando...'
+              ) : !hayChanges ? (
+                'Sin cambios'
               ) : (
                 <>
                   <Save className="mr-2 h-4 w-4" />

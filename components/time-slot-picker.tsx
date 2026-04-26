@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { ChevronLeft, ChevronRight, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -53,56 +53,83 @@ export function TimeSlotPicker({
   onSlotSelect,
 }: TimeSlotPickerProps) {
   const dates = Object.keys(schedule).sort();
-  const [startIndex, setStartIndex] = useState(0);
-  const visibleDates = dates.slice(startIndex, startIndex + 7);
   const slots = schedule[selectedDate] || [];
+  const [startIndex, setStartIndex] = useState(0);
+  
+  // 5 días en mobile, 6 en desktop
+  const daysToShow = typeof window !== 'undefined' && window.innerWidth < 768 ? 5 : 6;
+  
+  const scrollLeft = () => {
+    if (startIndex > 0) {
+      setStartIndex(startIndex - 1);
+    }
+  };
 
-  const canScrollLeft  = startIndex > 0;
-  const canScrollRight = startIndex + 7 < dates.length;
+  const scrollRight = () => {
+    if (startIndex < dates.length - daysToShow) {
+      setStartIndex(startIndex + 1);
+    }
+  };
+
+  const visibleDates = dates.slice(startIndex, startIndex + daysToShow);
 
   return (
     <div className="space-y-4">
-      {/* Date Picker */}
-      <div className="flex items-center gap-2">
-        <Button
-          variant="ghost" size="icon"
-          onClick={() => setStartIndex(Math.max(0, startIndex - 1))}
-          disabled={!canScrollLeft}
-          className="shrink-0 h-8 w-8"
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
+      {/* Date Picker with Slider */}
+      <div className="relative">
+        <div className="flex items-center">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute left-0 z-10 h-8 w-8 rounded-full bg-background shadow-md"
+            onClick={scrollLeft}
+            disabled={startIndex === 0}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          
+          <div className="mx-10 w-full">
+            <div className={cn(
+              "grid gap-2 w-full",
+              "grid-cols-5 md:grid-cols-6" // 5 en mobile, 6 en desktop
+            )}>
+              {visibleDates.map((date) => {
+                const formatted = formatDate(date);
+                return (
+                  <button
+                    key={date}
+                    onClick={() => onDateChange(date)}
+                    className={cn(
+                      'relative flex flex-col items-center justify-center rounded-lg py-3 px-1 transition-all w-full h-[80px]',
+                      selectedDate === date
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
+                    )}
+                  >
+                    {/* En mobile, si es hoy mostrar "Hoy", sino el día. En desktop siempre mostrar el día */}
+                    <span className="text-xs font-medium">
+                      {formatted.isToday && typeof window !== 'undefined' && window.innerWidth < 768 
+                        ? 'Hoy' 
+                        : formatted.day}
+                    </span>
+                    <span className="text-lg font-bold">{formatted.date}</span>
+                    <span className="text-xs opacity-75">{formatted.month}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
-        <div className="flex flex-1 gap-1 overflow-hidden">
-          {visibleDates.map((date) => {
-            const formatted = formatDate(date);
-            return (
-              <button
-                key={date}
-                onClick={() => onDateChange(date)}
-                className={cn(
-                  'flex flex-1 flex-col items-center rounded-lg py-2 px-1 transition-all min-w-[48px]',
-                  selectedDate === date
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
-                )}
-              >
-                <span className="text-xs font-medium">{formatted.day}</span>
-                <span className="text-lg font-bold">{formatted.date}</span>
-                <span className="text-xs opacity-75">{formatted.month}</span>
-              </button>
-            );
-          })}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute right-0 z-10 h-8 w-8 rounded-full bg-background shadow-md"
+            onClick={scrollRight}
+            disabled={startIndex >= dates.length - daysToShow}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
         </div>
-
-        <Button
-          variant="ghost" size="icon"
-          onClick={() => setStartIndex(Math.min(dates.length - 7, startIndex + 1))}
-          disabled={!canScrollRight}
-          className="shrink-0 h-8 w-8"
-        >
-          <ChevronRight className="h-4 w-4" />
-        </Button>
       </div>
 
       {/* Time Slots */}

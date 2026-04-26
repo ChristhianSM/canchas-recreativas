@@ -299,16 +299,17 @@ export default function OwnerEditarCanchaPage() {
     for (const file of files) {
       const form = new FormData();
       form.append('file', file);
+      form.append('canchaId', id);
       const res = await fetch('/api/upload', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: form,
       });
       const data = await res.json();
-      if (data.url) {
+      if (data.error) {
+        setUploadError(data.error);
+      } else if (data.url) {
         setImages(prev => [...prev, data.url]);
-      } else {
-        setUploadError(data.error ?? 'Error al subir imagen');
       }
     }
     setUploading(false);
@@ -391,10 +392,18 @@ export default function OwnerEditarCanchaPage() {
         <TabsContent value="fotos" className="space-y-4 pt-4">
           <Card className="border-border p-5 space-y-4">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-foreground">{images.length} foto{images.length !== 1 ? 's' : ''}</p>
-              <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()} disabled={uploading}>
+              <div>
+                <p className="text-sm font-medium text-foreground">{images.length} de {6} foto{images.length !== 1 ? 's' : ''}</p>
+                <p className="text-xs text-muted-foreground">Máximo 6 imágenes por cancha</p>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => fileRef.current?.click()} 
+                disabled={uploading || images.length >= 6}
+              >
                 <Plus className="mr-1.5 h-3.5 w-3.5" />
-                {uploading ? 'Subiendo...' : 'Subir foto'}
+                {uploading ? 'Subiendo...' : images.length >= 6 ? 'Límite alcanzado' : 'Subir foto'}
               </Button>
               <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFileUpload} />
             </div>
