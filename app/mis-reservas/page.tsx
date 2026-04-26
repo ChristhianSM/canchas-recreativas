@@ -8,9 +8,11 @@ import {
   User, LogIn, CheckCircle2, XCircle, Phone, AlertTriangle,
 } from 'lucide-react';
 import { Header } from '@/components/header';
-import { Button } from '@/components/ui/button';
+import CancelarReservaSimple from '@/components/cancelar-reserva-simple';
+import { apiCancelarReserva } from '@/lib/api-cancelacion';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -46,12 +48,109 @@ const estadoClass: Record<Reserva['estado'], string> = {
   cancelada:  'bg-muted text-muted-foreground',
 };
 
+// ── Tarjeta de reserva ──────────────────────────────────────────
+function ReservaCard({
+  r,
+  onDetalle,
+  onCancelar,
+}: {
+  r: Reserva;
+  onDetalle: (r: Reserva) => void;
+  onCancelar: (r: Reserva) => void;
+}) {
+  const canchaLocal = canchas.find(c => c.id === r.canchaId);
+  const imagen = canchaLocal?.images[0] ?? 'https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=800&h=600&fit=crop';
+  const direccion = canchaLocal?.address ?? null;
+
+  return (
+    <Card className="overflow-hidden border-border">
+      <div className="flex flex-col sm:flex-row">
+        <div className="relative aspect-video w-full sm:aspect-square sm:w-40 shrink-0">
+          <Image src={imagen} alt={r.canchaName} fill className="object-cover" />
+        </div>
+        <div className="flex flex-1 flex-col p-4">
+          <div className="mb-2 flex items-start justify-between gap-2">
+            <div>
+              <Badge variant="outline" className={estadoClass[r.estado]}>
+                {estadoLabel[r.estado]}
+              </Badge>
+              <h3 className="mt-2 font-semibold text-foreground">{r.canchaName}</h3>
+              {canchaLocal && (
+                <p className="text-sm text-muted-foreground">{sportLabels[canchaLocal.type]}</p>
+              )}
+            </div>
+            <p className="text-lg font-bold text-primary shrink-0">S/ {r.precio}</p>
+          </div>
+
+          <div className="mt-auto space-y-1">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Calendar className="h-4 w-4" />
+              <span className="capitalize">{formatDate(r.fecha)}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Clock className="h-4 w-4" />
+              <span>{r.hora}</span>
+            </div>
+            {direccion && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <MapPin className="h-4 w-4" />
+                <span className="line-clamp-1">{direccion}</span>
+              </div>
+            )}
+          </div>
+
+          {(r.estado === 'pendiente' || r.estado === 'confirmada') && (
+            <div className="mt-4 flex gap-2">
+              <Button variant="outline" size="sm" className="flex-1" onClick={() => onDetalle(r)}>
+                Ver detalles
+              </Button>
+              <Button variant="destructive" size="sm" onClick={() => onCancelar(r)}>
+                Cancelar
+              </Button>
+            </div>
+          )}
+          {(r.estado === 'rechazada' || r.estado === 'cancelada') && (
+            <div className="mt-4">
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/cancha/${r.canchaId}`}>Reservar de nuevo</Link>
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// ── Empty state ─────────────────────────────────────────────────
+function EmptyState({ type }: { type: 'proximas' | 'historial' | 'favorites' }) {
+  const cfg = {
+    proximas:  { icon: <Calendar className="h-8 w-8 text-muted-foreground" />, title: 'No tienes reservas próximas',    desc: 'Explora nuestras canchas y haz tu primera reserva', action: true },
+    historial: { icon: <Calendar className="h-8 w-8 text-muted-foreground" />, title: 'No tienes reservas en historial', desc: 'Aquí aparecerán tus reservas canceladas o rechazadas', action: false },
+    favorites: { icon: <Heart    className="h-8 w-8 text-muted-foreground" />, title: 'No tienes canchas favoritas',     desc: 'Toca el corazón en la página de cada cancha para guardarla', action: true },
+  }[type];
+  return (
+    <div className="py-16 text-center">
+      <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">{cfg.icon}</div>
+      <h3 className="mb-2 text-lg font-semibold text-foreground">{cfg.title}</h3>
+      <p className="mb-6 text-muted-foreground">{cfg.desc}</p>
+      {cfg.action && (
+        <Button asChild>
+          <Link href="/canchas"><CalendarPlus className="mr-2 h-4 w-4" />Explorar canchas</Link>
+        </Button>
+      )}
+    </div>
+  );
+}
+
 export default function MisReservasPage() {
   const [reservas, setReservas]       = useState<Reserva[]>([]);
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [loyalty, setLoyalty]         = useState<LoyaltyData>({ sellos: 0, totalReservas: 0, cupones: [] });
   const [user, setUser]               = useState<ReturnType<typeof getUser>>(null);
   const [notifs, setNotifs]           = useState<Notificacion[]>([]);
+  const [hydrated, setHydrated]       = useState(false);
+  const [loading, setLoading]         = useState(true);
   const [reservaDetalle, setReservaDetalle]   = useState<Reserva | null>(null);
   const [reservaCancelar, setReservaCancelar] = useState<Reserva | null>(null);
 
@@ -64,11 +163,15 @@ export default function MisReservasPage() {
       precio: r.precio, metodoPago: r.metodo_pago, comprobante: r.comprobante_url,
       estado: r.estado, creadaEn: r.creado_en, notificado: true,
     })) : []);
+    setLoading(false);
   };
 
   useEffect(() => {
+    const storedUser = getStoredUser();
+    setUser(storedUser);
+    setHydrated(true);
+
     reload();
-    setUser(getStoredUser());
 
     const token = getToken();
     if (token) {
@@ -105,10 +208,16 @@ export default function MisReservasPage() {
     setNotifs(prev => prev.map(n => n.id === id ? { ...n, leida: true } : n));
   };
 
-  const handleCancelar = async (reserva: Reserva) => {
-    await apiActualizarReserva(reserva.id, 'cancelada');
-    setReservaCancelar(null);
-    reload();
+  const handleCancelar = async (reservaId: string) => {
+    try {
+      const resultado = await apiCancelarReserva(reservaId);
+      alert(resultado.mensaje);
+      setReservaCancelar(null);
+      setReservas(prev => prev.filter(r => r.id !== reservaId));
+      reload();
+    } catch (error: any) {
+      alert(`Error al cancelar: ${error.message}`);
+    }
   };
 
   const handleRemoveFavorite = async (canchaId: string) => {
@@ -122,95 +231,40 @@ export default function MisReservasPage() {
   const proximas   = reservas.filter(r => r.estado === 'pendiente' || r.estado === 'confirmada');
   const historial  = reservas.filter(r => r.estado === 'rechazada' || r.estado === 'cancelada');
 
-  // ── Tarjeta de reserva ──────────────────────────────────────────
-  const ReservaCard = ({ r }: { r: Reserva }) => {
-    const canchaLocal = canchas.find(c => c.id === r.canchaId);
-    const imagen = canchaLocal?.images[0] ?? 'https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=800&h=600&fit=crop';
-    const direccion = canchaLocal?.address ?? null;
-    const telefono  = canchaLocal?.phone ?? null;
-
+  // Mientras se lee localStorage o cargan las reservas, mostrar skeleton
+  if (!hydrated || loading) {
     return (
-      <Card className="overflow-hidden border-border">
-        <div className="flex flex-col sm:flex-row">
-          <div className="relative aspect-video w-full sm:aspect-square sm:w-40 shrink-0">
-            <Image src={imagen} alt={r.canchaName} fill className="object-cover" />
+      <div className="flex flex-col flex-1 bg-background">
+        <Header />
+        <main className="flex-1 container mx-auto px-4 py-8">
+          <div className="mb-6 space-y-2">
+            <div className="h-8 w-48 animate-pulse rounded-lg bg-muted" />
+            <div className="h-4 w-64 animate-pulse rounded-lg bg-muted" />
           </div>
-          <div className="flex flex-1 flex-col p-4">
-            <div className="mb-2 flex items-start justify-between gap-2">
-              <div>
-                <Badge variant="outline" className={estadoClass[r.estado]}>
-                  {estadoLabel[r.estado]}
-                </Badge>
-                <h3 className="mt-2 font-semibold text-foreground">{r.canchaName}</h3>
-                {canchaLocal && (
-                  <p className="text-sm text-muted-foreground">{sportLabels[canchaLocal.type]}</p>
-                )}
-              </div>
-              <p className="text-lg font-bold text-primary shrink-0">S/ {r.precio}</p>
-            </div>
-
-            <div className="mt-auto space-y-1">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Calendar className="h-4 w-4" />
-                <span className="capitalize">{formatDate(r.fecha)}</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Clock className="h-4 w-4" />
-                <span>{r.hora}</span>
-              </div>
-              {direccion && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <MapPin className="h-4 w-4" />
-                  <span className="line-clamp-1">{direccion}</span>
+          {/* Tabs skeleton */}
+          <div className="mb-6 flex gap-2">
+            {[1,2,3,4].map(i => (
+              <div key={i} className="h-9 w-28 animate-pulse rounded-lg bg-muted" />
+            ))}
+          </div>
+          {/* Cards skeleton */}
+          <div className="space-y-4">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="flex overflow-hidden rounded-xl border border-border">
+                <div className="h-36 w-40 shrink-0 animate-pulse bg-muted" />
+                <div className="flex flex-1 flex-col gap-3 p-4">
+                  <div className="h-4 w-20 animate-pulse rounded bg-muted" />
+                  <div className="h-5 w-48 animate-pulse rounded bg-muted" />
+                  <div className="h-4 w-36 animate-pulse rounded bg-muted" />
+                  <div className="h-4 w-28 animate-pulse rounded bg-muted" />
                 </div>
-              )}
-            </div>
-
-            {(r.estado === 'pendiente' || r.estado === 'confirmada') && (
-              <div className="mt-4 flex gap-2">
-                <Button variant="outline" size="sm" className="flex-1"
-                  onClick={() => setReservaDetalle(r)}>
-                  Ver detalles
-                </Button>
-                <Button variant="destructive" size="sm"
-                  onClick={() => setReservaCancelar(r)}>
-                  Cancelar
-                </Button>
               </div>
-            )}
-            {(r.estado === 'rechazada' || r.estado === 'cancelada') && (
-              <div className="mt-4">
-                <Button variant="outline" size="sm" asChild>
-                  <Link href={`/cancha/${r.canchaId}`}>Reservar de nuevo</Link>
-                </Button>
-              </div>
-            )}
+            ))}
           </div>
-        </div>
-      </Card>
-    );
-  };
-
-  // ── Empty state ─────────────────────────────────────────────────
-  const EmptyState = ({ type }: { type: 'proximas' | 'historial' | 'favorites' }) => {
-    const cfg = {
-      proximas:  { icon: <Calendar className="h-8 w-8 text-muted-foreground" />, title: 'No tienes reservas próximas',    desc: 'Explora nuestras canchas y haz tu primera reserva', action: true },
-      historial: { icon: <Calendar className="h-8 w-8 text-muted-foreground" />, title: 'No tienes reservas en historial', desc: 'Aquí aparecerán tus reservas canceladas o rechazadas', action: false },
-      favorites: { icon: <Heart    className="h-8 w-8 text-muted-foreground" />, title: 'No tienes canchas favoritas',     desc: 'Toca el corazón en la página de cada cancha para guardarla', action: true },
-    }[type];
-    return (
-      <div className="py-16 text-center">
-        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">{cfg.icon}</div>
-        <h3 className="mb-2 text-lg font-semibold text-foreground">{cfg.title}</h3>
-        <p className="mb-6 text-muted-foreground">{cfg.desc}</p>
-        {cfg.action && (
-          <Button asChild>
-            <Link href="/canchas"><CalendarPlus className="mr-2 h-4 w-4" />Explorar canchas</Link>
-          </Button>
-        )}
+        </main>
       </div>
     );
-  };
+  }
 
   return (
     <div className="flex flex-col flex-1 bg-background">
@@ -270,13 +324,13 @@ export default function MisReservasPage() {
 
             <TabsContent value="proximas">
               {proximas.length > 0
-                ? <div className="space-y-4">{proximas.map(r => <ReservaCard key={r.id} r={r} />)}</div>
+                ? <div className="space-y-4">{proximas.map(r => <ReservaCard key={r.id} r={r} onDetalle={setReservaDetalle} onCancelar={setReservaCancelar} />)}</div>
                 : <EmptyState type="proximas" />}
             </TabsContent>
 
             <TabsContent value="historial">
               {historial.length > 0
-                ? <div className="space-y-4">{historial.map(r => <ReservaCard key={r.id} r={r} />)}</div>
+                ? <div className="space-y-4">{historial.map(r => <ReservaCard key={r.id} r={r} onDetalle={setReservaDetalle} onCancelar={setReservaCancelar} />)}</div>
                 : <EmptyState type="historial" />}
             </TabsContent>
 
@@ -295,10 +349,12 @@ export default function MisReservasPage() {
                       <div className="p-4">
                         <div className="mb-1 flex items-start justify-between gap-2">
                           <h3 className="font-semibold text-foreground line-clamp-1">{cancha.name}</h3>
-                          <div className="flex items-center gap-1 shrink-0">
-                            <Star className="h-4 w-4 fill-accent text-accent" />
-                            <span className="text-sm font-medium">{cancha.rating}</span>
-                          </div>
+                          {cancha.rating > 0 && (
+                            <div className="flex items-center gap-1 shrink-0">
+                              <Star className="h-4 w-4 fill-accent text-accent" />
+                              <span className="text-sm font-medium">{cancha.rating}</span>
+                            </div>
+                          )}
                         </div>
                         <div className="mb-3 flex items-center gap-1.5 text-sm text-muted-foreground">
                           <MapPin className="h-4 w-4 shrink-0" />
@@ -352,12 +408,12 @@ export default function MisReservasPage() {
               </TabsList>
               <TabsContent value="proximas">
                 {proximas.length > 0
-                  ? <div className="space-y-4">{proximas.map(r => <ReservaCard key={r.id} r={r} />)}</div>
+                  ? <div className="space-y-4">{proximas.map(r => <ReservaCard key={r.id} r={r} onDetalle={setReservaDetalle} onCancelar={setReservaCancelar} />)}</div>
                   : <EmptyState type="proximas" />}
               </TabsContent>
               <TabsContent value="historial">
                 {historial.length > 0
-                  ? <div className="space-y-4">{historial.map(r => <ReservaCard key={r.id} r={r} />)}</div>
+                  ? <div className="space-y-4">{historial.map(r => <ReservaCard key={r.id} r={r} onDetalle={setReservaDetalle} onCancelar={setReservaCancelar} />)}</div>
                   : <EmptyState type="historial" />}
               </TabsContent>
             </Tabs>
@@ -422,52 +478,12 @@ export default function MisReservasPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Modal: Confirmar cancelación ── */}
-      <Dialog open={!!reservaCancelar} onOpenChange={() => setReservaCancelar(null)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-destructive" />¿Cancelar reserva?
-            </DialogTitle>
-            <DialogDescription>
-              {reservaCancelar?.estado === 'confirmada'
-                ? 'Tu reserva ya fue confirmada y realizaste un pago.'
-                : 'Tu reserva aún está pendiente de confirmación.'}
-            </DialogDescription>
-          </DialogHeader>
-          {reservaCancelar && (
-            <div className="space-y-4">
-              <div className="rounded-xl border border-border bg-muted/30 p-4 text-sm space-y-1">
-                <p className="font-medium text-foreground">{reservaCancelar.canchaName}</p>
-                <p className="capitalize text-muted-foreground">
-                  {new Date(reservaCancelar.fecha + 'T00:00:00').toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' })} · {reservaCancelar.hora}
-                </p>
-                <p className="font-bold text-primary">S/ {reservaCancelar.precio}</p>
-              </div>
-
-              {reservaCancelar.estado === 'confirmada' ? (
-                <div className="rounded-xl bg-yellow-500/10 border border-yellow-500/20 p-4 space-y-1">
-                  <p className="text-sm font-semibold text-yellow-700">Proceso de devolución</p>
-                  <p className="text-sm text-muted-foreground">
-                    El administrador te devolverá <span className="font-semibold text-foreground">S/ {reservaCancelar.precio}</span> por {reservaCancelar.metodoPago === 'yape' ? 'Yape' : 'Plin'} en un plazo de <span className="font-semibold text-foreground">24-48 horas</span>.
-                  </p>
-                </div>
-              ) : (
-                <div className="rounded-xl bg-muted/50 border border-border p-4">
-                  <p className="text-sm text-muted-foreground">
-                    Tu reserva aún no fue confirmada, puedes cancelarla sin costo.
-                  </p>
-                </div>
-              )}
-
-              <div className="flex gap-3">
-                <Button variant="outline" className="flex-1" onClick={() => setReservaCancelar(null)}>Volver</Button>
-                <Button variant="destructive" className="flex-1" onClick={() => handleCancelar(reservaCancelar)}>Sí, cancelar</Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Dialog de cancelación simple */}
+      <CancelarReservaSimple
+        reserva={reservaCancelar}
+        onClose={() => setReservaCancelar(null)}
+        onConfirm={handleCancelar}
+      />
     </div>
   );
 }

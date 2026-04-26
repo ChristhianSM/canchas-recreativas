@@ -58,11 +58,18 @@ export async function PATCH(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { descripcion, telefono, precioHora, amenidades, imagenes, horariosRestringidos } = body;
+  const { descripcion, telefono, precioHora, amenidades, imagenes, horariosRestringidos, lat, lng, direccion } = body;
+
+  const updateData: Record<string, any> = {
+    descripcion, telefono, precio_por_hora: precioHora, amenidades, imagenes,
+  };
+  if (lat !== undefined) updateData.lat = lat;
+  if (lng !== undefined) updateData.lng = lng;
+  if (direccion !== undefined) updateData.direccion = direccion;
 
   const { error: canchaError } = await sb
     .from('canchas')
-    .update({ descripcion, telefono, precio_por_hora: precioHora, amenidades, imagenes })
+    .update(updateData)
     .eq('id', canchaId);
 
   if (canchaError) return NextResponse.json({ error: canchaError.message }, { status: 500 });

@@ -1,0 +1,190 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createServiceClient } from '@/lib/supabase';
+
+interface CancelacionResult {
+  success: boolean;
+  devolucion: number;
+  penalidad: number;
+  porcentaje_devolucion: number;
+  motivo: string;
+}
+
+function calcularDevolucion(reserva: any): CancelacionResult {
+  const precio = reserva.precio;
+  const estado = reserva.estado;
+  const fechaReserva = new Date(`${reserva.fecha}T${reserva.hora}`);
+  const ahora = new Date();
+  const horasRestantes = (fechaReserva.getTime() - ahora.getTime()) / (1000 * 60 * 60);
+
+  // Reserva pendiente - devolución completa
+  if (estado === 'pendiente') {
+    return {
+      success: true,
+      devolucion: precio,
+      penalidad: 0,
+      porcentaje_devolucion: 100,
+      motivo: 'Reserva no confirmada - devolución completa'
+    };
+  }
+
+  // Reserva confirmada - aplicar políticas por tiempo
+  if (estado === 'confirmada') {
+    let porcentaje = 0;
+    let motivo = '';
+
+    if (horasRestantes >= 4) {
+      porcentaje = 85;
+      motivo = 'Cancelación con más de 4 horas de anticipación';
+    } else if (horasRestantes >= 2) {
+      porcentaje = 60;
+      motivo = 'Cancelación entre 2-4 horas de anticipación';
+    } else if (horasRestantes >= 1) {
+      porcentaje = 30;
+      motivo = 'Cancelación entre 1-2 horas de anticipación';
+    } else {
+      porcentaje = 0;
+      motivo = 'Cancelación con menos de 1 hora de anticipación';
+    }
+
+    const devolucion = Math.round(precio * (porcentaje / 100));
+    const penalidad = precio - devolucion;
+
+    return {
+      success: true,
+      devolucion,
+      penalidad,
+      porcentaje_devolucion: porcentaje,
+      motivo
+    };
+  }
+
+  // Estado no válido para cancelación
+  return {
+    success: false,
+    devolucion: 0,
+    penalidad: 0,
+    porcentaje_devolucion: 0,
+    motivo: 'No se puede cancelar esta reserva'
+  };
+}
+
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+
+  const token = req.headers.get('authorization')?.replace('Bearer ', '');
+  const sb = createServiceClient();
+
+  // Si hay token, verificar usuario. Si no, es un invitado accediendo por link.
+  let userId: string | null = null;
+  if (token) {
+    const { data: { user } } = await sb.auth.getUser(token);
+    if (user) userId = user.id;
+  }
+
+  // Obtener la reserva
+  const { data: reserva, error: reservaError } = await sb
+    .from('reservas')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (reservaError || !reserva) {
+    return NextResponse.json({ error: 'Reserva no encontrada en la base de datos' }, { status: 404 });
+  }
+
+  // Verificar autorización:
+  // - Usuario logueado: debe ser su reserva
+  // - Sin token (invitado): puede cancelar si la reserva no tiene usuario_id (es de invitado)
+  if (userId && reserva.usuario_id && reserva.usuario_id !== userId) {
+    return NextResponse.json({ error: 'No autorizado para cancelar esta reserva' }, { status: 403 });
+  }
+
+  if (!userId && reserva.usuario_id) {
+    return NextResponse.json({ error: 'No autorizado para cancelar esta reserva' }, { status: 403 });
+  }
+
+  if (reserva.estado === 'cancelada' || reserva.estado === 'rechazada') {
+    return NextResponse.json({ error: 'Esta reserva ya fue cancelada o rechazada' }, { status: 400 });
+  }
+
+  // Calcular devolución
+  const resultado = calcularDevolucion(reserva);
+
+  if (!resultado.success) {
+    return NextResponse.json({ error: resultado.motivo }, { status: 400 });
+  }
+
+  try {
+    // Actualizar reserva a cancelada
+    const { error: updateError } = await sb
+      .from('reservas')
+      .update({ estado: 'cancelada' })
+      .eq('id', id);
+
+    if (updateError) throw updateError;
+
+    // Intentar guardar datos de cancelación (requiere migración SQL)
+    await sb.from('reservas').update({
+      cancelado_en: new Date().toISOString(),
+      devolucion_calculada: resultado.devolucion,
+      penalidad_aplicada: resultado.penalidad,
+      porcentaje_devolucion: resultado.porcentaje_devolucion
+    }).eq('id', id).then(() => {}).catch(() => {
+      // Ignorar si las columnas no existen aún (migración pendiente)
+    });
+
+    // Crear notificación para el usuario
+    const fechaLabel = new Date(reserva.fecha).toLocaleDateString('es-PE', { 
+      day: 'numeric', 
+      month: 'long' 
+    });
+
+    const mensajeUsuario = resultado.devolucion > 0
+      ? `Tu reserva en ${reserva.cancha_nombre} del ${fechaLabel} fue cancelada. Devolución: S/ ${resultado.devolucion} (${resultado.porcentaje_devolucion}%)`
+      : `Tu reserva en ${reserva.cancha_nombre} del ${fechaLabel} fue cancelada. Sin devolución por cancelación tardía.`;
+
+    // Notificación in-app solo si hay usuario registrado
+    if (userId) {
+      await sb.from('notificaciones').insert({
+        usuario_id: userId,
+        reserva_id: id,
+        mensaje: mensajeUsuario,
+        tipo: 'cancelada'
+      });
+    }
+
+    // Notificar a admins si hay devolución
+    if (resultado.devolucion > 0) {
+      const { data: admins } = await sb
+        .from('usuarios')
+        .select('id')
+        .eq('rol', 'admin');
+
+      if (admins && admins.length > 0) {
+        await sb.from('notificaciones').insert(
+          admins.map(admin => ({
+            usuario_id: admin.id,
+            reserva_id: id,
+            mensaje: `💰 Procesar devolución: S/ ${resultado.devolucion} a ${reserva.usuario_nombre} por ${reserva.metodo_pago}. Reserva: ${reserva.cancha_nombre} - ${fechaLabel}`,
+            tipo: 'cancelada'
+          }))
+        );
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      devolucion: resultado.devolucion,
+      penalidad: resultado.penalidad,
+      porcentaje_devolucion: resultado.porcentaje_devolucion,
+      motivo: resultado.motivo,
+      mensaje: resultado.devolucion > 0 
+        ? `Cancelación exitosa. Recibirás S/ ${resultado.devolucion} (${resultado.porcentaje_devolucion}%) en 24-48 horas.`
+        : 'Cancelación exitosa. Sin devolución por cancelación tardía.'
+    });
+
+  } catch (error) {
+    console.error('Error al cancelar reserva:', error);
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
+  }
+}

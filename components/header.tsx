@@ -18,12 +18,13 @@ import { getStoredUser, apiLogout } from '@/lib/api';
 
 export function Header() {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const [open, setOpen]       = useState(false);
+  const [user, setUser]       = useState<AuthUser | null>(null);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    const storedUser = getStoredUser();
-    setUser(storedUser);
+    setUser(getStoredUser());
+    setHydrated(true);
 
     const handleUpdate = () => setUser(getStoredUser());
 
@@ -76,7 +77,10 @@ export function Header() {
 
         {/* Desktop Auth */}
         <div className="hidden items-center gap-3 md:flex">
-          {user?.name ? (
+          {!hydrated ? (
+            /* Skeleton mientras se lee localStorage */
+            <div className="h-8 w-32 animate-pulse rounded-lg bg-muted" />
+          ) : user?.name ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="gap-2">
@@ -143,7 +147,13 @@ export function Header() {
                 </Link>
               ))}
               <div className="mt-4 flex flex-col gap-2 border-t border-border pt-4">
-                {user?.name ? (
+                {!hydrated ? (
+                  /* Skeleton mobile */
+                  <div className="space-y-2 px-1">
+                    <div className="h-10 w-full animate-pulse rounded-lg bg-muted" />
+                    <div className="h-10 w-full animate-pulse rounded-lg bg-muted" />
+                  </div>
+                ) : user?.name ? (
                   <>
                     <div className="flex items-center gap-3 px-4 py-2">
                       <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">

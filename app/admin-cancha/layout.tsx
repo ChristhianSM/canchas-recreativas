@@ -32,14 +32,27 @@ export default function OwnerLayout({ children }: { children: React.ReactNode })
   const [pendientes, setPendientes] = useState(0);
   const [ownerName, setOwnerName]   = useState('');
 
+  const isLoginPage = pathname === '/admin-cancha/login';
+
+  // ── Verificar auth solo al montar (una sola vez) ──────────────
   useEffect(() => {
+    if (isLoginPage) return;
     const token = getOwnerToken();
-    if (!token) { router.replace('/admin-cancha/login'); return; }
+    if (!token) {
+      router.replace('/admin-cancha/login');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Cargar datos del panel (solo cuando hay token y no es login) ──
+  useEffect(() => {
+    if (isLoginPage) return;
+    const token = getOwnerToken();
+    if (!token) return;
 
     const user = getOwnerUser();
     if (user) setOwnerName(user.nombre ?? '');
 
-    // Obtener reservas pendientes
     fetch('/api/admin-cancha/reservas', {
       headers: { Authorization: `Bearer ${token}` },
     })
@@ -48,14 +61,22 @@ export default function OwnerLayout({ children }: { children: React.ReactNode })
         if (Array.isArray(data)) {
           setPendientes(data.filter((r: any) => r.estado === 'pendiente').length);
         }
-      });
-  }, [router, pathname]);
+      })
+      .catch(() => {});
+  // Solo re-ejecutar cuando cambia la ruta (para refrescar el badge de pendientes)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
 
   const handleLogout = () => {
     localStorage.removeItem('cp_owner_token');
     localStorage.removeItem('cp_owner_user');
     router.push('/admin-cancha/login');
   };
+
+  // Página de login: renderizar sin el shell del panel
+  if (isLoginPage) {
+    return <>{children}</>;
+  }
 
   return (
     <div className="flex min-h-screen bg-background">

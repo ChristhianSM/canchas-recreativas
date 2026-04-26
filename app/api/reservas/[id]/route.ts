@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
+import { sendReservaEmail } from '@/lib/email';
 
 // PATCH — actualizar estado (confirmar, rechazar, cancelar)
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  
   const token = req.headers.get('authorization')?.replace('Bearer ', '');
   if (!token) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
@@ -15,25 +18,41 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const { data: reserva, error } = await sb
     .from('reservas')
     .update({ estado })
-    .eq('id', params.id)
+    .eq('id', id)
     .select()
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // Crear notificación si aplica
-  if ((estado === 'confirmada' || estado === 'rechazada') && reserva.usuario_id) {
-    const fecha = new Date(reserva.fecha).toLocaleDateString('es-PE', { day: 'numeric', month: 'long' });
+  // Notificación in-app + email
+  if (estado === 'confirmada' || estado === 'rechazada') {
+    const fechaLabel = new Date(reserva.fecha).toLocaleDateString('es-PE', { day: 'numeric', month: 'long' });
     const msg = estado === 'confirmada'
-      ? `✅ Tu reserva en ${reserva.cancha_nombre} el ${fecha} a las ${reserva.hora} fue confirmada.`
-      : `❌ Tu reserva en ${reserva.cancha_nombre} el ${fecha} a las ${reserva.hora} fue rechazada.`;
+      ? `✅ Tu reserva en ${reserva.cancha_nombre} el ${fechaLabel} a las ${reserva.hora} fue confirmada.`
+      : `❌ Tu reserva en ${reserva.cancha_nombre} el ${fechaLabel} a las ${reserva.hora} fue rechazada.`;
 
-    await sb.from('notificaciones').insert({
-      usuario_id: reserva.usuario_id,
-      reserva_id: reserva.id,
-      mensaje:    msg,
-      tipo:       estado,
-    });
+    // Notificación in-app (solo usuarios registrados)
+    if (reserva.usuario_id) {
+      await sb.from('notificaciones').insert({
+        usuario_id: reserva.usuario_id,
+        reserva_id: reserva.id,
+        mensaje:    msg,
+        tipo:       estado,
+      });
+    }
+
+    // Email solo para invitados (usuarios con cuenta ven la notificación en la app)
+    if (!reserva.usuario_id && reserva.usuario_email) {
+      await sendReservaEmail({
+        toEmail:      reserva.usuario_email,
+        toName:       reserva.usuario_nombre ?? 'Cliente',
+        canchaNombre: reserva.cancha_nombre,
+        fecha:        reserva.fecha,
+        hora:         reserva.hora,
+        precio:       reserva.precio,
+        estado,
+      });
+    }
 
     // Sumar sello de loyalty si fue confirmada
     if (estado === 'confirmada') {

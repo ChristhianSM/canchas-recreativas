@@ -5,14 +5,14 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import {
   ArrowLeft, Calendar, Clock, CheckCircle2, Copy,
-  Smartphone, Shield, ChevronRight, Upload, ImageIcon, Timer,
+  Smartphone, Shield, ChevronRight, Upload, ImageIcon, Timer, Mail,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { getCanchaById } from '@/lib/data';
 import { type Cupon } from '@/lib/auth';
 import { apiCrearReserva, apiGetLoyalty, getToken } from '@/lib/api';
 
@@ -54,17 +54,56 @@ function PagoContent() {
   const fecha     = params.get('fecha') ?? '';
   const hora      = params.get('hora') ?? '';
   const precioRaw = Number(params.get('precio') ?? 0);
-  const cancha    = getCanchaById(canchaId);
 
-  const [metodo, setMetodo]                     = useState<MetodoPago>('yape');
-  const [paso, setPaso]                         = useState<Paso>('metodo');
-  const [copiado, setCopiado]                   = useState(false);
-  const [cupones, setCupones]                   = useState<Cupon[]>([]);
+  const [cancha, setCancha]                       = useState<any>(null);
+  const [canchaLoading, setCanchaLoading]         = useState(true);
+
+  const [metodo, setMetodo]                       = useState<MetodoPago>('yape');
+  const [paso, setPaso]                           = useState<Paso>('metodo');
+  const [copiado, setCopiado]                     = useState(false);
+  const [cupones, setCupones]                     = useState<Cupon[]>([]);
   const [cuponSeleccionado, setCuponSeleccionado] = useState<string | null>(null);
-  const [comprobante, setComprobante]           = useState<string | null>(null);
-  const [enviando, setEnviando]                 = useState(false);
-  const [segundos, setSegundos]                 = useState(TIEMPO_LIMITE);
-  const [bloqueado, setBloqueado]               = useState(false);
+  const [comprobante, setComprobante]             = useState<string | null>(null);
+  const [enviando, setEnviando]                   = useState(false);
+  const [segundos, setSegundos]                   = useState(TIEMPO_LIMITE);
+  const [bloqueado, setBloqueado]                 = useState(false);
+
+  // Email para usuarios invitados
+  const [esInvitado, setEsInvitado]               = useState(false);
+  const [emailInvitado, setEmailInvitado]         = useState('');
+  const [emailError, setEmailError]               = useState('');
+
+  // Cargar cancha desde API (soporta canchas de Supabase y hardcodeadas)
+  useEffect(() => {
+    if (!canchaId) return;
+    fetch(`/api/canchas/detail?id=${canchaId}`)
+      .then(r => r.json())
+      .then(data => {
+        if (!data.error) {
+          // Cancha de Supabase — normalizar campos
+          setCancha({
+            id:      data.id,
+            name:    data.nombre,
+            images:  data.imagenes?.length ? data.imagenes : ['https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=800&h=600&fit=crop'],
+            address: data.direccion,
+            phone:   data.telefono,
+          });
+        } else {
+          // Fallback a datos hardcodeados
+          import('@/lib/data').then(({ getCanchaById }) => {
+            const c = getCanchaById(canchaId);
+            if (c) setCancha({ id: c.id, name: c.name, images: c.images, address: c.address, phone: c.phone });
+          });
+        }
+      })
+      .catch(() => {
+        import('@/lib/data').then(({ getCanchaById }) => {
+          const c = getCanchaById(canchaId);
+          if (c) setCancha({ id: c.id, name: c.name, images: c.images, address: c.address, phone: c.phone });
+        });
+      })
+      .finally(() => setCanchaLoading(false));
+  }, [canchaId]);
 
   // Crear bloqueo temporal al entrar y countdown
   useEffect(() => {
@@ -169,9 +208,17 @@ function PagoContent() {
       apiGetLoyalty().then(data => {
         setCupones((data.cupones ?? []).filter((c: Cupon) => !c.usado));
       });
+    } else {
+      // Sin token → es invitado
+      setEsInvitado(true);
     }
-    // Sin token: no hay cupones disponibles (requiere cuenta)
   }, []);
+
+  if (canchaLoading) return (
+    <div className="flex min-h-screen items-center justify-center">
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+    </div>
+  );
 
   if (!cancha) return (
     <div className="flex min-h-screen items-center justify-center">
@@ -202,8 +249,20 @@ function PagoContent() {
   };
 
   const handleEnviar = async () => {
+    // Validar email si es invitado
+    if (esInvitado) {
+      if (!emailInvitado.trim()) {
+        setEmailError('Ingresa tu correo para recibir la confirmación');
+        return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInvitado)) {
+        setEmailError('Ingresa un correo válido');
+        return;
+      }
+      setEmailError('');
+    }
+
     setEnviando(true);
-    const token = getToken();
 
     await apiCrearReserva({
       canchaId:       canchaId,
@@ -215,6 +274,7 @@ function PagoContent() {
       cuponId:        cuponSeleccionado,
       metodoPago:     metodo,
       comprobanteUrl: comprobante,
+      ...(esInvitado && emailInvitado ? { emailInvitado } : {}),
     });
 
     await new Promise(r => setTimeout(r, 800));
@@ -238,9 +298,24 @@ function PagoContent() {
         </div>
         <h1 className="mb-2 text-2xl font-bold text-foreground">¡Reserva enviada!</h1>
         <p className="mb-1 text-muted-foreground">Tu comprobante fue recibido correctamente.</p>
-        <p className="mb-8 text-sm text-muted-foreground max-w-xs">
-          El administrador verificará tu pago y recibirás una notificación cuando tu reserva sea confirmada.
-        </p>
+
+        {esInvitado && emailInvitado ? (
+          <div className="mb-8 flex flex-col items-center gap-2">
+            <div className="flex items-center gap-2 rounded-xl bg-primary/10 border border-primary/20 px-4 py-3">
+              <Mail className="h-4 w-4 text-primary shrink-0" />
+              <p className="text-sm text-primary font-medium">
+                Te enviaremos la confirmación a <span className="font-bold">{emailInvitado}</span>
+              </p>
+            </div>
+            <p className="text-xs text-muted-foreground max-w-xs">
+              Cuando el administrador verifique tu pago, recibirás un correo con el estado de tu reserva.
+            </p>
+          </div>
+        ) : (
+          <p className="mb-8 text-sm text-muted-foreground max-w-xs">
+            El administrador verificará tu pago y recibirás una notificación cuando tu reserva sea confirmada.
+          </p>
+        )}
 
         <Card className="mb-8 w-full max-w-sm border-border p-5 text-left">
           <div className="space-y-3 text-sm">
@@ -271,8 +346,12 @@ function PagoContent() {
         </Card>
 
         <div className="flex w-full max-w-sm flex-col gap-3">
-          <Button size="lg" onClick={() => router.push('/mis-reservas')}>Ver mis reservas</Button>
-          <Button variant="outline" size="lg" onClick={() => router.push('/')}>Volver al inicio</Button>
+          {!esInvitado && (
+            <Button size="lg" onClick={() => router.push('/mis-reservas')}>Ver mis reservas</Button>
+          )}
+          <Button variant={esInvitado ? 'default' : 'outline'} size="lg" onClick={() => router.push('/')}>
+            Volver al inicio
+          </Button>
         </div>
       </div>
     );
@@ -313,32 +392,7 @@ function PagoContent() {
           </div>
         </Card>
 
-        {/* Cupón */}
-        {cupones.length > 0 && (
-          <Card className="border-border p-4">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Cupones disponibles</p>
-            <div className="space-y-2">
-              {cupones.map(c => (
-                <button key={c.id} onClick={() => setCuponSeleccionado(cuponSeleccionado === c.id ? null : c.id)}
-                  className={cn('flex w-full items-center gap-3 rounded-xl border-2 border-dashed p-3 text-left transition-all',
-                    cuponSeleccionado === c.id ? 'border-primary bg-primary/5' : 'border-muted-foreground/20 hover:border-primary/40'
-                  )}>
-                  <div className={cn('flex h-10 w-10 shrink-0 flex-col items-center justify-center rounded-lg text-xs font-bold',
-                    cuponSeleccionado === c.id ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-                  )}>
-                    <span>S/5</span><span className="text-[10px] font-normal">OFF</span>
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-foreground">Descuento de S/ 5</p>
-                  </div>
-                  <div className={cn('h-5 w-5 rounded-full border-2 transition-all', cuponSeleccionado === c.id ? 'border-primary bg-primary' : 'border-muted-foreground/40')}>
-                    {cuponSeleccionado === c.id && <CheckCircle2 className="h-full w-full text-primary-foreground p-0.5" />}
-                  </div>
-                </button>
-              ))}
-            </div>
-          </Card>
-        )}
+        {/* Cupón — eliminado */}
 
         {/* Precio */}
         <Card className="border-border p-4">
@@ -348,11 +402,6 @@ function PagoContent() {
               <span className="text-muted-foreground">Precio por hora</span>
               <span className="text-foreground">S/ {precioRaw}</span>
             </div>
-            {descuento > 0 && (
-              <div className="flex justify-between text-primary">
-                <span>Descuento cupón</span><span>− S/ {descuento}</span>
-              </div>
-            )}
             <Separator />
             <div className="flex justify-between text-base font-bold">
               <span className="text-foreground">Total a pagar</span>
@@ -479,6 +528,31 @@ function PagoContent() {
                 </p>
               </div>
             </Card>
+
+            {/* Email invitado */}
+            {esInvitado && (
+              <Card className="border-primary/30 bg-primary/5 p-5 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Mail className="h-4 w-4 text-primary" />
+                  <p className="font-medium text-foreground">¿A dónde te enviamos la confirmación?</p>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Como no tienes cuenta, te avisaremos por correo cuando el admin confirme tu reserva.
+                </p>
+                <div className="space-y-1">
+                  <Input
+                    type="email"
+                    placeholder="tu@correo.com"
+                    value={emailInvitado}
+                    onChange={e => { setEmailInvitado(e.target.value); setEmailError(''); }}
+                    className={cn('bg-background', emailError && 'border-destructive focus-visible:ring-destructive')}
+                  />
+                  {emailError && (
+                    <p className="text-xs text-destructive">{emailError}</p>
+                  )}
+                </div>
+              </Card>
+            )}
 
             <div className="flex gap-3">
               <Button variant="outline" size="lg" className="flex-1" onClick={() => setPaso('metodo')}>

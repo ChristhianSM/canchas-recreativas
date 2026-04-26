@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { ArrowLeft, Save, Trash2, Plus, Ban, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Save, Trash2, Plus, Ban, CheckCircle2, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -15,17 +15,151 @@ import { cn } from '@/lib/utils';
 const HORAS = [
   '06:00','07:00','08:00','09:00','10:00','11:00',
   '12:00','13:00','14:00','15:00','16:00','17:00',
-  '18:00','19:00','20:00','21:00','22:00',
+  '18:00','19:00','20:00','21:00','22:00','23:00',
 ];
 
 type Cancha = {
   id: string; nombre: string; descripcion: string; telefono: string;
   precio_por_hora: number; amenidades: string[]; imagenes: string[];
+  lat: number; lng: number; direccion: string;
 };
 
 function getOwnerToken() {
   if (typeof window === 'undefined') return null;
   return localStorage.getItem('cp_owner_token');
+}
+
+// ── Pestaña de ubicación ────────────────────────────────────────
+function UbicacionTab({
+  direccion, lat, lng, onDireccionChange, onCoordsChange,
+}: {
+  direccion: string;
+  lat: string;
+  lng: string;
+  onDireccionChange: (v: string) => void;
+  onCoordsChange: (lat: string, lng: string) => void;
+}) {
+  const [buscando, setBuscando] = useState(false);
+  const [error, setError]       = useState('');
+  const [MapPicker, setMapPicker] = useState<React.ComponentType<{
+    lat: number; lng: number; onChange: (lat: number, lng: number) => void;
+  }> | null>(null);
+
+  // Cargar MapPicker solo en cliente
+  useEffect(() => {
+    import('@/components/map-picker').then(m => setMapPicker(() => m.MapPicker));
+  }, []);
+
+  const buscarDireccion = async () => {
+    if (!direccion.trim()) return;
+    setBuscando(true);
+    setError('');
+    try {
+      const query = encodeURIComponent(`${direccion}, Piura, Peru`);
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1`,
+        { headers: { 'Accept-Language': 'es' } }
+      );
+      const data = await res.json();
+      if (data.length === 0) {
+        setError('No se encontró la dirección. Intenta ser más específico.');
+      } else {
+        onCoordsChange(data[0].lat, data[0].lon);
+      }
+    } catch {
+      setError('Error al buscar la dirección. Verifica tu conexión.');
+    } finally {
+      setBuscando(false);
+    }
+  };
+
+  const tieneCoords = lat && lng && !isNaN(Number(lat)) && !isNaN(Number(lng));
+  // Coords por defecto: centro de Piura
+  const mapLat = tieneCoords ? Number(lat) : -5.1945;
+  const mapLng = tieneCoords ? Number(lng) : -80.6328;
+
+  return (
+    <Card className="border-border p-5 space-y-4">
+      <div>
+        <p className="font-medium text-foreground">Ubicación de la cancha</p>
+        <p className="text-sm text-muted-foreground">
+          Busca la dirección y luego arrastra el pin o haz clic en el mapa para ajustar la ubicación exacta.
+        </p>
+      </div>
+
+      {/* Buscador */}
+      <div className="space-y-1.5">
+        <label className="text-sm font-medium text-foreground">Dirección</label>
+        <div className="flex gap-2">
+          <Input
+            value={direccion}
+            onChange={e => onDireccionChange(e.target.value)}
+            placeholder="Ej: Av. Los Algarrobos 1250, Piura"
+            onKeyDown={e => { if (e.key === 'Enter') buscarDireccion(); }}
+            className="flex-1"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            onClick={buscarDireccion}
+            disabled={buscando || !direccion.trim()}
+            className="shrink-0 gap-2"
+          >
+            <MapPin className="h-4 w-4" />
+            {buscando ? 'Buscando...' : 'Buscar'}
+          </Button>
+        </div>
+        {error && <p className="text-sm text-destructive">{error}</p>}
+      </div>
+
+      {/* Mapa interactivo */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <label className="text-sm font-medium text-foreground">
+            Ajusta el pin en el mapa
+          </label>
+          {tieneCoords && (
+            <span className="text-xs text-muted-foreground">
+              {Number(lat).toFixed(6)}, {Number(lng).toFixed(6)}
+            </span>
+          )}
+        </div>
+
+        {MapPicker ? (
+          <MapPicker
+            lat={mapLat}
+            lng={mapLng}
+            onChange={(newLat, newLng, newDireccion) => {
+              onCoordsChange(String(newLat), String(newLng));
+              if (newDireccion) onDireccionChange(newDireccion);
+            }}
+          />
+        ) : (
+          <div className="h-72 w-full animate-pulse rounded-xl bg-muted" />
+        )}
+
+        <p className="text-xs text-muted-foreground flex items-center gap-1">
+          💡 Haz clic en el mapa o arrastra el marcador para ajustar la posición exacta
+        </p>
+      </div>
+
+      {tieneCoords && (
+        <div className="flex items-center justify-between rounded-xl bg-primary/5 border border-primary/20 px-4 py-3">
+          <p className="text-sm text-primary font-medium">
+            ✅ Ubicación lista. Haz clic en "Guardar cambios" para confirmar.
+          </p>
+          <a
+            href={`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-primary hover:underline flex items-center gap-1 shrink-0 ml-3"
+          >
+            <MapPin className="h-3 w-3" /> Ver en Google Maps
+          </a>
+        </div>
+      )}
+    </Card>
+  );
 }
 
 export default function OwnerEditarCanchaPage() {
@@ -47,6 +181,9 @@ export default function OwnerEditarCanchaPage() {
   const [newAmenity, setNewAmenity] = useState('');
   const [images, setImages]         = useState<string[]>([]);
   const [restricted, setRestricted] = useState<string[]>([]);
+  const [lat, setLat]               = useState('');
+  const [lng, setLng]               = useState('');
+  const [direccion, setDireccion]   = useState('');
 
   useEffect(() => {
     const token = getOwnerToken();
@@ -73,6 +210,9 @@ export default function OwnerEditarCanchaPage() {
 
         // Los horarios ya vienen incluidos en la respuesta de la cancha
         setRestricted(Array.isArray(canchaData.horariosRestringidos) ? canchaData.horariosRestringidos : []);
+        setLat(String(canchaData.lat ?? ''));
+        setLng(String(canchaData.lng ?? ''));
+        setDireccion(canchaData.direccion ?? '');
       })
       .catch(err => {
         console.error('Error de red:', err);
@@ -96,6 +236,9 @@ export default function OwnerEditarCanchaPage() {
         amenidades: amenities,
         imagenes: images,
         horariosRestringidos: restricted,
+        lat: lat ? Number(lat) : undefined,
+        lng: lng ? Number(lng) : undefined,
+        direccion: direccion || undefined,
       }),
     });
 
@@ -185,6 +328,7 @@ export default function OwnerEditarCanchaPage() {
           <TabsTrigger value="info"      className="flex-1 sm:flex-none">Información</TabsTrigger>
           <TabsTrigger value="fotos"     className="flex-1 sm:flex-none">Fotos</TabsTrigger>
           <TabsTrigger value="horarios"  className="flex-1 sm:flex-none">Horarios</TabsTrigger>
+          <TabsTrigger value="ubicacion" className="flex-1 sm:flex-none">Ubicación</TabsTrigger>
           <TabsTrigger value="servicios" className="flex-1 sm:flex-none">Servicios</TabsTrigger>
         </TabsList>
 
@@ -280,6 +424,17 @@ export default function OwnerEditarCanchaPage() {
               </div>
             )}
           </Card>
+        </TabsContent>
+
+        {/* ── Ubicación ── */}
+        <TabsContent value="ubicacion" className="space-y-4 pt-4">
+          <UbicacionTab
+            direccion={direccion}
+            lat={lat}
+            lng={lng}
+            onDireccionChange={setDireccion}
+            onCoordsChange={(newLat, newLng) => { setLat(newLat); setLng(newLng); }}
+          />
         </TabsContent>
 
         {/* ── Servicios ── */}

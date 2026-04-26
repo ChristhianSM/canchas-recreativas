@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import { useParams, useRouter } from 'next/navigation';
 import {
   MapPin, Star, Phone, Clock, CheckCircle2,
@@ -15,8 +16,15 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Header } from '@/components/header';
 import { CanchaGallery } from '@/components/cancha-gallery';
 import { TimeSlotPicker } from '@/components/time-slot-picker';
+import CalificarCancha from '@/components/calificar-cancha';
 import { sportLabels, TimeSlot } from '@/lib/types';
 import { apiToggleFavorito, apiGetFavoritos, getToken } from '@/lib/api';
+
+// Carga dinámica para evitar SSR con Leaflet
+const MapView = dynamic(
+  () => import('@/components/map-view').then(m => m.MapView),
+  { ssr: false, loading: () => <div className="h-64 w-full animate-pulse bg-muted" /> }
+);
 
 type CanchaDB = {
   id: string; nombre: string; tipo: keyof typeof sportLabels;
@@ -35,7 +43,7 @@ function buildSchedule(
 ) {
   const schedule: Record<string, TimeSlot[]> = {};
   const today = new Date();
-  const HORAS = ['06:00','07:00','08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00','22:00'];
+  const HORAS = ['06:00','07:00','08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00','22:00','23:00'];
 
   for (let i = 0; i < 14; i++) {
     const d = new Date(today);
@@ -309,12 +317,18 @@ export default function CanchaDetailPage() {
           <div className="space-y-6 lg:col-span-2">
 
             <div className="flex flex-wrap items-center gap-4 text-muted-foreground">
-              <div className="flex items-center gap-1">
-                <Star className="h-5 w-5 fill-accent text-accent" />
-                <span className="font-semibold text-foreground">{cancha.rating}</span>
-                <span>({cancha.total_resenas} reseñas)</span>
-              </div>
-              <span>•</span>
+              {cancha.rating > 0 && (
+                <>
+                  <div className="flex items-center gap-1">
+                    <Star className="h-5 w-5 fill-accent text-accent" />
+                    <span className="font-semibold text-foreground">{cancha.rating}</span>
+                    {cancha.total_resenas > 0 && (
+                      <span>({cancha.total_resenas} reseñas)</span>
+                    )}
+                  </div>
+                  <span>•</span>
+                </>
+              )}
               <span>{cancha.distrito}, Piura</span>
             </div>
 
@@ -328,13 +342,17 @@ export default function CanchaDetailPage() {
                 <p className="text-xs text-muted-foreground">Horario</p>
                 <p className="text-sm font-medium text-foreground">6am – 10pm</p>
               </div>
-              <Separator orientation="vertical" className="h-10" />
-              <div className="flex-1 text-center">
-                <p className="text-xs text-muted-foreground">Rating</p>
-                <p className="text-sm font-medium text-foreground flex items-center justify-center gap-1">
-                  <Star className="h-3.5 w-3.5 fill-accent text-accent" />{cancha.rating}
-                </p>
-              </div>
+              {cancha.rating > 0 && (
+                <>
+                  <Separator orientation="vertical" className="h-10" />
+                  <div className="flex-1 text-center">
+                    <p className="text-xs text-muted-foreground">Rating</p>
+                    <p className="text-sm font-medium text-foreground flex items-center justify-center gap-1">
+                      <Star className="h-3.5 w-3.5 fill-accent text-accent" />{cancha.rating}
+                    </p>
+                  </div>
+                </>
+              )}
             </div>
 
             <div>
@@ -357,16 +375,7 @@ export default function CanchaDetailPage() {
             <div>
               <h2 className="mb-3 text-lg font-semibold text-foreground">Ubicación</h2>
               <Card className="overflow-hidden border-border">
-                <div className="relative aspect-video bg-muted">
-                  <iframe
-                    src={`https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${cancha.lat},${cancha.lng}&zoom=15`}
-                    width="100%" height="100%" style={{ border: 0 }}
-                    allowFullScreen loading="lazy"
-                    referrerPolicy="no-referrer-when-downgrade"
-                    title={`Ubicación de ${cancha.nombre}`}
-                    className="absolute inset-0"
-                  />
-                </div>
+                <MapView lat={cancha.lat} lng={cancha.lng} nombre={cancha.nombre} />
                 <div className="p-4">
                   <div className="mb-3 flex items-start gap-2">
                     <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
@@ -393,6 +402,12 @@ export default function CanchaDetailPage() {
                 />
               </Card>
             </div>
+
+            {/* Calificaciones — al final */}
+            <div>
+              <h2 className="mb-3 text-lg font-semibold text-foreground">Calificaciones</h2>
+              <CalificarCancha canchaId={cancha.id} />
+            </div>
           </div>
 
           {/* Sidebar desktop */}
@@ -403,10 +418,12 @@ export default function CanchaDetailPage() {
                   <span className="text-3xl font-bold text-foreground">S/ {cancha.precio_por_hora}</span>
                   <span className="text-muted-foreground"> /hora</span>
                 </div>
-                <div className="flex items-center gap-1">
-                  <Star className="h-4 w-4 fill-accent text-accent" />
-                  <span className="font-medium text-foreground">{cancha.rating}</span>
-                </div>
+                {cancha.rating > 0 && (
+                  <div className="flex items-center gap-1">
+                    <Star className="h-4 w-4 fill-accent text-accent" />
+                    <span className="font-medium text-foreground">{cancha.rating}</span>
+                  </div>
+                )}
               </div>
               <Separator className="my-4" />
               <div className="mb-4 space-y-3">

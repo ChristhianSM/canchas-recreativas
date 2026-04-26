@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
+import { sendReservaRecibidaEmail } from '@/lib/email';
 
 // GET — obtener reservas del usuario autenticado
 export async function GET(req: NextRequest) {
@@ -25,6 +26,9 @@ export async function POST(req: NextRequest) {
   const token = req.headers.get('authorization')?.replace('Bearer ', '');
   const sb = createServiceClient();
 
+  const body = await req.json();
+  const { canchaId, canchaNombre, fecha, hora, precio, precioOriginal, cuponId, metodoPago, comprobanteUrl, emailInvitado } = body;
+
   let usuarioId: string | null = null;
   let usuarioNombre = 'Invitado';
   let usuarioEmail  = '';
@@ -38,10 +42,10 @@ export async function POST(req: NextRequest) {
       usuarioEmail = user.email ?? '';
       usuarioTelefono = user.user_metadata?.telefono ?? '';
     }
+  } else if (emailInvitado) {
+    // Usuario invitado que proporcionó su email para recibir confirmación
+    usuarioEmail = emailInvitado;
   }
-
-  const body = await req.json();
-  const { canchaId, canchaNombre, fecha, hora, precio, precioOriginal, cuponId, metodoPago, comprobanteUrl } = body;
 
   // Validar datos requeridos
   if (!canchaId || !canchaNombre || !fecha || !hora || !precio || !metodoPago) {
@@ -77,6 +81,22 @@ export async function POST(req: NextRequest) {
       .update({ usado: true, usado_en: new Date().toISOString() })
       .eq('id', cuponId)
       .eq('usuario_id', usuarioId);
+  }
+
+  // Enviar email al invitado (sin cuenta) con el link para ver/cancelar su reserva
+  if (!usuarioId && usuarioEmail) {
+    const baseUrl = req.headers.get('origin') ?? 'http://localhost:3000';
+    await sendReservaRecibidaEmail({
+      toEmail:      usuarioEmail,
+      toName:       usuarioNombre !== 'Invitado' ? usuarioNombre : 'Cliente',
+      canchaNombre: canchaNombre,
+      fecha,
+      hora,
+      precio,
+      metodoPago,
+      reservaId:    reserva.id,
+      baseUrl,
+    });
   }
 
   return NextResponse.json(reserva);

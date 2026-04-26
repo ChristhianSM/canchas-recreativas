@@ -3,11 +3,15 @@ import { createServiceClient } from '@/lib/supabase';
 
 export async function POST(req: NextRequest) {
   const token = req.headers.get('authorization')?.replace('Bearer ', '');
-  if (!token) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-
   const sb = createServiceClient();
-  const { data: { user }, error: authError } = await sb.auth.getUser(token);
-  if (authError || !user) return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
+
+  // Si hay token, verificar usuario — si no, permitir desde panel admin
+  let userId = 'admin';
+  if (token) {
+    const { data: { user }, error: authError } = await sb.auth.getUser(token);
+    if (authError || !user) return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
+    userId = user.id;
+  }
 
   const formData = await req.formData();
   const file = formData.get('file') as File;
@@ -22,7 +26,7 @@ export async function POST(req: NextRequest) {
   }
 
   const ext = file.name.split('.').pop() ?? 'jpg';
-  const fileName = `canchas/${user.id}/${Date.now()}.${ext}`;
+  const fileName = `canchas/${userId}/${Date.now()}.${ext}`;
   const buffer = await file.arrayBuffer();
 
   const { error: uploadError } = await sb.storage
@@ -30,6 +34,7 @@ export async function POST(req: NextRequest) {
     .upload(fileName, buffer, { contentType: file.type, upsert: true });
 
   if (uploadError) {
+    console.error('[upload] Error storage:', uploadError.message, uploadError);
     return NextResponse.json({ error: uploadError.message }, { status: 500 });
   }
 

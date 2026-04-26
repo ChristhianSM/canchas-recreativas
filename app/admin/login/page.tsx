@@ -6,7 +6,7 @@ import { Lock, Mail, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { loginAdmin } from '@/lib/admin-auth';
+import { createBrowserClient } from '@supabase/ssr';
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -19,10 +19,46 @@ export default function AdminLoginPage() {
     e.preventDefault();
     setLoading(true);
     setError('');
-    await new Promise(r => setTimeout(r, 600));
-    const ok = loginAdmin(email, password);
-    if (ok) router.push('/admin');
-    else { setError('Credenciales incorrectas'); setLoading(false); }
+
+    try {
+      // 1. Autenticar con Supabase
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+
+      const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
+
+      if (authError || !data.session) {
+        setError('Credenciales incorrectas');
+        setLoading(false);
+        return;
+      }
+
+      const token = data.session.access_token;
+
+      // 2. Verificar que el usuario tiene rol 'admin' en la tabla usuarios
+      const res = await fetch('/api/admin/verificar-rol', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const result = await res.json();
+
+      if (!res.ok || !result.esAdmin) {
+        await supabase.auth.signOut();
+        setError('No tienes permisos de administrador');
+        setLoading(false);
+        return;
+      }
+
+      // 3. Guardar token en localStorage
+      localStorage.setItem('cp_admin_token', token);
+      localStorage.setItem('cp_admin_user', JSON.stringify({ nombre: result.nombre, email }));
+
+      router.push('/admin');
+    } catch {
+      setError('Error al iniciar sesión. Intenta de nuevo.');
+      setLoading(false);
+    }
   };
 
   return (
@@ -66,10 +102,6 @@ export default function AdminLoginPage() {
             {loading ? 'Ingresando...' : 'Ingresar'}
           </Button>
         </form>
-
-        <p className="mt-6 text-center text-xs text-muted-foreground">
-          Demo: admin@canchapiura.com / admin123
-        </p>
       </Card>
     </div>
   );

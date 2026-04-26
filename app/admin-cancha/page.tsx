@@ -7,6 +7,7 @@ import { CalendarCheck, Clock, CheckCircle2, TrendingUp, ChevronRight, Star } fr
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import ReservasAnalytics from '@/components/reservas-analytics';
 import { sportLabels } from '@/lib/types';
 
 type Reserva = {
@@ -43,6 +44,7 @@ const estadoBadge = (estado: Reserva['estado']) => {
 
 export default function OwnerDashboard() {
   const [reservas, setReservas] = useState<Reserva[]>([]);
+  const [rawReservas, setRawReservas] = useState<any[]>([]);
   const [canchas, setCanchas]   = useState<Cancha[]>([]);
   const [ownerName, setOwnerName] = useState('');
   const [loading, setLoading]   = useState(true);
@@ -57,6 +59,7 @@ export default function OwnerDashboard() {
       fetch('/api/admin-cancha/reservas', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
       fetch('/api/admin-cancha/canchas',  { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
     ]).then(([res, can]) => {
+      setRawReservas(Array.isArray(res) ? res : []);
       setReservas(Array.isArray(res) ? res : []);
       setCanchas(Array.isArray(can) ? can : []);
       setLoading(false);
@@ -133,10 +136,12 @@ export default function OwnerDashboard() {
                   <div className="flex-1 min-w-0">
                     <p className="truncate font-medium text-foreground">{c.nombre}</p>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <div className="flex items-center gap-1">
-                        <Star className="h-3 w-3 fill-accent text-accent" />
-                        <span className="text-xs text-muted-foreground">{c.rating}</span>
-                      </div>
+                      {c.rating > 0 && (
+                        <div className="flex items-center gap-1">
+                          <Star className="h-3 w-3 fill-accent text-accent" />
+                          <span className="text-xs text-muted-foreground">{c.rating}</span>
+                        </div>
+                      )}
                       <span className="text-xs text-muted-foreground">·</span>
                       <span className="text-xs text-muted-foreground">{reservasCancha.length} reservas</span>
                     </div>
@@ -196,6 +201,9 @@ export default function OwnerDashboard() {
           </Card>
         )}
       </div>
+
+      {/* Analytics */}
+      <ReservasAnalytics reservas={rawReservas} />
     </div>
   );
 }

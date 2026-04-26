@@ -51,6 +51,22 @@ export function apiLogout() {
   removeToken();
 }
 
+export async function apiLoginWithOAuth(provider: 'google' | 'facebook') {
+  const { createBrowserClient } = await import('@supabase/ssr');
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider,
+    options: {
+      redirectTo: `${window.location.origin}/auth/callback`,
+    },
+  });
+  if (error) console.error('[oauth]', error.message);
+  return data;
+}
+
 export function getStoredUser() {
   if (typeof window === 'undefined') return null;
   const d = localStorage.getItem('cp_user');
@@ -68,7 +84,7 @@ export async function apiGetReservas() {
 export async function apiCrearReserva(data: {
   canchaId: string; canchaNombre: string; fecha: string; hora: string;
   precio: number; precioOriginal?: number; cuponId?: string | null;
-  metodoPago: string; comprobanteUrl?: string | null;
+  metodoPago: string; comprobanteUrl?: string | null; emailInvitado?: string;
 }) {
   const res = await fetch('/api/reservas', {
     method: 'POST',

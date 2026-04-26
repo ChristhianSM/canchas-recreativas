@@ -137,3 +137,16 @@
     cursor: pointer;
   }
 }
+
+/* ── Leaflet: evitar que el mapa se superponga a modales y sheets ── */
+.leaflet-pane,
+.leaflet-top,
+.leaflet-bottom {
+  z-index: 10 !important;
+}
+.leaflet-control {
+  z-index: 11 !important;
+}
+.leaflet-popup-pane {
+  z-index: 12 !important;
+}

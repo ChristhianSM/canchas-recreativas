@@ -16,7 +16,9 @@ export async function GET(req: NextRequest) {
     .select('cancha_id')
     .eq('usuario_id', user.id);
 
-  const canchaIds = (relaciones ?? []).map((r: any) => r.cancha_id);
+  const canchaIds = (relaciones ?? [])
+    .map((r: any) => r.cancha_id)
+    .filter((id: any) => id != null);
   if (!canchaIds.length) return NextResponse.json([]);
 
   const { data, error } = await sb
@@ -25,6 +27,9 @@ export async function GET(req: NextRequest) {
     .in('cancha_id', canchaIds)
     .order('creado_en', { ascending: false });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error('[admin-cancha/reservas] Error:', error.message, error.details);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
   return NextResponse.json(data ?? []);
 }

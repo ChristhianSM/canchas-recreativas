@@ -40,11 +40,15 @@ export function CanchaCard({ cancha }: CanchaCardProps) {
             <h3 className="text-lg font-semibold text-foreground line-clamp-1 group-hover:text-primary transition-colors">
               {cancha.name}
             </h3>
-            <div className="flex items-center gap-1 shrink-0">
-              <Star className="h-4 w-4 fill-accent text-accent" />
-              <span className="text-sm font-medium text-foreground">{cancha.rating}</span>
-              <span className="text-sm text-muted-foreground">({cancha.reviewCount})</span>
-            </div>
+            {(cancha.rating > 0) && (
+              <div className="flex items-center gap-1 shrink-0">
+                <Star className="h-4 w-4 fill-accent text-accent" />
+                <span className="text-sm font-medium text-foreground">{cancha.rating}</span>
+                {cancha.reviewCount > 0 && (
+                  <span className="text-sm text-muted-foreground">({cancha.reviewCount})</span>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="mb-3 flex items-center gap-1.5 text-muted-foreground">

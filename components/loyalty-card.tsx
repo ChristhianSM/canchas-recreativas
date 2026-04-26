@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { Stamp, Gift, Ticket, CheckCircle2, Info } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { type LoyaltyData, type Cupon } from '@/lib/auth';
 
@@ -19,11 +18,6 @@ export function LoyaltyCard({ loyalty, onUpdate }: LoyaltyCardProps) {
   const [showCuponInfo, setShowCuponInfo] = useState<string | null>(null);
   const cuponesDisponibles = loyalty.cupones.filter(c => !c.usado);
   const cuponesUsados = loyalty.cupones.filter(c => c.usado);
-
-  // Solo para demo — simula completar una reserva
-  const handleSimularReserva = () => {
-    onUpdate();
-  };
 
   return (
     <div className="space-y-6">
@@ -84,20 +78,9 @@ export function LoyaltyCard({ loyalty, onUpdate }: LoyaltyCardProps) {
           <div className="flex items-start gap-2 rounded-lg bg-muted/50 p-3">
             <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
             <p className="text-xs text-muted-foreground">
-              Cada reserva completada suma un sello. Al completar {TOTAL_SELLOS} sellos recibes un cupón de <span className="font-semibold text-foreground">S/ 5 de descuento</span> en tu próxima reserva, financiado por CanchaPiura.
+              Cada reserva completada suma un sello. Al completar {TOTAL_SELLOS} sellos recibes un cupón de <span className="font-semibold text-foreground">S/ 5 de descuento</span> en tu próxima reserva.
             </p>
           </div>
-
-          {/* Botón demo */}
-          <Button
-            variant="outline"
-            size="sm"
-            className="mt-4 w-full text-xs"
-            onClick={handleSimularReserva}
-          >
-            <Stamp className="mr-2 h-3.5 w-3.5" />
-            Simular reserva completada (demo)
-          </Button>
         </div>
       </Card>
 
@@ -163,7 +146,6 @@ function CuponCard({ cupon, disponible }: { cupon: Cupon; disponible: boolean })
           : 'border-muted bg-muted/30 opacity-60'
       )}
     >
-      {/* Efecto ticket — círculos laterales */}
       <div className="absolute -left-3 top-1/2 h-6 w-6 -translate-y-1/2 rounded-full bg-background border border-border" />
       <div className="absolute -right-3 top-1/2 h-6 w-6 -translate-y-1/2 rounded-full bg-background border border-border" />
 
@@ -189,9 +171,6 @@ function CuponCard({ cupon, disponible }: { cupon: Cupon; disponible: boolean })
             )}
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">Generado el {fecha}</p>
-          <p className="mt-1 font-mono text-xs font-medium tracking-widest text-muted-foreground">
-            {cupon.id}
-          </p>
         </div>
       </div>
 

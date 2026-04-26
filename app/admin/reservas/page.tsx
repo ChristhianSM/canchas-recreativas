@@ -16,6 +16,8 @@ export default function AdminReservasPage() {
   const [reservas, setReservas]     = useState<Reserva[]>([]);
   const [selected, setSelected]     = useState<Reserva | null>(null);
 
+  const getAdminToken = () => localStorage.getItem('cp_admin_token');
+
   const reload = () => {
     fetch('/api/reservas/all').then(r => r.json()).then(data => {
       if (Array.isArray(data)) setReservas(data.map((r: any) => ({
@@ -30,9 +32,12 @@ export default function AdminReservasPage() {
   useEffect(() => { reload(); }, []);
 
   const confirmar = async (id: string) => {
-    await fetch(`/api/reservas/${id}`, {
+    await fetch(`/api/admin/reservas/${id}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${getAdminToken()}`,
+      },
       body: JSON.stringify({ estado: 'confirmada' }),
     });
     setSelected(null);
@@ -40,9 +45,12 @@ export default function AdminReservasPage() {
   };
 
   const rechazar = async (id: string) => {
-    await fetch(`/api/reservas/${id}`, {
+    await fetch(`/api/admin/reservas/${id}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${getAdminToken()}`,
+      },
       body: JSON.stringify({ estado: 'rechazada' }),
     });
     setSelected(null);

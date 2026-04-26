@@ -11,36 +11,57 @@ import {
   Menu,
   X,
   Bell,
+  Users,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { isAdmin, logoutAdmin } from '@/lib/admin-auth';
+
+function getAdminToken() {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('cp_admin_token');
+}
+
+function isAdmin() {
+  return !!getAdminToken();
+}
+
+function logoutAdmin() {
+  localStorage.removeItem('cp_admin_token');
+  localStorage.removeItem('cp_admin_user');
+}
 
 const navItems = [
-  { href: '/admin',          label: 'Dashboard',  icon: LayoutDashboard },
-  { href: '/admin/reservas', label: 'Reservas',   icon: CalendarCheck },
-  { href: '/admin/canchas',  label: 'Mis Canchas', icon: MapPin },
+  { href: '/admin',           label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/admin/reservas',  label: 'Reservas',  icon: CalendarCheck },
+  { href: '/admin/canchas',   label: 'Canchas',   icon: MapPin },
+  { href: '/admin/usuarios',  label: 'Usuarios',  icon: Users },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router   = useRouter();
   const pathname = usePathname();
-  const [open, setOpen]           = useState(false);
+  const [open, setOpen]             = useState(false);
   const [pendientes, setPendientes] = useState(0);
 
-  useEffect(() => {
-    if (!isAdmin()) router.replace('/admin/login');
-  }, [router]);
+  const isLoginPage = pathname === '/admin/login';
 
+  // Verificar auth solo al montar, y solo si no estamos en login
   useEffect(() => {
-    setPendientes(0); // El panel admin usa su propia API
-  }, [pathname]);
+    if (isLoginPage) return;
+    if (!isAdmin()) router.replace('/admin/login');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleLogout = () => {
     logoutAdmin();
     router.push('/admin/login');
   };
+
+  // Página de login: renderizar sin el shell del panel
+  if (isLoginPage) {
+    return <>{children}</>;
+  }
 
   return (
     <div className="flex min-h-screen bg-background">

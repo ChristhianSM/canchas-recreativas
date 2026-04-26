@@ -4,21 +4,26 @@ import { useEffect, useState } from 'react';
 import { CalendarCheck, Clock, CheckCircle2, XCircle, TrendingUp } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import ReservasAnalytics from '@/components/reservas-analytics';
 import { type Reserva } from '@/lib/store';
 import { canchas } from '@/lib/data';
 
 export default function AdminDashboard() {
   const [reservas, setReservas] = useState<Reserva[]>([]);
+  const [rawReservas, setRawReservas] = useState<any[]>([]);
 
   useEffect(() => {
     fetch('/api/reservas/all').then(r => r.json()).then(data => {
-      if (Array.isArray(data)) setReservas(data.map((r: any) => ({
-        id: r.id, canchaId: r.cancha_id, canchaName: r.cancha_nombre,
-        usuarioNombre: r.usuario_nombre, usuarioEmail: r.usuario_email,
-        usuarioPhone: r.usuario_telefono, fecha: r.fecha, hora: r.hora,
-        precio: r.precio, metodoPago: r.metodo_pago, comprobante: r.comprobante_url,
-        estado: r.estado, creadaEn: r.creado_en, notificado: true,
-      })));
+      if (Array.isArray(data)) {
+        setRawReservas(data);
+        setReservas(data.map((r: any) => ({
+          id: r.id, canchaId: r.cancha_id, canchaName: r.cancha_nombre,
+          usuarioNombre: r.usuario_nombre, usuarioEmail: r.usuario_email,
+          usuarioPhone: r.usuario_telefono, fecha: r.fecha, hora: r.hora,
+          precio: r.precio, metodoPago: r.metodo_pago, comprobante: r.comprobante_url,
+          estado: r.estado, creadaEn: r.creado_en, notificado: true,
+        })));
+      }
     });
   }, []);
 
@@ -125,6 +130,9 @@ export default function AdminDashboard() {
           </Card>
         )}
       </div>
+
+      {/* Analytics */}
+      <ReservasAnalytics reservas={rawReservas} />
     </div>
   );
 }
