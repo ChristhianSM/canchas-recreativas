@@ -507,14 +507,15 @@ export default function MisReservasPage() {
 
       <footer className="border-t border-border bg-card py-8">
         <div className="container mx-auto px-4">
-          <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-                <span className="text-sm font-bold text-primary-foreground">CP</span>
-              </div>
-              <span className="font-semibold text-foreground">CanchaPiura</span>
-            </div>
-            <p className="text-sm text-muted-foreground">&copy; 2024 CanchaPiura. Todos los derechos reservados.</p>
+          <div className="flex flex-col items-center justify-center gap-4">
+            <Image
+              src="/images/logo.png"
+              alt="CanchaPiura"
+              width={320}
+              height={100}
+              className="h-24 w-auto object-contain"
+            />
+            <p className="text-sm text-muted-foreground">&copy; 2026 CanchaGo. Todos los derechos reservados.</p>
           </div>
         </div>
       </footer>

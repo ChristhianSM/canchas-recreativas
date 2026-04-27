@@ -36,13 +36,15 @@ const HOURS = [
   '18:00', '19:00', '20:00', '21:00', '22:00', '23:00',
 ];
 
+import { getLocalDateString } from '@/lib/date-utils';
+
 // Generar próximos 6 días incluyendo hoy
 function getNext6Days(): string[] {
   const days: string[] = [];
   for (let i = 0; i < 6; i++) {
     const date = new Date();
     date.setDate(date.getDate() + i);
-    days.push(date.toISOString().split('T')[0]);
+    days.push(getLocalDateString(date));
   }
   return days;
 }
@@ -50,7 +52,7 @@ function getNext6Days(): string[] {
 // Formatear fecha para mostrar
 function formatDateDisplay(dateStr: string): { day: string; date: number; isToday: boolean } {
   const date = new Date(dateStr + 'T00:00:00');
-  const today = new Date().toISOString().split('T')[0];
+  const today = getLocalDateString();
   const dayName = date.toLocaleDateString('es-PE', { weekday: 'short' });
   
   return {
@@ -122,7 +124,7 @@ export function AdvancedFiltersComponent({
       minRating: 0,
       amenities: [],
       districts: [],
-      selectedDate: new Date().toISOString().split('T')[0],
+      selectedDate: getLocalDateString(),
       availableHours: [],
       onlyFeatured: false,
       searchQuery: '',
@@ -235,11 +237,11 @@ export function AdvancedFiltersComponent({
           <div className="space-y-4">
             {/* Días con slider */}
             <div className="relative">
-              <div className="flex items-center">
+              <div className="flex items-center gap-2">
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="absolute left-0 z-10 h-8 w-8 rounded-full bg-background shadow-md"
+                  className="h-8 w-8 rounded-full bg-background shadow-md shrink-0"
                   onClick={() => {
                     const currentIndex = next6Days.findIndex(d => d === filters.selectedDate);
                     if (currentIndex > 0) {
@@ -251,8 +253,8 @@ export function AdvancedFiltersComponent({
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
                 
-                <div className="mx-10 overflow-hidden">
-                  <div className="flex gap-1.5 justify-center">
+                <div className="flex-1 overflow-x-auto">
+                  <div className="flex gap-2 pb-2">
                     {next6Days.slice(0, 4).map(date => {
                       const { day, date: dateNum, isToday } = formatDateDisplay(date);
                       const isSelected = filters.selectedDate === date;
@@ -263,7 +265,7 @@ export function AdvancedFiltersComponent({
                           variant={isSelected ? 'default' : 'outline'}
                           size="sm"
                           onClick={() => handleDateChange(date)}
-                          className="text-xs h-16 px-1.5 py-1.5 flex flex-col items-center justify-center gap-0.5 shrink-0 w-14"
+                          className="text-xs h-16 px-2 py-1.5 flex flex-col items-center justify-center gap-0.5 shrink-0 min-w-14"
                         >
                           <span className="font-semibold text-xs">{isToday ? 'Hoy' : day}</span>
                           <span className="text-xs font-bold">{dateNum}</span>
@@ -276,7 +278,7 @@ export function AdvancedFiltersComponent({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="absolute right-0 z-10 h-8 w-8 rounded-full bg-background shadow-md"
+                  className="h-8 w-8 rounded-full bg-background shadow-md shrink-0"
                   onClick={() => {
                     const currentIndex = next6Days.findIndex(d => d === filters.selectedDate);
                     if (currentIndex < next6Days.length - 1) {
@@ -377,25 +379,22 @@ export function AdvancedFiltersComponent({
             <span className="text-sm">📍</span>
             Distritos
           </label>
-          <div className="space-y-2">
-            {allDistricts.slice(0, isSidebar ? 5 : allDistricts.length).map(district => (
-              <div key={district} className="flex items-center gap-2">
-                <Checkbox
-                  id={`district-${district}`}
-                  checked={filters.districts.includes(district)}
-                  onCheckedChange={() => handleDistrictToggle(district)}
-                  className="h-4 w-4"
-                />
-                <label htmlFor={`district-${district}`} className="text-sm cursor-pointer">
-                  {district}
-                </label>
-              </div>
-            ))}
-            {isSidebar && allDistricts.length > 5 && (
-              <div className="text-xs text-muted-foreground">
-                +{allDistricts.length - 5} más
-              </div>
-            )}
+          <div className="max-h-40 overflow-y-auto border border-border rounded-lg p-2">
+            <div className="space-y-2">
+              {allDistricts.map(district => (
+                <div key={district} className="flex items-center gap-2">
+                  <Checkbox
+                    id={`district-${district}`}
+                    checked={filters.districts.includes(district)}
+                    onCheckedChange={() => handleDistrictToggle(district)}
+                    className="h-4 w-4"
+                  />
+                  <label htmlFor={`district-${district}`} className="text-sm cursor-pointer">
+                    {district}
+                  </label>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -407,25 +406,22 @@ export function AdvancedFiltersComponent({
             <span className="text-sm">⚡</span>
             Servicios
           </label>
-          <div className="space-y-2">
-            {allAmenities.slice(0, isSidebar ? 5 : allAmenities.length).map(amenity => (
-              <div key={amenity} className="flex items-center gap-2">
-                <Checkbox
-                  id={`amenity-${amenity}`}
-                  checked={filters.amenities.includes(amenity)}
-                  onCheckedChange={() => handleAmenityToggle(amenity)}
-                  className="h-4 w-4"
-                />
-                <label htmlFor={`amenity-${amenity}`} className="text-sm cursor-pointer">
-                  {amenity}
-                </label>
-              </div>
-            ))}
-            {isSidebar && allAmenities.length > 5 && (
-              <div className="text-xs text-muted-foreground">
-                +{allAmenities.length - 5} más
-              </div>
-            )}
+          <div className="max-h-40 overflow-y-auto border border-border rounded-lg p-2">
+            <div className="space-y-2">
+              {allAmenities.map(amenity => (
+                <div key={amenity} className="flex items-center gap-2">
+                  <Checkbox
+                    id={`amenity-${amenity}`}
+                    checked={filters.amenities.includes(amenity)}
+                    onCheckedChange={() => handleAmenityToggle(amenity)}
+                    className="h-4 w-4"
+                  />
+                  <label htmlFor={`amenity-${amenity}`} className="text-sm cursor-pointer">
+                    {amenity}
+                  </label>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}

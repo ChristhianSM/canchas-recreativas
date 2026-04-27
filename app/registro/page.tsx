@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowLeft, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -170,9 +171,13 @@ export default function RegistroPage() {
         <div className="mx-auto max-w-md">
           {/* Logo */}
           <div className="mb-8 text-center">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary">
-              <span className="text-2xl font-bold text-primary-foreground">CP</span>
-            </div>
+            <Image
+              src="/images/logo.png"
+              alt="CanchaPiura"
+              width={240}
+              height={80}
+              className="mx-auto mb-4 h-24 w-auto object-contain"
+            />
             <h2 className="text-2xl font-bold text-foreground">Crea tu cuenta</h2>
             <p className="mt-2 text-muted-foreground">Únete y reserva las mejores canchas de Piura</p>
           </div>

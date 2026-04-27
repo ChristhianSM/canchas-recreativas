@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Menu, MapPin, Calendar, User, LogOut, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -55,10 +56,13 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full border-b border-border bg-card/95 backdrop-blur supports-backdrop-filter:bg-card/80">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <Link href="/" className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-            <span className="text-lg font-bold text-primary-foreground">CP</span>
-          </div>
-          <span className="text-xl font-bold text-foreground">CanchaPiura</span>
+          <Image
+            src="/images/logo.png"
+            alt="CanchaPiura"
+            width={280}
+            height={80}
+            className="h-14 w-auto object-contain"
+          />
         </Link>
 
         {/* Desktop Navigation */}
@@ -134,10 +138,13 @@ export function Header() {
           <SheetContent side="right" className="w-[280px] bg-card p-0">
             <div className="flex h-16 items-center border-b border-border px-4">
               <Link href="/" className="flex items-center gap-2" onClick={() => setOpen(false)}>
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-                  <span className="text-base font-bold text-primary-foreground">CP</span>
-                </div>
-                <span className="text-lg font-bold text-foreground">CanchaPiura</span>
+                <Image
+                  src="/images/logo.png"
+                  alt="CanchaPiura"
+                  width={180}
+                  height={45}
+                  className="h-11 w-auto object-contain"
+                />
               </Link>
             </div>
             <nav className="flex flex-col gap-1 p-4">

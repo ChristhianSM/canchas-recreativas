@@ -1,4 +1,5 @@
 import { Cancha, AdvancedFilters } from './types';
+import { getLocalDateString } from './date-utils';
 
 /**
  * Obtiene todas las amenidades únicas de las canchas
@@ -46,10 +47,10 @@ export function getPriceRange(canchas: Cancha[]): [number, number] {
 export function hasHourPassed(hour: string, date?: string): boolean {
   // Si no se especifica fecha, usar hoy
   if (!date) {
-    date = new Date().toISOString().split('T')[0];
+    date = getLocalDateString();
   }
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = getLocalDateString();
   
   // Si la fecha es anterior a hoy, la hora ya pasó
   if (date < today) {
@@ -110,7 +111,7 @@ export function hasAvailabilityAtHour(cancha: Cancha, hour: string, date?: strin
  */
 export function filterCanchas(canchas: Cancha[], filters: AdvancedFilters, date?: string): Cancha[] {
   // Usar la fecha del filtro si no se proporciona
-  const targetDate = date || filters.selectedDate || new Date().toISOString().split('T')[0];
+  const targetDate = date || filters.selectedDate || getLocalDateString();
 
   return canchas.filter(cancha => {
     // Validar que la cancha tenga datos básicos

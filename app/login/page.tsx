@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, Mail, Lock, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -80,9 +81,13 @@ export default function LoginPage() {
         <div className="mx-auto max-w-md">
           {/* Logo */}
           <div className="mb-8 text-center">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary">
-              <span className="text-2xl font-bold text-primary-foreground">CP</span>
-            </div>
+            <Image
+              src="/images/logo.png"
+              alt="CanchaPiura"
+              width={240}
+              height={80}
+              className="mx-auto mb-4 h-24 w-auto object-contain"
+            />
             <h2 className="text-2xl font-bold text-foreground">Bienvenido de nuevo</h2>
             <p className="mt-2 text-muted-foreground">Ingresa tus credenciales para continuar</p>
           </div>

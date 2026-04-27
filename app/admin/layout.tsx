@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   LayoutDashboard,
   CalendarCheck,
@@ -89,13 +90,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Sidebar desktop */}
       <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-card lg:flex">
         <div className="flex h-16 items-center gap-2 border-b border-border px-5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-            <span className="text-sm font-bold text-primary-foreground">CP</span>
-          </div>
-          <div>
-            <p className="text-sm font-bold text-foreground">CanchaPiura</p>
-            <p className="text-xs text-muted-foreground">Panel Admin</p>
-          </div>
+          <Image
+            src="/images/logo.png"
+            alt="CanchaPiura"
+            width={180}
+            height={70}
+            className="h-12 w-auto object-contain"
+          />
         </div>
 
         <nav className="flex flex-1 flex-col gap-1 p-3">

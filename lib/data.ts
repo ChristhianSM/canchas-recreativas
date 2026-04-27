@@ -1,4 +1,5 @@
 import { Cancha, TimeSlot } from './types';
+import { getLocalDateString } from './date-utils';
 
 function generateTimeSlots(date: string): TimeSlot[] {
   const slots: TimeSlot[] = [];
@@ -29,7 +30,7 @@ function generateSchedule(): { [key: string]: TimeSlot[] } {
   for (let i = 0; i < 14; i++) {
     const date = new Date(today);
     date.setDate(today.getDate() + i);
-    const dateString = date.toISOString().split('T')[0];
+    const dateString = getLocalDateString(date);
     schedule[dateString] = generateTimeSlots(dateString);
   }
   

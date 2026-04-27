@@ -19,6 +19,7 @@ import { TimeSlotPicker } from '@/components/time-slot-picker';
 import CalificarCancha from '@/components/calificar-cancha';
 import { sportLabels, TimeSlot } from '@/lib/types';
 import { apiToggleFavorito, apiGetFavoritos, getToken } from '@/lib/api';
+import { getLocalDateString } from '@/lib/date-utils';
 
 // Carga dinámica para evitar SSR con Leaflet
 const MapView = dynamic(
@@ -77,7 +78,7 @@ export default function CanchaDetailPage() {
   const router = useRouter();
   const id = params.id as string;
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = getLocalDateString();
   const [cancha, setCancha]           = useState<CanchaDB | null>(null);
   const [loading, setLoading]         = useState(true);
   const [selectedDate, setSelectedDate] = useState(today);

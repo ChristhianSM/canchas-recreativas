@@ -60,13 +60,16 @@ export interface AdvancedFilters {
   searchQuery: string;
 }
 
+// Importar aquí para evitar circular dependency
+import { getLocalDateString } from './date-utils';
+
 export const DEFAULT_FILTERS: AdvancedFilters = {
   sports: [],
   priceRange: [0, 200],
   minRating: 0,
   amenities: [],
   districts: [],
-  selectedDate: new Date().toISOString().split('T')[0], // Hoy por defecto
+  selectedDate: getLocalDateString(), // Hoy por defecto
   availableHours: [],
   onlyFeatured: false,
   searchQuery: '',

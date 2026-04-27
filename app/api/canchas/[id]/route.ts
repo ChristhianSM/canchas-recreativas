@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
+import { getLocalDateString, addDaysToDateString } from '@/lib/date-utils';
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const sb = createServiceClient();
@@ -19,8 +20,8 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     .eq('cancha_id', params.id);
 
   // Reservas activas (pendiente o confirmada) para los próximos 14 días
-  const hoy = new Date().toISOString().split('T')[0];
-  const en14 = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  const hoy = getLocalDateString();
+  const en14 = addDaysToDateString(hoy, 14);
 
   const { data: reservas } = await sb
     .from('reservas')

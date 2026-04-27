@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
+import { getLocalDateString, addDaysToDateString } from '@/lib/date-utils';
 
 // GET — listar todas las canchas activas con horarios ocupados
 export async function GET(req: NextRequest) {
@@ -14,8 +15,8 @@ export async function GET(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   // Obtener horarios ocupados para los próximos 14 días
-  const hoy = new Date().toISOString().split('T')[0];
-  const en14 = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  const hoy = getLocalDateString();
+  const en14 = addDaysToDateString(hoy, 14);
 
   const { data: reservas } = await sb
     .from('reservas')

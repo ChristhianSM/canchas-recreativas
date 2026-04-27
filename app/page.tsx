@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import Image from 'next/image';
 import { MapPin, TrendingUp, Shield } from 'lucide-react';
 import { Header } from '@/components/header';
 import { CanchaCard } from '@/components/cancha-card';
@@ -58,7 +59,7 @@ export default function HomePage() {
         <div className="container mx-auto">
           <div className="mx-auto max-w-2xl text-center">
             <h1 className="mb-4 text-3xl font-bold text-primary-foreground md:text-4xl lg:text-5xl text-balance">
-              Reserva tu cancha deportiva en Piura
+              Reserva tu cancha deportiva en tu localidad
             </h1>
             <p className="mb-8 text-lg text-primary-foreground/80">
               Encuentra las mejores canchas de fútbol, vóley, básquet y más. Reserva fácil y rápida.
@@ -76,7 +77,7 @@ export default function HomePage() {
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
             {[
-              { icon: MapPin,     title: '+15 Canchas',         desc: 'En toda la región Piura',  color: 'text-primary',  bg: 'bg-primary/10' },
+              { icon: MapPin,     title: '+15 Canchas',         desc: 'En toda la región ',  color: 'text-primary',  bg: 'bg-primary/10' },
               { icon: TrendingUp, title: 'Reserva Instantánea', desc: 'Confirma en segundos',     color: 'text-accent',   bg: 'bg-accent/10'  },
               { icon: Shield,     title: 'Pago Seguro',         desc: 'Múltiples métodos de pago', color: 'text-primary', bg: 'bg-primary/10' },
             ].map(f => (
@@ -141,14 +142,15 @@ export default function HomePage() {
 
       <footer className="border-t border-border bg-card py-8">
         <div className="container mx-auto px-4">
-          <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-                <span className="text-sm font-bold text-primary-foreground">CP</span>
-              </div>
-              <span className="font-semibold text-foreground">CanchaPiura</span>
-            </div>
-            <p className="text-sm text-muted-foreground">&copy; 2024 CanchaPiura. Todos los derechos reservados.</p>
+          <div className="flex flex-col items-center justify-center gap-4">
+            <Image
+              src="/images/logo.png"
+              alt="CanchaPiura"
+              width={320}
+              height={100}
+              className="h-24 w-auto object-contain"
+            />
+            <p className="text-sm text-muted-foreground">&copy; 2026 CanchaGo. Todos los derechos reservados.</p>
           </div>
         </div>
       </footer>
