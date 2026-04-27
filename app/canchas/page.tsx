@@ -13,6 +13,7 @@ import {
   filterCanchas, sortCanchas, getAllAmenities, getAllDistricts, getPriceRange,
   SortOption,
 } from '@/lib/filter-utils';
+import { getLocalDateString } from '@/lib/date-utils';
 
 type Cancha = {
   id: string; nombre: string; tipo: SportType; direccion: string;
@@ -33,11 +34,11 @@ function adaptCancha(c: Cancha) {
   // Construir schedule a partir de horariosOcupados
   const schedule: Record<string, Array<{ time: string; available: boolean; price: number; status: 'disponible' | 'reservado' | 'en_proceso' }>> = {};
 
-  // Generar próximos 14 días
+  // Generar próximos 14 días usando fecha local
   for (let i = 0; i < 14; i++) {
     const date = new Date();
     date.setDate(date.getDate() + i);
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = getLocalDateString(date); // ✅ Usar función local en lugar de toISOString
 
     schedule[dateStr] = HORAS.map(hora => {
       const key = `${dateStr}|${hora}`;
@@ -56,6 +57,7 @@ function adaptCancha(c: Cancha) {
       }
 
       return {
+        id: `${dateStr}-${hora}`, // Agregar ID único para el slot
         time: hora,
         available,
         price: c.precio_por_hora,
@@ -95,9 +97,9 @@ export default function CanchasPage() {
         
         // Calcular datos para los filtros
         const adaptedList = list.map(adaptCancha);
-        setAllAmenities(getAllAmenities(adaptedList));
-        setAllDistricts(getAllDistricts(adaptedList));
-        setPriceRange(getPriceRange(adaptedList));
+        setAllAmenities(getAllAmenities(adaptedList as any));
+        setAllDistricts(getAllDistricts(adaptedList as any));
+        setPriceRange(getPriceRange(adaptedList as any));
         
         // Obtener deportes únicos
         const sportsSet = new Set(list.map((c: Cancha) => c.tipo));
@@ -114,8 +116,8 @@ export default function CanchasPage() {
   // Aplicar filtros y ordenamiento
   const filtered = useMemo(() => {
     const adaptedList = canchas.map(adaptCancha);
-    const filtered = filterCanchas(adaptedList, filters);
-    return sortCanchas(filtered, sortBy);
+    const filtered = filterCanchas(adaptedList as any, filters); // Type assertion temporal
+    return sortCanchas(filtered as any, sortBy); // Type assertion temporal
   }, [canchas, filters, sortBy]);
 
   // Contar filtros activos

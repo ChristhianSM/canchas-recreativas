@@ -36,14 +36,41 @@ function ResetPasswordContent() {
     const code = searchParams.get('code');
     const accessToken = searchParams.get('access_token');
     const refreshToken = searchParams.get('refresh_token');
+    const error_code = searchParams.get('error_code');
+    const error_description = searchParams.get('error_description');
+
+    // Verificar si hay error en los parámetros
+    if (error_code) {
+      console.error('Error from Supabase:', error_code, error_description);
+      let errorMsg = 'El link expiró o ya fue usado. Solicita uno nuevo.';
+      
+      if (error_code === 'invalid_code') {
+        errorMsg = 'El código es inválido. Solicita un nuevo link.';
+      } else if (error_code === 'expired_code') {
+        errorMsg = 'El link expiró. Solicita uno nuevo.';
+      } else if (error_code === 'access_denied') {
+        errorMsg = 'Acceso denegado. Solicita un nuevo link.';
+      }
+      
+      setError(errorMsg);
+      return;
+    }
 
     if (code) {
-      console.log('Using PKCE flow with code:', code);
+      console.log('Using PKCE flow with code:', code.substring(0, 10) + '...');
       // Intercambiar el code por una sesión válida
       supabase.auth.exchangeCodeForSession(code).then(({ error: err }) => {
         if (err) {
           console.error('Error exchanging code:', err);
-          setError('El link expiró o ya fue usado. Solicita uno nuevo.');
+          let errorMsg = 'El link expiró o ya fue usado. Solicita uno nuevo.';
+          
+          if (err.message.includes('invalid')) {
+            errorMsg = 'El código es inválido. Solicita un nuevo link.';
+          } else if (err.message.includes('expired')) {
+            errorMsg = 'El link expiró. Solicita uno nuevo.';
+          }
+          
+          setError(errorMsg);
         } else {
           console.log('Session established successfully');
           setSessionReady(true);

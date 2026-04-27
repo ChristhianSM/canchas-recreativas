@@ -26,13 +26,33 @@ export default function RecuperarContrasenaPage() {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
 
-    const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/reset-password`,
-    });
+    try {
+      const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/reset-password`,
+      });
 
-    setLoading(false);
-    if (err) { setError('No se pudo enviar el correo. Verifica el email ingresado.'); return; }
-    setEnviado(true);
+      setLoading(false);
+      
+      if (err) {
+        console.error('Error de reset:', err);
+        
+        // Mostrar error específico
+        if (err.message.includes('not found')) {
+          setError('Este correo no está registrado en nuestro sistema.');
+        } else if (err.message.includes('rate limit')) {
+          setError('Demasiados intentos. Intenta más tarde.');
+        } else {
+          setError('No se pudo enviar el correo. Verifica el email ingresado.');
+        }
+        return;
+      }
+      
+      setEnviado(true);
+    } catch (err) {
+      console.error('Error inesperado:', err);
+      setLoading(false);
+      setError('Error inesperado. Intenta más tarde.');
+    }
   };
 
   if (enviado) {

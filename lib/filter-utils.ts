@@ -64,8 +64,9 @@ export function hasHourPassed(hour: string, date?: string): boolean {
     const currentMinute = String(now.getMinutes()).padStart(2, '0');
     const currentTime = `${currentHour}:${currentMinute}`;
     
-    // Si la hora seleccionada es menor o igual a la hora actual, ya pasó
-    return hour <= currentTime;
+    // Si la hora seleccionada es ESTRICTAMENTE menor a la hora actual, ya pasó
+    // Usamos < en lugar de <= para permitir la hora actual si aún no ha pasado completamente
+    return hour < currentTime;
   }
 
   // Si la fecha es futura, la hora no ha pasado
@@ -77,9 +78,9 @@ export function hasHourPassed(hour: string, date?: string): boolean {
  * Considera: horarios pasados, horarios de funcionamiento y reservas
  */
 export function hasAvailabilityAtHour(cancha: Cancha, hour: string, date?: string): boolean {
-  // Si no se especifica fecha, usar hoy
+  // Si no se especifica fecha, usar hoy con fecha local
   if (!date) {
-    date = new Date().toISOString().split('T')[0];
+    date = getLocalDateString();
   }
 
   // 1. Verificar si la hora ya pasó
@@ -156,11 +157,12 @@ export function filterCanchas(canchas: Cancha[], filters: AdvancedFilters, date?
 
     // Filtro por horas disponibles (con fecha específica)
     if (filters.availableHours.length > 0) {
-      // Verificar si al menos UNA hora está disponible
-      const hasAvailableHour = filters.availableHours.some(hour =>
+      // Verificar si TODAS las horas seleccionadas están disponibles
+      // Si alguna hora no está disponible, excluir la cancha
+      const allHoursAvailable = filters.availableHours.every(hour =>
         hasAvailabilityAtHour(cancha, hour, targetDate)
       );
-      if (!hasAvailableHour) return false;
+      if (!allHoursAvailable) return false;
     }
 
     // Filtro por destacadas
