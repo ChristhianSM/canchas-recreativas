@@ -357,9 +357,11 @@ export default function MisReservasPage() {
           <h1 className="text-2xl font-bold text-foreground">
             {user?.name ? `Hola, ${user.name.split(' ')[0]} 👋` : 'Mis Reservas'}
           </h1>
-          <p className="text-muted-foreground">
-            {user ? 'Gestiona tus reservas, favoritas y sellos' : 'Revisa tus reservas realizadas'}
-          </p>
+          {user && (
+            <p className="text-muted-foreground">
+              Gestiona tus reservas, favoritas y sellos
+            </p>
+          )}
         </div>
 
         {/* Notificaciones */}
@@ -465,42 +467,67 @@ export default function MisReservasPage() {
             </TabsContent>
           </Tabs>
         ) : (
-          /* ── Sin sesión: solo reservas ── */
-          <div className="space-y-6">
-            <Card className="border-primary/20 bg-primary/5 p-5">
-              <div className="flex items-start gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                  <User className="h-6 w-6 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <p className="font-semibold text-foreground">Crea una cuenta para más beneficios</p>
-                  <p className="mt-1 text-sm text-muted-foreground">Guarda favoritas, acumula sellos y obtén descuentos.</p>
-                  <div className="mt-3 flex gap-2">
-                    <Button size="sm" asChild><Link href="/registro">Registrarse</Link></Button>
-                    <Button size="sm" variant="outline" asChild>
-                      <Link href="/login"><LogIn className="mr-1.5 h-4 w-4" />Iniciar sesión</Link>
+          /* ── Sin sesión: mensaje informativo ── */
+          <div className="flex justify-center">
+            <div className="w-full max-w-2xl">
+              {/* Mensaje informativo para usuarios no logueados */}
+              <Card className="border-border p-6 sm:p-8">
+                <div className="text-center space-y-5">
+                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+                    <Calendar className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold text-foreground mb-2">
+                      Inicia sesión para ver tus reservas
+                    </h3>
+                    <p className="text-muted-foreground max-w-lg mx-auto">
+                      Crea una cuenta o inicia sesión para gestionar tus reservas, guardar canchas favoritas y acumular sellos para obtener descuentos.
+                    </p>
+                  </div>
+                  <div className="pt-2">
+                    <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                      <Button size="lg" asChild>
+                        <Link href="/registro">Crear cuenta</Link>
+                      </Button>
+                      <Button size="lg" variant="outline" asChild>
+                        <Link href="/login">
+                          <LogIn className="mr-2 h-4 w-4" />
+                          Iniciar sesión
+                        </Link>
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <Separator className="my-6" />
+                  
+                  {/* Nota para usuarios invitados que ya reservaron */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="flex items-start gap-3 text-left">
+                      <svg className="h-5 w-5 text-blue-600 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-blue-900 mb-1">
+                          ¿Hiciste una reserva como invitado?
+                        </p>
+                        <p className="text-sm text-blue-700">
+                          Revisa tu correo electrónico. Te enviamos los detalles de tu reserva con un enlace para ver el estado y cancelar si lo necesitas.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="pt-2">
+                    <Button variant="outline" asChild>
+                      <Link href="/canchas">
+                        <CalendarPlus className="mr-2 h-4 w-4" />
+                        Explorar canchas
+                      </Link>
                     </Button>
                   </div>
                 </div>
-              </div>
-            </Card>
-
-            <Tabs defaultValue="proximas" className="w-full">
-              <TabsList className="mb-6 w-full sm:w-auto">
-                <TabsTrigger value="proximas"  className="flex-1 sm:flex-none">Próximas ({proximas.length})</TabsTrigger>
-                <TabsTrigger value="historial" className="flex-1 sm:flex-none">Historial ({historial.length})</TabsTrigger>
-              </TabsList>
-              <TabsContent value="proximas">
-                {proximas.length > 0
-                  ? <div className="space-y-4">{proximas.map(r => <ReservaCard key={r.id} r={r} onDetalle={setReservaDetalle} onCancelar={setReservaCancelar} />)}</div>
-                  : <EmptyState type="proximas" />}
-              </TabsContent>
-              <TabsContent value="historial">
-                {historial.length > 0
-                  ? <div className="space-y-4">{historial.map(r => <ReservaCard key={r.id} r={r} onDetalle={setReservaDetalle} onCancelar={setReservaCancelar} />)}</div>
-                  : <EmptyState type="historial" />}
-              </TabsContent>
-            </Tabs>
+              </Card>
+            </div>
           </div>
         )}
       </main>

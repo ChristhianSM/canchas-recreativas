@@ -69,7 +69,7 @@ export default function AdminLoginPage() {
             <ShieldCheck className="h-7 w-7 text-primary-foreground" />
           </div>
           <h1 className="text-xl font-bold text-foreground">Panel Administrador</h1>
-          <p className="mt-1 text-sm text-muted-foreground">CanchaPiura</p>
+          <p className="mt-1 text-sm text-muted-foreground">CanchaGo</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">

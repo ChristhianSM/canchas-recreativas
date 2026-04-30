@@ -6,6 +6,8 @@ interface ReservaEmailData {
   hora:         string;
   precio:       number;
   estado:       'confirmada' | 'rechazada';
+  reservaId:    string;
+  baseUrl:      string;
 }
 
 interface ReservaRecibidaEmailData {
@@ -192,7 +194,7 @@ export async function sendReservaRecibidaEmail(data: ReservaRecibidaEmailData) {
 }
 
 export async function sendReservaEmail(data: ReservaEmailData) {
-  const { toEmail, toName, canchaNombre, fecha, hora, precio, estado } = data;
+  const { toEmail, toName, canchaNombre, fecha, hora, precio, estado, reservaId, baseUrl } = data;
 
   const apiKey   = process.env.API_KEY_BREVO;
   const fromEmail = process.env.BREVO_FROM_EMAIL;
@@ -219,6 +221,9 @@ export async function sendReservaEmail(data: ReservaEmailData) {
   const mensajeExtra = esConfirmada
     ? 'Preséntate puntualmente en la cancha. ¡Que disfrutes el partido!'
     : 'Puedes intentar reservar otro horario disponible en nuestra plataforma.';
+
+  const linkReserva = `${baseUrl}/mi-reserva?id=${reservaId}`;
+  const codigoCorto = reservaId.slice(-6).toUpperCase();
 
   const htmlContent = `
 <!DOCTYPE html>
@@ -298,6 +303,28 @@ export async function sendReservaEmail(data: ReservaEmailData) {
               <p style="margin:0;font-size:14px;color:#6b7280;line-height:1.6;">${mensajeExtra}</p>
             </td>
           </tr>
+
+          <!-- Código de reserva (solo si está confirmada) -->
+          ${esConfirmada ? `
+          <tr>
+            <td style="padding:20px 32px 0;text-align:center;">
+              <p style="margin:0;font-size:12px;color:#6b7280;">Código de tu reserva</p>
+              <p style="margin:6px 0 0;font-size:28px;font-weight:700;color:#111827;letter-spacing:4px;">${codigoCorto}</p>
+            </td>
+          </tr>
+
+          <!-- Botón ver reserva -->
+          <tr>
+            <td style="padding:24px 32px 0;text-align:center;">
+              <a href="${linkReserva}" style="display:inline-block;background:#16a34a;color:#ffffff;font-size:15px;font-weight:600;padding:14px 32px;border-radius:10px;text-decoration:none;">
+                Ver mi reserva
+              </a>
+              <p style="margin:12px 0 0;font-size:12px;color:#9ca3af;">
+                Desde este link puedes ver el estado y cancelar si lo necesitas
+              </p>
+            </td>
+          </tr>
+          ` : ''}
 
           <!-- Footer -->
           <tr>

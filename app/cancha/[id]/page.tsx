@@ -27,6 +27,14 @@ const MapView = dynamic(
   { ssr: false, loading: () => <div className="h-64 w-full animate-pulse bg-muted" /> }
 );
 
+// Convertir formato 24h a 12h (AM/PM)
+function formatTo12Hour(time24: string): string {
+  const [hours, minutes] = time24.split(':').map(Number);
+  const period = hours >= 12 ? 'PM' : 'AM';
+  const hours12 = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+  return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`;
+}
+
 type CanchaDB = {
   id: string; nombre: string; tipo: keyof typeof sportLabels;
   direccion: string; distrito: string; descripcion: string;
@@ -407,6 +415,20 @@ export default function CanchaDetailPage() {
               </div>
             </div>
 
+            {/* Horarios - Ahora antes del mapa en desktop */}
+            <div className="hidden lg:block">
+              <h2 className="mb-4 text-lg font-semibold text-foreground">Selecciona fecha y hora</h2>
+              <Card className="border-border p-4">
+                <TimeSlotPicker
+                  schedule={schedule}
+                  selectedDate={selectedDate}
+                  selectedSlot={selectedSlot}
+                  onDateChange={setSelectedDate}
+                  onSlotSelect={setSelectedSlot}
+                />
+              </Card>
+            </div>
+
             <div>
               <h2 className="mb-3 text-lg font-semibold text-foreground">Ubicación</h2>
               <Card className="overflow-hidden border-border">
@@ -422,19 +444,6 @@ export default function CanchaDetailPage() {
                     </a>
                   </Button>
                 </div>
-              </Card>
-            </div>
-
-            <div className="hidden lg:block">
-              <h2 className="mb-4 text-lg font-semibold text-foreground">Selecciona fecha y hora</h2>
-              <Card className="border-border p-4">
-                <TimeSlotPicker
-                  schedule={schedule}
-                  selectedDate={selectedDate}
-                  selectedSlot={selectedSlot}
-                  onDateChange={setSelectedDate}
-                  onSlotSelect={setSelectedSlot}
-                />
               </Card>
             </div>
 
@@ -527,22 +536,35 @@ export default function CanchaDetailPage() {
               selectedDate={selectedDate}
               selectedSlot={selectedSlot}
               onDateChange={setSelectedDate}
-              onSlotSelect={setSelectedSlot}
+              onSlotSelect={(slot) => {
+                setSelectedSlot(slot);
+                // Vibración háptica si está disponible
+                if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                  navigator.vibrate(50);
+                }
+                // Scroll automático hacia el botón de pagar después de un pequeño delay
+                setTimeout(() => {
+                  const sheetContent = document.querySelector('[data-slot-summary]');
+                  if (sheetContent) {
+                    sheetContent.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                  }
+                }, 100);
+              }}
             />
-            <div className="mt-6 space-y-3">
+            <div className="mt-4 space-y-3" data-slot-summary>
               {selectedSlot && (
-                <div className="rounded-xl bg-secondary p-4">
+                <div className="rounded-xl bg-secondary p-4 animate-in fade-in slide-in-from-top-2 duration-300">
                   <p className="text-sm text-muted-foreground">Tu selección</p>
                   <p className="font-semibold capitalize text-foreground">{selectedDateLabel}</p>
                   <div className="mt-1 flex items-center justify-between">
-                    <span className="text-primary font-medium">{selectedSlot.time}</span>
+                    <span className="text-primary font-medium">{formatTo12Hour(selectedSlot.time)}</span>
                     <span className="text-lg font-bold text-foreground">S/ {selectedSlot.price}</span>
                   </div>
                 </div>
               )}
-              <Button className="w-full gap-2" size="lg" disabled={!selectedSlot || reservando}
+              <Button className="w-full gap-2 mb-4" size="lg" disabled={!selectedSlot || reservando}
                 onClick={handleReservar}>
-                {reservando ? 'Verificando...' : selectedSlot ? <>Ir a pagar <ChevronRight className="h-4 w-4" /></> : 'Selecciona un horario'}
+                {reservando ? 'Verificando...' : selectedSlot ? <>Continuar al pago <ChevronRight className="h-4 w-4" /></> : 'Selecciona un horario'}
               </Button>
             </div>
           </SheetContent>

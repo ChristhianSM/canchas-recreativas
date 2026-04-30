@@ -121,14 +121,9 @@ export default function PerfilPage() {
 
       <main className="flex-1 container mx-auto px-4 py-8 max-w-lg">
         {/* Header */}
-        <div className="mb-6 flex items-center gap-4">
-          <Link href="/mis-reservas" className="flex items-center text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Mi Perfil</h1>
-            <p className="text-sm text-muted-foreground">Actualiza tu información personal</p>
-          </div>
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-foreground">Mi Perfil</h1>
+          <p className="text-sm text-muted-foreground">Actualiza tu información personal</p>
         </div>
 
         <div className="space-y-5">

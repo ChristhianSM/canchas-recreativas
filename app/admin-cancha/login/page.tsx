@@ -57,7 +57,7 @@ export default function OwnerLoginPage() {
             <Store className="h-7 w-7 text-primary-foreground" />
           </div>
           <h1 className="text-xl font-bold text-foreground">Panel de tu Cancha</h1>
-          <p className="mt-1 text-sm text-muted-foreground">CanchaPiura — Administrador</p>
+          <p className="mt-1 text-sm text-muted-foreground">CanchaGo — Administrador</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">

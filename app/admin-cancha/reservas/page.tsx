@@ -278,9 +278,9 @@ export default function OwnerReservasPage() {
 
       <Card className="border-border overflow-hidden">
         <Tabs defaultValue="pendiente">
-          <div className="border-b border-border px-4 pt-4 pb-4">
-            <TabsList>
-              <TabsTrigger value="pendiente">
+          <div className="border-b border-border overflow-x-auto -mx-4 px-4 pb-4">
+            <TabsList className="inline-flex w-auto h-auto bg-transparent p-0 gap-1">
+              <TabsTrigger value="pendiente" className="shrink-0 data-[state=active]:bg-background data-[state=active]:shadow-sm">
                 Pendientes
                 {byEstado('pendiente').length > 0 && (
                   <span className="ml-1.5 rounded-full bg-yellow-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
@@ -288,9 +288,13 @@ export default function OwnerReservasPage() {
                   </span>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="confirmada">Confirmadas ({byEstado('confirmada').length})</TabsTrigger>
-              <TabsTrigger value="rechazada">Rechazadas ({byEstado('rechazada').length})</TabsTrigger>
-              <TabsTrigger value="cancelada">
+              <TabsTrigger value="confirmada" className="shrink-0 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                Confirmadas ({byEstado('confirmada').length})
+              </TabsTrigger>
+              <TabsTrigger value="rechazada" className="shrink-0 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                Rechazadas ({byEstado('rechazada').length})
+              </TabsTrigger>
+              <TabsTrigger value="cancelada" className="shrink-0 data-[state=active]:bg-background data-[state=active]:shadow-sm">
                 Canceladas ({byEstado('cancelada').length})
                 {devolucionesPendientes.length > 0 && (
                   <span className="ml-1.5 rounded-full bg-orange-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
@@ -298,7 +302,9 @@ export default function OwnerReservasPage() {
                   </span>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="todas">Todas ({reservas.length})</TabsTrigger>
+              <TabsTrigger value="todas" className="shrink-0 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                Todas ({reservas.length})
+              </TabsTrigger>
             </TabsList>
           </div>
           <TabsContent value="pendiente"  className="mt-0"><Table list={byEstado('pendiente')} /></TabsContent>

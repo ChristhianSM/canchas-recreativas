@@ -12,6 +12,7 @@ export function MapView({ lat, lng, nombre }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef       = useRef<any>(null);
   const [moved, setMoved] = useState(false);
+  const [mapActive, setMapActive] = useState(false);
   const movedRef = useRef(false);
 
   useEffect(() => {
@@ -39,7 +40,13 @@ export function MapView({ lat, lng, nombre }: MapViewProps) {
       });
 
       try {
-        const map = L.map(containerRef.current!, { zoomControl: true }).setView([lat, lng], 17);
+        const map = L.map(containerRef.current!, { 
+          zoomControl: true,
+          dragging: false,
+          scrollWheelZoom: false,
+          doubleClickZoom: false,
+          touchZoom: false,
+        }).setView([lat, lng], 17);
         mapRef.current = map;
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -139,6 +146,30 @@ export function MapView({ lat, lng, nombre }: MapViewProps) {
           className="h-64 w-full"
           style={{ minHeight: '256px' }}
         />
+        
+        {/* Overlay para activar el mapa en mobile */}
+        {!mapActive && (
+          <div
+            className="absolute inset-0 flex items-center justify-center bg-black/5 backdrop-blur-[1px] cursor-pointer md:hidden"
+            onClick={() => {
+              setMapActive(true);
+              if (mapRef.current) {
+                mapRef.current.dragging.enable();
+                mapRef.current.scrollWheelZoom.enable();
+                mapRef.current.doubleClickZoom.enable();
+                mapRef.current.touchZoom.enable();
+              }
+            }}
+          >
+            <div className="bg-white rounded-xl shadow-lg px-6 py-4 flex items-center gap-3 border border-border">
+              <svg className="h-6 w-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <span className="font-medium text-foreground">Toca para interactuar con el mapa</span>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );

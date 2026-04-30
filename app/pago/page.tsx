@@ -22,7 +22,7 @@ type Paso = 'metodo' | 'instrucciones' | 'exito';
 
 const NUMERO_YAPE = '987 654 321';
 const NUMERO_Plin = '987 654 321';
-const TIEMPO_LIMITE = 30; // 30 segundos para pruebas
+const TIEMPO_LIMITE = 5 * 60; // 5 minutos
 
 // Clave única por bloqueo en localStorage
 function bloqueoKey(canchaId: string, fecha: string, hora: string) {

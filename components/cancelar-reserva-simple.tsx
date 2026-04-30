@@ -104,79 +104,79 @@ export default function CancelarReservaSimple({ reserva, onClose, onConfirm }: C
 
   return (
     <Dialog open={!!reserva} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-orange-500" />
-            Cancelar Reserva
+      <DialogContent className="max-w-md w-[calc(100vw-2rem)] sm:w-full p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
+        <DialogHeader className="pr-6">
+          <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-orange-500 shrink-0" />
+            <span className="break-words">Cancelar Reserva</span>
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="break-words text-xs sm:text-sm">
             Revisa la política de devolución antes de cancelar
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {/* Información de la reserva */}
-          <div className="rounded-lg border p-3 space-y-2">
-            <h4 className="font-medium">{reserva.canchaName}</h4>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Clock className="h-4 w-4" />
-              {fechaLabel} a las {reserva.hora}
+          <div className="rounded-lg border p-2.5 sm:p-3 space-y-2">
+            <h4 className="font-medium break-words text-sm sm:text-base">{reserva.canchaName}</h4>
+            <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+              <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+              <span className="break-words">{fechaLabel} a las {reserva.hora}</span>
             </div>
-            <div className="text-sm">
+            <div className="text-xs sm:text-sm">
               <span className="font-medium">Total pagado: S/ {reserva.precio}</span>
             </div>
           </div>
 
           {/* Cálculo de devolución */}
-          <div className="rounded-lg border p-3 space-y-3">
-            <h4 className="font-medium flex items-center gap-2">
-              <Info className="h-4 w-4" />
-              Devolución Estimada
+          <div className="rounded-lg border p-2.5 sm:p-3 space-y-2.5 sm:space-y-3">
+            <h4 className="font-medium flex items-center gap-2 text-sm sm:text-base">
+              <Info className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+              <span className="break-words">Devolución Estimada</span>
             </h4>
             
-            <div className={`text-sm ${devolucion.color}`}>
+            <div className={`text-xs sm:text-sm break-words ${devolucion.color}`}>
               {devolucion.descripcion}
             </div>
 
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="text-center p-2 rounded bg-green-50">
-                <p className="text-xs text-muted-foreground">Devolución</p>
-                <p className="font-bold text-green-600">S/ {devolucion.monto}</p>
-                <p className="text-xs text-green-600">({devolucion.porcentaje}%)</p>
+            <div className="grid grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm">
+              <div className="text-center p-1.5 sm:p-2 rounded bg-green-50 min-w-0">
+                <p className="text-[10px] sm:text-xs text-muted-foreground">Devolución</p>
+                <p className="font-bold text-green-600 break-words text-sm sm:text-base">S/ {devolucion.monto}</p>
+                <p className="text-[10px] sm:text-xs text-green-600">({devolucion.porcentaje}%)</p>
               </div>
-              <div className="text-center p-2 rounded bg-red-50">
-                <p className="text-xs text-muted-foreground">Penalidad</p>
-                <p className="font-bold text-red-600">S/ {reserva.precio - devolucion.monto}</p>
-                <p className="text-xs text-red-600">({100 - devolucion.porcentaje}%)</p>
+              <div className="text-center p-1.5 sm:p-2 rounded bg-red-50 min-w-0">
+                <p className="text-[10px] sm:text-xs text-muted-foreground">Penalidad</p>
+                <p className="font-bold text-red-600 break-words text-sm sm:text-base">S/ {reserva.precio - devolucion.monto}</p>
+                <p className="text-[10px] sm:text-xs text-red-600">({100 - devolucion.porcentaje}%)</p>
               </div>
             </div>
 
             {devolucion.monto > 0 && (
-              <div className="text-xs text-muted-foreground bg-blue-50 p-2 rounded">
+              <div className="text-[10px] sm:text-xs text-muted-foreground bg-blue-50 p-2 rounded break-words">
                 💰 La devolución se procesará por {reserva.metodoPago === 'yape' ? 'Yape' : 'Plin'} en 24-48 horas
               </div>
             )}
           </div>
 
           {/* Política general */}
-          <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
+          <div className="rounded-lg bg-muted/50 p-2.5 sm:p-3 text-[10px] sm:text-xs text-muted-foreground">
             <p className="font-medium mb-1">Política de Cancelación:</p>
             <ul className="space-y-0.5">
-              <li>• +4 horas: 85% devolución</li>
-              <li>• 2-4 horas: 60% devolución</li>
-              <li>• 1-2 horas: 30% devolución</li>
-              <li>• -1 hora: Sin devolución</li>
+              <li className="break-words">• +4 horas: 85% devolución</li>
+              <li className="break-words">• 2-4 horas: 60% devolución</li>
+              <li className="break-words">• 1-2 horas: 30% devolución</li>
+              <li className="break-words">• -1 hora: Sin devolución</li>
             </ul>
           </div>
 
           {/* Casos especiales */}
-          <div className="rounded-lg bg-blue-50 p-3 text-xs">
+          <div className="rounded-lg bg-blue-50 p-2.5 sm:p-3 text-[10px] sm:text-xs">
             <div className="flex items-start gap-2">
-              <Phone className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
-              <div>
-                <p className="font-medium text-blue-900">¿Emergencia o caso especial?</p>
-                <p className="text-blue-700">
+              <Phone className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-600 mt-0.5 shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="font-medium text-blue-900 break-words">¿Emergencia o caso especial?</p>
+                <p className="text-blue-700 break-words">
                   Contacta directamente al administrador para reprogramar sin costo o evaluar tu caso.
                 </p>
               </div>
@@ -185,15 +185,15 @@ export default function CancelarReservaSimple({ reserva, onClose, onConfirm }: C
 
           {/* Botones */}
           <div className="flex gap-2 pt-2">
-            <Button variant="outline" onClick={onClose} className="flex-1">
-              Mantener Reserva
+            <Button variant="outline" onClick={onClose} className="flex-1 text-xs sm:text-sm h-9 sm:h-10">
+              Mantener
             </Button>
             <Button 
               onClick={handleConfirm} 
-              className="flex-1"
+              className="flex-1 text-xs sm:text-sm h-9 sm:h-10"
               disabled={loading}
             >
-              {loading ? 'Cancelando...' : 'Confirmar Cancelación'}
+              {loading ? 'Cancelando...' : 'Confirmar'}
             </Button>
           </div>
         </div>

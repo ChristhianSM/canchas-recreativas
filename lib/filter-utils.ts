@@ -157,12 +157,12 @@ export function filterCanchas(canchas: Cancha[], filters: AdvancedFilters, date?
 
     // Filtro por horas disponibles (con fecha específica)
     if (filters.availableHours.length > 0) {
-      // Verificar si TODAS las horas seleccionadas están disponibles
-      // Si alguna hora no está disponible, excluir la cancha
-      const allHoursAvailable = filters.availableHours.every(hour =>
+      // Verificar si AL MENOS UNA de las horas seleccionadas está disponible
+      // Esto permite que el usuario vea canchas con disponibilidad en cualquiera de los horarios
+      const someHoursAvailable = filters.availableHours.some(hour =>
         hasAvailabilityAtHour(cancha, hour, targetDate)
       );
-      if (!allHoursAvailable) return false;
+      if (!someHoursAvailable) return false;
     }
 
     // Filtro por destacadas
