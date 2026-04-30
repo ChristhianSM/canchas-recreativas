@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ArrowLeft, User, Mail, Phone, Save, CheckCircle2 } from 'lucide-react';
 import { Header } from '@/components/header';
 import { Button } from '@/components/ui/button';
+import { LoadingButton } from '@/components/loading-button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -199,27 +200,24 @@ export default function PerfilPage() {
 
             <Separator />
 
-            <Button
-              onClick={handleGuardar}
-              disabled={guardando || guardado || !hayChanges}
-              className="w-full"
-            >
-              {guardado ? (
-                <>
-                  <CheckCircle2 className="mr-2 h-4 w-4" />
-                  ¡Guardado!
-                </>
-              ) : guardando ? (
-                'Guardando...'
-              ) : !hayChanges ? (
-                'Sin cambios'
-              ) : (
-                <>
-                  <Save className="mr-2 h-4 w-4" />
-                  Guardar cambios
-                </>
-              )}
-            </Button>
+            {guardado ? (
+              <Button className="w-full" disabled>
+                <CheckCircle2 className="mr-2 h-4 w-4" />
+                ¡Guardado!
+              </Button>
+            ) : (
+              <LoadingButton
+                onClick={handleGuardar}
+                disabled={!hayChanges}
+                className="w-full"
+                isLoading={guardando}
+                loadingText="Guardando cambios"
+                loadingVariant="pulse"
+              >
+                <Save className="mr-2 h-4 w-4" />
+                Guardar cambios
+              </LoadingButton>
+            )}
           </Card>
         </div>
       </main>

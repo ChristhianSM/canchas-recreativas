@@ -185,21 +185,50 @@ function ReservaCard({
 // ── Empty state ─────────────────────────────────────────────────
 function EmptyState({ type }: { type: 'proximas' | 'historial' | 'favorites' }) {
   const cfg = {
-    proximas:  { icon: <Calendar className="h-8 w-8 text-muted-foreground" />, title: 'No tienes reservas próximas',    desc: 'Explora nuestras canchas y haz tu primera reserva', action: true },
-    historial: { icon: <Calendar className="h-8 w-8 text-muted-foreground" />, title: 'No tienes reservas en historial', desc: 'Aquí aparecerán tus reservas canceladas o rechazadas', action: false },
-    favorites: { icon: <Heart    className="h-8 w-8 text-muted-foreground" />, title: 'No tienes canchas favoritas',     desc: 'Toca el corazón en la página de cada cancha para guardarla', action: true },
+    proximas:  { 
+      icon: <CalendarPlus className="h-10 w-10 text-muted-foreground" />, 
+      title: 'No tienes reservas próximas',    
+      desc: 'Explora nuestras canchas y haz tu primera reserva', 
+      action: true,
+      bgColor: 'bg-primary/5',
+      iconBg: 'bg-primary/10'
+    },
+    historial: { 
+      icon: <Clock className="h-10 w-10 text-muted-foreground" />, 
+      title: 'No tienes reservas en historial', 
+      desc: 'Aquí aparecerán tus reservas pasadas y canceladas', 
+      action: false,
+      bgColor: 'bg-muted/30',
+      iconBg: 'bg-muted'
+    },
+    favorites: { 
+      icon: <Heart className="h-10 w-10 text-muted-foreground" />, 
+      title: 'No tienes canchas favoritas',     
+      desc: 'Toca el corazón ❤️ en cualquier cancha para guardarla aquí', 
+      action: true,
+      bgColor: 'bg-destructive/5',
+      iconBg: 'bg-destructive/10'
+    },
   }[type];
+  
   return (
-    <div className="py-16 text-center">
-      <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">{cfg.icon}</div>
-      <h3 className="mb-2 text-lg font-semibold text-foreground">{cfg.title}</h3>
-      <p className="mb-6 text-muted-foreground">{cfg.desc}</p>
-      {cfg.action && (
-        <Button asChild>
-          <Link href="/canchas"><CalendarPlus className="mr-2 h-4 w-4" />Explorar canchas</Link>
-        </Button>
-      )}
-    </div>
+    <Card className={`${cfg.bgColor} border-dashed`}>
+      <div className="py-12 text-center px-4">
+        <div className={`mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full ${cfg.iconBg}`}>
+          {cfg.icon}
+        </div>
+        <h3 className="mb-2 text-lg font-semibold text-foreground">{cfg.title}</h3>
+        <p className="mb-6 text-sm text-muted-foreground max-w-md mx-auto">{cfg.desc}</p>
+        {cfg.action && (
+          <Button asChild size="lg">
+            <Link href="/canchas">
+              <CalendarPlus className="mr-2 h-4 w-4" />
+              Explorar canchas
+            </Link>
+          </Button>
+        )}
+      </div>
+    </Card>
   );
 }
 
@@ -355,11 +384,11 @@ export default function MisReservasPage() {
       <main className="flex-1 container mx-auto px-4 py-8">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-foreground">
-            {user?.name ? `Hola, ${user.name.split(' ')[0]} 👋` : 'Mis Reservas'}
+            {user?.name ? `Hola, ${user.name.split(' ')[0]} 👋` : 'Mi Cuenta'}
           </h1>
           {user && (
             <p className="text-muted-foreground">
-              Gestiona tus reservas, favoritas y sellos
+              Gestiona tus reservas, favoritas y recompensas
             </p>
           )}
         </div>
@@ -399,36 +428,78 @@ export default function MisReservasPage() {
           <Tabs defaultValue="proximas" className="w-full">
             <div className="mb-6 overflow-x-auto">
               <TabsList className="w-max min-w-full sm:w-auto">
-                <TabsTrigger value="proximas">Próximas ({proximas.length})</TabsTrigger>
-                <TabsTrigger value="historial">Historial ({historial.length})</TabsTrigger>
-                <TabsTrigger value="favorites">Favoritas ({favoriteCanchas.length})</TabsTrigger>
-                <TabsTrigger value="loyalty">
-                  <Stamp className="mr-1.5 h-4 w-4" />Mis Sellos
+                <TabsTrigger value="proximas" className="gap-1.5">
+                  <CalendarPlus className="h-4 w-4" />
+                  <span>Próximas</span>
+                  {proximas.length > 0 && (
+                    <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1.5 text-xs">
+                      {proximas.length}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="historial" className="gap-1.5">
+                  <Clock className="h-4 w-4" />
+                  <span>Historial</span>
+                  {historial.length > 0 && (
+                    <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1.5 text-xs">
+                      {historial.length}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="favorites" className="gap-1.5">
+                  <Heart className="h-4 w-4" />
+                  <span>Favoritas</span>
+                  {favoriteCanchas.length > 0 && (
+                    <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1.5 text-xs">
+                      {favoriteCanchas.length}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="loyalty" className="gap-1.5">
+                  <Stamp className="h-4 w-4" />
+                  <span>Recompensas</span>
+                  {loyalty && loyalty.sellos > 0 && (
+                    <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1.5 text-xs">
+                      {loyalty.sellos}
+                    </Badge>
+                  )}
                 </TabsTrigger>
               </TabsList>
             </div>
 
-            <TabsContent value="proximas">
+            <TabsContent value="proximas" className="space-y-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <CalendarPlus className="h-4 w-4" />
+                <p>Tus reservas confirmadas y pendientes</p>
+              </div>
               {proximas.length > 0
                 ? <div className="space-y-4">{proximas.map(r => <ReservaCard key={r.id} r={r} onDetalle={setReservaDetalle} onCancelar={setReservaCancelar} />)}</div>
                 : <EmptyState type="proximas" />}
             </TabsContent>
 
-            <TabsContent value="historial">
+            <TabsContent value="historial" className="space-y-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Clock className="h-4 w-4" />
+                <p>Historial de todas tus reservas pasadas</p>
+              </div>
               {historial.length > 0
                 ? <div className="space-y-4">{historial.map(r => <ReservaCard key={r.id} r={r} onDetalle={setReservaDetalle} onCancelar={setReservaCancelar} />)}</div>
                 : <EmptyState type="historial" />}
             </TabsContent>
 
-            <TabsContent value="favorites">
+            <TabsContent value="favorites" className="space-y-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Heart className="h-4 w-4" />
+                <p>Tus canchas favoritas para reservar más rápido</p>
+              </div>
               {favoriteCanchas.length > 0 ? (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {favoriteCanchas.map(cancha => (
-                    <Card key={cancha.id} className="overflow-hidden border-border">
+                    <Card key={cancha.id} className="overflow-hidden border-border group hover:shadow-md transition-shadow">
                       <div className="relative aspect-video">
-                        <Image src={cancha.images[0]} alt={cancha.name} fill className="object-cover" />
+                        <Image src={cancha.images[0]} alt={cancha.name} fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
                         <button onClick={() => handleRemoveFavorite(cancha.id)}
-                          className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-card/90 text-destructive shadow hover:bg-card">
+                          className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-card/90 backdrop-blur-sm text-destructive shadow hover:bg-card transition-colors">
                           <Heart className="h-4 w-4 fill-destructive" />
                         </button>
                       </div>
@@ -460,7 +531,11 @@ export default function MisReservasPage() {
               ) : <EmptyState type="favorites" />}
             </TabsContent>
 
-            <TabsContent value="loyalty">
+            <TabsContent value="loyalty" className="space-y-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Stamp className="h-4 w-4" />
+                <p>Acumula sellos y canjea cupones de descuento</p>
+              </div>
               <div className="max-w-lg">
                 <LoyaltyCard loyalty={loyalty} onUpdate={refreshLoyalty} />
               </div>

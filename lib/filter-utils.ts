@@ -137,13 +137,13 @@ export function filterCanchas(canchas: Cancha[], filters: AdvancedFilters, date?
       return false;
     }
 
-    // Filtro por amenidades (debe tener TODAS las seleccionadas)
+    // Filtro por amenidades (debe tener AL MENOS UNA de las seleccionadas)
     if (filters.amenities.length > 0) {
       const canchAmenities = cancha.amenities || [];
-      const hasAllAmenities = filters.amenities.every(amenity =>
+      const hasSomeAmenities = filters.amenities.some(amenity =>
         canchAmenities.some(a => a && a.trim().toLowerCase() === amenity.trim().toLowerCase())
       );
-      if (!hasAllAmenities) return false;
+      if (!hasSomeAmenities) return false;
     }
 
     // Filtro por distritos (case-insensitive)

@@ -153,7 +153,8 @@ export function AdvancedFiltersComponent({
           placeholder="Nombre, dirección..."
           value={filters.searchQuery}
           onChange={(e) => onFiltersChange({ ...filters, searchQuery: e.target.value })}
-          className="h-9"
+          className="h-9 text-sm placeholder:text-sm"
+          autoFocus={false}
         />
       </div>
 

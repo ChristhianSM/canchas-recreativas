@@ -150,7 +150,7 @@ export function MapView({ lat, lng, nombre }: MapViewProps) {
         {/* Overlay para activar el mapa en mobile */}
         {!mapActive && (
           <div
-            className="absolute inset-0 flex items-center justify-center bg-black/5 backdrop-blur-[1px] cursor-pointer md:hidden"
+            className="absolute inset-0 flex items-center justify-center bg-black/10 backdrop-blur-[2px] cursor-pointer md:hidden z-10"
             onClick={() => {
               setMapActive(true);
               if (mapRef.current) {
@@ -161,12 +161,15 @@ export function MapView({ lat, lng, nombre }: MapViewProps) {
               }
             }}
           >
-            <div className="bg-white rounded-xl shadow-lg px-6 py-4 flex items-center gap-3 border border-border">
-              <svg className="h-6 w-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="bg-white rounded-xl shadow-xl px-5 py-3.5 flex items-center gap-3 border-2 border-primary/20 animate-pulse">
+              <svg className="h-6 w-6 text-primary shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              <span className="font-medium text-foreground">Toca para interactuar con el mapa</span>
+              <div className="flex flex-col">
+                <span className="font-semibold text-foreground text-sm">Toca para interactuar</span>
+                <span className="text-xs text-muted-foreground">Mueve y explora el mapa</span>
+              </div>
             </div>
           </div>
         )}

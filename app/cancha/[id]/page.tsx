@@ -8,11 +8,13 @@ import {
   Navigation, Share2, Heart, CalendarDays, ChevronRight, AlertTriangle, Timer,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { StepButton } from '@/components/loading-button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { useToast } from '@/components/ui/use-toast';
 import { Header } from '@/components/header';
 import { CanchaGallery } from '@/components/cancha-gallery';
 import { TimeSlotPicker } from '@/components/time-slot-picker';
@@ -84,6 +86,7 @@ function buildSchedule(
 export default function CanchaDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { toast } = useToast();
   const id = params.id as string;
 
   const today = getLocalDateString();
@@ -92,11 +95,13 @@ export default function CanchaDetailPage() {
   const [selectedDate, setSelectedDate] = useState(today);
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
   const [isFav, setIsFav]             = useState(false);
+  const [togglingFav, setTogglingFav] = useState(false);
   const [sheetOpen, setSheetOpen]     = useState(false);
   const [reservando, setReservando]   = useState(false);
   const [slotOcupado, setSlotOcupado] = useState(false);
   const [ocupadoModal, setOcupadoModal] = useState(false);
   const [countdown, setCountdown]     = useState(0);
+  const [reservaStep, setReservaStep] = useState(0);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const sessionId = useRef(
@@ -127,6 +132,7 @@ export default function CanchaDetailPage() {
   const handleReservar = async () => {
     if (!cancha || !selectedSlot) return;
     setReservando(true);
+    setReservaStep(1); // Paso 1: Verificando
     setSlotOcupado(false);
 
     // Consultar si el horario está disponible
@@ -136,6 +142,7 @@ export default function CanchaDetailPage() {
 
     if (!check.disponible) {
       setReservando(false);
+      setReservaStep(0);
       setSlotOcupado(true);
       setSelectedSlot(null);
       setSheetOpen(false);
@@ -149,8 +156,12 @@ export default function CanchaDetailPage() {
     }
 
     // Disponible — ir a pago (el bloqueo se crea allí)
-    setReservando(false);
-    router.push(`/pago?canchaId=${cancha.id}&fecha=${selectedDate}&hora=${selectedSlot.time}&precio=${selectedSlot.price}&sid=${sessionId.current}`);
+    setReservaStep(2); // Paso 2: Redirigiendo
+    setTimeout(() => {
+      setReservando(false);
+      setReservaStep(0);
+      router.push(`/pago?canchaId=${cancha.id}&fecha=${selectedDate}&hora=${selectedSlot.time}&precio=${selectedSlot.price}&sid=${sessionId.current}`);
+    }, 800);
   };
 
   // Limpiar interval al desmontar
@@ -188,11 +199,63 @@ export default function CanchaDetailPage() {
   }, [cancha]);
 
   const handleToggleFavorite = async () => {
-    if (!cancha) return;
+    if (!cancha || togglingFav) return;
+    
     const token = getToken();
-    if (token) {
+    if (!token) {
+      toast({
+        title: "Inicia sesión",
+        description: "Debes iniciar sesión para guardar favoritos",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setTogglingFav(true);
+    const wasFav = isFav;
+    
+    // Optimistic update - cambiar inmediatamente
+    setIsFav(!wasFav);
+    
+    // Vibración háptica en mobile
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate(!wasFav ? [30, 20, 30] : 50); // Patrón diferente para agregar vs quitar
+    }
+
+    try {
       await apiToggleFavorito(cancha.id);
-      setIsFav(prev => !prev);
+      
+      // Toast de confirmación con mejor diseño
+      if (!wasFav) {
+        // Agregado a favoritos
+        toast({
+          title: (
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">❤️</span>
+              <span>Agregado a favoritos</span>
+            </div>
+          ) as any,
+          description: `Ahora puedes encontrar "${cancha.nombre}" en tu lista de favoritos`,
+          duration: 3000,
+          className: "border-l-4 border-l-destructive",
+        });
+      } else {
+        // Eliminado de favoritos
+        toast({
+          description: `"${cancha.nombre}" fue eliminado de tus favoritos`,
+          duration: 2000,
+        });
+      }
+    } catch (error) {
+      // Revertir si falla
+      setIsFav(wasFav);
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar favoritos. Intenta de nuevo.",
+        variant: "destructive",
+      });
+    } finally {
+      setTimeout(() => setTogglingFav(false), 300); // Delay para que se vea la animación
     }
   };
 
@@ -342,8 +405,29 @@ export default function CanchaDetailPage() {
           <h1 className="text-xl font-bold text-foreground line-clamp-1">{cancha.nombre}</h1>
         </div>
         <div className="flex items-center gap-1 shrink-0">
-          <Button variant="ghost" size="icon" onClick={handleToggleFavorite}>
-            <Heart className={`h-5 w-5 ${isFav ? 'fill-destructive text-destructive' : ''}`} />
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={handleToggleFavorite}
+            disabled={togglingFav}
+            className={`relative group transition-all duration-300 ${
+              isFav ? 'bg-destructive/10 hover:bg-destructive/20' : 'hover:bg-muted'
+            }`}
+          >
+            <Heart 
+              className={`h-5 w-5 transition-all duration-300 ${
+                isFav 
+                  ? 'fill-destructive text-destructive scale-110' 
+                  : 'scale-100 group-hover:scale-110 group-hover:text-destructive/70'
+              }`} 
+            />
+            
+            {/* Spinner de loading */}
+            {togglingFav && (
+              <span className="absolute inset-0 flex items-center justify-center bg-background/90 rounded-md backdrop-blur-sm">
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-destructive border-t-transparent" />
+              </span>
+            )}
           </Button>
           <Button variant="ghost" size="icon" onClick={handleShare}>
             <Share2 className="h-5 w-5" />
@@ -489,9 +573,16 @@ export default function CanchaDetailPage() {
                     <p className="font-semibold capitalize text-foreground">{selectedDateLabel}</p>
                     <p className="text-primary">{selectedSlot.time} — S/ {selectedSlot.price}</p>
                   </div>
-                  <Button className="w-full" size="lg" disabled={reservando} onClick={handleReservar}>
-                    {reservando ? 'Verificando...' : 'Reservar ahora'}
-                  </Button>
+                  <StepButton
+                    className="w-full"
+                    size="lg"
+                    isLoading={reservando}
+                    steps={['Verificando disponibilidad', 'Redirigiendo al pago']}
+                    currentStep={reservaStep - 1}
+                    onClick={handleReservar}
+                  >
+                    Reservar ahora
+                  </StepButton>
                 </div>
               ) : (
                 <Button className="w-full" size="lg" disabled>Selecciona un horario</Button>
@@ -562,10 +653,17 @@ export default function CanchaDetailPage() {
                   </div>
                 </div>
               )}
-              <Button className="w-full gap-2 mb-4" size="lg" disabled={!selectedSlot || reservando}
-                onClick={handleReservar}>
-                {reservando ? 'Verificando...' : selectedSlot ? <>Continuar al pago <ChevronRight className="h-4 w-4" /></> : 'Selecciona un horario'}
-              </Button>
+              <StepButton
+                className="w-full gap-2 mb-4"
+                size="lg"
+                isLoading={reservando}
+                steps={['Verificando disponibilidad', 'Redirigiendo al pago']}
+                currentStep={reservaStep - 1}
+                onClick={handleReservar}
+                disabled={!selectedSlot}
+              >
+                {selectedSlot ? <>Continuar al pago <ChevronRight className="h-4 w-4" /></> : 'Selecciona un horario'}
+              </StepButton>
             </div>
           </SheetContent>
         </Sheet>

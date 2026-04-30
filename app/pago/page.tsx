@@ -8,6 +8,7 @@ import {
   Smartphone, Shield, ChevronRight, Upload, ImageIcon, Timer, Mail,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { LoadingButton } from '@/components/loading-button';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
@@ -875,9 +876,16 @@ function PagoContent() {
               <Button variant="outline" size="lg" className="flex-1" onClick={() => setPaso('metodo')}>
                 Cambiar método
               </Button>
-              <Button size="lg" className="flex-1" onClick={handleEnviar} disabled={enviando}>
-                {enviando ? 'Enviando...' : 'Enviar reserva ✓'}
-              </Button>
+              <LoadingButton
+                size="lg"
+                className="flex-1"
+                onClick={handleEnviar}
+                isLoading={enviando}
+                loadingText="Enviando reserva"
+                loadingVariant="pulse"
+              >
+                Enviar reserva ✓
+              </LoadingButton>
             </div>
           </>
         )}
