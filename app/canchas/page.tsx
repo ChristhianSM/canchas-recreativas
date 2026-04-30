@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { MapPin } from 'lucide-react';
@@ -75,7 +75,7 @@ function adaptCancha(c: Cancha) {
   };
 }
 
-export default function CanchasPage() {
+function CanchasContent() {
   const searchParams = useSearchParams();
   const [canchas, setCanchas]         = useState<Cancha[]>([]);
   const [loading, setLoading]         = useState(true);
@@ -281,5 +281,29 @@ export default function CanchasPage() {
         </div>
       </footer>
     </div>
+  );
+}
+
+
+export default function CanchasPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex flex-col flex-1 bg-background">
+        <Header />
+        <main className="flex-1 container mx-auto px-4 py-8">
+          <div className="mb-6 space-y-2">
+            <div className="h-8 w-48 animate-pulse rounded-lg bg-muted" />
+            <div className="h-4 w-64 animate-pulse rounded-lg bg-muted" />
+          </div>
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3, 4, 5, 6].map(i => (
+              <div key={i} className="h-80 animate-pulse rounded-xl bg-muted" />
+            ))}
+          </div>
+        </main>
+      </div>
+    }>
+      <CanchasContent />
+    </Suspense>
   );
 }
