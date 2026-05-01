@@ -73,7 +73,7 @@ export default function HomePage() {
               <span>Reserva en menos de 2 minutos</span>
             </div>
             
-            <h1 className="mb-6 text-4xl font-bold text-white md:text-5xl lg:text-6xl text-balance leading-tight">
+            <h1 className="mb-6 text-4xl font-extrabold text-white md:text-5xl lg:text-6xl xl:text-7xl text-balance leading-[1.05] tracking-tighter font-display">
               Encuentra y reserva tu cancha deportiva ideal
             </h1>
             
@@ -136,7 +136,7 @@ export default function HomePage() {
       <section className="border-b border-border bg-card py-16">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-foreground mb-3">¿Por qué elegir CanchaGo?</h2>
+            <h2 className="text-3xl font-extrabold text-foreground mb-3 font-display tracking-tight">¿Por qué elegir CanchaGo?</h2>
             <p className="text-muted-foreground text-lg">La forma más fácil de reservar canchas deportivas</p>
           </div>
           
@@ -179,7 +179,7 @@ export default function HomePage() {
                 <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl ${f.bg} ${f.darkBg} mb-4`}>
                   <f.icon className={`h-8 w-8 ${f.color}`} />
                 </div>
-                <h3 className="font-bold text-foreground text-lg mb-2">{f.title}</h3>
+                <h3 className="font-extrabold text-foreground text-lg mb-2 font-display">{f.title}</h3>
                 <p className="text-sm text-muted-foreground">{f.desc}</p>
               </div>
             ))}
@@ -193,7 +193,7 @@ export default function HomePage() {
           <div className="container mx-auto px-4">
             <div className="flex items-center justify-between mb-8">
               <div>
-                <h2 className="text-3xl font-bold text-foreground mb-2">Canchas Destacadas</h2>
+                <h2 className="text-3xl font-bold text-foreground mb-2 font-display">Canchas Destacadas</h2>
                 <p className="text-muted-foreground text-lg">Las más populares y mejor valoradas</p>
               </div>
               <Link href="/canchas">
@@ -224,7 +224,7 @@ export default function HomePage() {
       <section className="py-16">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-foreground mb-3">¿Cómo funciona?</h2>
+            <h2 className="text-3xl font-extrabold text-foreground mb-3 font-display tracking-tight">¿Cómo funciona?</h2>
             <p className="text-muted-foreground text-lg">Reserva tu cancha en 3 simples pasos</p>
           </div>
 
@@ -269,7 +269,7 @@ export default function HomePage() {
                   <div className="absolute top-6 right-6 text-6xl font-bold ">
                     {item.step}
                   </div>
-                  <h3 className="font-bold text-foreground text-xl mb-2">{item.title}</h3>
+                  <h3 className="font-extrabold text-foreground text-xl mb-2 font-display">{item.title}</h3>
                   <p className="text-muted-foreground">{item.desc}</p>
                 </div>
               </div>
@@ -291,7 +291,7 @@ export default function HomePage() {
       <section className="bg-primary py-16">
         <div className="container mx-auto px-4 text-center">
           <div className="mx-auto max-w-3xl">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-black text-white mb-4 font-display tracking-tighter">
               ¿Listo para tu próximo partido?
             </h2>
             <p className="text-lg text-white/90 mb-8">

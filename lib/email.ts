@@ -27,7 +27,7 @@ export async function sendReservaRecibidaEmail(data: ReservaRecibidaEmailData) {
 
   const apiKey    = process.env.API_KEY_BREVO;
   const fromEmail = process.env.BREVO_FROM_EMAIL;
-  const fromName  = process.env.BREVO_FROM_NAME ?? 'Cancha Piura';
+  const fromName  = process.env.BREVO_FROM_NAME ?? 'CanchaGo';
 
   if (!apiKey || !fromEmail) return;
 
@@ -50,7 +50,7 @@ export async function sendReservaRecibidaEmail(data: ReservaRecibidaEmailData) {
         <!-- Header -->
         <tr>
           <td style="background:#111827;padding:28px 32px;text-align:center;">
-            <p style="margin:0;font-size:22px;font-weight:700;color:#ffffff;">⚽ Cancha Piura</p>
+            <p style="margin:0;font-size:22px;font-weight:700;color:#ffffff;">⚽ CanchaGo</p>
             <p style="margin:6px 0 0;font-size:13px;color:#9ca3af;">Sistema de reservas</p>
           </td>
         </tr>
@@ -154,7 +154,7 @@ export async function sendReservaRecibidaEmail(data: ReservaRecibidaEmailData) {
         <tr>
           <td style="padding:28px 32px;text-align:center;">
             <p style="margin:0;font-size:12px;color:#9ca3af;">
-              Este correo fue enviado automáticamente por Cancha Piura.<br/>
+              Este correo fue enviado automáticamente por CanchaGo.<br/>
               Por favor no respondas a este mensaje.
             </p>
           </td>
@@ -198,7 +198,7 @@ export async function sendReservaEmail(data: ReservaEmailData) {
 
   const apiKey   = process.env.API_KEY_BREVO;
   const fromEmail = process.env.BREVO_FROM_EMAIL;
-  const fromName  = process.env.BREVO_FROM_NAME ?? 'Cancha Piura';
+  const fromName  = process.env.BREVO_FROM_NAME ?? 'CanchaGo';
 
   if (!apiKey || !fromEmail) {
     console.error('[email] Faltan variables de entorno: API_KEY_BREVO o BREVO_FROM_EMAIL');
@@ -241,7 +241,7 @@ export async function sendReservaEmail(data: ReservaEmailData) {
           <!-- Header -->
           <tr>
             <td style="background:#111827;padding:28px 32px;text-align:center;">
-              <p style="margin:0;font-size:22px;font-weight:700;color:#ffffff;letter-spacing:-0.5px;">⚽ Cancha Piura</p>
+              <p style="margin:0;font-size:22px;font-weight:700;color:#ffffff;letter-spacing:-0.5px;">⚽ CanchaGo</p>
               <p style="margin:6px 0 0;font-size:13px;color:#9ca3af;">Sistema de reservas</p>
             </td>
           </tr>
@@ -330,7 +330,7 @@ export async function sendReservaEmail(data: ReservaEmailData) {
           <tr>
             <td style="padding:28px 32px;text-align:center;border-top:1px solid #f3f4f6;margin-top:24px;">
               <p style="margin:0;font-size:12px;color:#9ca3af;">
-                Este correo fue enviado automáticamente por Cancha Piura.<br/>
+                Este correo fue enviado automáticamente por CanchaGo.<br/>
                 Por favor no respondas a este mensaje.
               </p>
             </td>

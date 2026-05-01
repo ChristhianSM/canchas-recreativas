@@ -881,8 +881,8 @@ function PagoContent() {
                 className="flex-1"
                 onClick={handleEnviar}
                 isLoading={enviando}
-                loadingText="Enviando reserva"
-                loadingVariant="pulse"
+                loadingText="Enviando"
+                loadingVariant="spinner"
               >
                 Enviar reserva ✓
               </LoadingButton>

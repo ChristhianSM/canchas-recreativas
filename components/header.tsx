@@ -42,7 +42,17 @@ export function Header() {
     apiLogout();     // borra cp_token y cp_user
     setUser(null);
     window.dispatchEvent(new Event('user-login'));
-    router.push('/');
+    
+    // Solo redirigir si está en páginas protegidas
+    const currentPath = window.location.pathname;
+    const protectedRoutes = ['/perfil', '/mis-reservas'];
+    const isProtectedRoute = protectedRoutes.some(route => currentPath.startsWith(route));
+    
+    if (isProtectedRoute) {
+      router.push('/');
+    }
+    // Si no está en ruta protegida, se queda en la página actual
+    
     setOpen(false);
   };
 
