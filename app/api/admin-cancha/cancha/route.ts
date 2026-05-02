@@ -58,10 +58,9 @@ export async function PATCH(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { descripcion, telefono, precioHora, amenidades, imagenes, lat, lng, direccion, distrito, preciosPorHora, balonPrecio, chalecosPrecio, balonDisponible, chalecosDisponible } = body;
+  const { descripcion, telefono, precioHora, amenidades, imagenes, lat, lng, direccion, distrito, preciosPorHora, balonPrecio, chalecosPrecio, balonDisponible, chalecosDisponible, superficie, maxJugadores } = body;
 
   console.log('📍 PATCH /api/admin-cancha/cancha');
-  console.log('Body recibido:', JSON.stringify({ balonDisponible, balonPrecio, chalecosDisponible, chalecosPrecio }));
 
   const updateData: Record<string, any> = {
     descripcion,
@@ -76,6 +75,8 @@ export async function PATCH(req: NextRequest) {
   if (lng !== undefined) updateData.lng = lng;
   if (direccion !== undefined) updateData.direccion = direccion;
   if (distrito !== undefined) updateData.distrito = distrito;
+  if (superficie !== undefined) updateData.superficie = superficie;
+  if (maxJugadores !== undefined) updateData.max_jugadores = maxJugadores ?? null;
 
   // Campos de extras — solo incluir si vienen en el body (por si la migración aún no se corrió)
   if (balonDisponible !== undefined) {

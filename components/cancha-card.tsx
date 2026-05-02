@@ -5,7 +5,7 @@ import { MapPin, Star, Clock } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ImageSlider } from '@/components/image-slider';
-import { Cancha, sportLabels } from '@/lib/types';
+import { Cancha, sportLabels, superficieLabels, superficieIcons } from '@/lib/types';
 
 interface CanchaCardProps {
   cancha: Cancha;
@@ -50,6 +50,22 @@ export function CanchaCard({ cancha }: CanchaCardProps) {
               </div>
             )}
           </div>
+
+          {/* Superficie y jugadores — misma fila */}
+          {(cancha.superficie || cancha.maxJugadores) && (
+            <div className="mb-2 flex items-center justify-between">
+              {cancha.superficie ? (
+                <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/50 px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+                  {superficieIcons[cancha.superficie]} {superficieLabels[cancha.superficie]}
+                </span>
+              ) : <span />}
+              {cancha.maxJugadores && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/50 px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+                  👥 {cancha.maxJugadores} jugadores
+                </span>
+              )}
+            </div>
+          )}
 
           <div className="mb-3 flex items-center gap-1.5 text-muted-foreground">
             <MapPin className="h-4 w-4 shrink-0" />

@@ -51,6 +51,8 @@ type CanchaDB = {
   balon_precio: number | null;
   chalecos_disponible: boolean;
   chalecos_precio: number | null;
+  superficie: string | null;
+  max_jugadores: number | null;
 };
 
 function buildSchedule(
@@ -474,6 +476,17 @@ export default function CanchaDetailPage() {
                 </>
               )}
               <span>{cancha.distrito}, Piura</span>
+              {cancha.superficie && (
+                <>
+                  <span>•</span>
+                  <span className="capitalize">
+                    {cancha.superficie === 'grass' ? '🌿 Grass natural'
+                      : cancha.superficie === 'grass_sintetico' ? '🟩 Grass sintético'
+                      : cancha.superficie === 'loza' ? '🏗️ Loza'
+                      : '⬜ Cemento'}
+                  </span>
+                </>
+              )}
             </div>
 
             <div className="flex items-center gap-4 rounded-xl border border-border bg-card p-4 lg:hidden">
@@ -486,6 +499,15 @@ export default function CanchaDetailPage() {
                 <p className="text-xs text-muted-foreground">Horario</p>
                 <p className="text-sm font-medium text-foreground">6am – 10pm</p>
               </div>
+              {cancha.max_jugadores && (
+                <>
+                  <Separator orientation="vertical" className="h-10" />
+                  <div className="flex-1 text-center">
+                    <p className="text-xs text-muted-foreground">Jugadores</p>
+                    <p className="text-sm font-medium text-foreground">👥 {cancha.max_jugadores}</p>
+                  </div>
+                </>
+              )}
               {cancha.rating > 0 && (
                 <>
                   <Separator orientation="vertical" className="h-10" />
@@ -629,6 +651,12 @@ export default function CanchaDetailPage() {
                   <Clock className="h-4 w-4 text-muted-foreground" />
                   <span className="text-foreground">Horario: 6:00 AM - 10:00 PM</span>
                 </div>
+                {cancha.max_jugadores && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-muted-foreground">👥</span>
+                    <span className="text-foreground">Máx. {cancha.max_jugadores} jugadores</span>
+                  </div>
+                )}
                 {cancha.telefono && (
                   <div className="flex items-center gap-2 text-sm">
                     <Phone className="h-4 w-4 text-muted-foreground" />

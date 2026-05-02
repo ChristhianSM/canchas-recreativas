@@ -26,6 +26,8 @@ type Cancha = {
   balon_precio?: number | null;
   chalecos_disponible?: boolean;
   chalecos_precio?: number | null;
+  superficie?: string | null;
+  max_jugadores?: number | null;
 };
 
 const HORAS = [
@@ -80,6 +82,8 @@ function adaptCancha(c: Cancha) {
     balonPrecio:      c.balon_precio      ?? null,
     chalecoDisponible: c.chalecos_disponible ?? false,
     chalecosPrecio:   c.chalecos_precio   ?? null,
+    superficie:       (c.superficie ?? null) as any,
+    maxJugadores:     c.max_jugadores ?? null,
   };
 }
 
@@ -156,6 +160,8 @@ function CanchasContent() {
     if (filters.searchQuery.trim()) count++;
     if (filters.conBalon) count++;
     if (filters.conChalecos) count++;
+    if (filters.superficies.length > 0) count++;
+    if (filters.minJugadores > 0) count++;
     return count;
   }, [filters, priceRange]);
 

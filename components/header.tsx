@@ -148,19 +148,8 @@ export function Header() {
           <SheetContent side="right" className="w-[280px] bg-card p-0">
             {/* Título oculto para accesibilidad */}
             <SheetTitle className="sr-only">Menú de navegación</SheetTitle>
-            
-            <div className="flex h-16 items-center border-b border-border px-4">
-              <Link href="/" className="flex items-center gap-2" onClick={() => setOpen(false)}>
-                <Image
-                  src="/images/logo.png"
-                  alt="CanchaPiura"
-                  width={180}
-                  height={45}
-                  className="h-11 w-auto object-contain"
-                />
-              </Link>
-            </div>
-            <nav className="flex flex-col gap-1 p-4">
+            <div className="h-16 border-b border-border" />
+            <nav className="flex flex-col gap-1 p-4 pt-0">
               {navItems.map((item) => (
                 <Link
                   key={item.href}

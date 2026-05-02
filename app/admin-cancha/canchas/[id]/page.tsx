@@ -205,6 +205,8 @@ export default function OwnerEditarCanchaPage() {
   const [chalecosPrecio, setChalecosPrecio]       = useState<number | null>(null);
   const [balonDisponible, setBalonDisponible]     = useState(false);
   const [chalecosDisponible, setChalecosDisponible] = useState(false);
+  const [superficie, setSuperficie]               = useState<string>('grass_sintetico');
+  const [maxJugadores, setMaxJugadores]           = useState<number | null>(null);
   const [lat, setLat]               = useState('');
   const [lng, setLng]               = useState('');
   const [direccion, setDireccion]   = useState('');
@@ -236,6 +238,8 @@ export default function OwnerEditarCanchaPage() {
         setBalonPrecio(canchaData.balon_precio ?? null);
         setChalecosDisponible(canchaData.chalecos_disponible ?? false);
         setChalecosPrecio(canchaData.chalecos_precio ?? null);
+        setSuperficie(canchaData.superficie ?? 'grass_sintetico');
+        setMaxJugadores(canchaData.max_jugadores ?? null);
         setLoading(false);
 
         setLat(String(canchaData.lat ?? ''));
@@ -278,6 +282,8 @@ export default function OwnerEditarCanchaPage() {
         chalecosPrecio:      chalecosPrecio,
         balonDisponible:     balonDisponible,
         chalecosDisponible:  chalecosDisponible,
+        superficie:          superficie,
+        maxJugadores:        maxJugadores,
         lat: lat ? Number(lat) : undefined,
         lng: lng ? Number(lng) : undefined,
         direccion: direccion || undefined,
@@ -397,6 +403,59 @@ export default function OwnerEditarCanchaPage() {
                 <Input type="number" min={0} value={price} onChange={e => setPrice(Number(e.target.value))} />
                 <p className="text-xs text-muted-foreground">Se aplica a las horas que no tengan precio personalizado.</p>
               </div>
+            </div>
+
+            {/* Superficie */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Tipo de superficie</label>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {([
+                  { value: 'grass',           label: 'Grass natural',   icon: '🌿' },
+                  { value: 'grass_sintetico',  label: 'Grass sintético', icon: '🟩' },
+                  { value: 'loza',             label: 'Loza',            icon: '🏗️' },
+                  { value: 'cemento',          label: 'Cemento',         icon: '⬜' },
+                ] as const).map(({ value, label, icon }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setSuperficie(value)}
+                    className={cn(
+                      'flex flex-col items-center gap-1.5 rounded-xl border-2 px-3 py-3 text-center transition-all',
+                      superficie === value
+                        ? 'border-primary bg-primary/5 text-primary'
+                        : 'border-border bg-card text-muted-foreground hover:border-primary/30'
+                    )}
+                  >
+                    <span className="text-xl">{icon}</span>
+                    <span className="text-xs font-medium leading-tight">{label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Máximo de jugadores */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Máximo de jugadores</label>
+              <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
+                {[null, 8, 10, 12, 14, 16, 20, 22].map(n => (
+                  <button
+                    key={n ?? 'none'}
+                    type="button"
+                    onClick={() => setMaxJugadores(n)}
+                    className={cn(
+                      'rounded-xl border-2 py-2.5 text-sm font-medium transition-all',
+                      maxJugadores === n
+                        ? 'border-primary bg-primary text-primary-foreground'
+                        : 'border-border bg-card text-foreground hover:border-primary/40'
+                    )}
+                  >
+                    {n ?? '—'}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {maxJugadores ? `Máximo ${maxJugadores} jugadores por partido` : 'Sin límite definido'}
+              </p>
             </div>
           </Card>
 

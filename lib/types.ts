@@ -1,3 +1,19 @@
+export type SuperficieType = 'grass' | 'grass_sintetico' | 'loza' | 'cemento';
+
+export const superficieLabels: Record<SuperficieType, string> = {
+  grass:           'Grass natural',
+  grass_sintetico: 'Grass sintético',
+  loza:            'Loza',
+  cemento:         'Cemento',
+};
+
+export const superficieIcons: Record<SuperficieType, string> = {
+  grass:           '🌿',
+  grass_sintetico: '🟩',
+  loza:            '🏗️',
+  cemento:         '⬜',
+};
+
 export interface TimeSlot {
   id: string;
   time: string;
@@ -27,6 +43,8 @@ export interface Cancha {
   };
   phone: string;
   featured?: boolean;
+  superficie?: SuperficieType | null;
+  maxJugadores?: number | null;
   balonDisponible?: boolean;
   balonPrecio?: number | null;
   chalecoDisponible?: boolean;
@@ -64,6 +82,8 @@ export interface AdvancedFilters {
   searchQuery: string;
   conBalon: boolean;
   conChalecos: boolean;
+  superficies: SuperficieType[];
+  minJugadores: number; // 0 = sin filtro
 }
 
 // Importar aquí para evitar circular dependency
@@ -81,4 +101,6 @@ export const DEFAULT_FILTERS: AdvancedFilters = {
   searchQuery: '',
   conBalon: false,
   conChalecos: false,
+  superficies: [],
+  minJugadores: 0,
 };
