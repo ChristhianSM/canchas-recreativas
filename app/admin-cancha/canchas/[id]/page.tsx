@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { ArrowLeft, Save, Trash2, Plus, Ban, CheckCircle2, MapPin } from 'lucide-react';
+import { ArrowLeft, Save, Trash2, Plus, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
+import { BloqueosAdminPanel } from '@/components/bloqueos-admin-panel';
 
 const HORAS = [
   '06:00','07:00','08:00','09:00','10:00','11:00',
@@ -18,8 +19,7 @@ const HORAS = [
   '18:00','19:00','20:00','21:00','22:00','23:00',
 ];
 
-type Cancha = {
-  id: string; nombre: string; descripcion: string; telefono: string;
+type Cancha = {  id: string; nombre: string; descripcion: string; telefono: string;
   precio_por_hora: number; amenidades: string[]; imagenes: string[];
   lat: number; lng: number; direccion: string;
 };
@@ -198,7 +198,7 @@ export default function OwnerEditarCanchaPage() {
   const [amenities, setAmenities]   = useState<string[]>([]);
   const [newAmenity, setNewAmenity] = useState('');
   const [images, setImages]         = useState<string[]>([]);
-  const [restricted, setRestricted] = useState<string[]>([]);
+  const [activeTab, setActiveTab]   = useState('info');
   const [lat, setLat]               = useState('');
   const [lng, setLng]               = useState('');
   const [direccion, setDireccion]   = useState('');
@@ -227,8 +227,6 @@ export default function OwnerEditarCanchaPage() {
         setImages(canchaData.imagenes ?? []);
         setLoading(false);
 
-        // Los horarios ya vienen incluidos en la respuesta de la cancha
-        setRestricted(Array.isArray(canchaData.horariosRestringidos) ? canchaData.horariosRestringidos : []);
         setLat(String(canchaData.lat ?? ''));
         setLng(String(canchaData.lng ?? ''));
         setDireccion(canchaData.direccion ?? '');
@@ -264,7 +262,6 @@ export default function OwnerEditarCanchaPage() {
         precioHora: price,
         amenidades: amenities,
         imagenes: images,
-        horariosRestringidos: restricted,
         lat: lat ? Number(lat) : undefined,
         lng: lng ? Number(lng) : undefined,
         direccion: direccion || undefined,
@@ -281,9 +278,6 @@ export default function OwnerEditarCanchaPage() {
       setSaveError(data.error ?? 'Error al guardar');
     }
   };
-
-  const toggleHora = (hora: string) =>
-    setRestricted(prev => prev.includes(hora) ? prev.filter(h => h !== hora) : [...prev, hora]);
 
   const removeImage = (idx: number) => setImages(prev => prev.filter((_, i) => i !== idx));
 
@@ -343,7 +337,7 @@ export default function OwnerEditarCanchaPage() {
             <p className="text-sm text-muted-foreground">Editar mi cancha</p>
           </div>
         </div>
-        <Button onClick={handleSave} disabled={saving} className="gap-2 shrink-0">
+        <Button onClick={handleSave} disabled={saving} className={cn("gap-2 shrink-0", activeTab === 'bloqueos' && "invisible")}>
           <Save className="h-4 w-4" />
           {saving ? 'Guardando...' : saved ? '¡Guardado! ✓' : 'Guardar cambios'}
         </Button>
@@ -354,14 +348,16 @@ export default function OwnerEditarCanchaPage() {
         </div>
       )}
 
-      <Tabs defaultValue="info">
-        <TabsList className="w-full sm:w-auto">
-          <TabsTrigger value="info"      className="flex-1 sm:flex-none">Información</TabsTrigger>
-          <TabsTrigger value="fotos"     className="flex-1 sm:flex-none">Fotos</TabsTrigger>
-          <TabsTrigger value="horarios"  className="flex-1 sm:flex-none">Horarios</TabsTrigger>
-          <TabsTrigger value="ubicacion" className="flex-1 sm:flex-none">Ubicación</TabsTrigger>
-          <TabsTrigger value="servicios" className="flex-1 sm:flex-none">Servicios</TabsTrigger>
-        </TabsList>
+      <Tabs defaultValue="info" onValueChange={setActiveTab}>
+        <div className="overflow-x-auto scrollbar-none -mx-1 px-1">
+          <TabsList className="w-max min-w-full sm:w-auto">
+            <TabsTrigger value="info">Información</TabsTrigger>
+            <TabsTrigger value="fotos">Fotos</TabsTrigger>
+            <TabsTrigger value="bloqueos">Bloqueos</TabsTrigger>
+            <TabsTrigger value="ubicacion">Ubicación</TabsTrigger>
+            <TabsTrigger value="servicios">Servicios</TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* ── Información ── */}
         <TabsContent value="info" className="space-y-4 pt-4">
@@ -427,47 +423,20 @@ export default function OwnerEditarCanchaPage() {
           </Card>
         </TabsContent>
 
-        {/* ── Horarios ── */}
-        <TabsContent value="horarios" className="space-y-4 pt-4">
-          <Card className="border-border p-5 space-y-4">
-            <div>
-              <p className="font-medium text-foreground">Horarios restringidos</p>
-              <p className="text-sm text-muted-foreground">Los horarios en rojo no estarán disponibles para reservas.</p>
-            </div>
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
-              {HORAS.map(hora => {
-                const bloqueado = restricted.includes(hora);
-                return (
-                  <button key={hora} onClick={() => toggleHora(hora)}
-                    className={cn(
-                      'flex items-center justify-center gap-1.5 rounded-xl border-2 px-3 py-2.5 text-sm font-medium transition-all',
-                      bloqueado
-                        ? 'border-destructive bg-destructive/10 text-destructive'
-                        : 'border-border bg-card text-foreground hover:border-primary/40'
-                    )}>
-                    {bloqueado
-                      ? <Ban className="h-3.5 w-3.5 shrink-0" />
-                      : <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-primary" />
-                    }
-                    {hora}
-                  </button>
-                );
-              })}
-            </div>
-            {restricted.length > 0 && (
-              <div className="rounded-xl bg-destructive/5 border border-destructive/20 p-3">
-                <p className="text-sm font-medium text-destructive mb-1">
-                  {restricted.length} horario{restricted.length > 1 ? 's' : ''} bloqueado{restricted.length > 1 ? 's' : ''}:
-                </p>
-                <p className="text-sm text-muted-foreground">{restricted.join(', ')}</p>
-              </div>
-            )}
-          </Card>
+        {/* ── Bloqueos avanzados ── */}
+        <TabsContent value="bloqueos" className="space-y-4 pt-4">
+          <div className="rounded-xl border border-border bg-card px-4 py-3 mb-2">
+            <p className="text-sm font-medium text-foreground">Bloqueos por fecha o recurrentes</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Bloquea horarios para un día específico, de forma recurrente cada semana, o de forma permanente.
+              Los horarios bloqueados no estarán disponibles para reservas.
+            </p>
+          </div>
+          <BloqueosAdminPanel canchaId={id} token={getOwnerToken() ?? ''} />
         </TabsContent>
 
         {/* ── Ubicación ── */}
-        <TabsContent value="ubicacion" className="space-y-4 pt-4">
-          <UbicacionTab
+        <TabsContent value="ubicacion" className="space-y-4 pt-4">          <UbicacionTab
             direccion={direccion}
             lat={lat}
             lng={lng}
