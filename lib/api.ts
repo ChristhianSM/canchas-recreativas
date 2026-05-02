@@ -15,6 +15,32 @@ export function removeToken() {
   localStorage.removeItem('cp_user');
 }
 
+/**
+ * Valida si el token actual es válido
+ * Retorna true si es válido, false si expiró o es inválido
+ */
+export async function validateToken(): Promise<boolean> {
+  const token = getToken();
+  if (!token) return false;
+
+  try {
+    const response = await fetch('/api/auth/me', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!response.ok) {
+      // Token inválido — limpiar
+      removeToken();
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error validando token:', error);
+    return false;
+  }
+}
+
 function authHeaders() {
   const token = getToken();
   return token ? { Authorization: `Bearer ${token}` } : {};

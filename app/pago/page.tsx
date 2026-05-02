@@ -224,17 +224,31 @@ function PagoContent() {
   useEffect(() => {
     const token = getToken();
     if (token) {
-      apiGetLoyalty().then(data => {
-        setCupones((data.cupones ?? []).filter((c: Cupon) => !c.usado));
-      });
-      // Obtener teléfono del perfil del usuario usando el token actual
+      // Validar token antes de cargar datos
       fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
-        .then(r => r.json())
+        .then(r => {
+          if (!r.ok) {
+            // Token inválido — marcar como invitado
+            console.warn('Token inválido, continuando como invitado');
+            localStorage.removeItem('cp_token');
+            localStorage.removeItem('cp_user');
+            setEsInvitado(true);
+            return Promise.reject('Token inválido');
+          }
+          return r.json();
+        })
         .then(perfil => {
+          // Token válido — cargar datos
+          apiGetLoyalty().then(data => {
+            setCupones((data.cupones ?? []).filter((c: Cupon) => !c.usado));
+          });
           const tel = perfil?.telefono || '';
           if (tel) setTelefonoRegistrado(tel);
         })
-        .catch(err => console.error('Error al obtener perfil:', err));
+        .catch(err => {
+          console.error('Error al obtener perfil:', err);
+          setEsInvitado(true);
+        });
     } else {
       setEsInvitado(true);
     }
