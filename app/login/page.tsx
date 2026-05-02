@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, Mail, Lock, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { LoadingButton } from '@/components/loading-button';
 import { saveUser } from '@/lib/auth';
 import { apiLogin, apiLoginWithOAuth } from '@/lib/api';
 
@@ -151,14 +152,16 @@ export default function LoginPage() {
             </div>
 
             {/* Submit */}
-            <Button
+            <LoadingButton
               type="submit"
               className="w-full"
               size="lg"
-              disabled={isLoading}
+              isLoading={isLoading}
+              loadingText="Iniciando sesión"
+              loadingVariant="dots"
             >
-              {isLoading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
-            </Button>
+              Iniciar Sesión
+            </LoadingButton>
           </form>
 
           {/* Divider */}

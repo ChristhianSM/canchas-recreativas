@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { CheckCircle2, XCircle, Clock, Eye, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { LoadingButton } from '@/components/loading-button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -67,6 +68,8 @@ export default function OwnerReservasPage() {
   const [selected, setSelected]         = useState<Reserva | null>(null);
   const [loading, setLoading]           = useState(true);
   const [procesando, setProcesando]     = useState(false);
+  const [confirmando, setConfirmando]   = useState(false);
+  const [rechazando, setRechazando]     = useState(false);
 
   const reload = async () => {
     const token = getOwnerToken();
@@ -82,38 +85,84 @@ export default function OwnerReservasPage() {
   useEffect(() => { reload(); }, []);
 
   const confirmar = async (id: string) => {
-    const token = getOwnerToken();
-    await fetch(`/api/reservas/update?id=${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ estado: 'confirmada' }),
-    });
+    setConfirmando(true);
+    
+    // Optimistic update - actualizar inmediatamente en el estado local
+    setReservas(prev => prev.map(r => 
+      r.id === id ? { ...r, estado: 'confirmada' as ReservaEstado } : r
+    ));
+    
+    // Cerrar modal inmediatamente
     setSelected(null);
-    reload();
+    
+    // Hacer la petición al servidor en segundo plano
+    const token = getOwnerToken();
+    try {
+      await fetch(`/api/reservas/update?id=${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ estado: 'confirmada' }),
+      });
+    } catch (error) {
+      // Si falla, recargar para obtener el estado real
+      reload();
+    } finally {
+      setConfirmando(false);
+    }
   };
 
   const rechazar = async (id: string) => {
-    const token = getOwnerToken();
-    await fetch(`/api/reservas/update?id=${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ estado: 'rechazada' }),
-    });
+    setRechazando(true);
+    
+    // Optimistic update - actualizar inmediatamente en el estado local
+    setReservas(prev => prev.map(r => 
+      r.id === id ? { ...r, estado: 'rechazada' as ReservaEstado } : r
+    ));
+    
+    // Cerrar modal inmediatamente
     setSelected(null);
-    reload();
+    
+    // Hacer la petición al servidor en segundo plano
+    const token = getOwnerToken();
+    try {
+      await fetch(`/api/reservas/update?id=${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ estado: 'rechazada' }),
+      });
+    } catch (error) {
+      // Si falla, recargar para obtener el estado real
+      reload();
+    } finally {
+      setRechazando(false);
+    }
   };
 
   const marcarDevolucionRealizada = async (id: string) => {
     setProcesando(true);
-    const token = getOwnerToken();
-    await fetch(`/api/reservas/update?id=${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ devolucion_procesada: true }),
-    });
-    setProcesando(false);
+    
+    // Optimistic update - actualizar inmediatamente en el estado local
+    setReservas(prev => prev.map(r => 
+      r.id === id ? { ...r, devolucion_procesada: true } : r
+    ));
+    
+    // Cerrar modal inmediatamente
     setSelected(null);
-    reload();
+    
+    // Hacer la petición al servidor en segundo plano
+    const token = getOwnerToken();
+    try {
+      await fetch(`/api/reservas/update?id=${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ devolucion_procesada: true }),
+      });
+    } catch (error) {
+      // Si falla, recargar para obtener el estado real
+      reload();
+    } finally {
+      setProcesando(false);
+    }
   };
 
   const byEstado = (e: ReservaEstado) => reservas.filter(r => r.estado === e);
@@ -278,9 +327,9 @@ export default function OwnerReservasPage() {
 
       <Card className="border-border overflow-hidden">
         <Tabs defaultValue="pendiente">
-          <div className="border-b border-border px-4 pt-4 pb-4">
-            <TabsList>
-              <TabsTrigger value="pendiente">
+          <div className="border-b border-border overflow-x-auto -mx-4 px-4 pb-4">
+            <TabsList className="inline-flex w-auto h-auto bg-transparent p-0 gap-1">
+              <TabsTrigger value="pendiente" className="shrink-0 data-[state=active]:bg-background data-[state=active]:shadow-sm">
                 Pendientes
                 {byEstado('pendiente').length > 0 && (
                   <span className="ml-1.5 rounded-full bg-yellow-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
@@ -288,9 +337,13 @@ export default function OwnerReservasPage() {
                   </span>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="confirmada">Confirmadas ({byEstado('confirmada').length})</TabsTrigger>
-              <TabsTrigger value="rechazada">Rechazadas ({byEstado('rechazada').length})</TabsTrigger>
-              <TabsTrigger value="cancelada">
+              <TabsTrigger value="confirmada" className="shrink-0 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                Confirmadas ({byEstado('confirmada').length})
+              </TabsTrigger>
+              <TabsTrigger value="rechazada" className="shrink-0 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                Rechazadas ({byEstado('rechazada').length})
+              </TabsTrigger>
+              <TabsTrigger value="cancelada" className="shrink-0 data-[state=active]:bg-background data-[state=active]:shadow-sm">
                 Canceladas ({byEstado('cancelada').length})
                 {devolucionesPendientes.length > 0 && (
                   <span className="ml-1.5 rounded-full bg-orange-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
@@ -298,7 +351,9 @@ export default function OwnerReservasPage() {
                   </span>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="todas">Todas ({reservas.length})</TabsTrigger>
+              <TabsTrigger value="todas" className="shrink-0 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                Todas ({reservas.length})
+              </TabsTrigger>
             </TabsList>
           </div>
           <TabsContent value="pendiente"  className="mt-0"><Table list={byEstado('pendiente')} /></TabsContent>
@@ -402,14 +457,16 @@ export default function OwnerReservasPage() {
                           );
                         })()}
                       </p>
-                      <Button
+                      <LoadingButton
                         className="w-full bg-green-600 hover:bg-green-700 text-white"
                         onClick={() => marcarDevolucionRealizada(selected.id)}
-                        disabled={procesando}
+                        isLoading={procesando}
+                        loadingText="Guardando"
+                        loadingVariant="spinner"
                       >
                         <CheckCircle2 className="mr-2 h-4 w-4" />
-                        {procesando ? 'Guardando...' : '✅ Ya devolví el dinero'}
-                      </Button>
+                        ✅ Ya devolví el dinero
+                      </LoadingButton>
                     </>
                   ) : (
                     <p className="text-xs text-green-700">
@@ -443,14 +500,25 @@ export default function OwnerReservasPage() {
 
               {selected.estado === 'pendiente' ? (
                 <div className="flex gap-3">
-                  <Button variant="outline"
+                  <LoadingButton
+                    variant="outline"
                     className="flex-1 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                    onClick={() => rechazar(selected.id)}>
+                    onClick={() => rechazar(selected.id)}
+                    isLoading={rechazando}
+                    loadingText="Rechazando"
+                    loadingVariant="spinner"
+                  >
                     <XCircle className="mr-2 h-4 w-4" />Rechazar
-                  </Button>
-                  <Button className="flex-1" onClick={() => confirmar(selected.id)}>
+                  </LoadingButton>
+                  <LoadingButton
+                    className="flex-1"
+                    onClick={() => confirmar(selected.id)}
+                    isLoading={confirmando}
+                    loadingText="Confirmando"
+                    loadingVariant="spinner"
+                  >
                     <CheckCircle2 className="mr-2 h-4 w-4" />Confirmar
-                  </Button>
+                  </LoadingButton>
                 </div>
               ) : (
                 selected.estado !== 'cancelada' && (

@@ -6,6 +6,8 @@ interface ReservaEmailData {
   hora:         string;
   precio:       number;
   estado:       'confirmada' | 'rechazada';
+  reservaId:    string;
+  baseUrl:      string;
 }
 
 interface ReservaRecibidaEmailData {
@@ -25,7 +27,7 @@ export async function sendReservaRecibidaEmail(data: ReservaRecibidaEmailData) {
 
   const apiKey    = process.env.API_KEY_BREVO;
   const fromEmail = process.env.BREVO_FROM_EMAIL;
-  const fromName  = process.env.BREVO_FROM_NAME ?? 'Cancha Piura';
+  const fromName  = process.env.BREVO_FROM_NAME ?? 'CanchaGo';
 
   if (!apiKey || !fromEmail) return;
 
@@ -48,7 +50,7 @@ export async function sendReservaRecibidaEmail(data: ReservaRecibidaEmailData) {
         <!-- Header -->
         <tr>
           <td style="background:#111827;padding:28px 32px;text-align:center;">
-            <p style="margin:0;font-size:22px;font-weight:700;color:#ffffff;">⚽ Cancha Piura</p>
+            <p style="margin:0;font-size:22px;font-weight:700;color:#ffffff;">⚽ CanchaGo</p>
             <p style="margin:6px 0 0;font-size:13px;color:#9ca3af;">Sistema de reservas</p>
           </td>
         </tr>
@@ -152,7 +154,7 @@ export async function sendReservaRecibidaEmail(data: ReservaRecibidaEmailData) {
         <tr>
           <td style="padding:28px 32px;text-align:center;">
             <p style="margin:0;font-size:12px;color:#9ca3af;">
-              Este correo fue enviado automáticamente por Cancha Piura.<br/>
+              Este correo fue enviado automáticamente por CanchaGo.<br/>
               Por favor no respondas a este mensaje.
             </p>
           </td>
@@ -192,11 +194,11 @@ export async function sendReservaRecibidaEmail(data: ReservaRecibidaEmailData) {
 }
 
 export async function sendReservaEmail(data: ReservaEmailData) {
-  const { toEmail, toName, canchaNombre, fecha, hora, precio, estado } = data;
+  const { toEmail, toName, canchaNombre, fecha, hora, precio, estado, reservaId, baseUrl } = data;
 
   const apiKey   = process.env.API_KEY_BREVO;
   const fromEmail = process.env.BREVO_FROM_EMAIL;
-  const fromName  = process.env.BREVO_FROM_NAME ?? 'Cancha Piura';
+  const fromName  = process.env.BREVO_FROM_NAME ?? 'CanchaGo';
 
   if (!apiKey || !fromEmail) {
     console.error('[email] Faltan variables de entorno: API_KEY_BREVO o BREVO_FROM_EMAIL');
@@ -220,6 +222,9 @@ export async function sendReservaEmail(data: ReservaEmailData) {
     ? 'Preséntate puntualmente en la cancha. ¡Que disfrutes el partido!'
     : 'Puedes intentar reservar otro horario disponible en nuestra plataforma.';
 
+  const linkReserva = `${baseUrl}/mi-reserva?id=${reservaId}`;
+  const codigoCorto = reservaId.slice(-6).toUpperCase();
+
   const htmlContent = `
 <!DOCTYPE html>
 <html lang="es">
@@ -236,7 +241,7 @@ export async function sendReservaEmail(data: ReservaEmailData) {
           <!-- Header -->
           <tr>
             <td style="background:#111827;padding:28px 32px;text-align:center;">
-              <p style="margin:0;font-size:22px;font-weight:700;color:#ffffff;letter-spacing:-0.5px;">⚽ Cancha Piura</p>
+              <p style="margin:0;font-size:22px;font-weight:700;color:#ffffff;letter-spacing:-0.5px;">⚽ CanchaGo</p>
               <p style="margin:6px 0 0;font-size:13px;color:#9ca3af;">Sistema de reservas</p>
             </td>
           </tr>
@@ -299,11 +304,33 @@ export async function sendReservaEmail(data: ReservaEmailData) {
             </td>
           </tr>
 
+          <!-- Código de reserva (solo si está confirmada) -->
+          ${esConfirmada ? `
+          <tr>
+            <td style="padding:20px 32px 0;text-align:center;">
+              <p style="margin:0;font-size:12px;color:#6b7280;">Código de tu reserva</p>
+              <p style="margin:6px 0 0;font-size:28px;font-weight:700;color:#111827;letter-spacing:4px;">${codigoCorto}</p>
+            </td>
+          </tr>
+
+          <!-- Botón ver reserva -->
+          <tr>
+            <td style="padding:24px 32px 0;text-align:center;">
+              <a href="${linkReserva}" style="display:inline-block;background:#16a34a;color:#ffffff;font-size:15px;font-weight:600;padding:14px 32px;border-radius:10px;text-decoration:none;">
+                Ver mi reserva
+              </a>
+              <p style="margin:12px 0 0;font-size:12px;color:#9ca3af;">
+                Desde este link puedes ver el estado y cancelar si lo necesitas
+              </p>
+            </td>
+          </tr>
+          ` : ''}
+
           <!-- Footer -->
           <tr>
             <td style="padding:28px 32px;text-align:center;border-top:1px solid #f3f4f6;margin-top:24px;">
               <p style="margin:0;font-size:12px;color:#9ca3af;">
-                Este correo fue enviado automáticamente por Cancha Piura.<br/>
+                Este correo fue enviado automáticamente por CanchaGo.<br/>
                 Por favor no respondas a este mensaje.
               </p>
             </td>

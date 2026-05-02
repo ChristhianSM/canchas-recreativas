@@ -28,6 +28,7 @@ interface AdvancedFiltersProps {
   activeFilterCount: number;
   onRefresh?: () => void;
   isSidebar?: boolean; // Nueva prop para determinar si es sidebar o sheet
+  resultCount?: number; // Contador de resultados filtrados
 }
 
 const HOURS = [
@@ -37,6 +38,14 @@ const HOURS = [
 ];
 
 import { getLocalDateString } from '@/lib/date-utils';
+
+// Convertir formato 24h a 12h (AM/PM)
+function formatTo12Hour(time24: string): string {
+  const [hours, minutes] = time24.split(':').map(Number);
+  const period = hours >= 12 ? 'PM' : 'AM';
+  const hours12 = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+  return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`;
+}
 
 // Generar próximos 6 días incluyendo hoy
 function getNext6Days(): string[] {
@@ -72,6 +81,7 @@ export function AdvancedFiltersComponent({
   activeFilterCount,
   onRefresh,
   isSidebar = false,
+  resultCount,
 }: AdvancedFiltersProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [dateStartIndex, setDateStartIndex] = useState(0);
@@ -143,7 +153,8 @@ export function AdvancedFiltersComponent({
           placeholder="Nombre, dirección..."
           value={filters.searchQuery}
           onChange={(e) => onFiltersChange({ ...filters, searchQuery: e.target.value })}
-          className="h-9"
+          className="h-9 text-sm placeholder:text-sm"
+          autoFocus={false}
         />
       </div>
 
@@ -220,7 +231,7 @@ export function AdvancedFiltersComponent({
                   onClick={() => handleHourToggle(hour)}
                   className="h-8 text-xs p-1"
                 >
-                  {hour}
+                  {formatTo12Hour(hour)}
                 </Button>
               ))}
             </div>
@@ -235,60 +246,28 @@ export function AdvancedFiltersComponent({
           </label>
           
           <div className="space-y-4">
-            {/* Días con slider */}
+            {/* Días con scroll horizontal */}
             <div className="relative">
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 rounded-full bg-background shadow-md shrink-0"
-                  onClick={() => {
-                    const currentIndex = next6Days.findIndex(d => d === filters.selectedDate);
-                    if (currentIndex > 0) {
-                      handleDateChange(next6Days[currentIndex - 1]);
-                    }
-                  }}
-                  disabled={next6Days.findIndex(d => d === filters.selectedDate) === 0}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                
-                <div className="flex-1 overflow-x-auto">
-                  <div className="flex gap-2 pb-2">
-                    {next6Days.slice(0, 4).map(date => {
-                      const { day, date: dateNum, isToday } = formatDateDisplay(date);
-                      const isSelected = filters.selectedDate === date;
+              <div className="overflow-x-auto pb-2 -mx-1 px-1">
+                <div className="flex gap-2 min-w-max">
+                  {next6Days.map(date => {
+                    const { day, date: dateNum, isToday } = formatDateDisplay(date);
+                    const isSelected = filters.selectedDate === date;
 
-                      return (
-                        <Button
-                          key={date}
-                          variant={isSelected ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => handleDateChange(date)}
-                          className="text-xs h-16 px-2 py-1.5 flex flex-col items-center justify-center gap-0.5 shrink-0 min-w-14"
-                        >
-                          <span className="font-semibold text-xs">{isToday ? 'Hoy' : day}</span>
-                          <span className="text-xs font-bold">{dateNum}</span>
-                        </Button>
-                      );
-                    })}
-                  </div>
+                    return (
+                      <Button
+                        key={date}
+                        variant={isSelected ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => handleDateChange(date)}
+                        className="text-xs h-12 px-2 py-1.5 flex flex-col items-center justify-center gap-0.5 shrink-0 min-w-[70px]"
+                      >
+                        <span className="font-semibold text-xs">{isToday ? 'Hoy' : day}</span>
+                        <span className="text-sm font-bold">{dateNum}</span>
+                      </Button>
+                    );
+                  })}
                 </div>
-
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 rounded-full bg-background shadow-md shrink-0"
-                  onClick={() => {
-                    const currentIndex = next6Days.findIndex(d => d === filters.selectedDate);
-                    if (currentIndex < next6Days.length - 1) {
-                      handleDateChange(next6Days[currentIndex + 1]);
-                    }
-                  }}
-                  disabled={next6Days.findIndex(d => d === filters.selectedDate) === next6Days.length - 1}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
               </div>
             </div>
 
@@ -305,7 +284,7 @@ export function AdvancedFiltersComponent({
                     onClick={() => handleHourToggle(hour)}
                     className="text-xs"
                   >
-                    {hour}
+                    {formatTo12Hour(hour)}
                   </Button>
                 ))}
               </div>
@@ -491,13 +470,48 @@ export function AdvancedFiltersComponent({
               )}
             </Button>
           </SheetTrigger>
-          <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto p-6">
-            <SheetHeader>
-              <SheetTitle>Filtros avanzados</SheetTitle>
-            </SheetHeader>
-            <div className="pr-4">
+          <SheetContent side="right" className="p-0 flex flex-col sm:max-w-md">
+            {/* Header fijo con botón de cerrar */}
+            <div className="sticky top-0 z-10 bg-background border-b border-border px-6 py-4">
+              <SheetHeader>
+                <SheetTitle>Filtros avanzados</SheetTitle>
+                {resultCount !== undefined && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {resultCount} {resultCount === 1 ? 'cancha encontrada' : 'canchas encontradas'}
+                  </p>
+                )}
+              </SheetHeader>
+            </div>
+            
+            {/* Contenido scrolleable */}
+            <div className="flex-1 overflow-y-auto px-6 py-4 pt-0">
               {filterContent}
             </div>
+
+            {/* Footer sticky con contador de resultados */}
+            {resultCount !== undefined && (
+              <div className="sticky bottom-0 z-10 bg-background border-t border-border px-6 py-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-foreground">
+                      {resultCount} {resultCount === 1 ? 'resultado' : 'resultados'}
+                    </p>
+                    {activeFilterCount > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        {activeFilterCount} {activeFilterCount === 1 ? 'filtro activo' : 'filtros activos'}
+                      </p>
+                    )}
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => setIsOpen(false)}
+                    className="shrink-0"
+                  >
+                    Ver resultados
+                  </Button>
+                </div>
+              </div>
+            )}
           </SheetContent>
         </Sheet>
 

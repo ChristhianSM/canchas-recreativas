@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { MapPin } from 'lucide-react';
 import { Header } from '@/components/header';
 import { CanchaCard } from '@/components/cancha-card';
 import { AdvancedFiltersComponent } from '@/components/advanced-filters';
-import { SearchBar } from '@/components/search-bar';
 import { SportType, AdvancedFilters, DEFAULT_FILTERS } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
@@ -75,7 +75,8 @@ function adaptCancha(c: Cancha) {
   };
 }
 
-export default function CanchasPage() {
+function CanchasContent() {
+  const searchParams = useSearchParams();
   const [canchas, setCanchas]         = useState<Cancha[]>([]);
   const [loading, setLoading]         = useState(true);
   const [filters, setFilters]         = useState<AdvancedFilters>(DEFAULT_FILTERS);
@@ -113,6 +114,20 @@ export default function CanchasPage() {
     loadCanchas();
   }, []);
 
+  // Aplicar parámetros de URL al cargar
+  useEffect(() => {
+    const query = searchParams.get('q');
+    const sport = searchParams.get('sport');
+    
+    if (query || sport) {
+      setFilters(prev => ({
+        ...prev,
+        searchQuery: query || '',
+        sports: sport ? [sport as SportType] : [],
+      }));
+    }
+  }, [searchParams]);
+
   // Aplicar filtros y ordenamiento
   const filtered = useMemo(() => {
     const adaptedList = canchas.map(adaptCancha);
@@ -143,10 +158,10 @@ export default function CanchasPage() {
         <div className="container mx-auto px-4 flex">
           {/* Sidebar de filtros - Solo en desktop */}
           <aside className="hidden lg:block w-[450px] shrink-0 pr-8">
-            <div className="py-6 px-6 space-y-6 bg-muted/30 rounded-lg border border-border/50">
+            <div className="sticky mt-2 py-6 px-6 space-y-6 bg-card rounded-xl border border-border shadow-sm">
               <div>
-                <h2 className="text-lg font-semibold text-foreground">Filtros</h2>
-                <p className="text-xs text-muted-foreground">Encuentra tu cancha ideal</p>
+                <h2 className="text-xl font-bold text-foreground">Filtros</h2>
+                <p className="text-sm text-muted-foreground">Encuentra tu cancha ideal</p>
               </div>
               <AdvancedFiltersComponent
                 filters={filters}
@@ -157,6 +172,7 @@ export default function CanchasPage() {
                 sports={sports}
                 activeFilterCount={activeFilterCount}
                 isSidebar={true}
+                resultCount={filtered.length}
               />
             </div>
           </aside>
@@ -165,7 +181,7 @@ export default function CanchasPage() {
           <main className="flex-1 min-w-0">
             <section className="border-b border-border bg-card py-6 lg:hidden">
               <div className="mb-4">
-                <h1 className="text-2xl font-bold text-foreground">Todas las Canchas</h1>
+                <h1 className="text-2xl font-bold text-foreground">Explora Canchas</h1>
                 <p className="text-muted-foreground">Encuentra el espacio perfecto para tu deporte</p>
               </div>
               <div className="space-y-4">
@@ -178,10 +194,11 @@ export default function CanchasPage() {
                   sports={sports}
                   activeFilterCount={activeFilterCount}
                   isSidebar={false}
+                  resultCount={filtered.length}
                 />
                 <div className="flex justify-end">
                   <Select value={sortBy} onValueChange={v => setSortBy(v as SortOption)}>
-                    <SelectTrigger className="w-full sm:w-48 bg-secondary border-border">
+                    <SelectTrigger className="w-full sm:w-48 bg-background border-border">
                       <SelectValue placeholder="Ordenar por" />
                     </SelectTrigger>
                     <SelectContent>
@@ -201,11 +218,13 @@ export default function CanchasPage() {
               <div className="hidden lg:block mb-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h1 className="text-2xl font-bold text-foreground">Todas las Canchas</h1>
-                    <p className="text-muted-foreground">Encuentra el espacio perfecto para tu deporte</p>
+                    <h1 className="text-3xl font-bold text-foreground mb-1">Explora Canchas</h1>
+                    <p className="text-muted-foreground">
+                      {loading ? 'Cargando...' : `${filtered.length} ${filtered.length === 1 ? 'cancha encontrada' : 'canchas encontradas'}`}
+                    </p>
                   </div>
                   <Select value={sortBy} onValueChange={v => setSortBy(v as SortOption)}>
-                    <SelectTrigger className="w-48 bg-secondary border-border">
+                    <SelectTrigger className="w-56 bg-background border-border">
                       <SelectValue placeholder="Ordenar por" />
                     </SelectTrigger>
                     <SelectContent>
@@ -219,25 +238,27 @@ export default function CanchasPage() {
                 </div>
               </div>
 
-              <p className="mb-6 text-sm text-muted-foreground">
-                {loading ? 'Cargando...' : `${filtered.length} ${filtered.length === 1 ? 'cancha encontrada' : 'canchas encontradas'}`}
-              </p>
-
               {loading ? (
                 <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
-                  {[1,2,3,4].map(i => <div key={i} className="h-64 animate-pulse rounded-xl bg-muted" />)}
+                  {[1,2,3,4,5,6].map(i => <div key={i} className="h-80 animate-pulse rounded-xl bg-muted" />)}
                 </div>
               ) : filtered.length > 0 ? (
                 <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
                   {filtered.map(c => <CanchaCard key={c.id} cancha={c} />)}
                 </div>
               ) : (
-                <div className="py-16 text-center">
-                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-                    <MapPin className="h-8 w-8 text-muted-foreground" />
+                <div className="py-20 text-center">
+                  <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-muted">
+                    <MapPin className="h-10 w-10 text-muted-foreground" />
                   </div>
-                  <h3 className="mb-2 text-lg font-semibold text-foreground">No se encontraron canchas</h3>
-                  <p className="text-muted-foreground">Intenta con otros filtros o términos de búsqueda</p>
+                  <h3 className="mb-2 text-xl font-semibold text-foreground">No se encontraron canchas</h3>
+                  <p className="text-muted-foreground mb-6">Intenta ajustar los filtros o términos de búsqueda</p>
+                  <button
+                    onClick={() => setFilters(DEFAULT_FILTERS)}
+                    className="text-primary hover:underline font-medium"
+                  >
+                    Limpiar todos los filtros
+                  </button>
                 </div>
               )}
             </section>
@@ -245,20 +266,44 @@ export default function CanchasPage() {
         </div>
       </div>
 
-      <footer className="border-t border-border bg-card py-8">
+      <footer className="border-t border-border bg-card py-8 mt-12">
         <div className="container mx-auto px-4">
           <div className="flex flex-col items-center justify-center gap-4">
             <Image
               src="/images/logo.png"
-              alt="CanchaPiura"
-              width={320}
-              height={100}
-              className="h-24 w-auto object-contain"
+              alt="CanchaGo"
+              width={280}
+              height={50}
+              className="h-16 w-auto object-contain"
             />
             <p className="text-sm text-muted-foreground">&copy; 2026 CanchaGo. Todos los derechos reservados.</p>
           </div>
         </div>
       </footer>
     </div>
+  );
+}
+
+
+export default function CanchasPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex flex-col flex-1 bg-background">
+        <Header />
+        <main className="flex-1 container mx-auto px-4 py-8">
+          <div className="mb-6 space-y-2">
+            <div className="h-8 w-48 animate-pulse rounded-lg bg-muted" />
+            <div className="h-4 w-64 animate-pulse rounded-lg bg-muted" />
+          </div>
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3, 4, 5, 6].map(i => (
+              <div key={i} className="h-80 animate-pulse rounded-xl bg-muted" />
+            ))}
+          </div>
+        </main>
+      </div>
+    }>
+      <CanchasContent />
+    </Suspense>
   );
 }

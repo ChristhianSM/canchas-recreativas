@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowLeft, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { LoadingButton } from '@/components/loading-button';
 import { Input } from '@/components/ui/input';
 import { saveUser } from '@/lib/auth';
 import { apiRegistro, apiLogin, apiLoginWithOAuth } from '@/lib/api';
@@ -357,14 +358,16 @@ export default function RegistroPage() {
             </div>
 
             {/* Submit */}
-            <Button
+            <LoadingButton
               type="submit"
               className="w-full"
               size="lg"
-              disabled={isLoading}
+              isLoading={isLoading}
+              loadingText="Creando cuenta"
+              loadingVariant="pulse"
             >
-              {isLoading ? 'Creando cuenta...' : 'Crear Cuenta'}
-            </Button>
+              Crear Cuenta
+            </LoadingButton>
           </form>
 
           {/* Divider */}

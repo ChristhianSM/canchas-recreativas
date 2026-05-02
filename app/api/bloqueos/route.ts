@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
 
-const MINUTOS = 0.5; // 30 segundos para pruebas
+const MINUTOS = 5; // 5 minutos
 
 // POST — crear bloqueo temporal al iniciar pago
 export async function POST(req: NextRequest) {

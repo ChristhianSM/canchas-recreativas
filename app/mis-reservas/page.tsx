@@ -185,21 +185,50 @@ function ReservaCard({
 // ── Empty state ─────────────────────────────────────────────────
 function EmptyState({ type }: { type: 'proximas' | 'historial' | 'favorites' }) {
   const cfg = {
-    proximas:  { icon: <Calendar className="h-8 w-8 text-muted-foreground" />, title: 'No tienes reservas próximas',    desc: 'Explora nuestras canchas y haz tu primera reserva', action: true },
-    historial: { icon: <Calendar className="h-8 w-8 text-muted-foreground" />, title: 'No tienes reservas en historial', desc: 'Aquí aparecerán tus reservas canceladas o rechazadas', action: false },
-    favorites: { icon: <Heart    className="h-8 w-8 text-muted-foreground" />, title: 'No tienes canchas favoritas',     desc: 'Toca el corazón en la página de cada cancha para guardarla', action: true },
+    proximas:  { 
+      icon: <CalendarPlus className="h-10 w-10 text-muted-foreground" />, 
+      title: 'No tienes reservas próximas',    
+      desc: 'Explora nuestras canchas y haz tu primera reserva', 
+      action: true,
+      bgColor: 'bg-primary/5',
+      iconBg: 'bg-primary/10'
+    },
+    historial: { 
+      icon: <Clock className="h-10 w-10 text-muted-foreground" />, 
+      title: 'No tienes reservas en historial', 
+      desc: 'Aquí aparecerán tus reservas pasadas y canceladas', 
+      action: false,
+      bgColor: 'bg-muted/30',
+      iconBg: 'bg-muted'
+    },
+    favorites: { 
+      icon: <Heart className="h-10 w-10 text-muted-foreground" />, 
+      title: 'No tienes canchas favoritas',     
+      desc: 'Toca el corazón ❤️ en cualquier cancha para guardarla aquí', 
+      action: true,
+      bgColor: 'bg-destructive/5',
+      iconBg: 'bg-destructive/10'
+    },
   }[type];
+  
   return (
-    <div className="py-16 text-center">
-      <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">{cfg.icon}</div>
-      <h3 className="mb-2 text-lg font-semibold text-foreground">{cfg.title}</h3>
-      <p className="mb-6 text-muted-foreground">{cfg.desc}</p>
-      {cfg.action && (
-        <Button asChild>
-          <Link href="/canchas"><CalendarPlus className="mr-2 h-4 w-4" />Explorar canchas</Link>
-        </Button>
-      )}
-    </div>
+    <Card className={`${cfg.bgColor} border-dashed`}>
+      <div className="py-12 text-center px-4">
+        <div className={`mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full ${cfg.iconBg}`}>
+          {cfg.icon}
+        </div>
+        <h3 className="mb-2 text-lg font-semibold text-foreground">{cfg.title}</h3>
+        <p className="mb-6 text-sm text-muted-foreground max-w-md mx-auto">{cfg.desc}</p>
+        {cfg.action && (
+          <Button asChild size="lg">
+            <Link href="/canchas">
+              <CalendarPlus className="mr-2 h-4 w-4" />
+              Explorar canchas
+            </Link>
+          </Button>
+        )}
+      </div>
+    </Card>
   );
 }
 
@@ -355,11 +384,13 @@ export default function MisReservasPage() {
       <main className="flex-1 container mx-auto px-4 py-8">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-foreground">
-            {user?.name ? `Hola, ${user.name.split(' ')[0]} 👋` : 'Mis Reservas'}
+            {user?.name ? `Hola, ${user.name.split(' ')[0]} 👋` : 'Mi Cuenta'}
           </h1>
-          <p className="text-muted-foreground">
-            {user ? 'Gestiona tus reservas, favoritas y sellos' : 'Revisa tus reservas realizadas'}
-          </p>
+          {user && (
+            <p className="text-muted-foreground">
+              Gestiona tus reservas, favoritas y recompensas
+            </p>
+          )}
         </div>
 
         {/* Notificaciones */}
@@ -397,36 +428,78 @@ export default function MisReservasPage() {
           <Tabs defaultValue="proximas" className="w-full">
             <div className="mb-6 overflow-x-auto">
               <TabsList className="w-max min-w-full sm:w-auto">
-                <TabsTrigger value="proximas">Próximas ({proximas.length})</TabsTrigger>
-                <TabsTrigger value="historial">Historial ({historial.length})</TabsTrigger>
-                <TabsTrigger value="favorites">Favoritas ({favoriteCanchas.length})</TabsTrigger>
-                <TabsTrigger value="loyalty">
-                  <Stamp className="mr-1.5 h-4 w-4" />Mis Sellos
+                <TabsTrigger value="proximas" className="gap-1.5">
+                  <CalendarPlus className="h-4 w-4" />
+                  <span>Próximas</span>
+                  {proximas.length > 0 && (
+                    <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1.5 text-xs">
+                      {proximas.length}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="historial" className="gap-1.5">
+                  <Clock className="h-4 w-4" />
+                  <span>Historial</span>
+                  {historial.length > 0 && (
+                    <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1.5 text-xs">
+                      {historial.length}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="favorites" className="gap-1.5">
+                  <Heart className="h-4 w-4" />
+                  <span>Favoritas</span>
+                  {favoriteCanchas.length > 0 && (
+                    <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1.5 text-xs">
+                      {favoriteCanchas.length}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="loyalty" className="gap-1.5">
+                  <Stamp className="h-4 w-4" />
+                  <span>Recompensas</span>
+                  {loyalty && loyalty.sellos > 0 && (
+                    <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1.5 text-xs">
+                      {loyalty.sellos}
+                    </Badge>
+                  )}
                 </TabsTrigger>
               </TabsList>
             </div>
 
-            <TabsContent value="proximas">
+            <TabsContent value="proximas" className="space-y-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <CalendarPlus className="h-4 w-4" />
+                <p>Tus reservas confirmadas y pendientes</p>
+              </div>
               {proximas.length > 0
                 ? <div className="space-y-4">{proximas.map(r => <ReservaCard key={r.id} r={r} onDetalle={setReservaDetalle} onCancelar={setReservaCancelar} />)}</div>
                 : <EmptyState type="proximas" />}
             </TabsContent>
 
-            <TabsContent value="historial">
+            <TabsContent value="historial" className="space-y-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Clock className="h-4 w-4" />
+                <p>Historial de todas tus reservas pasadas</p>
+              </div>
               {historial.length > 0
                 ? <div className="space-y-4">{historial.map(r => <ReservaCard key={r.id} r={r} onDetalle={setReservaDetalle} onCancelar={setReservaCancelar} />)}</div>
                 : <EmptyState type="historial" />}
             </TabsContent>
 
-            <TabsContent value="favorites">
+            <TabsContent value="favorites" className="space-y-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Heart className="h-4 w-4" />
+                <p>Tus canchas favoritas para reservar más rápido</p>
+              </div>
               {favoriteCanchas.length > 0 ? (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {favoriteCanchas.map(cancha => (
-                    <Card key={cancha.id} className="overflow-hidden border-border">
+                    <Card key={cancha.id} className="overflow-hidden border-border group hover:shadow-md transition-shadow">
                       <div className="relative aspect-video">
-                        <Image src={cancha.images[0]} alt={cancha.name} fill className="object-cover" />
+                        <Image src={cancha.images[0]} alt={cancha.name} fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
                         <button onClick={() => handleRemoveFavorite(cancha.id)}
-                          className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-card/90 text-destructive shadow hover:bg-card">
+                          className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-card/90 backdrop-blur-sm text-destructive shadow hover:bg-card transition-colors">
                           <Heart className="h-4 w-4 fill-destructive" />
                         </button>
                       </div>
@@ -458,49 +531,78 @@ export default function MisReservasPage() {
               ) : <EmptyState type="favorites" />}
             </TabsContent>
 
-            <TabsContent value="loyalty">
+            <TabsContent value="loyalty" className="space-y-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Stamp className="h-4 w-4" />
+                <p>Acumula sellos y canjea cupones de descuento</p>
+              </div>
               <div className="max-w-lg">
                 <LoyaltyCard loyalty={loyalty} onUpdate={refreshLoyalty} />
               </div>
             </TabsContent>
           </Tabs>
         ) : (
-          /* ── Sin sesión: solo reservas ── */
-          <div className="space-y-6">
-            <Card className="border-primary/20 bg-primary/5 p-5">
-              <div className="flex items-start gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                  <User className="h-6 w-6 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <p className="font-semibold text-foreground">Crea una cuenta para más beneficios</p>
-                  <p className="mt-1 text-sm text-muted-foreground">Guarda favoritas, acumula sellos y obtén descuentos.</p>
-                  <div className="mt-3 flex gap-2">
-                    <Button size="sm" asChild><Link href="/registro">Registrarse</Link></Button>
-                    <Button size="sm" variant="outline" asChild>
-                      <Link href="/login"><LogIn className="mr-1.5 h-4 w-4" />Iniciar sesión</Link>
+          /* ── Sin sesión: mensaje informativo ── */
+          <div className="flex justify-center">
+            <div className="w-full max-w-2xl">
+              {/* Mensaje informativo para usuarios no logueados */}
+              <Card className="border-border p-6 sm:p-8">
+                <div className="text-center space-y-5">
+                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+                    <Calendar className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold text-foreground mb-2">
+                      Inicia sesión para ver tus reservas
+                    </h3>
+                    <p className="text-muted-foreground max-w-lg mx-auto">
+                      Crea una cuenta o inicia sesión para gestionar tus reservas, guardar canchas favoritas y acumular sellos para obtener descuentos.
+                    </p>
+                  </div>
+                  <div className="pt-2">
+                    <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                      <Button size="lg" asChild>
+                        <Link href="/registro">Crear cuenta</Link>
+                      </Button>
+                      <Button size="lg" variant="outline" asChild>
+                        <Link href="/login">
+                          <LogIn className="mr-2 h-4 w-4" />
+                          Iniciar sesión
+                        </Link>
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <Separator className="my-6" />
+                  
+                  {/* Nota para usuarios invitados que ya reservaron */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="flex items-start gap-3 text-left">
+                      <svg className="h-5 w-5 text-blue-600 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-blue-900 mb-1">
+                          ¿Hiciste una reserva como invitado?
+                        </p>
+                        <p className="text-sm text-blue-700">
+                          Revisa tu correo electrónico. Te enviamos los detalles de tu reserva con un enlace para ver el estado y cancelar si lo necesitas.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="pt-2">
+                    <Button variant="outline" asChild>
+                      <Link href="/canchas">
+                        <CalendarPlus className="mr-2 h-4 w-4" />
+                        Explorar canchas
+                      </Link>
                     </Button>
                   </div>
                 </div>
-              </div>
-            </Card>
-
-            <Tabs defaultValue="proximas" className="w-full">
-              <TabsList className="mb-6 w-full sm:w-auto">
-                <TabsTrigger value="proximas"  className="flex-1 sm:flex-none">Próximas ({proximas.length})</TabsTrigger>
-                <TabsTrigger value="historial" className="flex-1 sm:flex-none">Historial ({historial.length})</TabsTrigger>
-              </TabsList>
-              <TabsContent value="proximas">
-                {proximas.length > 0
-                  ? <div className="space-y-4">{proximas.map(r => <ReservaCard key={r.id} r={r} onDetalle={setReservaDetalle} onCancelar={setReservaCancelar} />)}</div>
-                  : <EmptyState type="proximas" />}
-              </TabsContent>
-              <TabsContent value="historial">
-                {historial.length > 0
-                  ? <div className="space-y-4">{historial.map(r => <ReservaCard key={r.id} r={r} onDetalle={setReservaDetalle} onCancelar={setReservaCancelar} />)}</div>
-                  : <EmptyState type="historial" />}
-              </TabsContent>
-            </Tabs>
+              </Card>
+            </div>
           </div>
         )}
       </main>

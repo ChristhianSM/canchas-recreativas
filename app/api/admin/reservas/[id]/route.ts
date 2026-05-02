@@ -56,6 +56,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   if (!reserva.usuario_id && reserva.usuario_email) {
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
     await sendReservaEmail({
       toEmail:      reserva.usuario_email,
       toName:       reserva.usuario_nombre ?? 'Cliente',
@@ -64,6 +65,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       hora:         reserva.hora,
       precio:       reserva.precio,
       estado,
+      reservaId:    reserva.id,
+      baseUrl,
     });
   }
 

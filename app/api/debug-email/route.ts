@@ -23,9 +23,9 @@ export async function GET(req: NextRequest) {
 
   // Llamada directa a la API REST de Brevo (sin SDK)
   const body = {
-    sender:      { name: 'Cancha Piura', email: fromEmail },
+    sender:      { name: 'CanchaGo', email: fromEmail },
     to:          [{ email: to, name: 'Usuario Test' }],
-    subject:     '✅ Test de email — Cancha Piura',
+    subject:     '✅ Test de email — CanchaGo',
     htmlContent: '<h1>Test funcionando</h1><p>Si ves esto, el email llegó correctamente.</p>',
   };
 

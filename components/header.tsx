@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Menu, MapPin, Calendar, User, LogOut, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -42,7 +42,17 @@ export function Header() {
     apiLogout();     // borra cp_token y cp_user
     setUser(null);
     window.dispatchEvent(new Event('user-login'));
-    router.push('/');
+    
+    // Solo redirigir si está en páginas protegidas
+    const currentPath = window.location.pathname;
+    const protectedRoutes = ['/perfil', '/mis-reservas'];
+    const isProtectedRoute = protectedRoutes.some(route => currentPath.startsWith(route));
+    
+    if (isProtectedRoute) {
+      router.push('/');
+    }
+    // Si no está en ruta protegida, se queda en la página actual
+    
     setOpen(false);
   };
 
@@ -54,8 +64,8 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-card/95 backdrop-blur supports-backdrop-filter:bg-card/80">
-      <div className="container mx-auto flex h-16 items-center justify-between px-4">
-        <Link href="/" className="flex items-center gap-2">
+      <div className="container mx-auto flex h-16 items-center justify-between px-4 md:gap-8">
+        <Link href="/" className="flex items-center gap-2 shrink-0">
           <Image
             src="/images/logo.png"
             alt="CanchaPiura"
@@ -66,7 +76,7 @@ export function Header() {
         </Link>
 
         {/* Desktop Navigation */}
-        <nav className="hidden items-center gap-1 md:flex">
+        <nav className="hidden flex-1 items-center justify-center gap-1 md:flex">
           {navItems.map((item) => (
             <Link
               key={item.href}
@@ -80,7 +90,7 @@ export function Header() {
         </nav>
 
         {/* Desktop Auth */}
-        <div className="hidden items-center gap-3 md:flex">
+        <div className="hidden items-center gap-3 md:flex shrink-0">
           {!hydrated ? (
             /* Skeleton mientras se lee localStorage */
             <div className="h-8 w-32 animate-pulse rounded-lg bg-muted" />
@@ -136,6 +146,9 @@ export function Header() {
             </Button>
           </SheetTrigger>
           <SheetContent side="right" className="w-[280px] bg-card p-0">
+            {/* Título oculto para accesibilidad */}
+            <SheetTitle className="sr-only">Menú de navegación</SheetTitle>
+            
             <div className="flex h-16 items-center border-b border-border px-4">
               <Link href="/" className="flex items-center gap-2" onClick={() => setOpen(false)}>
                 <Image
@@ -177,7 +190,13 @@ export function Header() {
                         <p className="text-xs text-muted-foreground">{user.email}</p>
                       </div>
                     </div>
-                    <Button variant="outline" className="w-full justify-center text-destructive" onClick={handleLogout}>
+                    <Button variant="outline" className="w-full justify-start" asChild>
+                      <Link href="/perfil" onClick={() => setOpen(false)}>
+                        <User className="mr-2 h-4 w-4" />
+                        Mi Perfil
+                      </Link>
+                    </Button>
+                    <Button variant="outline" className="w-full justify-start text-destructive hover:text-destructive" onClick={handleLogout}>
                       <LogOut className="mr-2 h-4 w-4" />
                       Cerrar Sesión
                     </Button>

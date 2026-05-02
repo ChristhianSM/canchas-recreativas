@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ArrowLeft, User, Mail, Phone, Save, CheckCircle2 } from 'lucide-react';
 import { Header } from '@/components/header';
 import { Button } from '@/components/ui/button';
+import { LoadingButton } from '@/components/loading-button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -121,14 +122,9 @@ export default function PerfilPage() {
 
       <main className="flex-1 container mx-auto px-4 py-8 max-w-lg">
         {/* Header */}
-        <div className="mb-6 flex items-center gap-4">
-          <Link href="/mis-reservas" className="flex items-center text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Mi Perfil</h1>
-            <p className="text-sm text-muted-foreground">Actualiza tu información personal</p>
-          </div>
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-foreground">Mi Perfil</h1>
+          <p className="text-sm text-muted-foreground">Actualiza tu información personal</p>
         </div>
 
         <div className="space-y-5">
@@ -204,27 +200,24 @@ export default function PerfilPage() {
 
             <Separator />
 
-            <Button
-              onClick={handleGuardar}
-              disabled={guardando || guardado || !hayChanges}
-              className="w-full"
-            >
-              {guardado ? (
-                <>
-                  <CheckCircle2 className="mr-2 h-4 w-4" />
-                  ¡Guardado!
-                </>
-              ) : guardando ? (
-                'Guardando...'
-              ) : !hayChanges ? (
-                'Sin cambios'
-              ) : (
-                <>
-                  <Save className="mr-2 h-4 w-4" />
-                  Guardar cambios
-                </>
-              )}
-            </Button>
+            {guardado ? (
+              <Button className="w-full" disabled>
+                <CheckCircle2 className="mr-2 h-4 w-4" />
+                ¡Guardado!
+              </Button>
+            ) : (
+              <LoadingButton
+                onClick={handleGuardar}
+                disabled={!hayChanges}
+                className="w-full"
+                isLoading={guardando}
+                loadingText="Guardando cambios"
+                loadingVariant="pulse"
+              >
+                <Save className="mr-2 h-4 w-4" />
+                Guardar cambios
+              </LoadingButton>
+            )}
           </Card>
         </div>
       </main>

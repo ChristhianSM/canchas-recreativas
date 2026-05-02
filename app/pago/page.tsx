@@ -8,6 +8,7 @@ import {
   Smartphone, Shield, ChevronRight, Upload, ImageIcon, Timer, Mail,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { LoadingButton } from '@/components/loading-button';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
@@ -22,7 +23,7 @@ type Paso = 'metodo' | 'instrucciones' | 'exito';
 
 const NUMERO_YAPE = '987 654 321';
 const NUMERO_Plin = '987 654 321';
-const TIEMPO_LIMITE = 30; // 30 segundos para pruebas
+const TIEMPO_LIMITE = 5 * 60; // 5 minutos
 
 // Clave única por bloqueo en localStorage
 function bloqueoKey(canchaId: string, fecha: string, hora: string) {
@@ -875,9 +876,16 @@ function PagoContent() {
               <Button variant="outline" size="lg" className="flex-1" onClick={() => setPaso('metodo')}>
                 Cambiar método
               </Button>
-              <Button size="lg" className="flex-1" onClick={handleEnviar} disabled={enviando}>
-                {enviando ? 'Enviando...' : 'Enviar reserva ✓'}
-              </Button>
+              <LoadingButton
+                size="lg"
+                className="flex-1"
+                onClick={handleEnviar}
+                isLoading={enviando}
+                loadingText="Enviando"
+                loadingVariant="spinner"
+              >
+                Enviar reserva ✓
+              </LoadingButton>
             </div>
           </>
         )}

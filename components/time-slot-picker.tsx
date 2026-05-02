@@ -17,6 +17,14 @@ interface TimeSlotPickerProps {
 const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
+// Convertir formato 24h a 12h (AM/PM)
+function formatTo12Hour(time24: string): string {
+  const [hours, minutes] = time24.split(':').map(Number);
+  const period = hours >= 12 ? 'PM' : 'AM';
+  const hours12 = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+  return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`;
+}
+
 function formatDate(dateString: string): { day: string; date: number; month: string; isToday: boolean } {
   const date = new Date(dateString + 'T00:00:00');
   const today = new Date();
@@ -146,7 +154,7 @@ export function TimeSlotPicker({
               onClick={() => !pasado && slot.available && onSlotSelect(slot)}
               disabled={!slot.available || pasado}
               className={cn(
-                'flex flex-col items-center rounded-lg border p-3 transition-all',
+                'flex flex-col items-center rounded-lg border p-2 md:p-3 transition-all',
                 // Disponible — no seleccionado
                 slot.status === 'disponible' && !pasado && !isSelected &&
                   'border-border bg-card hover:border-primary hover:bg-primary/5 cursor-pointer',
@@ -168,7 +176,7 @@ export function TimeSlotPicker({
                 'text-sm font-semibold',
                 pasado && 'text-slate-400 dark:text-slate-500',
               )}>
-                {slot.time}
+                {formatTo12Hour(slot.time)}
               </span>
               <span className={cn(
                 'text-xs',
