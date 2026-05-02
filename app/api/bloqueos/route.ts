@@ -70,7 +70,14 @@ export async function POST(req: NextRequest) {
     expira_en,
   });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    // Error 23505 = unique_violation: el bloqueo ya existe (race condition o recarga de página)
+    // Esto no es un error real — el slot ya está bloqueado, que es exactamente lo que queremos
+    if (error.code === '23505') {
+      return NextResponse.json({ ok: true, expira_en, minutos: MINUTOS, renovado: true });
+    }
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 
   return NextResponse.json({ ok: true, expira_en, minutos: MINUTOS });
 }

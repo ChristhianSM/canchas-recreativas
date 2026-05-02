@@ -90,6 +90,8 @@ export async function apiCrearReserva(data: {
   telefonoDevolucion?: string;
   actualizarTelefono?: boolean;
   nuevoTelefono?: string;
+  balonIncluido?: boolean;
+  chalecosIncluido?: boolean;
 }) {
   const res = await fetch('/api/reservas', {
     method: 'POST',

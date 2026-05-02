@@ -66,6 +66,39 @@ export function CanchaCard({ cancha }: CanchaCardProps) {
               <span className="text-sm text-muted-foreground">/hora</span>
             </div>
           </div>
+
+          {/* Extras — siempre visibles */}
+          <div className="mt-3 flex items-center gap-2 flex-wrap">
+            {/* Balón */}
+            {cancha.balonDisponible ? (
+              <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium border ${
+                cancha.balonPrecio != null
+                  ? 'bg-primary/5 border-primary/20 text-primary'
+                  : 'bg-green-500/10 border-green-500/20 text-green-700 dark:text-green-400'
+              }`}>
+                ⚽ Balón{cancha.balonPrecio != null ? ` · S/ ${cancha.balonPrecio}` : ' · Gratis'}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium border border-border bg-muted/40 text-muted-foreground line-through opacity-60">
+                ⚽ Sin balón
+              </span>
+            )}
+
+            {/* Chalecos */}
+            {cancha.chalecoDisponible ? (
+              <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium border ${
+                cancha.chalecosPrecio != null
+                  ? 'bg-primary/5 border-primary/20 text-primary'
+                  : 'bg-green-500/10 border-green-500/20 text-green-700 dark:text-green-400'
+              }`}>
+                🎽 Chalecos{cancha.chalecosPrecio != null ? ` · S/ ${cancha.chalecosPrecio}` : ' · Gratis'}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium border border-border bg-muted/40 text-muted-foreground line-through opacity-60">
+                🎽 Sin chalecos
+              </span>
+            )}
+          </div>
         </div>
       </Link>
     </Card>

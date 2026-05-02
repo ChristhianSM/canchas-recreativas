@@ -56,6 +56,9 @@ function PagoContent() {
   const fecha     = params.get('fecha') ?? '';
   const hora      = params.get('hora') ?? '';
   const precioRaw = Number(params.get('precio') ?? 0);
+  // Extras seleccionados desde la página de detalle
+  const conBalon    = params.get('balon') === '1';
+  const conChalecos = params.get('chalecos') === '1';
 
   const [cancha, setCancha]                       = useState<any>(null);
   const [canchaLoading, setCanchaLoading]         = useState(true);
@@ -96,11 +99,13 @@ function PagoContent() {
         if (!data.error) {
           // Cancha de Supabase — normalizar campos
           setCancha({
-            id:      data.id,
-            name:    data.nombre,
-            images:  data.imagenes?.length ? data.imagenes : ['https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=800&h=600&fit=crop'],
-            address: data.direccion,
-            phone:   data.telefono,
+            id:              data.id,
+            name:            data.nombre,
+            images:          data.imagenes?.length ? data.imagenes : ['https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=800&h=600&fit=crop'],
+            address:         data.direccion,
+            phone:           data.telefono,
+            balonPrecio:     data.balon_precio    ?? null,
+            chalecosPrecio:  data.chalecos_precio ?? null,
           });
         } else {
           // Fallback a datos hardcodeados
@@ -247,8 +252,10 @@ function PagoContent() {
     </div>
   );
 
-  const descuento = cuponSeleccionado ? 5 : 0;
-  const total     = Math.max(0, precioRaw - descuento);
+  const descuento   = cuponSeleccionado ? 5 : 0;
+  const extraBalon    = conBalon    && cancha?.balonPrecio    != null ? cancha.balonPrecio    : 0;
+  const extraChalecos = conChalecos && cancha?.chalecosPrecio != null ? cancha.chalecosPrecio : 0;
+  const total       = Math.max(0, precioRaw + extraBalon + extraChalecos - descuento);
 
   const fechaLabel = new Date(fecha + 'T00:00:00').toLocaleDateString('es-PE', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
@@ -325,6 +332,8 @@ function PagoContent() {
       cuponId:        cuponSeleccionado,
       metodoPago:     metodo,
       comprobanteUrl: comprobante,
+      balonIncluido:    conBalon,
+      chalecosIncluido: conChalecos,
       ...(esInvitado && emailInvitado ? { 
         emailInvitado, 
         telefonoInvitado: mismoNumero ? 'MISMO_NUMERO_PAGO' : telefonoInvitado,
@@ -537,6 +546,22 @@ function PagoContent() {
               <span className="text-muted-foreground">Precio por hora</span>
               <span className="text-foreground">S/ {precioRaw}</span>
             </div>
+            {conBalon && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground flex items-center gap-1.5">⚽ Balón</span>
+                <span className="text-foreground">
+                  {extraBalon > 0 ? `S/ ${extraBalon}` : 'Gratis'}
+                </span>
+              </div>
+            )}
+            {conChalecos && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground flex items-center gap-1.5">🎽 Chalecos</span>
+                <span className="text-foreground">
+                  {extraChalecos > 0 ? `S/ ${extraChalecos}` : 'Gratis'}
+                </span>
+              </div>
+            )}
             {descuento > 0 && (
               <div className="flex justify-between text-primary">
                 <span>Descuento cupón</span>
@@ -549,6 +574,16 @@ function PagoContent() {
               <span className="text-primary">S/ {total}</span>
             </div>
           </div>
+
+          {/* Aviso si la cancha no tiene extras */}
+          {!conBalon && !conChalecos && cancha && (
+            <div className="mt-3 flex items-start gap-2 rounded-xl border border-yellow-500/30 bg-yellow-500/5 px-3 py-2.5">
+              <span className="text-sm leading-none mt-0.5">⚠️</span>
+              <p className="text-xs text-yellow-700 dark:text-yellow-400 font-medium">
+                Esta cancha <span className="font-bold">no ofrece balón ni chalecos</span>. Recuerda traer los tuyos al partido.
+              </p>
+            </div>
+          )}
         </Card>
 
         {/* Método */}

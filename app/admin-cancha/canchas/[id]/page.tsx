@@ -10,6 +10,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { BloqueosAdminPanel } from '@/components/bloqueos-admin-panel';
 
@@ -200,6 +201,10 @@ export default function OwnerEditarCanchaPage() {
   const [images, setImages]         = useState<string[]>([]);
   const [activeTab, setActiveTab]   = useState('info');
   const [preciosPorHora, setPreciosPorHora] = useState<Record<string, number>>({});
+  const [balonPrecio, setBalonPrecio]             = useState<number | null>(null);
+  const [chalecosPrecio, setChalecosPrecio]       = useState<number | null>(null);
+  const [balonDisponible, setBalonDisponible]     = useState(false);
+  const [chalecosDisponible, setChalecosDisponible] = useState(false);
   const [lat, setLat]               = useState('');
   const [lng, setLng]               = useState('');
   const [direccion, setDireccion]   = useState('');
@@ -227,6 +232,10 @@ export default function OwnerEditarCanchaPage() {
         setAmenities(canchaData.amenidades ?? []);
         setImages(canchaData.imagenes ?? []);
         setPreciosPorHora(canchaData.precios_por_hora ?? {});
+        setBalonDisponible(canchaData.balon_disponible ?? false);
+        setBalonPrecio(canchaData.balon_precio ?? null);
+        setChalecosDisponible(canchaData.chalecos_disponible ?? false);
+        setChalecosPrecio(canchaData.chalecos_precio ?? null);
         setLoading(false);
 
         setLat(String(canchaData.lat ?? ''));
@@ -265,6 +274,10 @@ export default function OwnerEditarCanchaPage() {
         amenidades: amenities,
         imagenes: images,
         preciosPorHora,
+        balonPrecio:         balonPrecio,
+        chalecosPrecio:      chalecosPrecio,
+        balonDisponible:     balonDisponible,
+        chalecosDisponible:  chalecosDisponible,
         lat: lat ? Number(lat) : undefined,
         lng: lng ? Number(lng) : undefined,
         direccion: direccion || undefined,
@@ -455,6 +468,99 @@ export default function OwnerEditarCanchaPage() {
                 </button>
               </div>
             )}
+          </Card>
+
+          {/* Extras: balón y chalecos */}
+          <Card className="border-border p-5 space-y-4">
+            <div>
+              <p className="font-medium text-foreground">Extras disponibles</p>
+              <p className="text-sm text-muted-foreground">
+                Indica si ofreces balón y/o chalecos. Puedes cobrar un precio o incluirlos gratis.
+              </p>
+            </div>
+            <div className="grid gap-5 sm:grid-cols-2">
+
+              {/* Balón */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="balon-disponible"
+                    checked={balonDisponible}
+                    onCheckedChange={v => {
+                      setBalonDisponible(v as boolean);
+                      if (!v) setBalonPrecio(null);
+                    }}
+                  />
+                  <label htmlFor="balon-disponible" className="text-sm font-medium text-foreground cursor-pointer flex items-center gap-1.5">
+                    ⚽ Ofrezco balón
+                  </label>
+                </div>
+                {balonDisponible && (
+                  <div className="ml-6 space-y-2">
+                    <p className="text-xs text-muted-foreground">¿Tiene costo adicional?</p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground shrink-0">S/</span>
+                      <Input
+                        type="number"
+                        min={0}
+                        placeholder="Gratis (dejar vacío)"
+                        value={balonPrecio ?? ''}
+                        onChange={e => setBalonPrecio(e.target.value === '' ? null : Number(e.target.value))}
+                        className="h-8 text-sm"
+                      />
+                      {balonPrecio != null && (
+                        <button type="button" onClick={() => setBalonPrecio(null)}
+                          className="text-xs text-muted-foreground hover:text-destructive shrink-0">✕</button>
+                      )}
+                    </div>
+                    <p className="text-xs text-primary font-medium">
+                      {balonPrecio != null ? `Cobrarás S/ ${balonPrecio} por reserva` : '✓ Incluido gratis'}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Chalecos */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="chalecos-disponible"
+                    checked={chalecosDisponible}
+                    onCheckedChange={v => {
+                      setChalecosDisponible(v as boolean);
+                      if (!v) setChalecosPrecio(null);
+                    }}
+                  />
+                  <label htmlFor="chalecos-disponible" className="text-sm font-medium text-foreground cursor-pointer flex items-center gap-1.5">
+                    🎽 Ofrezco chalecos
+                  </label>
+                </div>
+                {chalecosDisponible && (
+                  <div className="ml-6 space-y-2">
+                    <p className="text-xs text-muted-foreground">¿Tiene costo adicional?</p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground shrink-0">S/</span>
+                      <Input
+                        type="number"
+                        min={0}
+                        placeholder="Gratis (dejar vacío)"
+                        value={chalecosPrecio ?? ''}
+                        onChange={e => setChalecosPrecio(e.target.value === '' ? null : Number(e.target.value))}
+                        className="h-8 text-sm"
+                      />
+                      {chalecosPrecio != null && (
+                        <button type="button" onClick={() => setChalecosPrecio(null)}
+                          className="text-xs text-muted-foreground hover:text-destructive shrink-0">✕</button>
+                      )}
+                    </div>
+                    <p className="text-xs text-primary font-medium">
+                      {chalecosPrecio != null ? `Cobrarás S/ ${chalecosPrecio} por reserva` : '✓ Incluidos gratis'}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+            </div>
           </Card>
         </TabsContent>
 

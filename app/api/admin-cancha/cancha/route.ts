@@ -58,28 +58,46 @@ export async function PATCH(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { descripcion, telefono, precioHora, amenidades, imagenes, lat, lng, direccion, distrito, preciosPorHora } = body;
+  const { descripcion, telefono, precioHora, amenidades, imagenes, lat, lng, direccion, distrito, preciosPorHora, balonPrecio, chalecosPrecio, balonDisponible, chalecosDisponible } = body;
 
   console.log('📍 PATCH /api/admin-cancha/cancha');
-  console.log('Distrito recibido:', distrito);
+  console.log('Body recibido:', JSON.stringify({ balonDisponible, balonPrecio, chalecosDisponible, chalecosPrecio }));
 
   const updateData: Record<string, any> = {
-    descripcion, telefono, precio_por_hora: precioHora, amenidades, imagenes,
+    descripcion,
+    telefono,
+    precio_por_hora: precioHora,
+    amenidades,
+    imagenes,
     precios_por_hora: preciosPorHora ?? {},
   };
+
   if (lat !== undefined) updateData.lat = lat;
   if (lng !== undefined) updateData.lng = lng;
   if (direccion !== undefined) updateData.direccion = direccion;
   if (distrito !== undefined) updateData.distrito = distrito;
 
-  console.log('UpdateData:', updateData);
+  // Campos de extras — solo incluir si vienen en el body (por si la migración aún no se corrió)
+  if (balonDisponible !== undefined) {
+    updateData.balon_disponible = balonDisponible ?? false;
+    updateData.balon_precio     = balonDisponible ? (balonPrecio ?? null) : null;
+  }
+  if (chalecosDisponible !== undefined) {
+    updateData.chalecos_disponible = chalecosDisponible ?? false;
+    updateData.chalecos_precio     = chalecosDisponible ? (chalecosPrecio ?? null) : null;
+  }
+
+  console.log('UpdateData:', JSON.stringify(updateData));
 
   const { error: canchaError } = await sb
     .from('canchas')
     .update(updateData)
     .eq('id', canchaId);
 
-  if (canchaError) return NextResponse.json({ error: canchaError.message }, { status: 500 });
+  if (canchaError) {
+    console.error('Error al actualizar cancha:', canchaError);
+    return NextResponse.json({ error: canchaError.message }, { status: 500 });
+  }
 
   return NextResponse.json({ ok: true, distrito });
 }

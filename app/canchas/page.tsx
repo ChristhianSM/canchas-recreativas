@@ -22,6 +22,10 @@ type Cancha = {
   amenidades: string[]; lat: number; lng: number; telefono: string;
   destacada: boolean; horariosOcupados?: Record<string, 'reservado' | 'en_proceso'>;
   horariosRestringidos?: string[];
+  balon_disponible?: boolean;
+  balon_precio?: number | null;
+  chalecos_disponible?: boolean;
+  chalecos_precio?: number | null;
 };
 
 const HORAS = [
@@ -72,6 +76,10 @@ function adaptCancha(c: Cancha) {
     rating: c.rating, reviewCount: c.total_resenas, pricePerHour: c.precio_por_hora,
     amenities: c.amenidades ?? [], coordinates: { lat: c.lat, lng: c.lng },
     phone: c.telefono, featured: c.destacada, schedule,
+    balonDisponible:  c.balon_disponible  ?? false,
+    balonPrecio:      c.balon_precio      ?? null,
+    chalecoDisponible: c.chalecos_disponible ?? false,
+    chalecosPrecio:   c.chalecos_precio   ?? null,
   };
 }
 
@@ -146,7 +154,8 @@ function CanchasContent() {
     if (filters.availableHours.length > 0) count++;
     if (filters.onlyFeatured) count++;
     if (filters.searchQuery.trim()) count++;
-    // No contar selectedDate porque siempre tiene un valor
+    if (filters.conBalon) count++;
+    if (filters.conChalecos) count++;
     return count;
   }, [filters, priceRange]);
 

@@ -170,6 +170,16 @@ export function filterCanchas(canchas: Cancha[], filters: AdvancedFilters, date?
       return false;
     }
 
+    // Filtro por balón disponible
+    if (filters.conBalon && !cancha.balonDisponible) {
+      return false;
+    }
+
+    // Filtro por chalecos disponibles
+    if (filters.conChalecos && !cancha.chalecoDisponible) {
+      return false;
+    }
+
     // Filtro por búsqueda de texto
     if (filters.searchQuery.trim()) {
       const query = filters.searchQuery.toLowerCase();

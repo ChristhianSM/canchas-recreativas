@@ -27,6 +27,10 @@ export interface Cancha {
   };
   phone: string;
   featured?: boolean;
+  balonDisponible?: boolean;
+  balonPrecio?: number | null;
+  chalecoDisponible?: boolean;
+  chalecosPrecio?: number | null;
 }
 
 export type SportType = Cancha['type'];
@@ -54,10 +58,12 @@ export interface AdvancedFilters {
   minRating: number;
   amenities: string[];
   districts: string[];
-  selectedDate: string; // Fecha seleccionada (YYYY-MM-DD)
+  selectedDate: string;
   availableHours: string[];
   onlyFeatured: boolean;
   searchQuery: string;
+  conBalon: boolean;
+  conChalecos: boolean;
 }
 
 // Importar aquí para evitar circular dependency
@@ -69,8 +75,10 @@ export const DEFAULT_FILTERS: AdvancedFilters = {
   minRating: 0,
   amenities: [],
   districts: [],
-  selectedDate: getLocalDateString(), // Hoy por defecto
+  selectedDate: getLocalDateString(),
   availableHours: [],
   onlyFeatured: false,
   searchQuery: '',
+  conBalon: false,
+  conChalecos: false,
 };
