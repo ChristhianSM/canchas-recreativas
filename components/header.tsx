@@ -71,6 +71,7 @@ export function Header() {
             alt="CanchaPiura"
             width={280}
             height={80}
+            priority
             className="h-14 w-auto object-contain"
           />
         </Link>

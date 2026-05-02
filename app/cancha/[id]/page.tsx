@@ -19,6 +19,7 @@ import { Header } from '@/components/header';
 import { CanchaGallery } from '@/components/cancha-gallery';
 import { TimeSlotPicker } from '@/components/time-slot-picker';
 import CalificarCancha from '@/components/calificar-cancha';
+import { CanchaSEO } from '@/components/cancha-seo';
 import { sportLabels, TimeSlot } from '@/lib/types';
 import { apiToggleFavorito, apiGetFavoritos, getToken } from '@/lib/api';
 import { getLocalDateString } from '@/lib/date-utils';
@@ -221,11 +222,8 @@ export default function CanchaDetailPage() {
     
     const token = getToken();
     if (!token) {
-      toast({
-        title: "Inicia sesión",
-        description: "Debes iniciar sesión para guardar favoritos",
-        variant: "destructive",
-      });
+      // Redirigir al login y volver a esta cancha después
+      router.push(`/login?redirect=/cancha/${cancha.id}`);
       return;
     }
 
@@ -347,6 +345,23 @@ export default function CanchaDetailPage() {
 
   return (
     <div className="min-h-screen bg-background pb-28 lg:pb-8">
+      {/* SEO: Datos estructurados JSON-LD */}
+      <CanchaSEO cancha={{
+        id: cancha.id,
+        nombre: cancha.nombre,
+        descripcion: cancha.descripcion,
+        direccion: cancha.direccion,
+        distrito: cancha.distrito,
+        lat: cancha.lat,
+        lng: cancha.lng,
+        telefono: cancha.telefono,
+        precio_por_hora: cancha.precio_por_hora,
+        rating: cancha.rating,
+        total_resenas: cancha.total_resenas,
+        imagenes: cancha.imagenes,
+        tipo: cancha.tipo,
+      }} />
+      
       <Header />
 
       {/* Modal: horario ocupado */}
