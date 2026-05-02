@@ -42,6 +42,7 @@ type CanchaDB = {
   direccion: string; distrito: string; descripcion: string;
   imagenes: string[]; rating: number; total_resenas: number;
   precio_por_hora: number; amenidades: string[];
+  precios_por_hora: Record<string, number>;
   lat: number; lng: number; telefono: string; destacada: boolean;
   horariosRestringidos: string[];
   horariosOcupados: Record<string, 'reservado' | 'en_proceso'>;
@@ -51,6 +52,7 @@ function buildSchedule(
   horariosRestringidos: string[],
   horariosOcupados: Record<string, 'reservado' | 'en_proceso'>,
   precioBase: number,
+  preciosPorHora: Record<string, number> = {},
 ) {
   const schedule: Record<string, TimeSlot[]> = {};
   const today = new Date();
@@ -59,7 +61,6 @@ function buildSchedule(
   for (let i = 0; i < 30; i++) {
     const d = new Date(today);
     d.setDate(today.getDate() + i);
-    // Usar fecha local (no UTC) para evitar desfase de zona horaria
     const year  = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const day   = String(d.getDate()).padStart(2, '0');
@@ -71,11 +72,13 @@ function buildSchedule(
       const status = bloqueado || ocupado === 'reservado' ? 'reservado'
         : ocupado === 'en_proceso' ? 'en_proceso'
         : 'disponible';
+      // Usar precio específico de la hora si existe, sino el precio base
+      const precio = preciosPorHora[time] ?? precioBase;
       return {
         id: `${dateStr}-${idx}`,
         time,
         available: status === 'disponible',
-        price: time >= '18:00' ? Math.round(precioBase * 1.1) : precioBase,
+        price: precio,
         status,
       };
     });
@@ -320,6 +323,7 @@ export default function CanchaDetailPage() {
     cancha.horariosRestringidos ?? [],
     cancha.horariosOcupados ?? {},
     cancha.precio_por_hora,
+    cancha.precios_por_hora ?? {},
   );
   const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${cancha.lat},${cancha.lng}`;
   const selectedDateLabel = new Date(selectedDate + 'T00:00:00').toLocaleDateString('es-PE', {

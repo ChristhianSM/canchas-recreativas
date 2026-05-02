@@ -199,6 +199,7 @@ export default function OwnerEditarCanchaPage() {
   const [newAmenity, setNewAmenity] = useState('');
   const [images, setImages]         = useState<string[]>([]);
   const [activeTab, setActiveTab]   = useState('info');
+  const [preciosPorHora, setPreciosPorHora] = useState<Record<string, number>>({});
   const [lat, setLat]               = useState('');
   const [lng, setLng]               = useState('');
   const [direccion, setDireccion]   = useState('');
@@ -225,6 +226,7 @@ export default function OwnerEditarCanchaPage() {
         setPrice(canchaData.precio_por_hora ?? 0);
         setAmenities(canchaData.amenidades ?? []);
         setImages(canchaData.imagenes ?? []);
+        setPreciosPorHora(canchaData.precios_por_hora ?? {});
         setLoading(false);
 
         setLat(String(canchaData.lat ?? ''));
@@ -262,6 +264,7 @@ export default function OwnerEditarCanchaPage() {
         precioHora: price,
         amenidades: amenities,
         imagenes: images,
+        preciosPorHora,
         lat: lat ? Number(lat) : undefined,
         lng: lng ? Number(lng) : undefined,
         direccion: direccion || undefined,
@@ -377,10 +380,81 @@ export default function OwnerEditarCanchaPage() {
                 <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+51 999 999 999" />
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">Precio por hora (S/)</label>
+                <label className="text-sm font-medium text-foreground">Precio base por hora (S/)</label>
                 <Input type="number" min={0} value={price} onChange={e => setPrice(Number(e.target.value))} />
+                <p className="text-xs text-muted-foreground">Se aplica a las horas que no tengan precio personalizado.</p>
               </div>
             </div>
+          </Card>
+
+          {/* Precios por hora */}
+          <Card className="border-border p-5 space-y-4">
+            <div>
+              <p className="font-medium text-foreground">Precios por hora</p>
+              <p className="text-sm text-muted-foreground">
+                Personaliza el precio de cada horario. Las horas sin precio usarán el precio base (S/ {price}).
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {['06:00','07:00','08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00','22:00','23:00'].map(hora => {
+                const valorActual = preciosPorHora[hora];
+                const tienePersonalizado = valorActual !== undefined;
+                return (
+                  <div key={hora} className={`rounded-xl border p-3 space-y-1.5 transition-colors ${tienePersonalizado ? 'border-primary/40 bg-primary/5' : 'border-border bg-card'}`}>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-foreground">{hora}</span>
+                      {tienePersonalizado && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = { ...preciosPorHora };
+                            delete next[hora];
+                            setPreciosPorHora(next);
+                          }}
+                          className="text-xs text-muted-foreground hover:text-destructive"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-muted-foreground">S/</span>
+                      <Input
+                        type="number"
+                        min={0}
+                        placeholder={String(price)}
+                        value={valorActual ?? ''}
+                        onChange={e => {
+                          const val = e.target.value;
+                          if (val === '') {
+                            const next = { ...preciosPorHora };
+                            delete next[hora];
+                            setPreciosPorHora(next);
+                          } else {
+                            setPreciosPorHora(prev => ({ ...prev, [hora]: Number(val) }));
+                          }
+                        }}
+                        className="h-8 text-sm px-2"
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {Object.keys(preciosPorHora).length > 0 && (
+              <div className="flex items-center justify-between rounded-xl bg-primary/5 border border-primary/20 px-4 py-2.5">
+                <p className="text-sm text-primary">
+                  {Object.keys(preciosPorHora).length} hora{Object.keys(preciosPorHora).length > 1 ? 's' : ''} con precio personalizado
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setPreciosPorHora({})}
+                  className="text-xs text-muted-foreground hover:text-destructive"
+                >
+                  Limpiar todo
+                </button>
+              </div>
+            )}
           </Card>
         </TabsContent>
 

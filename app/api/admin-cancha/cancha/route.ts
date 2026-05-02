@@ -58,13 +58,14 @@ export async function PATCH(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { descripcion, telefono, precioHora, amenidades, imagenes, horariosRestringidos, lat, lng, direccion, distrito } = body;
+  const { descripcion, telefono, precioHora, amenidades, imagenes, lat, lng, direccion, distrito, preciosPorHora } = body;
 
   console.log('📍 PATCH /api/admin-cancha/cancha');
   console.log('Distrito recibido:', distrito);
 
   const updateData: Record<string, any> = {
     descripcion, telefono, precio_por_hora: precioHora, amenidades, imagenes,
+    precios_por_hora: preciosPorHora ?? {},
   };
   if (lat !== undefined) updateData.lat = lat;
   if (lng !== undefined) updateData.lng = lng;
@@ -79,13 +80,6 @@ export async function PATCH(req: NextRequest) {
     .eq('id', canchaId);
 
   if (canchaError) return NextResponse.json({ error: canchaError.message }, { status: 500 });
-
-  await sb.from('horarios_bloqueados').delete().eq('cancha_id', canchaId);
-  if (horariosRestringidos?.length) {
-    await sb.from('horarios_bloqueados').insert(
-      horariosRestringidos.map((hora: string) => ({ cancha_id: canchaId, hora }))
-    );
-  }
 
   return NextResponse.json({ ok: true, distrito });
 }
