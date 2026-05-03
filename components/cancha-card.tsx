@@ -1,17 +1,19 @@
 'use client';
 
 import Link from 'next/link';
-import { MapPin, Star, Clock } from 'lucide-react';
+import { MapPin, Star, Clock, Navigation } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ImageSlider } from '@/components/image-slider';
 import { Cancha, sportLabels, superficieLabels, superficieIcons } from '@/lib/types';
+import { formatearDistancia } from '@/lib/geolocation-utils';
 
 interface CanchaCardProps {
   cancha: Cancha;
+  distancia?: number;
 }
 
-export function CanchaCard({ cancha }: CanchaCardProps) {
+export function CanchaCard({ cancha, distancia }: CanchaCardProps) {
   return (
     <Card className="group overflow-hidden border-border bg-card transition-all hover:shadow-lg hover:shadow-primary/10 hover:-translate-y-1">
       <div className="relative">
@@ -70,6 +72,12 @@ export function CanchaCard({ cancha }: CanchaCardProps) {
           <div className="mb-3 flex items-center gap-1.5 text-muted-foreground">
             <MapPin className="h-4 w-4 shrink-0" />
             <span className="text-sm line-clamp-1">{cancha.address}</span>
+            {distancia !== undefined && (
+              <Badge variant="outline" className="ml-auto shrink-0 gap-1 bg-primary/5 border-primary/20 text-primary">
+                <Navigation className="h-3 w-3 fill-primary" />
+                {formatearDistancia(distancia)}
+              </Badge>
+            )}
           </div>
 
           <div className="flex items-center justify-between">
