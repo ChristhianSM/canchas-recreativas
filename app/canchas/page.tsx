@@ -293,18 +293,11 @@ function CanchasContent() {
               {/* Header solo en desktop */}
               <div className="hidden lg:block mb-6">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div>
-                      <h1 className="text-3xl font-bold text-foreground mb-1">Explora Canchas</h1>
-                      <p className="text-muted-foreground">
-                        {loading ? 'Cargando...' : `${filtered.length} ${filtered.length === 1 ? 'cancha encontrada' : 'canchas encontradas'}`}
-                      </p>
-                    </div>
-                    <UbicacionButton
-                      onUbicacionObtenida={handleUbicacionObtenida}
-                      onUbicacionLimpiada={handleUbicacionLimpiada}
-                      ubicacionActual={ubicacion}
-                    />
+                  <div>
+                    <h1 className="text-3xl font-bold text-foreground mb-1">Explora Canchas</h1>
+                    <p className="text-muted-foreground">
+                      {loading ? 'Cargando...' : `${filtered.length} ${filtered.length === 1 ? 'cancha encontrada' : 'canchas encontradas'}`}
+                    </p>
                   </div>
                   <Select value={sortBy} onValueChange={v => setSortBy(v as SortOption)}>
                     <SelectTrigger className="w-56 bg-background border-border">
