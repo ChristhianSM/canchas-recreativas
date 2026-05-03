@@ -7,6 +7,7 @@ import { MapPin } from 'lucide-react';
 import { Header } from '@/components/header';
 import { CanchaCard } from '@/components/cancha-card';
 import { AdvancedFiltersComponent } from '@/components/advanced-filters';
+import { UbicacionButton } from '@/components/ubicacion-button';
 import { SportType, AdvancedFilters, DEFAULT_FILTERS } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
@@ -14,6 +15,12 @@ import {
   SortOption,
 } from '@/lib/filter-utils';
 import { getLocalDateString } from '@/lib/date-utils';
+import {
+  obtenerUbicacionGuardada,
+  ordenarPorDistancia,
+  filtrarPorRadio,
+  type Coordenadas,
+} from '@/lib/geolocation-utils';
 
 type Cancha = {
   id: string; nombre: string; tipo: SportType; direccion: string;
@@ -93,6 +100,7 @@ function CanchasContent() {
   const [loading, setLoading]         = useState(true);
   const [filters, setFilters]         = useState<AdvancedFilters>(DEFAULT_FILTERS);
   const [sortBy, setSortBy]           = useState<SortOption>('relevancia');
+  const [ubicacion, setUbicacion]     = useState<Coordenadas | null>(null);
 
   // Datos para los filtros
   const [allAmenities, setAllAmenities] = useState<string[]>([]);
@@ -124,6 +132,12 @@ function CanchasContent() {
 
   useEffect(() => {
     loadCanchas();
+    
+    // Cargar ubicación guardada si existe
+    const ubicacionGuardada = obtenerUbicacionGuardada();
+    if (ubicacionGuardada) {
+      setUbicacion(ubicacionGuardada);
+    }
   }, []);
 
   // Aplicar parámetros de URL al cargar
@@ -140,12 +154,31 @@ function CanchasContent() {
     }
   }, [searchParams]);
 
-  // Aplicar filtros y ordenamiento
+  // Aplicar filtros, ordenamiento y geolocalización
   const filtered = useMemo(() => {
     const adaptedList = canchas.map(adaptCancha);
-    const filtered = filterCanchas(adaptedList as any, filters); // Type assertion temporal
+    let filtered = filterCanchas(adaptedList as any, filters); // Type assertion temporal
+    
+    // Aplicar filtro de radio si hay ubicación y radio seleccionado
+    if (ubicacion && filters.radioKm && filters.radioKm > 0) {
+      filtered = filtrarPorRadio(filtered as any, ubicacion, filters.radioKm);
+    }
+    
+    // Si hay ubicación y se ordena por relevancia, ordenar por distancia
+    if (ubicacion && sortBy === 'relevancia') {
+      const conDistancia = ordenarPorDistancia(filtered as any, ubicacion);
+      return conDistancia.map(c => ({ ...c, distancia: c.distancia }));
+    }
+    
+    // Si hay ubicación pero se ordena por otro criterio, agregar distancia pero mantener orden
+    if (ubicacion) {
+      const conDistancia = ordenarPorDistancia(filtered as any, ubicacion);
+      const sorted = sortCanchas(conDistancia as any, sortBy);
+      return sorted;
+    }
+    
     return sortCanchas(filtered as any, sortBy); // Type assertion temporal
-  }, [canchas, filters, sortBy]);
+  }, [canchas, filters, sortBy, ubicacion]);
 
   // Contar filtros activos
   const activeFilterCount = useMemo(() => {
@@ -162,8 +195,19 @@ function CanchasContent() {
     if (filters.conChalecos) count++;
     if (filters.superficies.length > 0) count++;
     if (filters.minJugadores > 0) count++;
+    if (filters.radioKm && filters.radioKm > 0) count++;
     return count;
   }, [filters, priceRange]);
+
+  const handleUbicacionObtenida = (coords: Coordenadas) => {
+    setUbicacion(coords);
+  };
+
+  const handleUbicacionLimpiada = () => {
+    setUbicacion(null);
+    // Limpiar filtro de radio también
+    setFilters(prev => ({ ...prev, radioKm: undefined }));
+  };
 
   return (
     <div className="flex flex-col flex-1 bg-background">
@@ -174,9 +218,17 @@ function CanchasContent() {
           {/* Sidebar de filtros - Solo en desktop */}
           <aside className="hidden lg:block w-[450px] shrink-0 pr-8">
             <div className="sticky mt-2 py-6 px-6 space-y-6 bg-card rounded-xl border border-border shadow-sm">
-              <div>
-                <h2 className="text-xl font-bold text-foreground">Filtros</h2>
-                <p className="text-sm text-muted-foreground">Encuentra tu cancha ideal</p>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-bold text-foreground">Filtros</h2>
+                  <p className="text-sm text-muted-foreground">Encuentra tu cancha ideal</p>
+                </div>
+                <UbicacionButton
+                  onUbicacionObtenida={handleUbicacionObtenida}
+                  onUbicacionLimpiada={handleUbicacionLimpiada}
+                  ubicacionActual={ubicacion}
+                  className="shrink-0"
+                />
               </div>
               <AdvancedFiltersComponent
                 filters={filters}
@@ -188,6 +240,7 @@ function CanchasContent() {
                 activeFilterCount={activeFilterCount}
                 isSidebar={true}
                 resultCount={filtered.length}
+                ubicacion={ubicacion}
               />
             </div>
           </aside>
@@ -195,9 +248,16 @@ function CanchasContent() {
           {/* Contenido principal */}
           <main className="flex-1 min-w-0">
             <section className="border-b border-border bg-card py-6 lg:hidden">
-              <div className="mb-4">
-                <h1 className="text-2xl font-bold text-foreground">Explora Canchas</h1>
-                <p className="text-muted-foreground">Encuentra el espacio perfecto para tu deporte</p>
+              <div className="mb-4 flex items-start justify-between gap-4">
+                <div>
+                  <h1 className="text-2xl font-bold text-foreground">Explora Canchas</h1>
+                  <p className="text-muted-foreground">Encuentra el espacio perfecto para tu deporte</p>
+                </div>
+                <UbicacionButton
+                  onUbicacionObtenida={handleUbicacionObtenida}
+                  onUbicacionLimpiada={handleUbicacionLimpiada}
+                  ubicacionActual={ubicacion}
+                />
               </div>
               <div className="space-y-4">
                 <AdvancedFiltersComponent
@@ -210,6 +270,7 @@ function CanchasContent() {
                   activeFilterCount={activeFilterCount}
                   isSidebar={false}
                   resultCount={filtered.length}
+                  ubicacion={ubicacion}
                 />
                 <div className="flex justify-end">
                   <Select value={sortBy} onValueChange={v => setSortBy(v as SortOption)}>
@@ -217,7 +278,7 @@ function CanchasContent() {
                       <SelectValue placeholder="Ordenar por" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="relevancia">Relevancia</SelectItem>
+                      <SelectItem value="relevancia">{ubicacion ? 'Más cercanas' : 'Relevancia'}</SelectItem>
                       <SelectItem value="precio-asc">Menor precio</SelectItem>
                       <SelectItem value="precio-desc">Mayor precio</SelectItem>
                       <SelectItem value="rating">Mejor puntuación</SelectItem>
@@ -243,7 +304,7 @@ function CanchasContent() {
                       <SelectValue placeholder="Ordenar por" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="relevancia">Relevancia</SelectItem>
+                      <SelectItem value="relevancia">{ubicacion ? 'Más cercanas' : 'Relevancia'}</SelectItem>
                       <SelectItem value="precio-asc">Menor precio</SelectItem>
                       <SelectItem value="precio-desc">Mayor precio</SelectItem>
                       <SelectItem value="rating">Mejor puntuación</SelectItem>
@@ -259,7 +320,7 @@ function CanchasContent() {
                 </div>
               ) : filtered.length > 0 ? (
                 <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
-                  {filtered.map(c => <CanchaCard key={c.id} cancha={c} />)}
+                  {filtered.map(c => <CanchaCard key={c.id} cancha={c} distancia={(c as any).distancia} />)}
                 </div>
               ) : (
                 <div className="py-20 text-center">

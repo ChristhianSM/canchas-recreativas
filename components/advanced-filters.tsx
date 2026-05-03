@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/select';
 import { AdvancedFilters, sportLabels, SportType, superficieLabels, SuperficieType } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import type { Coordenadas } from '@/lib/geolocation-utils';
 
 interface AdvancedFiltersProps {
   filters: AdvancedFilters;
@@ -29,6 +30,7 @@ interface AdvancedFiltersProps {
   onRefresh?: () => void;
   isSidebar?: boolean; // Nueva prop para determinar si es sidebar o sheet
   resultCount?: number; // Contador de resultados filtrados
+  ubicacion?: Coordenadas | null; // Ubicación del usuario
 }
 
 const HOURS = [
@@ -82,6 +84,7 @@ export function AdvancedFiltersComponent({
   onRefresh,
   isSidebar = false,
   resultCount,
+  ubicacion,
 }: AdvancedFiltersProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [dateStartIndex, setDateStartIndex] = useState(0);
@@ -332,6 +335,45 @@ export function AdvancedFiltersComponent({
           </div>
         </div>
       </div>
+
+      {/* Radio de distancia - Solo si hay ubicación */}
+      {ubicacion && (
+        <div>
+          <label className="text-sm font-medium text-foreground flex items-center gap-2 mb-2">
+            <span className="text-sm">📍</span>
+            Radio de distancia
+          </label>
+          <div className="grid grid-cols-4 gap-1.5">
+            {[
+              { value: undefined, label: 'Todas' },
+              { value: 1, label: '1 km' },
+              { value: 3, label: '3 km' },
+              { value: 5, label: '5 km' },
+              { value: 10, label: '10 km' },
+              { value: 20, label: '20 km' },
+            ].map(({ value, label }) => (
+              <button
+                key={label}
+                type="button"
+                onClick={() => onFiltersChange({ ...filters, radioKm: value })}
+                className={cn(
+                  'rounded-lg border px-2 py-2 text-xs font-medium transition-all',
+                  filters.radioKm === value
+                    ? 'border-primary bg-primary text-primary-foreground'
+                    : 'border-border bg-card text-foreground hover:border-primary/40'
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {filters.radioKm && (
+            <p className="text-xs text-muted-foreground mt-2">
+              Mostrando canchas a menos de {filters.radioKm} km de tu ubicación
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Superficie */}
       <div>

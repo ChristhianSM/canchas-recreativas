@@ -84,6 +84,7 @@ export interface AdvancedFilters {
   conChalecos: boolean;
   superficies: SuperficieType[];
   minJugadores: number; // 0 = sin filtro
+  radioKm?: number; // Radio de distancia en km (opcional)
 }
 
 // Importar aquí para evitar circular dependency
