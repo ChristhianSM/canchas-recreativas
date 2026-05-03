@@ -8,11 +8,14 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   try {
+    // Await params en Next.js 15+
+    const { id } = await Promise.resolve(params);
+    
     const sb = createServiceClient();
     const { data } = await sb
       .from('canchas')
       .select('nombre, descripcion, imagenes, distrito, tipo, precio_por_hora')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (!data) {
@@ -53,7 +56,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         ...(imagen ? { images: [imagen] } : {}),
       },
     };
-  } catch {
+  } catch (error) {
+    console.error('Error generating metadata:', error);
     return {
       title: 'Cancha deportiva',
       description: 'Reserva canchas deportivas en Piura con CanchaGo.',
