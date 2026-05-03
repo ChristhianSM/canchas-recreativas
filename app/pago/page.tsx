@@ -224,7 +224,8 @@ function PagoContent() {
   useEffect(() => {
     const token = getToken();
     if (token) {
-      // Validar token antes de cargar datos
+      // Cargar datos directamente (sin validación previa)
+      // Si el token es inválido, el servidor retornará 401
       fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
         .then(r => {
           if (!r.ok) {
@@ -232,6 +233,7 @@ function PagoContent() {
             console.warn('Token inválido, continuando como invitado');
             localStorage.removeItem('cp_token');
             localStorage.removeItem('cp_user');
+            localStorage.removeItem('cp_token_time');
             setEsInvitado(true);
             return Promise.reject('Token inválido');
           }

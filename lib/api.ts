@@ -8,20 +8,48 @@ export function getToken(): string | null {
 
 export function saveToken(token: string) {
   localStorage.setItem('cp_token', token);
+  // Guardar timestamp de cuando se guardó el token
+  localStorage.setItem('cp_token_time', Date.now().toString());
 }
 
 export function removeToken() {
   localStorage.removeItem('cp_token');
   localStorage.removeItem('cp_user');
+  localStorage.removeItem('cp_token_time');
+}
+
+/**
+ * Verifica si el token probablemente expiró basándose en el tiempo
+ * Supabase tokens expiran en 1 hora por defecto
+ * Retorna true si probablemente expiró (sin hacer consulta a BD)
+ */
+export function isTokenLikelyExpired(): boolean {
+  if (typeof window === 'undefined') return false;
+  
+  const tokenTime = localStorage.getItem('cp_token_time');
+  if (!tokenTime) return false;
+  
+  const elapsed = Date.now() - Number(tokenTime);
+  const oneHour = 60 * 60 * 1000; // 1 hora en milisegundos
+  
+  // Si pasó más de 55 minutos, considerarlo expirado (margen de seguridad)
+  return elapsed > (oneHour - 5 * 60 * 1000);
 }
 
 /**
  * Valida si el token actual es válido
- * Retorna true si es válido, false si expiró o es inválido
+ * SOLO USAR cuando realmente necesites validar (ej: después de un error 401)
+ * NO usar en cada carga de página
  */
 export async function validateToken(): Promise<boolean> {
   const token = getToken();
   if (!token) return false;
+
+  // Primero verificar si probablemente expiró (sin consulta)
+  if (isTokenLikelyExpired()) {
+    removeToken();
+    return false;
+  }
 
   try {
     const response = await fetch('/api/auth/me', {
@@ -34,6 +62,8 @@ export async function validateToken(): Promise<boolean> {
       return false;
     }
 
+    // Token válido — actualizar timestamp
+    localStorage.setItem('cp_token_time', Date.now().toString());
     return true;
   } catch (error) {
     console.error('Error validando token:', error);

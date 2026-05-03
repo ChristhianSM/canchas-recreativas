@@ -15,52 +15,40 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { getUser, logout, type User as AuthUser } from '@/lib/auth';
-import { getStoredUser, apiLogout, getToken, validateToken } from '@/lib/api';
+import { getStoredUser, apiLogout, getToken, isTokenLikelyExpired } from '@/lib/api';
 
 export function Header() {
   const router = useRouter();
   const [open, setOpen]       = useState(false);
   const [user, setUser]       = useState<AuthUser | null>(null);
   const [hydrated, setHydrated] = useState(false);
-  const [validatingToken, setValidatingToken] = useState(false);
 
-  // Validar token al cargar
+  // Cargar usuario sin validar token (optimización)
   useEffect(() => {
-    const checkAuth = async () => {
-      const storedUser = getStoredUser();
-      const token = getToken();
+    const storedUser = getStoredUser();
+    const token = getToken();
 
-      // Si no hay token pero hay usuario, limpiar
-      if (!token && storedUser) {
+    // Si no hay token pero hay usuario, limpiar
+    if (!token && storedUser) {
+      logout();
+      apiLogout();
+      setUser(null);
+    } 
+    // Si hay token, verificar si probablemente expiró (sin consulta a BD)
+    else if (token) {
+      if (isTokenLikelyExpired()) {
+        // Token probablemente expirado — limpiar
+        console.warn('Token expirado (basado en tiempo), cerrando sesión...');
         logout();
         apiLogout();
         setUser(null);
-        setHydrated(true);
-        return;
+      } else {
+        // Token probablemente válido — mostrar usuario
+        setUser(storedUser);
       }
+    }
 
-      // Si hay token, validarlo con el servidor
-      if (token) {
-        setValidatingToken(true);
-        const isValid = await validateToken();
-
-        if (!isValid) {
-          // Token inválido o expirado — limpiar todo
-          console.warn('Token inválido o expirado, cerrando sesión...');
-          logout();
-          apiLogout();
-          setUser(null);
-        } else {
-          // Token válido — mantener usuario
-          setUser(storedUser);
-        }
-        setValidatingToken(false);
-      }
-
-      setHydrated(true);
-    };
-
-    checkAuth();
+    setHydrated(true);
 
     const handleUpdate = () => {
       const storedUser = getStoredUser();
@@ -68,6 +56,11 @@ export function Header() {
       
       // Si no hay token, limpiar usuario
       if (!token) {
+        setUser(null);
+      } else if (isTokenLikelyExpired()) {
+        // Token expirado
+        logout();
+        apiLogout();
         setUser(null);
       } else {
         setUser(storedUser);
