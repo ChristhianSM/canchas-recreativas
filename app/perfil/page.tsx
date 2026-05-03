@@ -38,18 +38,37 @@ export default function PerfilPage() {
   useEffect(() => {
     const token = getToken();
     if (!token) {
-      window.location.href = '/login';
+      window.location.href = '/login?redirect=/perfil';
       return;
     }
 
-    // Usar el token actual sin refrescar con Supabase
+    // Cargar perfil directamente (sin validación previa)
     fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) {
+          // Token inválido — limpiar y redirigir
+          localStorage.removeItem('cp_token');
+          localStorage.removeItem('cp_user');
+          localStorage.removeItem('cp_token_time');
+          window.location.href = '/login?redirect=/perfil';
+          return Promise.reject('Token inválido');
+        }
+        return r.json();
+      })
       .then(data => {
-        if (data.error) { window.location.href = '/login'; return; }
+        if (data.error) { 
+          localStorage.removeItem('cp_token');
+          localStorage.removeItem('cp_user');
+          localStorage.removeItem('cp_token_time');
+          window.location.href = '/login?redirect=/perfil'; 
+          return; 
+        }
         setPerfil(data);
         setNombre(data.nombre || '');
         setTelefono(data.telefono || '');
+      })
+      .catch(err => {
+        console.error('Error cargando perfil:', err);
       })
       .finally(() => setLoading(false));
   }, []);

@@ -1,3 +1,19 @@
+export type SuperficieType = 'grass' | 'grass_sintetico' | 'loza' | 'cemento';
+
+export const superficieLabels: Record<SuperficieType, string> = {
+  grass:           'Grass natural',
+  grass_sintetico: 'Grass sintético',
+  loza:            'Loza',
+  cemento:         'Cemento',
+};
+
+export const superficieIcons: Record<SuperficieType, string> = {
+  grass:           '🌿',
+  grass_sintetico: '🟩',
+  loza:            '🏗️',
+  cemento:         '⬜',
+};
+
 export interface TimeSlot {
   id: string;
   time: string;
@@ -27,6 +43,12 @@ export interface Cancha {
   };
   phone: string;
   featured?: boolean;
+  superficie?: SuperficieType | null;
+  maxJugadores?: number | null;
+  balonDisponible?: boolean;
+  balonPrecio?: number | null;
+  chalecoDisponible?: boolean;
+  chalecosPrecio?: number | null;
 }
 
 export type SportType = Cancha['type'];
@@ -54,10 +76,14 @@ export interface AdvancedFilters {
   minRating: number;
   amenities: string[];
   districts: string[];
-  selectedDate: string; // Fecha seleccionada (YYYY-MM-DD)
+  selectedDate: string;
   availableHours: string[];
   onlyFeatured: boolean;
   searchQuery: string;
+  conBalon: boolean;
+  conChalecos: boolean;
+  superficies: SuperficieType[];
+  minJugadores: number; // 0 = sin filtro
 }
 
 // Importar aquí para evitar circular dependency
@@ -69,8 +95,12 @@ export const DEFAULT_FILTERS: AdvancedFilters = {
   minRating: 0,
   amenities: [],
   districts: [],
-  selectedDate: getLocalDateString(), // Hoy por defecto
+  selectedDate: getLocalDateString(),
   availableHours: [],
   onlyFeatured: false,
   searchQuery: '',
+  conBalon: false,
+  conChalecos: false,
+  superficies: [],
+  minJugadores: 0,
 };

@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
   const sb = createServiceClient();
 
   const body = await req.json();
-  const { canchaId, canchaNombre, fecha, hora, precio, precioOriginal, cuponId, metodoPago, comprobanteUrl, emailInvitado, telefonoInvitado, metodoDevolucion, telefonoDevolucion, actualizarTelefono, nuevoTelefono } = body;
+  const { canchaId, canchaNombre, fecha, hora, precio, precioOriginal, cuponId, metodoPago, comprobanteUrl, emailInvitado, telefonoInvitado, metodoDevolucion, telefonoDevolucion, actualizarTelefono, nuevoTelefono, balonIncluido, chalecosIncluido } = body;
 
   let usuarioId: string | null = null;
   let usuarioNombre = 'Invitado';
@@ -64,6 +64,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Faltan datos requeridos' }, { status: 400 });
   }
 
+  // Verificar que el slot no esté ya reservado (protección contra doble reserva)
+  const { data: slotOcupado } = await sb
+    .from('reservas')
+    .select('id')
+    .eq('cancha_id', canchaId)
+    .eq('fecha', fecha)
+    .eq('hora', hora)
+    .in('estado', ['pendiente', 'confirmada'])
+    .maybeSingle();
+
+  if (slotOcupado) {
+    return NextResponse.json({ error: 'Este horario ya fue reservado por otro usuario' }, { status: 409 });
+  }
+
   // Insertar reserva
   const { data: reserva, error } = await sb.from('reservas').insert({
     cancha_id:        canchaId,
@@ -80,6 +94,8 @@ export async function POST(req: NextRequest) {
     metodo_pago:      metodoPago,
     comprobante_url:  comprobanteUrl,
     estado:           'pendiente',
+    balon_incluido:    balonIncluido    ?? false,
+    chalecos_incluido: chalecosIncluido ?? false,
   }).select().single();
 
   if (error) {

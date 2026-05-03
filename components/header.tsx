@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { getUser, logout, type User as AuthUser } from '@/lib/auth';
-import { getStoredUser, apiLogout } from '@/lib/api';
+import { getStoredUser, apiLogout, getToken, isTokenLikelyExpired } from '@/lib/api';
 
 export function Header() {
   const router = useRouter();
@@ -23,11 +23,49 @@ export function Header() {
   const [user, setUser]       = useState<AuthUser | null>(null);
   const [hydrated, setHydrated] = useState(false);
 
+  // Cargar usuario sin validar token (optimización)
   useEffect(() => {
-    setUser(getStoredUser());
+    const storedUser = getStoredUser();
+    const token = getToken();
+
+    // Si no hay token pero hay usuario, limpiar
+    if (!token && storedUser) {
+      logout();
+      apiLogout();
+      setUser(null);
+    } 
+    // Si hay token, verificar si probablemente expiró (sin consulta a BD)
+    else if (token) {
+      if (isTokenLikelyExpired()) {
+        // Token probablemente expirado — limpiar
+        console.warn('Token expirado (basado en tiempo), cerrando sesión...');
+        logout();
+        apiLogout();
+        setUser(null);
+      } else {
+        // Token probablemente válido — mostrar usuario
+        setUser(storedUser);
+      }
+    }
+
     setHydrated(true);
 
-    const handleUpdate = () => setUser(getStoredUser());
+    const handleUpdate = () => {
+      const storedUser = getStoredUser();
+      const token = getToken();
+      
+      // Si no hay token, limpiar usuario
+      if (!token) {
+        setUser(null);
+      } else if (isTokenLikelyExpired()) {
+        // Token expirado
+        logout();
+        apiLogout();
+        setUser(null);
+      } else {
+        setUser(storedUser);
+      }
+    };
 
     window.addEventListener('storage', handleUpdate);
     window.addEventListener('user-login', handleUpdate);
@@ -71,6 +109,7 @@ export function Header() {
             alt="CanchaPiura"
             width={280}
             height={80}
+            priority
             className="h-14 w-auto object-contain"
           />
         </Link>
@@ -148,19 +187,8 @@ export function Header() {
           <SheetContent side="right" className="w-[280px] bg-card p-0">
             {/* Título oculto para accesibilidad */}
             <SheetTitle className="sr-only">Menú de navegación</SheetTitle>
-            
-            <div className="flex h-16 items-center border-b border-border px-4">
-              <Link href="/" className="flex items-center gap-2" onClick={() => setOpen(false)}>
-                <Image
-                  src="/images/logo.png"
-                  alt="CanchaPiura"
-                  width={180}
-                  height={45}
-                  className="h-11 w-auto object-contain"
-                />
-              </Link>
-            </div>
-            <nav className="flex flex-col gap-1 p-4">
+            <div className="h-16 border-b border-border" />
+            <nav className="flex flex-col gap-1 p-4 pt-0">
               {navItems.map((item) => (
                 <Link
                   key={item.href}

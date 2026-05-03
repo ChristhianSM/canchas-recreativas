@@ -48,7 +48,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const body = await req.json();
   console.log('📍 BODY COMPLETO RECIBIDO:', JSON.stringify(body, null, 2));
   
-  const { descripcion, telefono, precioHora, amenidades, imagenes, horariosRestringidos, lat, lng, direccion, distrito } = body;
+  const { descripcion, telefono, precioHora, amenidades, imagenes, lat, lng, direccion, distrito, preciosPorHora } = body;
 
   console.log('Distrito recibido:', distrito);
   console.log('Tipo de distrito:', typeof distrito);
@@ -58,7 +58,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     telefono, 
     precio_por_hora: precioHora, 
     amenidades, 
-    imagenes 
+    imagenes,
+    precios_por_hora: preciosPorHora ?? {},
   };
 
   if (lat !== undefined) updateData.lat = lat;
@@ -74,13 +75,6 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     .eq('id', params.id);
 
   if (canchaError) return NextResponse.json({ error: canchaError.message }, { status: 500 });
-
-  await sb.from('horarios_bloqueados').delete().eq('cancha_id', params.id);
-  if (horariosRestringidos?.length) {
-    await sb.from('horarios_bloqueados').insert(
-      horariosRestringidos.map((hora: string) => ({ cancha_id: params.id, hora }))
-    );
-  }
 
   return NextResponse.json({ ok: true, distrito });
 }

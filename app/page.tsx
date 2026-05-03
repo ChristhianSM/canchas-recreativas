@@ -17,6 +17,12 @@ type Cancha = {
   rating: number; total_resenas: number; precio_por_hora: number;
   amenidades: string[]; lat: number; lng: number; telefono: string;
   destacada: boolean; activa: boolean;
+  superficie?: string | null;
+  max_jugadores?: number | null;
+  balon_disponible?: boolean;
+  balon_precio?: number | null;
+  chalecos_disponible?: boolean;
+  chalecos_precio?: number | null;
 };
 
 function adaptCancha(c: Cancha) {
@@ -26,6 +32,12 @@ function adaptCancha(c: Cancha) {
     rating: c.rating, reviewCount: c.total_resenas, pricePerHour: c.precio_por_hora,
     amenities: c.amenidades ?? [], coordinates: { lat: c.lat, lng: c.lng },
     phone: c.telefono, featured: c.destacada, schedule: {},
+    superficie:        (c.superficie ?? null) as any,
+    maxJugadores:      c.max_jugadores ?? null,
+    balonDisponible:   c.balon_disponible  ?? false,
+    balonPrecio:       c.balon_precio      ?? null,
+    chalecoDisponible: c.chalecos_disponible ?? false,
+    chalecosPrecio:    c.chalecos_precio   ?? null,
   };
 }
 

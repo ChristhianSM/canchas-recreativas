@@ -3,14 +3,16 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { ArrowLeft, Save, Trash2, Plus, Ban, CheckCircle2, MapPin } from 'lucide-react';
+import { ArrowLeft, Save, Trash2, Plus, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
+import { BloqueosAdminPanel } from '@/components/bloqueos-admin-panel';
 
 const HORAS = [
   '06:00','07:00','08:00','09:00','10:00','11:00',
@@ -18,8 +20,7 @@ const HORAS = [
   '18:00','19:00','20:00','21:00','22:00','23:00',
 ];
 
-type Cancha = {
-  id: string; nombre: string; descripcion: string; telefono: string;
+type Cancha = {  id: string; nombre: string; descripcion: string; telefono: string;
   precio_por_hora: number; amenidades: string[]; imagenes: string[];
   lat: number; lng: number; direccion: string;
 };
@@ -198,7 +199,14 @@ export default function OwnerEditarCanchaPage() {
   const [amenities, setAmenities]   = useState<string[]>([]);
   const [newAmenity, setNewAmenity] = useState('');
   const [images, setImages]         = useState<string[]>([]);
-  const [restricted, setRestricted] = useState<string[]>([]);
+  const [activeTab, setActiveTab]   = useState('info');
+  const [preciosPorHora, setPreciosPorHora] = useState<Record<string, number>>({});
+  const [balonPrecio, setBalonPrecio]             = useState<number | null>(null);
+  const [chalecosPrecio, setChalecosPrecio]       = useState<number | null>(null);
+  const [balonDisponible, setBalonDisponible]     = useState(false);
+  const [chalecosDisponible, setChalecosDisponible] = useState(false);
+  const [superficie, setSuperficie]               = useState<string>('grass_sintetico');
+  const [maxJugadores, setMaxJugadores]           = useState<number | null>(null);
   const [lat, setLat]               = useState('');
   const [lng, setLng]               = useState('');
   const [direccion, setDireccion]   = useState('');
@@ -225,10 +233,15 @@ export default function OwnerEditarCanchaPage() {
         setPrice(canchaData.precio_por_hora ?? 0);
         setAmenities(canchaData.amenidades ?? []);
         setImages(canchaData.imagenes ?? []);
+        setPreciosPorHora(canchaData.precios_por_hora ?? {});
+        setBalonDisponible(canchaData.balon_disponible ?? false);
+        setBalonPrecio(canchaData.balon_precio ?? null);
+        setChalecosDisponible(canchaData.chalecos_disponible ?? false);
+        setChalecosPrecio(canchaData.chalecos_precio ?? null);
+        setSuperficie(canchaData.superficie ?? 'grass_sintetico');
+        setMaxJugadores(canchaData.max_jugadores ?? null);
         setLoading(false);
 
-        // Los horarios ya vienen incluidos en la respuesta de la cancha
-        setRestricted(Array.isArray(canchaData.horariosRestringidos) ? canchaData.horariosRestringidos : []);
         setLat(String(canchaData.lat ?? ''));
         setLng(String(canchaData.lng ?? ''));
         setDireccion(canchaData.direccion ?? '');
@@ -264,7 +277,13 @@ export default function OwnerEditarCanchaPage() {
         precioHora: price,
         amenidades: amenities,
         imagenes: images,
-        horariosRestringidos: restricted,
+        preciosPorHora,
+        balonPrecio:         balonPrecio,
+        chalecosPrecio:      chalecosPrecio,
+        balonDisponible:     balonDisponible,
+        chalecosDisponible:  chalecosDisponible,
+        superficie:          superficie,
+        maxJugadores:        maxJugadores,
         lat: lat ? Number(lat) : undefined,
         lng: lng ? Number(lng) : undefined,
         direccion: direccion || undefined,
@@ -281,9 +300,6 @@ export default function OwnerEditarCanchaPage() {
       setSaveError(data.error ?? 'Error al guardar');
     }
   };
-
-  const toggleHora = (hora: string) =>
-    setRestricted(prev => prev.includes(hora) ? prev.filter(h => h !== hora) : [...prev, hora]);
 
   const removeImage = (idx: number) => setImages(prev => prev.filter((_, i) => i !== idx));
 
@@ -343,7 +359,7 @@ export default function OwnerEditarCanchaPage() {
             <p className="text-sm text-muted-foreground">Editar mi cancha</p>
           </div>
         </div>
-        <Button onClick={handleSave} disabled={saving} className="gap-2 shrink-0">
+        <Button onClick={handleSave} disabled={saving} className={cn("gap-2 shrink-0", activeTab === 'bloqueos' && "invisible")}>
           <Save className="h-4 w-4" />
           {saving ? 'Guardando...' : saved ? '¡Guardado! ✓' : 'Guardar cambios'}
         </Button>
@@ -354,14 +370,16 @@ export default function OwnerEditarCanchaPage() {
         </div>
       )}
 
-      <Tabs defaultValue="info">
-        <TabsList className="w-full sm:w-auto">
-          <TabsTrigger value="info"      className="flex-1 sm:flex-none">Información</TabsTrigger>
-          <TabsTrigger value="fotos"     className="flex-1 sm:flex-none">Fotos</TabsTrigger>
-          <TabsTrigger value="horarios"  className="flex-1 sm:flex-none">Horarios</TabsTrigger>
-          <TabsTrigger value="ubicacion" className="flex-1 sm:flex-none">Ubicación</TabsTrigger>
-          <TabsTrigger value="servicios" className="flex-1 sm:flex-none">Servicios</TabsTrigger>
-        </TabsList>
+      <Tabs defaultValue="info" onValueChange={setActiveTab}>
+        <div className="overflow-x-auto scrollbar-none -mx-1 px-1">
+          <TabsList className="w-max min-w-full sm:w-auto">
+            <TabsTrigger value="info">Información</TabsTrigger>
+            <TabsTrigger value="fotos">Fotos</TabsTrigger>
+            <TabsTrigger value="bloqueos">Bloqueos</TabsTrigger>
+            <TabsTrigger value="ubicacion">Ubicación</TabsTrigger>
+            <TabsTrigger value="servicios">Servicios</TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* ── Información ── */}
         <TabsContent value="info" className="space-y-4 pt-4">
@@ -381,9 +399,226 @@ export default function OwnerEditarCanchaPage() {
                 <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+51 999 999 999" />
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">Precio por hora (S/)</label>
+                <label className="text-sm font-medium text-foreground">Precio base por hora (S/)</label>
                 <Input type="number" min={0} value={price} onChange={e => setPrice(Number(e.target.value))} />
+                <p className="text-xs text-muted-foreground">Se aplica a las horas que no tengan precio personalizado.</p>
               </div>
+            </div>
+
+            {/* Superficie */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Tipo de superficie</label>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {([
+                  { value: 'grass',           label: 'Grass natural',   icon: '🌿' },
+                  { value: 'grass_sintetico',  label: 'Grass sintético', icon: '🟩' },
+                  { value: 'loza',             label: 'Loza',            icon: '🏗️' },
+                  { value: 'cemento',          label: 'Cemento',         icon: '⬜' },
+                ] as const).map(({ value, label, icon }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setSuperficie(value)}
+                    className={cn(
+                      'flex flex-col items-center gap-1.5 rounded-xl border-2 px-3 py-3 text-center transition-all',
+                      superficie === value
+                        ? 'border-primary bg-primary/5 text-primary'
+                        : 'border-border bg-card text-muted-foreground hover:border-primary/30'
+                    )}
+                  >
+                    <span className="text-xl">{icon}</span>
+                    <span className="text-xs font-medium leading-tight">{label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Máximo de jugadores */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Máximo de jugadores</label>
+              <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
+                {[null, 8, 10, 12, 14, 16, 20, 22].map(n => (
+                  <button
+                    key={n ?? 'none'}
+                    type="button"
+                    onClick={() => setMaxJugadores(n)}
+                    className={cn(
+                      'rounded-xl border-2 py-2.5 text-sm font-medium transition-all',
+                      maxJugadores === n
+                        ? 'border-primary bg-primary text-primary-foreground'
+                        : 'border-border bg-card text-foreground hover:border-primary/40'
+                    )}
+                  >
+                    {n ?? '—'}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {maxJugadores ? `Máximo ${maxJugadores} jugadores por partido` : 'Sin límite definido'}
+              </p>
+            </div>
+          </Card>
+
+          {/* Precios por hora */}
+          <Card className="border-border p-5 space-y-4">
+            <div>
+              <p className="font-medium text-foreground">Precios por hora</p>
+              <p className="text-sm text-muted-foreground">
+                Personaliza el precio de cada horario. Las horas sin precio usarán el precio base (S/ {price}).
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {['06:00','07:00','08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00','22:00','23:00'].map(hora => {
+                const valorActual = preciosPorHora[hora];
+                const tienePersonalizado = valorActual !== undefined;
+                return (
+                  <div key={hora} className={`rounded-xl border p-3 space-y-1.5 transition-colors ${tienePersonalizado ? 'border-primary/40 bg-primary/5' : 'border-border bg-card'}`}>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-foreground">{hora}</span>
+                      {tienePersonalizado && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = { ...preciosPorHora };
+                            delete next[hora];
+                            setPreciosPorHora(next);
+                          }}
+                          className="text-xs text-muted-foreground hover:text-destructive"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-muted-foreground">S/</span>
+                      <Input
+                        type="number"
+                        min={0}
+                        placeholder={String(price)}
+                        value={valorActual ?? ''}
+                        onChange={e => {
+                          const val = e.target.value;
+                          if (val === '') {
+                            const next = { ...preciosPorHora };
+                            delete next[hora];
+                            setPreciosPorHora(next);
+                          } else {
+                            setPreciosPorHora(prev => ({ ...prev, [hora]: Number(val) }));
+                          }
+                        }}
+                        className="h-8 text-sm px-2"
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {Object.keys(preciosPorHora).length > 0 && (
+              <div className="flex items-center justify-between rounded-xl bg-primary/5 border border-primary/20 px-4 py-2.5">
+                <p className="text-sm text-primary">
+                  {Object.keys(preciosPorHora).length} hora{Object.keys(preciosPorHora).length > 1 ? 's' : ''} con precio personalizado
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setPreciosPorHora({})}
+                  className="text-xs text-muted-foreground hover:text-destructive"
+                >
+                  Limpiar todo
+                </button>
+              </div>
+            )}
+          </Card>
+
+          {/* Extras: balón y chalecos */}
+          <Card className="border-border p-5 space-y-4">
+            <div>
+              <p className="font-medium text-foreground">Extras disponibles</p>
+              <p className="text-sm text-muted-foreground">
+                Indica si ofreces balón y/o chalecos. Puedes cobrar un precio o incluirlos gratis.
+              </p>
+            </div>
+            <div className="grid gap-5 sm:grid-cols-2">
+
+              {/* Balón */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="balon-disponible"
+                    checked={balonDisponible}
+                    onCheckedChange={v => {
+                      setBalonDisponible(v as boolean);
+                      if (!v) setBalonPrecio(null);
+                    }}
+                  />
+                  <label htmlFor="balon-disponible" className="text-sm font-medium text-foreground cursor-pointer flex items-center gap-1.5">
+                    ⚽ Ofrezco balón
+                  </label>
+                </div>
+                {balonDisponible && (
+                  <div className="ml-6 space-y-2">
+                    <p className="text-xs text-muted-foreground">¿Tiene costo adicional?</p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground shrink-0">S/</span>
+                      <Input
+                        type="number"
+                        min={0}
+                        placeholder="Gratis (dejar vacío)"
+                        value={balonPrecio ?? ''}
+                        onChange={e => setBalonPrecio(e.target.value === '' ? null : Number(e.target.value))}
+                        className="h-8 text-sm"
+                      />
+                      {balonPrecio != null && (
+                        <button type="button" onClick={() => setBalonPrecio(null)}
+                          className="text-xs text-muted-foreground hover:text-destructive shrink-0">✕</button>
+                      )}
+                    </div>
+                    <p className="text-xs text-primary font-medium">
+                      {balonPrecio != null ? `Cobrarás S/ ${balonPrecio} por reserva` : '✓ Incluido gratis'}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Chalecos */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="chalecos-disponible"
+                    checked={chalecosDisponible}
+                    onCheckedChange={v => {
+                      setChalecosDisponible(v as boolean);
+                      if (!v) setChalecosPrecio(null);
+                    }}
+                  />
+                  <label htmlFor="chalecos-disponible" className="text-sm font-medium text-foreground cursor-pointer flex items-center gap-1.5">
+                    🎽 Ofrezco chalecos
+                  </label>
+                </div>
+                {chalecosDisponible && (
+                  <div className="ml-6 space-y-2">
+                    <p className="text-xs text-muted-foreground">¿Tiene costo adicional?</p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground shrink-0">S/</span>
+                      <Input
+                        type="number"
+                        min={0}
+                        placeholder="Gratis (dejar vacío)"
+                        value={chalecosPrecio ?? ''}
+                        onChange={e => setChalecosPrecio(e.target.value === '' ? null : Number(e.target.value))}
+                        className="h-8 text-sm"
+                      />
+                      {chalecosPrecio != null && (
+                        <button type="button" onClick={() => setChalecosPrecio(null)}
+                          className="text-xs text-muted-foreground hover:text-destructive shrink-0">✕</button>
+                      )}
+                    </div>
+                    <p className="text-xs text-primary font-medium">
+                      {chalecosPrecio != null ? `Cobrarás S/ ${chalecosPrecio} por reserva` : '✓ Incluidos gratis'}
+                    </p>
+                  </div>
+                )}
+              </div>
+
             </div>
           </Card>
         </TabsContent>
@@ -427,47 +662,20 @@ export default function OwnerEditarCanchaPage() {
           </Card>
         </TabsContent>
 
-        {/* ── Horarios ── */}
-        <TabsContent value="horarios" className="space-y-4 pt-4">
-          <Card className="border-border p-5 space-y-4">
-            <div>
-              <p className="font-medium text-foreground">Horarios restringidos</p>
-              <p className="text-sm text-muted-foreground">Los horarios en rojo no estarán disponibles para reservas.</p>
-            </div>
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
-              {HORAS.map(hora => {
-                const bloqueado = restricted.includes(hora);
-                return (
-                  <button key={hora} onClick={() => toggleHora(hora)}
-                    className={cn(
-                      'flex items-center justify-center gap-1.5 rounded-xl border-2 px-3 py-2.5 text-sm font-medium transition-all',
-                      bloqueado
-                        ? 'border-destructive bg-destructive/10 text-destructive'
-                        : 'border-border bg-card text-foreground hover:border-primary/40'
-                    )}>
-                    {bloqueado
-                      ? <Ban className="h-3.5 w-3.5 shrink-0" />
-                      : <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-primary" />
-                    }
-                    {hora}
-                  </button>
-                );
-              })}
-            </div>
-            {restricted.length > 0 && (
-              <div className="rounded-xl bg-destructive/5 border border-destructive/20 p-3">
-                <p className="text-sm font-medium text-destructive mb-1">
-                  {restricted.length} horario{restricted.length > 1 ? 's' : ''} bloqueado{restricted.length > 1 ? 's' : ''}:
-                </p>
-                <p className="text-sm text-muted-foreground">{restricted.join(', ')}</p>
-              </div>
-            )}
-          </Card>
+        {/* ── Bloqueos avanzados ── */}
+        <TabsContent value="bloqueos" className="space-y-4 pt-4">
+          <div className="rounded-xl border border-border bg-card px-4 py-3 mb-2">
+            <p className="text-sm font-medium text-foreground">Bloqueos por fecha o recurrentes</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Bloquea horarios para un día específico, de forma recurrente cada semana, o de forma permanente.
+              Los horarios bloqueados no estarán disponibles para reservas.
+            </p>
+          </div>
+          <BloqueosAdminPanel canchaId={id} token={getOwnerToken() ?? ''} />
         </TabsContent>
 
         {/* ── Ubicación ── */}
-        <TabsContent value="ubicacion" className="space-y-4 pt-4">
-          <UbicacionTab
+        <TabsContent value="ubicacion" className="space-y-4 pt-4">          <UbicacionTab
             direccion={direccion}
             lat={lat}
             lng={lng}

@@ -19,9 +19,11 @@ import { Header } from '@/components/header';
 import { CanchaGallery } from '@/components/cancha-gallery';
 import { TimeSlotPicker } from '@/components/time-slot-picker';
 import CalificarCancha from '@/components/calificar-cancha';
+import { CanchaSEO } from '@/components/cancha-seo';
 import { sportLabels, TimeSlot } from '@/lib/types';
 import { apiToggleFavorito, apiGetFavoritos, getToken } from '@/lib/api';
 import { getLocalDateString } from '@/lib/date-utils';
+import { Checkbox } from '@/components/ui/checkbox';
 
 // Carga dinámica para evitar SSR con Leaflet
 const MapView = dynamic(
@@ -42,15 +44,23 @@ type CanchaDB = {
   direccion: string; distrito: string; descripcion: string;
   imagenes: string[]; rating: number; total_resenas: number;
   precio_por_hora: number; amenidades: string[];
+  precios_por_hora: Record<string, number>;
   lat: number; lng: number; telefono: string; destacada: boolean;
   horariosRestringidos: string[];
   horariosOcupados: Record<string, 'reservado' | 'en_proceso'>;
+  balon_disponible: boolean;
+  balon_precio: number | null;
+  chalecos_disponible: boolean;
+  chalecos_precio: number | null;
+  superficie: string | null;
+  max_jugadores: number | null;
 };
 
 function buildSchedule(
   horariosRestringidos: string[],
   horariosOcupados: Record<string, 'reservado' | 'en_proceso'>,
   precioBase: number,
+  preciosPorHora: Record<string, number> = {},
 ) {
   const schedule: Record<string, TimeSlot[]> = {};
   const today = new Date();
@@ -59,7 +69,6 @@ function buildSchedule(
   for (let i = 0; i < 30; i++) {
     const d = new Date(today);
     d.setDate(today.getDate() + i);
-    // Usar fecha local (no UTC) para evitar desfase de zona horaria
     const year  = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const day   = String(d.getDate()).padStart(2, '0');
@@ -71,11 +80,13 @@ function buildSchedule(
       const status = bloqueado || ocupado === 'reservado' ? 'reservado'
         : ocupado === 'en_proceso' ? 'en_proceso'
         : 'disponible';
+      // Usar precio específico de la hora si existe, sino el precio base
+      const precio = preciosPorHora[time] ?? precioBase;
       return {
         id: `${dateStr}-${idx}`,
         time,
         available: status === 'disponible',
-        price: time >= '18:00' ? Math.round(precioBase * 1.1) : precioBase,
+        price: precio,
         status,
       };
     });
@@ -103,6 +114,9 @@ export default function CanchaDetailPage() {
   const [countdown, setCountdown]     = useState(0);
   const [reservaStep, setReservaStep] = useState(0);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Extras seleccionados por el usuario
+  const [quiereBalon, setQuiereBalon]       = useState(false);
+  const [quiereChalecos, setQuiereChalecos] = useState(false);
 
   const sessionId = useRef(
     typeof window !== 'undefined'
@@ -160,7 +174,12 @@ export default function CanchaDetailPage() {
     setTimeout(() => {
       setReservando(false);
       setReservaStep(0);
-      router.push(`/pago?canchaId=${cancha.id}&fecha=${selectedDate}&hora=${selectedSlot.time}&precio=${selectedSlot.price}&sid=${sessionId.current}`);
+      const extrasParams = [
+        quiereBalon && cancha.balon_disponible ? `balon=1` : '',
+        quiereChalecos && cancha.chalecos_disponible ? `chalecos=1` : '',
+      ].filter(Boolean).join('&');
+      const extrasStr = extrasParams ? `&${extrasParams}` : '';
+      router.push(`/pago?canchaId=${cancha.id}&fecha=${selectedDate}&hora=${selectedSlot.time}&precio=${selectedSlot.price}&sid=${sessionId.current}${extrasStr}`);
     }, 800);
   };
 
@@ -203,11 +222,8 @@ export default function CanchaDetailPage() {
     
     const token = getToken();
     if (!token) {
-      toast({
-        title: "Inicia sesión",
-        description: "Debes iniciar sesión para guardar favoritos",
-        variant: "destructive",
-      });
+      // Redirigir al login y volver a esta cancha después
+      router.push(`/login?redirect=/cancha/${cancha.id}`);
       return;
     }
 
@@ -320,6 +336,7 @@ export default function CanchaDetailPage() {
     cancha.horariosRestringidos ?? [],
     cancha.horariosOcupados ?? {},
     cancha.precio_por_hora,
+    cancha.precios_por_hora ?? {},
   );
   const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${cancha.lat},${cancha.lng}`;
   const selectedDateLabel = new Date(selectedDate + 'T00:00:00').toLocaleDateString('es-PE', {
@@ -328,6 +345,23 @@ export default function CanchaDetailPage() {
 
   return (
     <div className="min-h-screen bg-background pb-28 lg:pb-8">
+      {/* SEO: Datos estructurados JSON-LD */}
+      <CanchaSEO cancha={{
+        id: cancha.id,
+        nombre: cancha.nombre,
+        descripcion: cancha.descripcion,
+        direccion: cancha.direccion,
+        distrito: cancha.distrito,
+        lat: cancha.lat,
+        lng: cancha.lng,
+        telefono: cancha.telefono,
+        precio_por_hora: cancha.precio_por_hora,
+        rating: cancha.rating,
+        total_resenas: cancha.total_resenas,
+        imagenes: cancha.imagenes,
+        tipo: cancha.tipo,
+      }} />
+      
       <Header />
 
       {/* Modal: horario ocupado */}
@@ -457,6 +491,17 @@ export default function CanchaDetailPage() {
                 </>
               )}
               <span>{cancha.distrito}, Piura</span>
+              {cancha.superficie && (
+                <>
+                  <span>•</span>
+                  <span className="capitalize">
+                    {cancha.superficie === 'grass' ? '🌿 Grass natural'
+                      : cancha.superficie === 'grass_sintetico' ? '🟩 Grass sintético'
+                      : cancha.superficie === 'loza' ? '🏗️ Loza'
+                      : '⬜ Cemento'}
+                  </span>
+                </>
+              )}
             </div>
 
             <div className="flex items-center gap-4 rounded-xl border border-border bg-card p-4 lg:hidden">
@@ -469,6 +514,15 @@ export default function CanchaDetailPage() {
                 <p className="text-xs text-muted-foreground">Horario</p>
                 <p className="text-sm font-medium text-foreground">6am – 10pm</p>
               </div>
+              {cancha.max_jugadores && (
+                <>
+                  <Separator orientation="vertical" className="h-10" />
+                  <div className="flex-1 text-center">
+                    <p className="text-xs text-muted-foreground">Jugadores</p>
+                    <p className="text-sm font-medium text-foreground">👥 {cancha.max_jugadores}</p>
+                  </div>
+                </>
+              )}
               {cancha.rating > 0 && (
                 <>
                   <Separator orientation="vertical" className="h-10" />
@@ -496,6 +550,59 @@ export default function CanchaDetailPage() {
                     <span className="text-sm text-foreground">{a}</span>
                   </div>
                 ))}
+              </div>
+
+              {/* Extras: balón y chalecos — 3 escenarios por cada uno */}
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {/* Balón */}
+                {cancha.balon_disponible ? (
+                  <div className={`flex items-center gap-3 rounded-xl border px-4 py-3 ${
+                    cancha.balon_precio != null
+                      ? 'border-primary/20 bg-primary/5'
+                      : 'border-green-500/20 bg-green-500/5'
+                  }`}>
+                    <span className="text-2xl">⚽</span>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">Balón disponible</p>
+                      <p className="text-xs text-muted-foreground">
+                        {cancha.balon_precio != null ? `S/ ${cancha.balon_precio} por reserva` : 'Incluido gratis'}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3 rounded-xl border border-border bg-muted/30 px-4 py-3 opacity-60">
+                    <span className="text-2xl grayscale">⚽</span>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">Sin balón</p>
+                      <p className="text-xs text-muted-foreground">Debes traer el tuyo</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Chalecos */}
+                {cancha.chalecos_disponible ? (
+                  <div className={`flex items-center gap-3 rounded-xl border px-4 py-3 ${
+                    cancha.chalecos_precio != null
+                      ? 'border-primary/20 bg-primary/5'
+                      : 'border-green-500/20 bg-green-500/5'
+                  }`}>
+                    <span className="text-2xl">🎽</span>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">Chalecos disponibles</p>
+                      <p className="text-xs text-muted-foreground">
+                        {cancha.chalecos_precio != null ? `S/ ${cancha.chalecos_precio} por reserva` : 'Incluidos gratis'}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3 rounded-xl border border-border bg-muted/30 px-4 py-3 opacity-60">
+                    <span className="text-2xl grayscale">🎽</span>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">Sin chalecos</p>
+                      <p className="text-xs text-muted-foreground">Debes traer los tuyos</p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -559,6 +666,12 @@ export default function CanchaDetailPage() {
                   <Clock className="h-4 w-4 text-muted-foreground" />
                   <span className="text-foreground">Horario: 6:00 AM - 10:00 PM</span>
                 </div>
+                {cancha.max_jugadores && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-muted-foreground">👥</span>
+                    <span className="text-foreground">Máx. {cancha.max_jugadores} jugadores</span>
+                  </div>
+                )}
                 {cancha.telefono && (
                   <div className="flex items-center gap-2 text-sm">
                     <Phone className="h-4 w-4 text-muted-foreground" />
@@ -573,6 +686,49 @@ export default function CanchaDetailPage() {
                     <p className="font-semibold capitalize text-foreground">{selectedDateLabel}</p>
                     <p className="text-primary">{selectedSlot.time} — S/ {selectedSlot.price}</p>
                   </div>
+
+                  {/* Extras desktop */}
+                  {(cancha.balon_disponible || cancha.chalecos_disponible) ? (
+                    <div className="rounded-xl border border-border bg-card p-3 space-y-2.5">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">¿Necesitas extras?</p>
+                      {cancha.balon_disponible && (
+                        <label className="flex items-center justify-between gap-3 cursor-pointer">
+                          <div className="flex items-center gap-2">
+                            <span>⚽</span>
+                            <div>
+                              <p className="text-sm font-medium text-foreground">Balón</p>
+                              <p className="text-xs text-muted-foreground">
+                                {cancha.balon_precio != null ? `+ S/ ${cancha.balon_precio}` : 'Gratis'}
+                              </p>
+                            </div>
+                          </div>
+                          <Checkbox checked={quiereBalon} onCheckedChange={v => setQuiereBalon(v as boolean)} />
+                        </label>
+                      )}
+                      {cancha.chalecos_disponible && (
+                        <label className="flex items-center justify-between gap-3 cursor-pointer">
+                          <div className="flex items-center gap-2">
+                            <span>🎽</span>
+                            <div>
+                              <p className="text-sm font-medium text-foreground">Chalecos</p>
+                              <p className="text-xs text-muted-foreground">
+                                {cancha.chalecos_precio != null ? `+ S/ ${cancha.chalecos_precio}` : 'Gratis'}
+                              </p>
+                            </div>
+                          </div>
+                          <Checkbox checked={quiereChalecos} onCheckedChange={v => setQuiereChalecos(v as boolean)} />
+                        </label>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/5 px-3 py-2.5 flex items-start gap-2">
+                      <span className="text-base leading-none mt-0.5">⚠️</span>
+                      <p className="text-xs text-yellow-700 dark:text-yellow-400 font-medium">
+                        Esta cancha <span className="font-bold">no ofrece balón ni chalecos</span>. Recuerda traer los tuyos.
+                      </p>
+                    </div>
+                  )}
+
                   <StepButton
                     className="w-full"
                     size="lg"
@@ -653,6 +809,55 @@ export default function CanchaDetailPage() {
                   </div>
                 </div>
               )}
+
+              {/* Extras — solo si la cancha los ofrece */}
+              {selectedSlot && (cancha.balon_disponible || cancha.chalecos_disponible) ? (
+                <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                  <p className="text-sm font-semibold text-foreground">¿Necesitas extras?</p>
+                  {cancha.balon_disponible && (
+                    <label className="flex items-center justify-between gap-3 cursor-pointer">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">⚽</span>
+                        <div>
+                          <p className="text-sm font-medium text-foreground">Balón</p>
+                          <p className="text-xs text-muted-foreground">
+                            {cancha.balon_precio != null ? `+ S/ ${cancha.balon_precio}` : 'Gratis'}
+                          </p>
+                        </div>
+                      </div>
+                      <Checkbox
+                        checked={quiereBalon}
+                        onCheckedChange={v => setQuiereBalon(v as boolean)}
+                      />
+                    </label>
+                  )}
+                  {cancha.chalecos_disponible && (
+                    <label className="flex items-center justify-between gap-3 cursor-pointer">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">🎽</span>
+                        <div>
+                          <p className="text-sm font-medium text-foreground">Chalecos</p>
+                          <p className="text-xs text-muted-foreground">
+                            {cancha.chalecos_precio != null ? `+ S/ ${cancha.chalecos_precio}` : 'Gratis'}
+                          </p>
+                        </div>
+                      </div>
+                      <Checkbox
+                        checked={quiereChalecos}
+                        onCheckedChange={v => setQuiereChalecos(v as boolean)}
+                      />
+                    </label>
+                  )}
+                </div>
+              ) : selectedSlot ? (
+                <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/5 px-4 py-3 flex items-start gap-2">
+                  <span className="text-base leading-none mt-0.5">⚠️</span>
+                  <p className="text-xs text-yellow-700 dark:text-yellow-400 font-medium">
+                    Esta cancha <span className="font-bold">no ofrece balón ni chalecos</span>. Recuerda traer los tuyos.
+                  </p>
+                </div>
+              ) : null}
+
               <StepButton
                 className="w-full gap-2 mb-4"
                 size="lg"

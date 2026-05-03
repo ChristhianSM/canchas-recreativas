@@ -3,67 +3,58 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Eye, EyeOff, Mail, Lock, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { LoadingButton } from '@/components/loading-button';
 import { saveUser } from '@/lib/auth';
 import { apiLogin, apiLoginWithOAuth } from '@/lib/api';
+import { Suspense } from 'react';
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get('redirect') || '/';
+
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-  });
+  const [formData, setFormData] = useState({ email: '', password: '' });
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
 
   const validateForm = () => {
     const newErrors: { email?: string; password?: string } = {};
-    
     if (!formData.email) {
       newErrors.email = 'El correo es requerido';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = 'Ingresa un correo válido';
     }
-    
     if (!formData.password) {
       newErrors.password = 'La contraseña es requerida';
     } else if (formData.password.length < 6) {
       newErrors.password = 'La contraseña debe tener al menos 6 caracteres';
     }
-    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!validateForm()) return;
-    
     setIsLoading(true);
-    
-    // Login real con Supabase
-    const result = await apiLogin(formData.email, formData.password);
 
+    const result = await apiLogin(formData.email, formData.password);
     if (result.error) {
       setErrors({ email: result.error });
       setIsLoading(false);
       return;
     }
 
-    // Guardar usuario en localStorage (cp_user)
     saveUser({ name: result.user.name, email: result.user.email, phone: result.user.phone ?? '' });
-
-    // Disparar evento para que el header se actualice
     window.dispatchEvent(new Event('user-login'));
-
     setIsLoading(false);
-    router.push('/');
+    // Redirigir a la página de origen o al home
+    router.push(redirectTo);
   };
 
   return (
@@ -71,9 +62,12 @@ export default function LoginPage() {
       {/* Header */}
       <header className="border-b border-border bg-card">
         <div className="container mx-auto flex items-center gap-4 px-4 py-4">
-          <Link href="/" className="flex cursor-pointer items-center text-muted-foreground hover:text-foreground">
+          <button
+            onClick={() => router.back()}
+            className="flex cursor-pointer items-center text-muted-foreground hover:text-foreground"
+          >
             <ArrowLeft className="h-5 w-5" />
-          </Link>
+          </button>
           <h1 className="text-lg font-semibold text-foreground">Iniciar Sesión</h1>
         </div>
       </header>
@@ -111,9 +105,7 @@ export default function LoginPage() {
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 />
               </div>
-              {errors.email && (
-                <p className="text-sm text-destructive">{errors.email}</p>
-              )}
+              {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
             </div>
 
             {/* Password */}
@@ -139,9 +131,7 @@ export default function LoginPage() {
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
-              {errors.password && (
-                <p className="text-sm text-destructive">{errors.password}</p>
-              )}
+              {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
             </div>
 
             {/* Forgot Password */}
@@ -193,12 +183,23 @@ export default function LoginPage() {
           {/* Register Link */}
           <p className="mt-8 text-center text-muted-foreground">
             ¿No tienes una cuenta?{' '}
-            <Link href="/registro" className="font-medium text-primary hover:underline">
+            <Link
+              href={`/registro${redirectTo !== '/' ? `?redirect=${encodeURIComponent(redirectTo)}` : ''}`}
+              className="font-medium text-primary hover:underline"
+            >
               Regístrate
             </Link>
           </p>
         </div>
       </main>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background" />}>
+      <LoginContent />
+    </Suspense>
   );
 }

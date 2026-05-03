@@ -15,7 +15,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { AdvancedFilters, sportLabels, SportType } from '@/lib/types';
+import { AdvancedFilters, sportLabels, SportType, superficieLabels, SuperficieType } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 interface AdvancedFiltersProps {
@@ -138,6 +138,10 @@ export function AdvancedFiltersComponent({
       availableHours: [],
       onlyFeatured: false,
       searchQuery: '',
+      conBalon: false,
+      conChalecos: false,
+      superficies: [],
+      minJugadores: 0,
     });
   };
 
@@ -293,13 +297,101 @@ export function AdvancedFiltersComponent({
         </div>
       )}
 
+      {/* Extras disponibles — justo después de horarios */}
+      <div>
+        <label className="text-sm font-medium text-foreground flex items-center gap-2 mb-2">
+          <span className="text-sm">🎽</span>
+          Extras disponibles
+        </label>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="con-balon"
+              checked={filters.conBalon}
+              onCheckedChange={(checked) =>
+                onFiltersChange({ ...filters, conBalon: checked as boolean })
+              }
+              className="h-4 w-4"
+            />
+            <label htmlFor="con-balon" className="text-sm cursor-pointer">
+              ⚽ Con balón
+            </label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="con-chalecos"
+              checked={filters.conChalecos}
+              onCheckedChange={(checked) =>
+                onFiltersChange({ ...filters, conChalecos: checked as boolean })
+              }
+              className="h-4 w-4"
+            />
+            <label htmlFor="con-chalecos" className="text-sm cursor-pointer">
+              🎽 Con chalecos
+            </label>
+          </div>
+        </div>
+      </div>
+
+      {/* Superficie */}
+      <div>
+        <label className="text-sm font-medium text-foreground flex items-center gap-2 mb-2">
+          <span className="text-sm">🏟️</span>
+          Superficie
+        </label>
+        <div className="space-y-2">
+          {(Object.keys(superficieLabels) as SuperficieType[]).map(sup => (
+            <div key={sup} className="flex items-center gap-2">
+              <Checkbox
+                id={`sup-${sup}`}
+                checked={filters.superficies.includes(sup)}
+                onCheckedChange={checked => {
+                  const next = checked
+                    ? [...filters.superficies, sup]
+                    : filters.superficies.filter(s => s !== sup);
+                  onFiltersChange({ ...filters, superficies: next });
+                }}
+                className="h-4 w-4"
+              />
+              <label htmlFor={`sup-${sup}`} className="text-sm cursor-pointer">
+                {superficieLabels[sup]}
+              </label>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Jugadores */}
+      <div>
+        <label className="text-sm font-medium text-foreground flex items-center gap-2 mb-2">
+          <span className="text-sm">👥</span>
+          Mínimo de jugadores
+        </label>
+        <div className="grid grid-cols-4 gap-1.5">
+          {[0, 8, 10, 12, 14, 16, 20, 22].map(n => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => onFiltersChange({ ...filters, minJugadores: n })}
+              className={cn(
+                'rounded-lg border px-2 py-2 text-xs font-medium transition-all',
+                filters.minJugadores === n
+                  ? 'border-primary bg-primary text-primary-foreground'
+                  : 'border-border bg-card text-foreground hover:border-primary/40'
+              )}
+            >
+              {n === 0 ? 'Todos' : `${n}+`}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Deportes - Compacto */}
       <div>
         <label className="text-sm font-medium text-foreground flex items-center gap-2 mb-2">
           <span className="text-sm">⚽</span>
           Deporte
-        </label>
-        <div className="space-y-2">
+        </label>        <div className="space-y-2">
           {sports.map(sport => (
             <div key={sport} className="flex items-center gap-2">
               <Checkbox

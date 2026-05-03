@@ -63,28 +63,48 @@ export function TimeSlotPicker({
   const dates = Object.keys(schedule).sort();
   const slots = schedule[selectedDate] || [];
   const [startIndex, setStartIndex] = useState(0);
-  
-  // 5 días en mobile, 6 en desktop
-  const daysToShow = typeof window !== 'undefined' && window.innerWidth < 768 ? 5 : 6;
-  
+  const daysToShow = 6;
+
   const scrollLeft = () => {
-    if (startIndex > 0) {
-      setStartIndex(startIndex - 1);
-    }
+    if (startIndex > 0) setStartIndex(startIndex - 1);
   };
-
   const scrollRight = () => {
-    if (startIndex < dates.length - daysToShow) {
-      setStartIndex(startIndex + 1);
-    }
+    if (startIndex < dates.length - daysToShow) setStartIndex(startIndex + 1);
   };
-
   const visibleDates = dates.slice(startIndex, startIndex + daysToShow);
 
   return (
     <div className="space-y-4">
-      {/* Date Picker with Slider */}
-      <div className="relative">
+      {/* Mobile: scroll horizontal sin botones
+          Desktop: grid con botones < > */}
+
+      {/* Mobile date picker */}
+      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none snap-x snap-mandatory md:hidden">
+        {dates.map((date) => {
+          const formatted = formatDate(date);
+          return (
+            <button
+              key={date}
+              onClick={() => onDateChange(date)}
+              className={cn(
+                'flex shrink-0 snap-start flex-col items-center justify-center rounded-lg py-3 px-3 transition-all w-[64px] h-[70px]',
+                selectedDate === date
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
+              )}
+            >
+              <span className="text-xs font-medium">
+                {formatted.isToday ? 'Hoy' : formatted.day}
+              </span>
+              <span className="text-lg font-bold">{formatted.date}</span>
+              <span className="text-xs opacity-75">{formatted.month}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Desktop date picker — botones < > igual que antes */}
+      <div className="relative hidden md:block">
         <div className="flex items-center">
           <Button
             variant="ghost"
@@ -95,12 +115,8 @@ export function TimeSlotPicker({
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          
           <div className="mx-10 w-full">
-            <div className={cn(
-              "grid gap-2 w-full",
-              "grid-cols-5 md:grid-cols-6" // 5 en mobile, 6 en desktop
-            )}>
+            <div className="grid gap-2 w-full grid-cols-6">
               {visibleDates.map((date) => {
                 const formatted = formatDate(date);
                 return (
@@ -114,12 +130,7 @@ export function TimeSlotPicker({
                         : 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
                     )}
                   >
-                    {/* En mobile, si es hoy mostrar "Hoy", sino el día. En desktop siempre mostrar el día */}
-                    <span className="text-xs font-medium">
-                      {formatted.isToday && typeof window !== 'undefined' && window.innerWidth < 768 
-                        ? 'Hoy' 
-                        : formatted.day}
-                    </span>
+                    <span className="text-xs font-medium">{formatted.day}</span>
                     <span className="text-lg font-bold">{formatted.date}</span>
                     <span className="text-xs opacity-75">{formatted.month}</span>
                   </button>
@@ -127,13 +138,12 @@ export function TimeSlotPicker({
               })}
             </div>
           </div>
-
           <Button
             variant="ghost"
             size="icon"
             className="absolute right-0 z-10 h-8 w-8 rounded-full bg-background shadow-md"
             onClick={scrollRight}
-            disabled={startIndex >= dates.length - daysToShow}
+            disabled={startIndex >= dates.length - 6}
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
