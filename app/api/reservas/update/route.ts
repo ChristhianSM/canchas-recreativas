@@ -15,10 +15,10 @@ export async function PATCH(req: NextRequest) {
   if (authError || !user) return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
 
   const body = await req.json();
-  const { estado, devolucion_procesada } = body;
+  const { estado, devolucion_procesada, saldo_cobrado } = body;
 
   // Si solo se está marcando la devolución como procesada
-  if (devolucion_procesada !== undefined && estado === undefined) {
+  if (devolucion_procesada !== undefined && estado === undefined && saldo_cobrado === undefined) {
     const { data: reserva, error } = await sb
       .from('reservas')
       .update({ devolucion_procesada })
@@ -28,6 +28,40 @@ export async function PATCH(req: NextRequest) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json(reserva);
+  }
+
+  // Si se está marcando el saldo como cobrado
+  if (saldo_cobrado !== undefined) {
+    const { data: reservaActual, error: fetchError } = await sb
+      .from('reservas')
+      .select('modo_pago, saldo_cobrado')
+      .eq('id', reservaId)
+      .single();
+
+    if (fetchError || !reservaActual) {
+      return NextResponse.json({ error: 'Reserva no encontrada' }, { status: 404 });
+    }
+
+    if (reservaActual.modo_pago !== 'parcial') {
+      return NextResponse.json({ error: 'La reserva ya está completamente pagada' }, { status: 400 });
+    }
+
+    if (reservaActual.saldo_cobrado === true) {
+      return NextResponse.json({ error: 'El saldo ya fue marcado como cobrado' }, { status: 400 });
+    }
+
+    const { data: reservaActualizada, error: updateError } = await sb
+      .from('reservas')
+      .update({
+        saldo_cobrado: true,
+        saldo_cobrado_en: new Date().toISOString(),
+      })
+      .eq('id', reservaId)
+      .select()
+      .single();
+
+    if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 });
+    return NextResponse.json(reservaActualizada);
   }
 
   const { data: reserva, error } = await sb

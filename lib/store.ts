@@ -20,6 +20,11 @@ export interface Reserva {
   estado: ReservaEstado;
   creadaEn: string;
   notificado: boolean;
+  modoPago?: 'completo' | 'parcial';
+  montoAdelanto?: number;
+  saldoPendiente?: number;
+  saldoCobrado?: boolean;
+  saldoCobradoEn?: string | null;
 }
 
 export interface Notificacion {

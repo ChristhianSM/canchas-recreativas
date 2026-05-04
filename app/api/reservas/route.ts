@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
   const sb = createServiceClient();
 
   const body = await req.json();
-  const { canchaId, canchaNombre, fecha, hora, precio, precioOriginal, cuponId, metodoPago, comprobanteUrl, emailInvitado, telefonoInvitado, metodoDevolucion, telefonoDevolucion, actualizarTelefono, nuevoTelefono, balonIncluido, chalecosIncluido } = body;
+  const { canchaId, canchaNombre, fecha, hora, precio, precioOriginal, cuponId, metodoPago, comprobanteUrl, emailInvitado, telefonoInvitado, metodoDevolucion, telefonoDevolucion, actualizarTelefono, nuevoTelefono, balonIncluido, chalecosIncluido, modo_pago, monto_adelanto, saldo_pendiente } = body;
 
   let usuarioId: string | null = null;
   let usuarioNombre = 'Invitado';
@@ -64,6 +64,28 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Faltan datos requeridos' }, { status: 400 });
   }
 
+  // Validar modo_pago
+  if (modo_pago !== undefined && modo_pago !== 'completo' && modo_pago !== 'parcial') {
+    return NextResponse.json({ error: "modo_pago debe ser 'completo' o 'parcial'" }, { status: 400 });
+  }
+
+  if (modo_pago === 'parcial') {
+    if (monto_adelanto === undefined || monto_adelanto === null) {
+      return NextResponse.json({ error: 'Faltan campos requeridos: monto_adelanto' }, { status: 400 });
+    }
+    if (saldo_pendiente === undefined || saldo_pendiente === null) {
+      return NextResponse.json({ error: 'Faltan campos requeridos: saldo_pendiente' }, { status: 400 });
+    }
+    if (monto_adelanto + saldo_pendiente !== precio) {
+      return NextResponse.json({ error: 'Los montos no cuadran con el precio total' }, { status: 400 });
+    }
+  }
+
+  // Calcular valores finales de pago
+  const modoPagoFinal: 'completo' | 'parcial' = modo_pago === 'parcial' ? 'parcial' : 'completo';
+  const montoAdelantoFinal: number = modoPagoFinal === 'parcial' ? monto_adelanto : precio;
+  const saldoPendienteFinal: number = modoPagoFinal === 'parcial' ? saldo_pendiente : 0;
+
   // Verificar que el slot no esté ya reservado (protección contra doble reserva)
   const { data: slotOcupado } = await sb
     .from('reservas')
@@ -96,6 +118,10 @@ export async function POST(req: NextRequest) {
     estado:           'pendiente',
     balon_incluido:    balonIncluido    ?? false,
     chalecos_incluido: chalecosIncluido ?? false,
+    modo_pago:         modoPagoFinal,
+    monto_adelanto:    montoAdelantoFinal,
+    saldo_pendiente:   saldoPendienteFinal,
+    saldo_cobrado:     false,
   }).select().single();
 
   if (error) {

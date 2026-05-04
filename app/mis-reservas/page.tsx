@@ -101,13 +101,28 @@ function ReservaCard({
         <div className="flex flex-1 flex-col p-4">
           <div className="mb-2 flex items-start justify-between gap-2">
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="outline" className={estadoClass[r.estado]}>
                   {estadoLabel[r.estado]}
                 </Badge>
                 {fechaHoraPasada && r.estado === 'confirmada' && (
                   <Badge variant="outline" className="bg-orange-500/10 text-orange-600 border-orange-500/20">
                     Finalizada
+                  </Badge>
+                )}
+                {r.modoPago === 'parcial' && r.estado === 'confirmada' && !fechaHoraPasada && (
+                  <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-500/20">
+                    Saldo pendiente en cancha: S/ {r.saldoPendiente}
+                  </Badge>
+                )}
+                {r.modoPago === 'parcial' && r.estado === 'pendiente' && (
+                  <span className="text-xs text-amber-700 font-medium">
+                    Adelanto enviado — pendiente de confirmación
+                  </span>
+                )}
+                {(!r.modoPago || r.modoPago === 'completo') && (r.estado === 'confirmada' || r.estado === 'pendiente') && (
+                  <Badge variant="outline" className="bg-green-500/10 text-green-700 border-green-500/20">
+                    Pago completo ✓
                   </Badge>
                 )}
               </div>
@@ -251,6 +266,10 @@ export default function MisReservasPage() {
       usuarioPhone: r.usuario_telefono, fecha: r.fecha, hora: r.hora,
       precio: r.precio, metodoPago: r.metodo_pago, comprobante: r.comprobante_url,
       estado: r.estado, creadaEn: r.creado_en, notificado: true,
+      modoPago: r.modo_pago ?? 'completo',
+      montoAdelanto: r.monto_adelanto,
+      saldoPendiente: r.saldo_pendiente ?? 0,
+      saldoCobrado: r.saldo_cobrado ?? false,
     })) : []);
     setLoading(false);
   };
@@ -647,6 +666,27 @@ export default function MisReservasPage() {
                     </div>
                   ))}
                 </div>
+                {reservaDetalle.modoPago === 'parcial' && (
+                  <>
+                    <Separator />
+                    <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 space-y-2 text-sm">
+                      <p className="font-semibold text-amber-800">Desglose de pago</p>
+                      <div className="flex justify-between text-muted-foreground">
+                        <span>Adelanto pagado online:</span>
+                        <span className="font-medium text-foreground">S/ {reservaDetalle.montoAdelanto}</span>
+                      </div>
+                      <div className="flex justify-between text-muted-foreground">
+                        <span>Saldo a pagar en cancha:</span>
+                        <span className="font-medium text-amber-700">S/ {reservaDetalle.saldoPendiente}</span>
+                      </div>
+                      <Separator className="border-amber-200" />
+                      <div className="flex justify-between font-semibold">
+                        <span>Precio total:</span>
+                        <span className="text-primary">S/ {reservaDetalle.precio}</span>
+                      </div>
+                    </div>
+                  </>
+                )}
                 {canchaLocal && (
                   <>
                     <Separator />

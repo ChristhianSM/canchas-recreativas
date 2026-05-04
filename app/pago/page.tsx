@@ -73,6 +73,8 @@ function PagoContent() {
   const [segundos, setSegundos]                   = useState(TIEMPO_LIMITE);
   const [bloqueado, setBloqueado]                 = useState(false);
 
+  const [modoPago, setModoPago]                       = useState<'completo' | 'parcial'>('completo');
+
   // Email y teléfono para usuarios invitados
   const [esInvitado, setEsInvitado]                   = useState(false);
   const [emailInvitado, setEmailInvitado]             = useState('');
@@ -273,6 +275,9 @@ function PagoContent() {
   const extraChalecos = conChalecos && cancha?.chalecosPrecio != null ? cancha.chalecosPrecio : 0;
   const total       = Math.max(0, precioRaw + extraBalon + extraChalecos - descuento);
 
+  const montoAdelanto  = modoPago === 'parcial' ? Math.round(total * 0.20) : total;
+  const saldoPendiente = modoPago === 'parcial' ? total - montoAdelanto : 0;
+
   const fechaLabel = new Date(fecha + 'T00:00:00').toLocaleDateString('es-PE', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   });
@@ -350,6 +355,9 @@ function PagoContent() {
       comprobanteUrl: comprobante,
       balonIncluido:    conBalon,
       chalecosIncluido: conChalecos,
+      modoPago,
+      montoAdelanto,
+      saldoPendiente,
       ...(esInvitado && emailInvitado ? { 
         emailInvitado, 
         telefonoInvitado: mismoNumero ? 'MISMO_NUMERO_PAGO' : telefonoInvitado,
@@ -554,6 +562,90 @@ function PagoContent() {
           </Card>
         )}
 
+        {/* Selector de modo de pago */}
+        <div>
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">¿Cómo quieres pagar?</p>
+          <div className="space-y-3">
+            {/* Pago completo */}
+            <button
+              onClick={() => setModoPago('completo')}
+              className={cn(
+                'w-full text-left rounded-2xl border-2 p-4 transition-all',
+                modoPago === 'completo'
+                  ? 'border-primary bg-primary/5 shadow-sm'
+                  : 'border-border hover:border-muted-foreground/40'
+              )}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <div className={cn(
+                    'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-all',
+                    modoPago === 'completo' ? 'border-primary bg-primary' : 'border-muted-foreground/40'
+                  )}>
+                    {modoPago === 'completo' && (
+                      <svg className="h-3 w-3 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </div>
+                  <span className="font-semibold text-foreground">Pago completo (100%)</span>
+                </div>
+                <Badge className="shrink-0 bg-primary/10 text-primary border-primary/20 text-xs">Recomendado</Badge>
+              </div>
+              <p className="mt-2 ml-7 text-sm font-bold text-primary">S/ {total} ahora</p>
+              <ul className="mt-2 ml-7 space-y-1">
+                <li className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-500" />
+                  Cancelación con devolución hasta 85%
+                </li>
+                <li className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-500" />
+                  Reserva garantizada
+                </li>
+              </ul>
+            </button>
+
+            {/* Pago con adelanto */}
+            <button
+              onClick={() => total > 0 && setModoPago('parcial')}
+              disabled={total === 0}
+              className={cn(
+                'w-full text-left rounded-2xl border-2 p-4 transition-all',
+                total === 0 && 'opacity-50 cursor-not-allowed',
+                modoPago === 'parcial' && total > 0
+                  ? 'border-amber-500 bg-amber-500/5 shadow-sm'
+                  : 'border-border hover:border-muted-foreground/40'
+              )}
+            >
+              <div className="flex items-center gap-2">
+                <div className={cn(
+                  'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-all',
+                  modoPago === 'parcial' && total > 0 ? 'border-amber-500 bg-amber-500' : 'border-muted-foreground/40'
+                )}>
+                  {modoPago === 'parcial' && total > 0 && (
+                    <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </div>
+                <span className="font-semibold text-foreground">Pago con adelanto (20%)</span>
+              </div>
+              {total > 0 ? (
+                <p className="mt-2 ml-7 text-sm text-muted-foreground">
+                  <span className="font-bold text-foreground">S/ {Math.round(total * 0.20)}</span> ahora
+                  {' · '}
+                  <span className="font-medium">S/ {total - Math.round(total * 0.20)}</span> en cancha
+                </p>
+              ) : (
+                <p className="mt-2 ml-7 text-xs text-muted-foreground">Agrega precio para habilitar esta opción</p>
+              )}
+              <div className="mt-2 ml-7 flex items-center gap-1.5">
+                <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">⚠ Sin devolución al cancelar</span>
+              </div>
+            </button>
+          </div>
+        </div>
+
         {/* Precio */}
         <Card className="border-border p-4">
           <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Detalle del pago</p>
@@ -589,6 +681,23 @@ function PagoContent() {
               <span className="text-foreground">Total a pagar</span>
               <span className="text-primary">S/ {total}</span>
             </div>
+            {modoPago === 'parcial' && (
+              <>
+                <div className="flex justify-between text-sm">
+                  <span className="text-primary font-medium">Pagas ahora (adelanto 20%)</span>
+                  <span className="text-primary font-semibold">S/ {montoAdelanto}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Pagas en cancha (80%)</span>
+                  <span className="text-muted-foreground">S/ {saldoPendiente}</span>
+                </div>
+              </>
+            )}
+            {modoPago === 'completo' && (
+              <div className="flex justify-between text-sm">
+                <span className="text-green-600 dark:text-green-400 font-medium">Reserva garantizada ✓</span>
+              </div>
+            )}
           </div>
 
           {/* Aviso si la cancha no tiene extras */}

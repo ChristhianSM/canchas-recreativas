@@ -10,6 +10,17 @@ interface CancelacionResult {
 }
 
 function calcularDevolucion(reserva: any): CancelacionResult {
+  // Pago parcial → sin devolución siempre
+  if (reserva.modo_pago === 'parcial') {
+    return {
+      success: true,
+      devolucion: 0,
+      penalidad: reserva.monto_adelanto,
+      porcentaje_devolucion: 0,
+      motivo: 'Reserva con adelanto — el monto abonado no se devuelve',
+    };
+  }
+
   const precio = reserva.precio;
   const estado = reserva.estado;
   const fechaReserva = new Date(`${reserva.fecha}T${reserva.hora}`);
@@ -135,9 +146,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       month: 'long' 
     });
 
-    const mensajeUsuario = resultado.devolucion > 0
-      ? `Tu reserva en ${reserva.cancha_nombre} del ${fechaLabel} fue cancelada. Devolución: S/ ${resultado.devolucion} (${resultado.porcentaje_devolucion}%)`
-      : `Tu reserva en ${reserva.cancha_nombre} del ${fechaLabel} fue cancelada. Sin devolución por cancelación tardía.`;
+    let mensajeUsuario: string;
+    if (reserva.modo_pago === 'parcial') {
+      mensajeUsuario = `Tu reserva en ${reserva.cancha_nombre} del ${fechaLabel} fue cancelada. El adelanto de S/ ${reserva.monto_adelanto} fue retenido. No hay devolución.`;
+    } else if (resultado.devolucion > 0) {
+      mensajeUsuario = `Tu reserva en ${reserva.cancha_nombre} del ${fechaLabel} fue cancelada. Devolución: S/ ${resultado.devolucion} (${resultado.porcentaje_devolucion}%)`;
+    } else {
+      mensajeUsuario = `Tu reserva en ${reserva.cancha_nombre} del ${fechaLabel} fue cancelada. Sin devolución por cancelación tardía.`;
+    }
 
     // Notificación in-app solo si hay usuario registrado
     if (userId) {
@@ -224,9 +240,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       penalidad: resultado.penalidad,
       porcentaje_devolucion: resultado.porcentaje_devolucion,
       motivo: resultado.motivo,
-      mensaje: resultado.devolucion > 0 
-        ? `Cancelación exitosa. Recibirás S/ ${resultado.devolucion} (${resultado.porcentaje_devolucion}%) en 24-48 horas.`
-        : 'Cancelación exitosa. Sin devolución por cancelación tardía.'
+      mensaje: reserva.modo_pago === 'parcial'
+        ? `El adelanto de S/ ${reserva.monto_adelanto} fue retenido. No hay devolución.`
+        : resultado.devolucion > 0
+          ? `Cancelación exitosa. Recibirás S/ ${resultado.devolucion} (${resultado.porcentaje_devolucion}%) en 24-48 horas.`
+          : 'Cancelación exitosa. Sin devolución por cancelación tardía.'
     });
 
   } catch (error) {

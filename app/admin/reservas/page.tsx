@@ -15,6 +15,7 @@ import { type Reserva } from '@/lib/store';
 export default function AdminReservasPage() {
   const [reservas, setReservas]     = useState<Reserva[]>([]);
   const [selected, setSelected]     = useState<Reserva | null>(null);
+  const [filtroModoPago, setFiltroModoPago] = useState<'todos' | 'completo' | 'parcial'>('todos');
 
   const getAdminToken = () => localStorage.getItem('cp_admin_token');
 
@@ -26,6 +27,9 @@ export default function AdminReservasPage() {
         usuarioPhone: r.usuario_telefono, fecha: r.fecha, hora: r.hora,
         precio: r.precio, metodoPago: r.metodo_pago, comprobante: r.comprobante_url,
         estado: r.estado, creadaEn: r.creado_en, notificado: true,
+        modoPago: r.modo_pago ?? 'completo',
+        montoAdelanto: r.monto_adelanto,
+        saldoPendiente: r.saldo_pendiente ?? 0,
       })));
     });
   };
@@ -57,7 +61,25 @@ export default function AdminReservasPage() {
     reload();
   };
 
-  const byEstado = (estado: Reserva['estado']) => reservas.filter(r => r.estado === estado);
+  const byEstado = (estado: Reserva['estado']) => {
+    let filtered = reservas.filter(r => r.estado === estado);
+    if (filtroModoPago !== 'todos') {
+      filtered = filtered.filter(r => (r.modoPago ?? 'completo') === filtroModoPago);
+    }
+    return filtered;
+  };
+
+  const allFiltered = () => {
+    if (filtroModoPago === 'todos') return reservas;
+    return reservas.filter(r => (r.modoPago ?? 'completo') === filtroModoPago);
+  };
+
+  const modoPagoBadge = (modoPago: 'completo' | 'parcial') => {
+    if (modoPago === 'parcial') {
+      return <Badge variant="outline" className="bg-orange-500/10 text-orange-600 border-orange-500/20">Parcial</Badge>;
+    }
+    return <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/20">Completo</Badge>;
+  };
 
   const estadoBadge = (estado: Reserva['estado']) => {
     const map = {
@@ -82,6 +104,7 @@ export default function AdminReservasPage() {
       </td>
       <td className="px-4 py-3 text-sm text-muted-foreground">{r.hora}</td>
       <td className="px-4 py-3 text-sm font-semibold text-primary">S/ {r.precio}</td>
+      <td className="px-4 py-3">{modoPagoBadge(r.modoPago ?? 'completo')}</td>
       <td className="px-4 py-3 text-sm capitalize text-muted-foreground">{r.metodoPago}</td>
       <td className="px-4 py-3">{estadoBadge(r.estado)}</td>
       <td className="px-4 py-3">
@@ -105,7 +128,7 @@ export default function AdminReservasPage() {
         <table className="w-full text-sm">
           <thead className="border-b border-border bg-muted/40">
             <tr>
-              {['Usuario', 'Cancha', 'Fecha', 'Hora', 'Monto', 'Método', 'Estado', ''].map(h => (
+              {['Usuario', 'Cancha', 'Fecha', 'Hora', 'Monto', 'Modo', 'Método', 'Estado', ''].map(h => (
                 <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">{h}</th>
               ))}
             </tr>
@@ -135,24 +158,38 @@ export default function AdminReservasPage() {
       <Card className="border-border overflow-hidden">
         <Tabs defaultValue="pendiente">
           <div className="border-b border-border px-4 pt-4">
-            <TabsList>
-              <TabsTrigger value="pendiente">
-                Pendientes
-                {byEstado('pendiente').length > 0 && (
-                  <span className="ml-1.5 rounded-full bg-yellow-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                    {byEstado('pendiente').length}
-                  </span>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="confirmada">Confirmadas ({byEstado('confirmada').length})</TabsTrigger>
-              <TabsTrigger value="rechazada">Rechazadas ({byEstado('rechazada').length})</TabsTrigger>
-              <TabsTrigger value="todas">Todas ({reservas.length})</TabsTrigger>
-            </TabsList>
+            <div className="flex items-center justify-between mb-3">
+              <TabsList>
+                <TabsTrigger value="pendiente">
+                  Pendientes
+                  {byEstado('pendiente').length > 0 && (
+                    <span className="ml-1.5 rounded-full bg-yellow-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                      {byEstado('pendiente').length}
+                    </span>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="confirmada">Confirmadas ({byEstado('confirmada').length})</TabsTrigger>
+                <TabsTrigger value="rechazada">Rechazadas ({byEstado('rechazada').length})</TabsTrigger>
+                <TabsTrigger value="todas">Todas ({allFiltered().length})</TabsTrigger>
+              </TabsList>
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-muted-foreground" />
+                <select
+                  value={filtroModoPago}
+                  onChange={(e) => setFiltroModoPago(e.target.value as 'todos' | 'completo' | 'parcial')}
+                  className="text-sm border border-border rounded-md px-3 py-1.5 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="todos">Todos los pagos</option>
+                  <option value="completo">Pago completo</option>
+                  <option value="parcial">Pago parcial</option>
+                </select>
+              </div>
+            </div>
           </div>
           <TabsContent value="pendiente"  className="mt-0"><Table list={byEstado('pendiente')} /></TabsContent>
           <TabsContent value="confirmada" className="mt-0"><Table list={byEstado('confirmada')} /></TabsContent>
           <TabsContent value="rechazada"  className="mt-0"><Table list={byEstado('rechazada')} /></TabsContent>
-          <TabsContent value="todas"      className="mt-0"><Table list={reservas} /></TabsContent>
+          <TabsContent value="todas"      className="mt-0"><Table list={allFiltered()} /></TabsContent>
         </Tabs>
       </Card>
 
@@ -188,6 +225,30 @@ export default function AdminReservasPage() {
                   <p className="text-xs capitalize text-muted-foreground">{selected.metodoPago}</p>
                 </div>
               </div>
+
+              {/* Desglose de pago parcial */}
+              {selected.modoPago === 'parcial' && (
+                <div className="rounded-lg border border-orange-500/20 bg-orange-500/5 p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    {modoPagoBadge('parcial')}
+                    <p className="text-sm font-medium text-foreground">Desglose de pago</p>
+                  </div>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Adelanto cobrado online:</span>
+                      <span className="font-semibold text-green-600">S/ {selected.montoAdelanto}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Saldo pendiente en cancha:</span>
+                      <span className="font-semibold text-orange-600">S/ {selected.saldoPendiente}</span>
+                    </div>
+                    <div className="border-t border-orange-500/20 pt-2 flex justify-between">
+                      <span className="font-medium text-foreground">Pago total:</span>
+                      <span className="font-bold text-primary">S/ {selected.precio}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Comprobante */}
               <div>
