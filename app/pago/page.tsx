@@ -108,19 +108,21 @@ function PagoContent() {
             phone:           data.telefono,
             balonPrecio:     data.balon_precio    ?? null,
             chalecosPrecio:  data.chalecos_precio ?? null,
+            lat:             data.latitud         ?? null,
+            lng:             data.longitud        ?? null,
           });
         } else {
           // Fallback a datos hardcodeados
           import('@/lib/data').then(({ getCanchaById }) => {
             const c = getCanchaById(canchaId);
-            if (c) setCancha({ id: c.id, name: c.name, images: c.images, address: c.address, phone: c.phone });
+            if (c) setCancha({ id: c.id, name: c.name, images: c.images, address: c.address, phone: c.phone, lat: c.coordinates?.lat ?? null, lng: c.coordinates?.lng ?? null });
           });
         }
       })
       .catch(() => {
         import('@/lib/data').then(({ getCanchaById }) => {
           const c = getCanchaById(canchaId);
-          if (c) setCancha({ id: c.id, name: c.name, images: c.images, address: c.address, phone: c.phone });
+          if (c) setCancha({ id: c.id, name: c.name, images: c.images, address: c.address, phone: c.phone, lat: c.coordinates?.lat ?? null, lng: c.coordinates?.lng ?? null });
         });
       })
       .finally(() => setCanchaLoading(false));
@@ -452,6 +454,13 @@ function PagoContent() {
               `⚽ *¡Acabo de reservar una cancha!*`,
               ``,
               `📍 *${cancha.name}*`,
+              ...(cancha.address ? [`🗺 ${cancha.address}`] : []),
+              ...(cancha.lat && cancha.lng
+                ? [`📌 Cómo llegar: https://maps.google.com/?q=${cancha.lat},${cancha.lng}`]
+                : cancha.address
+                ? [`📌 Cómo llegar: https://maps.google.com/?q=${encodeURIComponent(cancha.address)}`]
+                : []),
+              ``,
               `📅 ${fechaLabel}`,
               `🕐 ${hora}`,
               `💰 S/ ${total}`,

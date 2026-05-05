@@ -29,14 +29,22 @@ import {
 } from '@/lib/api';
 
 // Genera el link de WhatsApp con el mensaje de la reserva
-function generarLinkWhatsApp(canchaNombre: string, fecha: string, hora: string, precio: number): string {
+function generarLinkWhatsApp(canchaNombre: string, fecha: string, hora: string, precio: number, address?: string, lat?: number, lng?: number): string {
   const fechaLabel = new Date(fecha + 'T00:00:00').toLocaleDateString('es-PE', {
     weekday: 'long', day: 'numeric', month: 'long',
   });
+  const ubicacionLine = lat && lng
+    ? `📌 Cómo llegar: https://maps.google.com/?q=${lat},${lng}`
+    : address
+    ? `📌 Cómo llegar: https://maps.google.com/?q=${encodeURIComponent(address)}`
+    : null;
   const mensaje = [
     `⚽ *¡Reserva confirmada!*`,
     ``,
     `📍 *${canchaNombre}*`,
+    ...(address ? [`🗺 ${address}`] : []),
+    ...(ubicacionLine ? [ubicacionLine] : []),
+    ``,
     `📅 ${fechaLabel}`,
     `🕐 ${hora}`,
     `💰 S/ ${precio}`,
@@ -167,7 +175,7 @@ function ReservaCard({
                   asChild
                 >
                   <a
-                    href={generarLinkWhatsApp(r.canchaName, r.fecha, r.hora, r.precio)}
+                    href={generarLinkWhatsApp(r.canchaName, r.fecha, r.hora, r.precio, canchaLocal?.address, canchaLocal?.coordinates?.lat, canchaLocal?.coordinates?.lng)}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
