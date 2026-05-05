@@ -48,7 +48,7 @@ export function ImageSlider({ images, alt, className, aspectRatio = 'video' }: I
 
   return (
     <div className={cn('relative group', className)}>
-      <div ref={emblaRef} className="overflow-hidden rounded-xl">
+      <div ref={emblaRef} className="overflow-hidden">
         <div className="flex">
           {images.map((image, index) => (
             <div

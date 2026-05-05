@@ -18,7 +18,7 @@ export function CanchaCard({ cancha, distancia }: CanchaCardProps) {
     <Card className="group overflow-hidden border-border bg-card transition-all hover:shadow-lg hover:shadow-primary/10 hover:-translate-y-1">
       <div className="relative">
         <Link href={`/cancha/${cancha.id}`}>
-          <div className="px-3 pt-3">
+          <div className="">
             <ImageSlider images={cancha.images} alt={cancha.name} aspectRatio="wide" />
           </div>
         </Link>
@@ -37,7 +37,7 @@ export function CanchaCard({ cancha, distancia }: CanchaCardProps) {
       </div>
 
       <Link href={`/cancha/${cancha.id}`}>
-        <div className="p-4">
+        <div className="p-4 pt-0">
           <div className="mb-2 flex items-start justify-between gap-2">
             <h3 className="text-lg font-semibold text-foreground line-clamp-1 group-hover:text-primary transition-colors">
               {cancha.name}
