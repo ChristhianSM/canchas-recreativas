@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import dynamic from 'next/dynamic';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
   MapPin, Star, Phone, Clock, CheckCircle2,
   Navigation, Share2, Heart, CalendarDays, ChevronRight, AlertTriangle, Timer,
@@ -97,6 +97,7 @@ function buildSchedule(
 export default function CanchaDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const id = params.id as string;
 
@@ -127,6 +128,16 @@ export default function CanchaDetailPage() {
         })())
       : ''
   );
+
+  // Abrir modal automáticamente si viene de /pago con ?ocupado=1
+  useEffect(() => {
+    if (searchParams.get('ocupado') === '1') {
+      setOcupadoModal(true);
+      startCountdown(5 * 60);
+      router.replace(`/cancha/${id}`, { scroll: false });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const startCountdown = (seconds: number) => {
     if (countdownRef.current) clearInterval(countdownRef.current);
@@ -190,7 +201,8 @@ export default function CanchaDetailPage() {
 
   useEffect(() => {
     // Usar query param para evitar bug de Turbopack con rutas dinámicas
-    fetch(`/api/canchas/detail?id=${id}`)
+    // cache: no-store para siempre obtener bloqueos temporales frescos
+    fetch(`/api/canchas/detail?id=${id}&t=${Date.now()}`, { cache: 'no-store' })
       .then(r => r.json())
       .then(data => {
         if (!data.error) {

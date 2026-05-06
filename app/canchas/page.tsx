@@ -260,31 +260,35 @@ function CanchasContent() {
                 />
               </div>
               <div className="space-y-4">
-                <AdvancedFiltersComponent
-                  filters={filters}
-                  onFiltersChange={setFilters}
-                  allAmenities={allAmenities}
-                  allDistricts={allDistricts}
-                  priceRange={priceRange}
-                  sports={sports}
-                  activeFilterCount={activeFilterCount}
-                  isSidebar={false}
-                  resultCount={filtered.length}
-                  ubicacion={ubicacion}
-                />
-                <div className="flex justify-end">
-                  <Select value={sortBy} onValueChange={v => setSortBy(v as SortOption)}>
-                    <SelectTrigger className="w-full sm:w-48 bg-background border-border">
-                      <SelectValue placeholder="Ordenar por" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="relevancia">{ubicacion ? 'Más cercanas' : 'Relevancia'}</SelectItem>
-                      <SelectItem value="precio-asc">Menor precio</SelectItem>
-                      <SelectItem value="precio-desc">Mayor precio</SelectItem>
-                      <SelectItem value="rating">Mejor puntuación</SelectItem>
-                      <SelectItem value="nombre">Nombre (A-Z)</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex-1">
+                    <AdvancedFiltersComponent
+                      filters={filters}
+                      onFiltersChange={setFilters}
+                      allAmenities={allAmenities}
+                      allDistricts={allDistricts}
+                      priceRange={priceRange}
+                      sports={sports}
+                      activeFilterCount={activeFilterCount}
+                      isSidebar={false}
+                      resultCount={filtered.length}
+                      ubicacion={ubicacion}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <Select value={sortBy} onValueChange={v => setSortBy(v as SortOption)}>
+                      <SelectTrigger className="w-full bg-background border-border">
+                        <SelectValue placeholder="Ordenar por" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="relevancia">{ubicacion ? 'Más cercanas' : 'Relevancia'}</SelectItem>
+                        <SelectItem value="precio-asc">Menor precio</SelectItem>
+                        <SelectItem value="precio-desc">Mayor precio</SelectItem>
+                        <SelectItem value="rating">Mejor puntuación</SelectItem>
+                        <SelectItem value="nombre">Nombre (A-Z)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
             </section>
@@ -320,7 +324,15 @@ function CanchasContent() {
                 </div>
               ) : filtered.length > 0 ? (
                 <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
-                  {filtered.map(c => <CanchaCard key={c.id} cancha={c} distancia={(c as any).distancia} />)}
+                  {filtered.map(c => (
+                  <CanchaCard
+                    key={c.id}
+                    cancha={c}
+                    distancia={(c as any).distancia}
+                    selectedDate={filters.selectedDate}
+                    availableHours={filters.availableHours}
+                  />
+                ))}
                 </div>
               ) : (
                 <div className="py-20 text-center">

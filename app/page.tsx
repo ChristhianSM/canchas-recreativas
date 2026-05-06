@@ -12,6 +12,7 @@ import { Header } from '@/components/header';
 import { CanchaCard } from '@/components/cancha-card';
 import { Button } from '@/components/ui/button';
 import { SportType } from '@/lib/types';
+import { getLocalDateString } from '@/lib/date-utils';
 
 type Cancha = {
   id: string; nombre: string; tipo: SportType; direccion: string;
@@ -25,15 +26,49 @@ type Cancha = {
   balon_precio?: number | null;
   chalecos_disponible?: boolean;
   chalecos_precio?: number | null;
+  horariosOcupados?: Record<string, 'reservado' | 'en_proceso'>;
+  horariosRestringidos?: string[];
 };
 
+const HORAS = [
+  '06:00','07:00','08:00','09:00','10:00','11:00',
+  '12:00','13:00','14:00','15:00','16:00','17:00',
+  '18:00','19:00','20:00','21:00','22:00','23:00',
+];
+
 function adaptCancha(c: Cancha) {
+  // Construir schedule para los próximos 14 días usando horarios reales
+  const schedule: Record<string, Array<{ id: string; time: string; available: boolean; price: number; status: 'disponible' | 'reservado' | 'en_proceso' }>> = {};
+  const horariosOcupados = c.horariosOcupados || {};
+  const horariosRestringidos = c.horariosRestringidos || [];
+  
+  for (let i = 0; i < 14; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() + i);
+    const dateStr = getLocalDateString(d);
+    
+    schedule[dateStr] = HORAS
+      .filter(hora => !horariosRestringidos.includes(hora)) // Excluir horarios restringidos
+      .map(hora => {
+        const key = `${dateStr}|${hora}`;
+        const estadoOcupado = horariosOcupados[key];
+        
+        return {
+          id: `${dateStr}-${hora}`,
+          time: hora,
+          available: !estadoOcupado,
+          price: c.precio_por_hora,
+          status: estadoOcupado || 'disponible',
+        };
+      });
+  }
+
   return {
     id: c.id, name: c.nombre, type: c.tipo, address: c.direccion,
     district: c.distrito, description: c.descripcion, images: c.imagenes ?? [],
     rating: c.rating, reviewCount: c.total_resenas, pricePerHour: c.precio_por_hora,
     amenities: c.amenidades ?? [], coordinates: { lat: c.lat, lng: c.lng },
-    phone: c.telefono, featured: c.destacada, schedule: {},
+    phone: c.telefono, featured: c.destacada, schedule,
     superficie:        (c.superficie ?? null) as any,
     maxJugadores:      c.max_jugadores ?? null,
     balonDisponible:   c.balon_disponible  ?? false,
@@ -198,7 +233,13 @@ export default function HomePage() {  const router = useRouter();
             </div>
           ) : canchas.length > 0 ? (
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {canchas.slice(0, 4).map(c => <CanchaCard key={c.id} cancha={adaptCancha(c)} />)}
+              {canchas.slice(0, 4).map(c => (
+                <CanchaCard 
+                  key={c.id} 
+                  cancha={adaptCancha(c)} 
+                  selectedDate={getLocalDateString()}
+                />
+              ))}
             </div>
           ) : (
             <div className="text-center py-12 text-muted-foreground">

@@ -85,5 +85,9 @@ export async function GET(req: NextRequest) {
     // horariosRestringidos = permanentes legacy (todos los días)
     horariosRestringidos: permanentesLegacy,
     horariosOcupados,
+  }, {
+    headers: {
+      'Cache-Control': 'no-store, no-cache, must-revalidate',
+    },
   });
 }

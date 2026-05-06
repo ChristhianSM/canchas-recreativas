@@ -589,12 +589,12 @@ export function AdvancedFiltersComponent({
 
   // Si no es sidebar, usar el Sheet (mobile)
   return (
-    <div className="space-y-4">
+    <div className="w-full">
       {/* Barra de filtros rápidos */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-2">
+      <div className="flex items-center gap-2">
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
           <SheetTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-2 shrink-0">
+            <Button variant="outline" size="sm" className="gap-2 w-full justify-center">
               <Sliders className="h-4 w-4" />
               Filtros
               {activeFilterCount > 0 && (
@@ -648,51 +648,6 @@ export function AdvancedFiltersComponent({
             )}
           </SheetContent>
         </Sheet>
-
-        {/* Badges de filtros activos */}
-        {filters.sports.length > 0 && (
-          <div className="flex gap-1 shrink-0">
-            {filters.sports.map(sport => (
-              <Badge
-                key={sport}
-                variant="secondary"
-                className="cursor-pointer"
-                onClick={() => handleSportToggle(sport)}
-              >
-                {sportLabels[sport]}
-                <X className="ml-1 h-3 w-3" />
-              </Badge>
-            ))}
-          </div>
-        )}
-
-        {filters.districts.length > 0 && (
-          <div className="flex gap-1 shrink-0">
-            {filters.districts.map(district => (
-              <Badge
-                key={district}
-                variant="secondary"
-                className="cursor-pointer"
-                onClick={() => handleDistrictToggle(district)}
-              >
-                {district}
-                <X className="ml-1 h-3 w-3" />
-              </Badge>
-            ))}
-          </div>
-        )}
-
-        {filters.amenities.length > 0 && (
-          <Badge variant="secondary" className="shrink-0">
-            {filters.amenities.length} amenidades
-          </Badge>
-        )}
-
-        {filters.availableHours.length > 0 && (
-          <Badge variant="secondary" className="shrink-0">
-            {filters.availableHours.length} horas
-          </Badge>
-        )}
       </div>
     </div>
   );

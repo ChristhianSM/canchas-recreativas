@@ -56,9 +56,10 @@ function PagoContent() {
   const fecha     = params.get('fecha') ?? '';
   const hora      = params.get('hora') ?? '';
   const precioRaw = Number(params.get('precio') ?? 0);
-  // Extras seleccionados desde la página de detalle
-  const conBalon    = params.get('balon') === '1';
-  const conChalecos = params.get('chalecos') === '1';
+  const fromCard  = params.get('from') === 'card';
+  // Extras — pueden venir preseleccionados desde el detalle, o el usuario los elige aquí
+  const [conBalon, setConBalon]       = useState(params.get('balon') === '1');
+  const [conChalecos, setConChalecos] = useState(params.get('chalecos') === '1');
 
   const [cancha, setCancha]                       = useState<any>(null);
   const [canchaLoading, setCanchaLoading]         = useState(true);
@@ -171,8 +172,8 @@ function PagoContent() {
       if (!activo) return;
 
       if (res.status === 409) {
-        // Horario ocupado por otro usuario — redirigir al detalle
-        router.replace(`/cancha/${canchaId}`);
+        // Horario ocupado por otro usuario — redirigir al detalle con aviso
+        router.replace(`/cancha/${canchaId}?ocupado=1&hora=${encodeURIComponent(hora)}`);
         return;
       }
 
@@ -216,7 +217,8 @@ function PagoContent() {
       clearInterval(interval);
       clearTimeout(timeout);
       window.removeEventListener('beforeunload', liberarBloqueo);
-      // Liberar bloqueo al desmontar (navegación hacia atrás)
+      // Liberar bloqueo al desmontar (navegación hacia atrás) y limpiar localStorage
+      limpiarInicioBloqueo(canchaId, fecha, hora);
       fetch('/api/bloqueos', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
@@ -521,6 +523,63 @@ function PagoContent() {
             </div>
           </div>
         </Card>
+
+        {/* Extras opcionales — solo si viene del card y la cancha tiene extras con precio */}
+        {fromCard && cancha && (cancha.balonPrecio != null || cancha.chalecosPrecio != null) && (
+          <Card className="border-border p-4">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">¿Necesitas extras?</p>
+            <div className="space-y-3">
+              {cancha.balonPrecio != null && (
+                <label className="flex items-center justify-between gap-3 cursor-pointer">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">⚽</span>
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Balón</p>
+                      <p className="text-xs text-muted-foreground">+ S/ {cancha.balonPrecio} por reserva</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setConBalon(v => !v)}
+                    className={cn(
+                      'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors',
+                      conBalon ? 'bg-primary' : 'bg-muted-foreground/30'
+                    )}
+                  >
+                    <span className={cn(
+                      'inline-block h-5 w-5 rounded-full bg-white shadow transition-transform',
+                      conBalon ? 'translate-x-[22px]' : 'translate-x-[2px]'
+                    )} />
+                  </button>
+                </label>
+              )}
+              {cancha.chalecosPrecio != null && (
+                <label className="flex items-center justify-between gap-3 cursor-pointer">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">🎽</span>
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Chalecos</p>
+                      <p className="text-xs text-muted-foreground">+ S/ {cancha.chalecosPrecio} por reserva</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setConChalecos(v => !v)}
+                    className={cn(
+                      'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors',
+                      conChalecos ? 'bg-primary' : 'bg-muted-foreground/30'
+                    )}
+                  >
+                    <span className={cn(
+                      'inline-block h-5 w-5 rounded-full bg-white shadow transition-transform',
+                      conChalecos ? 'translate-x-[22px]' : 'translate-x-[2px]'
+                    )} />
+                  </button>
+                </label>
+              )}
+            </div>
+          </Card>
+        )}
 
         {/* Cupón — solo si el usuario tiene cupones disponibles */}
         {cupones.length > 0 && (

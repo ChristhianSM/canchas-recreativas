@@ -75,5 +75,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ disponible: true });
+  return NextResponse.json({ disponible: true }, {
+    headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' },
+  });
 }
