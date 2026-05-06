@@ -1,14 +1,13 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import {
-  X, Sliders, ChevronLeft, ChevronRight
+  Sliders, MapPin
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Slider } from '@/components/ui/slider';
-import { Input } from '@/components/ui/input';
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger,
 } from '@/components/ui/sheet';
@@ -31,46 +30,9 @@ interface AdvancedFiltersProps {
   isSidebar?: boolean; // Nueva prop para determinar si es sidebar o sheet
   resultCount?: number; // Contador de resultados filtrados
   ubicacion?: Coordenadas | null; // Ubicación del usuario
-}
-
-const HOURS = [
-  '06:00', '07:00', '08:00', '09:00', '10:00', '11:00',
-  '12:00', '13:00', '14:00', '15:00', '16:00', '17:00',
-  '18:00', '19:00', '20:00', '21:00', '22:00', '23:00',
-];
-
-import { getLocalDateString } from '@/lib/date-utils';
-
-// Convertir formato 24h a 12h (AM/PM)
-function formatTo12Hour(time24: string): string {
-  const [hours, minutes] = time24.split(':').map(Number);
-  const period = hours >= 12 ? 'PM' : 'AM';
-  const hours12 = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
-  return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`;
-}
-
-// Generar próximos 6 días incluyendo hoy
-function getNext6Days(): string[] {
-  const days: string[] = [];
-  for (let i = 0; i < 6; i++) {
-    const date = new Date();
-    date.setDate(date.getDate() + i);
-    days.push(getLocalDateString(date));
-  }
-  return days;
-}
-
-// Formatear fecha para mostrar
-function formatDateDisplay(dateStr: string): { day: string; date: number; isToday: boolean } {
-  const date = new Date(dateStr + 'T00:00:00');
-  const today = getLocalDateString();
-  const dayName = date.toLocaleDateString('es-PE', { weekday: 'short' });
-  
-  return {
-    day: dayName.charAt(0).toUpperCase() + dayName.slice(1),
-    date: date.getDate(),
-    isToday: dateStr === today,
-  };
+  triggerRef?: React.RefObject<HTMLButtonElement | null>; // Ref para el botón trigger
+  onUbicacionObtenida?: (coords: Coordenadas) => void; // Callback cuando se obtiene ubicación
+  onUbicacionLimpiada?: () => void; // Callback cuando se limpia ubicación
 }
 
 export function AdvancedFiltersComponent({
@@ -85,10 +47,11 @@ export function AdvancedFiltersComponent({
   isSidebar = false,
   resultCount,
   ubicacion,
+  triggerRef,
+  onUbicacionObtenida,
+  onUbicacionLimpiada,
 }: AdvancedFiltersProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [dateStartIndex, setDateStartIndex] = useState(0);
-  const next6Days = useMemo(() => getNext6Days(), []);
 
   const handleSportToggle = (sport: SportType) => {
     const newSports = filters.sports.includes(sport)
@@ -111,17 +74,6 @@ export function AdvancedFiltersComponent({
     onFiltersChange({ ...filters, districts: newDistricts });
   };
 
-  const handleHourToggle = (hour: string) => {
-    const newHours = filters.availableHours.includes(hour)
-      ? filters.availableHours.filter(h => h !== hour)
-      : [...filters.availableHours, hour];
-    onFiltersChange({ ...filters, availableHours: newHours });
-  };
-
-  const handleDateChange = (date: string) => {
-    onFiltersChange({ ...filters, selectedDate: date, availableHours: [] });
-  };
-
   const handlePriceChange = (value: number[]) => {
     onFiltersChange({ ...filters, priceRange: [value[0], value[1]] });
   };
@@ -137,8 +89,8 @@ export function AdvancedFiltersComponent({
       minRating: 0,
       amenities: [],
       districts: [],
-      selectedDate: getLocalDateString(),
-      availableHours: [],
+      selectedDate: filters.selectedDate, // Mantener la fecha del home
+      availableHours: filters.availableHours, // Mantener las horas del home
       onlyFeatured: false,
       searchQuery: '',
       conBalon: false,
@@ -150,157 +102,102 @@ export function AdvancedFiltersComponent({
 
   const filterContent = (
     <div className={cn("space-y-4", isSidebar && "space-y-5")}>
-      {/* Búsqueda */}
+      {/* Ubicación - Cerca de mí */}
       <div>
-        <label className="text-sm font-medium text-foreground flex items-center gap-2 mb-2">
-          <span className="text-sm">🔍</span>
-          Buscar
+        <label className="text-sm font-medium text-foreground flex items-center gap-2 mb-3">
+          <span className="text-sm">📍</span>
+          Ubicación
         </label>
-        <Input
-          placeholder="Nombre, dirección..."
-          value={filters.searchQuery}
-          onChange={(e) => onFiltersChange({ ...filters, searchQuery: e.target.value })}
-          className="h-9 text-sm placeholder:text-sm"
-          autoFocus={false}
-        />
+        {!ubicacion ? (
+          <button
+            onClick={() => {
+              // Solicitar ubicación del usuario
+              if (!navigator.geolocation) {
+                alert('Tu navegador no soporta geolocalización');
+                return;
+              }
+              
+              navigator.geolocation.getCurrentPosition(
+                (position) => {
+                  const coords = {
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude,
+                  };
+                  // Guardar en localStorage
+                  localStorage.setItem('user_location', JSON.stringify(coords));
+                  // Notificar al componente padre usando el callback
+                  if (onUbicacionObtenida) {
+                    onUbicacionObtenida(coords);
+                  }
+                },
+                (error) => {
+                  console.error('Error getting location:', error);
+                  alert('No se pudo obtener tu ubicación. Por favor, verifica los permisos.');
+                }
+              );
+            }}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity text-sm font-medium"
+          >
+            <MapPin className="h-4 w-4" />
+            Activar "Cerca de mí"
+          </button>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between px-3 py-2 bg-primary/10 rounded-md">
+              <span className="text-sm text-foreground flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-primary" />
+                Ubicación activada
+              </span>
+              <button
+                onClick={() => {
+                  // Limpiar ubicación
+                  localStorage.removeItem('user_location');
+                  // Notificar al componente padre usando el callback
+                  if (onUbicacionLimpiada) {
+                    onUbicacionLimpiada();
+                  }
+                }}
+                className="text-xs text-muted-foreground hover:text-foreground underline"
+              >
+                Desactivar
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Selector de Fecha y Horarios - Compacto para sidebar */}
-      {isSidebar ? (
+      {/* Radio de distancia - Solo si hay ubicación */}
+      {ubicacion && (
         <div>
-          <label className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
-            <span className="text-sm">📅</span>
-            Fecha y horarios
+          <label className="text-sm font-medium text-foreground flex items-center gap-2 mb-2">
+            <span className="text-sm">📏</span>
+            Radio de búsqueda
           </label>
-          
-          {/* Días con slider mejorado */}
-          <div className="relative mb-4">
-            <div className="flex items-center">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute left-0 z-10 h-8 w-8 rounded-full bg-background shadow-md border"
-                onClick={() => {
-                  setDateStartIndex(Math.max(0, dateStartIndex - 1));
-                }}
-                disabled={dateStartIndex === 0}
+          <div className="grid grid-cols-4 gap-1.5">
+            {[
+              { value: undefined, label: 'Todas' },
+              { value: 1, label: '1 km' },
+              { value: 3, label: '3 km' },
+              { value: 5, label: '5 km' },
+            ].map((option) => (
+              <button
+                key={option.label}
+                onClick={() => onFiltersChange({ ...filters, radioKm: option.value })}
+                className={cn(
+                  "px-3 py-1.5 text-xs font-medium rounded-md transition-colors",
+                  filters.radioKm === option.value
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted hover:bg-muted/80 text-foreground"
+                )}
               >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              
-              <div className="mx-10 overflow-hidden">
-                <div className="flex gap-1.5">
-                  {next6Days.slice(dateStartIndex, dateStartIndex + 4).map(date => {
-                    const { day, date: dateNum, isToday } = formatDateDisplay(date);
-                    const isSelected = filters.selectedDate === date;
-
-                    return (
-                      <Button
-                        key={date}
-                        variant={isSelected ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => handleDateChange(date)}
-                        className="flex-1 h-16 flex flex-col gap-1 px-4 py-2 rounded-xl"
-                      >
-                        <span className="font-medium text-sm">{isToday ? 'Hoy' : day}</span>
-                        <span className="font-bold text-xl">{dateNum}</span>
-                      </Button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute right-0 z-10 h-8 w-8 rounded-full bg-background shadow-md border"
-                onClick={() => {
-                  setDateStartIndex(Math.min(next6Days.length - 4, dateStartIndex + 1));
-                }}
-                disabled={dateStartIndex >= next6Days.length - 4}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-
-          {/* Horarios - Mostrar todos */}
-          <div>
-            <div className="text-xs text-muted-foreground mb-2">
-              Horarios para el {new Date(filters.selectedDate + 'T00:00:00').toLocaleDateString('es-PE', { weekday: 'long' })} {formatDateDisplay(filters.selectedDate).date}
-            </div>
-            <div className="grid grid-cols-4 gap-1">
-              {HOURS.map(hour => (
-                <Button
-                  key={hour}
-                  variant={filters.availableHours.includes(hour) ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => handleHourToggle(hour)}
-                  className="h-8 text-xs p-1"
-                >
-                  {formatTo12Hour(hour)}
-                </Button>
-              ))}
-            </div>
-          </div>
-        </div>
-      ) : (
-        /* Versión completa para mobile */
-        <div>
-          <label className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-            <span className="text-base">📅</span>
-            Selecciona fecha y horarios
-          </label>
-          
-          <div className="space-y-4">
-            {/* Días con scroll horizontal */}
-            <div className="relative">
-              <div className="overflow-x-auto pb-2 -mx-1 px-1">
-                <div className="flex gap-2 min-w-max">
-                  {next6Days.map(date => {
-                    const { day, date: dateNum, isToday } = formatDateDisplay(date);
-                    const isSelected = filters.selectedDate === date;
-
-                    return (
-                      <Button
-                        key={date}
-                        variant={isSelected ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => handleDateChange(date)}
-                        className="text-xs h-12 px-2 py-1.5 flex flex-col items-center justify-center gap-0.5 shrink-0 min-w-[70px]"
-                      >
-                        <span className="font-semibold text-xs">{isToday ? 'Hoy' : day}</span>
-                        <span className="text-sm font-bold">{dateNum}</span>
-                      </Button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <div className="text-xs text-muted-foreground mb-2">
-                Horarios para el {new Date(filters.selectedDate + 'T00:00:00').toLocaleDateString('es-PE', { weekday: 'long' })} {formatDateDisplay(filters.selectedDate).date}
-              </div>
-              <div className="grid grid-cols-4 gap-2">
-                {HOURS.map(hour => (
-                  <Button
-                    key={hour}
-                    variant={filters.availableHours.includes(hour) ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => handleHourToggle(hour)}
-                    className="text-xs"
-                  >
-                    {formatTo12Hour(hour)}
-                  </Button>
-                ))}
-              </div>
-            </div>
+                {option.label}
+              </button>
+            ))}
           </div>
         </div>
       )}
 
-      {/* Extras disponibles — justo después de horarios */}
+      {/* Extras disponibles */}
       <div>
         <label className="text-sm font-medium text-foreground flex items-center gap-2 mb-2">
           <span className="text-sm">🎽</span>
@@ -335,45 +232,6 @@ export function AdvancedFiltersComponent({
           </div>
         </div>
       </div>
-
-      {/* Radio de distancia - Solo si hay ubicación */}
-      {ubicacion && (
-        <div>
-          <label className="text-sm font-medium text-foreground flex items-center gap-2 mb-2">
-            <span className="text-sm">📍</span>
-            Radio de distancia
-          </label>
-          <div className="grid grid-cols-4 gap-1.5">
-            {[
-              { value: undefined, label: 'Todas' },
-              { value: 1, label: '1 km' },
-              { value: 3, label: '3 km' },
-              { value: 5, label: '5 km' },
-              { value: 10, label: '10 km' },
-              { value: 20, label: '20 km' },
-            ].map(({ value, label }) => (
-              <button
-                key={label}
-                type="button"
-                onClick={() => onFiltersChange({ ...filters, radioKm: value })}
-                className={cn(
-                  'rounded-lg border px-2 py-2 text-xs font-medium transition-all',
-                  filters.radioKm === value
-                    ? 'border-primary bg-primary text-primary-foreground'
-                    : 'border-border bg-card text-foreground hover:border-primary/40'
-                )}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          {filters.radioKm && (
-            <p className="text-xs text-muted-foreground mt-2">
-              Mostrando canchas a menos de {filters.radioKm} km de tu ubicación
-            </p>
-          )}
-        </div>
-      )}
 
       {/* Superficie */}
       <div>
@@ -594,7 +452,7 @@ export function AdvancedFiltersComponent({
       <div className="flex items-center gap-2">
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
           <SheetTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-2 w-full justify-center">
+            <Button ref={triggerRef} variant="outline" size="sm" className="gap-2 w-full justify-center">
               <Sliders className="h-4 w-4" />
               Filtros
               {activeFilterCount > 0 && (

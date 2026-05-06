@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   MapPin, Search, Calendar, CheckCircle, ArrowRight,
-  Zap, Phone, CreditCard, ShieldCheck, Clock,
+  Zap, Phone, CreditCard, ShieldCheck, Clock, X, Loader2,
 } from 'lucide-react';
 import { Header } from '@/components/header';
 import { CanchaCard } from '@/components/cancha-card';
@@ -84,6 +84,23 @@ export default function HomePage() {  const router = useRouter();
   const [ubicacion, setUbicacion] = useState('Mi ubicación');
   const [fecha, setFecha] = useState('');
   const [hora, setHora] = useState('');
+  
+  // Estados para el buscador avanzado
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [loadingLocation, setLoadingLocation] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedTime, setSelectedTime] = useState('');
+  const [availableHours, setAvailableHours] = useState<string[]>([]);
+  const [loadingHours, setLoadingHours] = useState(false);
+  
+  const locationRef = useRef<HTMLDivElement>(null);
+  const dateRef = useRef<HTMLDivElement>(null);
+  const timeRef = useRef<HTMLDivElement>(null);
+  const locationButtonRef = useRef<HTMLButtonElement>(null);
+  const dateButtonRef = useRef<HTMLButtonElement>(null);
+  const timeButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     // Fecha de hoy formateada
@@ -91,16 +108,16 @@ export default function HomePage() {  const router = useRouter();
     const opciones: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'long' };
     setFecha(`Hoy, ${hoy.toLocaleDateString('es-PE', opciones)}`);
     
-    // Hora actual del sistema en formato 12 horas con minutos
-    const horas24 = hoy.getHours();
-    const minutos = hoy.getMinutes();
+    // Calcular la hora siguiente (redondear hacia arriba)
+    const horaActual = hoy.getHours();
+    const horaSiguiente = horaActual + 1;
     
-    // Convertir a formato 12 horas
-    const hora12 = horas24 === 0 ? 12 : horas24 > 12 ? horas24 - 12 : horas24;
-    const periodo = horas24 >= 12 ? 'PM' : 'AM';
-    const minutosFormateados = String(minutos).padStart(2, '0');
+    // Formatear en formato 24 horas (HH:00)
+    const horaSiguienteFormateada = `${String(horaSiguiente).padStart(2, '0')}:00`;
     
-    setHora(`${hora12}:${minutosFormateados} ${periodo}`);
+    // Establecer la hora siguiente como predeterminada
+    setSelectedTime(horaSiguienteFormateada);
+    setHora(horaSiguienteFormateada);
 
     fetch('/api/canchas/list')
       .then(r => r.json())
@@ -111,8 +128,180 @@ export default function HomePage() {  const router = useRouter();
       .catch(() => setLoading(false));
   }, []);
 
+  // Cerrar modales al hacer click fuera
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      const target = event.target as Node;
+      
+      // Solo cerrar si se hace click en el overlay (no en el contenido del modal)
+      if (showLocationModal && locationRef.current && !locationRef.current.contains(target)) {
+        const isOverlay = (event.target as HTMLElement).classList.contains('fixed');
+        if (isOverlay) {
+          setShowLocationModal(false);
+        }
+      }
+      if (showDatePicker && dateRef.current && !dateRef.current.contains(target)) {
+        const isOverlay = (event.target as HTMLElement).classList.contains('fixed');
+        if (isOverlay) {
+          setShowDatePicker(false);
+        }
+      }
+      if (showTimePicker && timeRef.current && !timeRef.current.contains(target)) {
+        const isOverlay = (event.target as HTMLElement).classList.contains('fixed');
+        if (isOverlay) {
+          setShowTimePicker(false);
+        }
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showLocationModal, showDatePicker, showTimePicker]);
+
+  // Cargar horarios disponibles cuando cambia la fecha
+  useEffect(() => {
+    if (selectedDate) {
+      loadAvailableHours(selectedDate);
+    }
+  }, [selectedDate]);
+
+  const loadAvailableHours = async (date: Date) => {
+    setLoadingHours(true);
+    try {
+      const dateStr = getLocalDateString(date);
+      const response = await fetch(`/api/canchas/list`);
+      const canchas = await response.json();
+      
+      // Obtener todos los horarios disponibles de todas las canchas para esa fecha
+      const hoursSet = new Set<string>();
+      
+      canchas.forEach((cancha: any) => {
+        const horariosOcupados = cancha.horariosOcupados || {};
+        const horariosRestringidos = cancha.horariosRestringidos || [];
+        
+        HORAS.forEach(hora => {
+          if (!horariosRestringidos.includes(hora)) {
+            const key = `${dateStr}|${hora}`;
+            if (!horariosOcupados[key]) {
+              hoursSet.add(hora);
+            }
+          }
+        });
+      });
+      
+      setAvailableHours(Array.from(hoursSet).sort());
+    } catch (error) {
+      console.error('Error loading available hours:', error);
+      setAvailableHours([]);
+    } finally {
+      setLoadingHours(false);
+    }
+  };
+
+  const handleRequestLocation = () => {
+    if (!navigator.geolocation) {
+      alert('Tu navegador no soporta geolocalización');
+      return;
+    }
+
+    setLoadingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        
+        // Usar API de geocodificación inversa para obtener la ciudad
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=es`
+          );
+          const data = await response.json();
+          
+          const city = data.address?.city || data.address?.town || data.address?.village || data.address?.state || 'Ubicación actual';
+          setUbicacion(city);
+          setShowLocationModal(false);
+        } catch (error) {
+          console.error('Error getting location name:', error);
+          setUbicacion('Ubicación actual');
+          setShowLocationModal(false);
+        } finally {
+          setLoadingLocation(false);
+        }
+      },
+      (error) => {
+        console.error('Error getting location:', error);
+        alert('No se pudo obtener tu ubicación. Por favor, verifica los permisos.');
+        setLoadingLocation(false);
+      }
+    );
+  };
+
+  const handleDateSelect = (date: Date) => {
+    setSelectedDate(date);
+    const opciones: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'long' };
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const selectedDay = new Date(date);
+    selectedDay.setHours(0, 0, 0, 0);
+    
+    if (selectedDay.getTime() === today.getTime()) {
+      setFecha(`Hoy, ${date.toLocaleDateString('es-PE', opciones)}`);
+    } else {
+      setFecha(date.toLocaleDateString('es-PE', opciones));
+    }
+    setShowDatePicker(false);
+  };
+
+  const handleTimeSelect = (time: string) => {
+    setSelectedTime(time);
+    setHora(time);
+    setShowTimePicker(false);
+  };
+
   const handleBuscar = () => {
-    router.push('/canchas');
+    // Construir query params para la búsqueda
+    const params = new URLSearchParams();
+    
+    // Agregar fecha seleccionada
+    if (selectedDate) {
+      const dateStr = getLocalDateString(selectedDate);
+      params.set('fecha', dateStr);
+    }
+    
+    // Agregar hora seleccionada
+    if (selectedTime) {
+      params.set('hora', selectedTime);
+    }
+    
+    // Agregar ubicación si no es la predeterminada
+    if (ubicacion !== 'Mi ubicación') {
+      params.set('ubicacion', ubicacion);
+    }
+    
+    router.push(`/canchas?${params.toString()}`);
+  };
+
+  // Generar calendario para el mes actual
+  const generateCalendar = () => {
+    const year = selectedDate.getFullYear();
+    const month = selectedDate.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDayOfWeek = firstDay.getDay();
+    
+    const days = [];
+    
+    // Días vacíos al inicio
+    for (let i = 0; i < startingDayOfWeek; i++) {
+      days.push(null);
+    }
+    
+    // Días del mes
+    for (let day = 1; day <= daysInMonth; day++) {
+      days.push(new Date(year, month, day));
+    }
+    
+    return days;
   };
 
   return (
@@ -120,7 +309,7 @@ export default function HomePage() {  const router = useRouter();
       <Header />
 
       {/* ── HERO ─────────────────────────────────────────────────── */}
-      <section className="relative min-h-[520px] md:min-h-[600px] flex items-center overflow-hidden">
+      <section className="relative min-h-[520px] md:min-h-[600px] flex items-center">
         {/* Imagen de fondo */}
         <div className="absolute inset-0">
           <Image
@@ -147,42 +336,247 @@ export default function HomePage() {  const router = useRouter();
             </p>
 
             {/* Buscador tipo booking */}
-            <div className="bg-white dark:bg-card rounded-lg shadow-2xl p-2 flex flex-col sm:flex-row gap-0 sm:gap-0 overflow-hidden max-w-3xl">
+            <div className="bg-white dark:bg-card rounded-lg shadow-2xl p-2 flex flex-col sm:flex-row gap-0 sm:gap-0 max-w-3xl">
               {/* Ubicación */}
-              <button
-                onClick={handleBuscar}
-                className="flex items-center gap-3 px-4 py-3 flex-1 text-left hover:bg-gray-50 dark:hover:bg-muted/50 transition-colors rounded-md sm:rounded-none sm:rounded-l-md border-b sm:border-b-0 sm:border-r border-gray-100 dark:border-border"
-              >
-                <MapPin className="h-4 w-4 text-gray-400 shrink-0" />
-                <div>
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">Ubicación</p>
-                  <p className="text-sm font-semibold text-gray-800 dark:text-foreground">{ubicacion}</p>
-                </div>
-              </button>
+              <div className="relative flex-1">
+                <button
+                  ref={locationButtonRef}
+                  onClick={() => {
+                    setShowLocationModal(!showLocationModal);
+                    setShowDatePicker(false);
+                    setShowTimePicker(false);
+                  }}
+                  className="flex items-center gap-3 px-4 py-3 w-full text-left hover:bg-gray-50 dark:hover:bg-muted/50 transition-colors rounded-md sm:rounded-none sm:rounded-l-md border-b sm:border-b-0 sm:border-r border-gray-100 dark:border-border"
+                >
+                  <MapPin className="h-4 w-4 text-gray-400 shrink-0" />
+                  <div>
+                    <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">Ubicación</p>
+                    <p className="text-sm font-semibold text-gray-800 dark:text-foreground">{ubicacion}</p>
+                  </div>
+                </button>
+                
+                {/* Modal de ubicación */}
+                {showLocationModal && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-40" 
+                      onClick={() => setShowLocationModal(false)}
+                    />
+                    <div 
+                      ref={locationRef}
+                      className="absolute z-50 bg-white dark:bg-card rounded-lg shadow-2xl border border-gray-200 dark:border-border p-4"
+                      style={{
+                        top: 'calc(100% - 2px)',
+                        left: '0',
+                        minWidth: '320px',
+                      }}
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="font-semibold text-sm">Seleccionar ubicación</h3>
+                        <button
+                          onClick={() => setShowLocationModal(false)}
+                          className="text-gray-400 hover:text-gray-600"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                      
+                      <button
+                        onClick={handleRequestLocation}
+                        disabled={loadingLocation}
+                        className="w-full flex items-center justify-center gap-2 bg-[#16a34a] hover:bg-[#15803d] disabled:bg-gray-300 text-white font-medium px-4 py-2.5 rounded-md transition-colors text-sm"
+                      >
+                        {loadingLocation ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Obteniendo ubicación...
+                          </>
+                        ) : (
+                          <>
+                            <MapPin className="h-4 w-4" />
+                            Usar mi ubicación actual
+                          </>
+                        )}
+                      </button>
+                      
+                      <div className="mt-3 pt-3 border-t border-gray-100 dark:border-border">
+                        <p className="text-xs text-gray-500 dark:text-muted-foreground">
+                          Necesitamos tu permiso para acceder a tu ubicación
+                        </p>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
 
               {/* Fecha */}
-              <button
-                onClick={handleBuscar}
-                className="flex items-center gap-3 px-4 py-3 flex-1 text-left hover:bg-gray-50 dark:hover:bg-muted/50 transition-colors border-b sm:border-b-0 sm:border-r border-gray-100 dark:border-border"
-              >
-                <Calendar className="h-4 w-4 text-gray-400 shrink-0" />
-                <div>
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">Fecha</p>
-                  <p className="text-sm font-semibold text-gray-800 dark:text-foreground">{fecha}</p>
-                </div>
-              </button>
+              <div className="relative flex-1">
+                <button
+                  ref={dateButtonRef}
+                  onClick={() => {
+                    setShowDatePicker(!showDatePicker);
+                    setShowLocationModal(false);
+                    setShowTimePicker(false);
+                  }}
+                  className="flex items-center gap-3 px-4 py-3 w-full text-left hover:bg-gray-50 dark:hover:bg-muted/50 transition-colors border-b sm:border-b-0 sm:border-r border-gray-100 dark:border-border"
+                >
+                  <Calendar className="h-4 w-4 text-gray-400 shrink-0" />
+                  <div>
+                    <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">Fecha</p>
+                    <p className="text-sm font-semibold text-gray-800 dark:text-foreground">{fecha}</p>
+                  </div>
+                </button>
+                
+                {/* Calendario */}
+                {showDatePicker && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-40" 
+                      onClick={() => setShowDatePicker(false)}
+                    />
+                    <div 
+                      ref={dateRef}
+                      className="absolute z-50 bg-white dark:bg-card rounded-lg shadow-2xl border border-gray-200 dark:border-border p-4"
+                      style={{
+                        top: 'calc(100% - 2px)',
+                        left: '0',
+                        width: '320px',
+                        maxWidth: '90vw',
+                      }}
+                    >
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-semibold text-sm">
+                          {selectedDate.toLocaleDateString('es-PE', { month: 'long', year: 'numeric' })}
+                        </h3>
+                        <button
+                          onClick={() => setShowDatePicker(false)}
+                          className="text-gray-400 hover:text-gray-600"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                      
+                      {/* Días de la semana */}
+                      <div className="grid grid-cols-7 gap-1 mb-2">
+                        {['D', 'L', 'M', 'M', 'J', 'V', 'S'].map((day, i) => (
+                          <div key={i} className="text-center text-xs font-medium text-gray-500 py-1">
+                            {day}
+                          </div>
+                        ))}
+                      </div>
+                      
+                      {/* Días del mes */}
+                      <div className="grid grid-cols-7 gap-1">
+                        {generateCalendar().map((day, index) => {
+                          if (!day) {
+                            return <div key={`empty-${index}`} />;
+                          }
+                          
+                          const today = new Date();
+                          today.setHours(0, 0, 0, 0);
+                          const dayDate = new Date(day);
+                          dayDate.setHours(0, 0, 0, 0);
+                          const isToday = dayDate.getTime() === today.getTime();
+                          const isSelected = dayDate.getTime() === new Date(selectedDate).setHours(0, 0, 0, 0);
+                          const isPast = dayDate < today;
+                          
+                          return (
+                            <button
+                              key={index}
+                              onClick={() => !isPast && handleDateSelect(day)}
+                              disabled={isPast}
+                              className={`
+                                aspect-square flex items-center justify-center text-sm rounded-md transition-colors
+                                ${isPast ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-muted'}
+                                ${isSelected ? 'bg-[#16a34a] text-white hover:bg-[#15803d]' : ''}
+                                ${isToday && !isSelected ? 'border-2 border-[#16a34a] text-[#16a34a] font-semibold' : ''}
+                              `}
+                            >
+                              {day.getDate()}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
 
               {/* Hora */}
-              <button
-                onClick={handleBuscar}
-                className="flex items-center gap-3 px-4 py-3 flex-1 text-left hover:bg-gray-50 dark:hover:bg-muted/50 transition-colors border-b sm:border-b-0 sm:border-r border-gray-100 dark:border-border"
-              >
-                <Clock className="h-4 w-4 text-gray-400 shrink-0" />
-                <div>
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">Hora</p>
-                  <p className="text-sm font-semibold text-gray-800 dark:text-foreground">{hora}</p>
-                </div>
-              </button>
+              <div className="relative flex-1">
+                <button
+                  ref={timeButtonRef}
+                  onClick={() => {
+                    setShowTimePicker(!showTimePicker);
+                    setShowLocationModal(false);
+                    setShowDatePicker(false);
+                  }}
+                  className="flex items-center gap-3 px-4 py-3 w-full text-left hover:bg-gray-50 dark:hover:bg-muted/50 transition-colors border-b sm:border-b-0 sm:border-r border-gray-100 dark:border-border"
+                >
+                  <Clock className="h-4 w-4 text-gray-400 shrink-0" />
+                  <div>
+                    <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">Hora</p>
+                    <p className="text-sm font-semibold text-gray-800 dark:text-foreground">{hora}</p>
+                  </div>
+                </button>
+                
+                {/* Selector de hora */}
+                {showTimePicker && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-40" 
+                      onClick={() => setShowTimePicker(false)}
+                    />
+                    <div 
+                      ref={timeRef}
+                      className="absolute z-50 bg-white dark:bg-card rounded-lg shadow-2xl border border-gray-200 dark:border-border p-4 max-h-96 overflow-y-auto"
+                      style={{
+                        top: 'calc(100% - 2px)',
+                        left: '0',
+                        minWidth: '320px',
+                      }}
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="font-semibold text-sm">Horarios disponibles</h3>
+                        <button
+                          onClick={() => setShowTimePicker(false)}
+                          className="text-gray-400 hover:text-gray-600"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                      
+                      {loadingHours ? (
+                        <div className="flex items-center justify-center py-8">
+                          <Loader2 className="h-6 w-6 animate-spin text-[#16a34a]" />
+                        </div>
+                      ) : availableHours.length > 0 ? (
+                        <div className="grid grid-cols-3 gap-2">
+                          {availableHours.map((time) => (
+                            <button
+                              key={time}
+                              onClick={() => handleTimeSelect(time)}
+                              className={`
+                                px-3 py-2 text-sm rounded-md transition-colors
+                                ${selectedTime === time 
+                                  ? 'bg-[#16a34a] text-white' 
+                                  : 'bg-gray-50 dark:bg-muted hover:bg-gray-100 dark:hover:bg-muted/80'
+                                }
+                              `}
+                            >
+                              {time}
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8 text-sm text-gray-500">
+                          No hay horarios disponibles para esta fecha
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
 
               {/* Botón buscar */}
               <button

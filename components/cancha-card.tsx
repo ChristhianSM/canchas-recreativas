@@ -19,6 +19,7 @@ interface CanchaCardProps {
   distancia?: number;
   selectedDate?: string;
   availableHours?: string[];
+  preselectedHour?: string;
 }
 
 function getAvailableSlots(
@@ -97,10 +98,9 @@ function getUrgencyBadge(
 ): { text: string; className: string; dotColor?: string } | null {
   const today = getLocalDateString();
   const isToday = date === today;
+  const count = availableSlots.length;
 
   if (isToday) {
-    const count = availableSlots.length;
-
     if (count === 0) {
       // Sin slots hoy — buscar mañana
       const tomorrow = new Date();
@@ -137,17 +137,35 @@ function getUrgencyBadge(
     return { text: 'Disponible hoy', className: 'bg-white/95 text-green-600', dotColor: 'bg-green-600' };
   }
 
-  return null;
+  // Para fechas futuras, mostrar badge según cantidad de slots
+  if (count === 0) {
+    return null;
+  }
+  
+  if (count <= 2) {
+    return { text: '¡Últimos horarios!', className: 'bg-white/95 text-red-600', dotColor: 'bg-red-600' };
+  }
+  
+  if (count <= 4) {
+    return { text: 'Pocos horarios', className: 'bg-white/95 text-orange-600', dotColor: 'bg-orange-600' };
+  }
+
+  // Muchos slots disponibles
+  return { text: 'Disponible', className: 'bg-white/95 text-green-600', dotColor: 'bg-green-600' };
 }
 
-export function CanchaCard({ cancha, distancia, selectedDate, availableHours }: CanchaCardProps) {
+export function CanchaCard({ cancha, distancia, selectedDate, availableHours, preselectedHour }: CanchaCardProps) {
   const router = useRouter();
   const date = selectedDate ?? getLocalDateString();
   const today = getLocalDateString();
   const isToday = date === today;
   
-  // Hook para detectar el ancho de la pantalla
-  const [slotsToShow, setSlotsToShow] = useState(3);
+  // Hook para detectar el ancho de la pantalla - inicializar con el valor correcto
+  const [slotsToShow, setSlotsToShow] = useState(() => {
+    // En el servidor o primera carga, usar 4 como default (desktop)
+    if (typeof window === 'undefined') return 4;
+    return window.innerWidth >= 375 ? 4 : 3;
+  });
   
   useEffect(() => {
     const updateSlotsToShow = () => {
@@ -161,40 +179,97 @@ export function CanchaCard({ cancha, distancia, selectedDate, availableHours }: 
     return () => window.removeEventListener('resize', updateSlotsToShow);
   }, []);
   
-  // Obtener slots del día seleccionado
-  let availableSlots = getAvailableSlots(cancha, date, availableHours);
+  // Obtener slots del día seleccionado (SIN filtrar por hora para contar todos los del día)
+  let availableSlotsForDay = getAvailableSlots(cancha, date);
   let displayDate = date;
   let showingTomorrow = false;
   
   // Si es hoy y no hay slots, intentar mostrar los de mañana
-  if (isToday && availableSlots.length === 0) {
+  if (isToday && availableSlotsForDay.length === 0) {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     const tomorrowStr = getLocalDateString(tomorrow);
-    const tomorrowSlots = getAvailableSlots(cancha, tomorrowStr, availableHours);
+    const tomorrowSlots = getAvailableSlots(cancha, tomorrowStr);
     
     if (tomorrowSlots.length > 0) {
-      availableSlots = tomorrowSlots;
+      availableSlotsForDay = tomorrowSlots;
       displayDate = tomorrowStr;
       showingTomorrow = true;
     }
   }
   
-  const visibleSlots = availableSlots.slice(0, slotsToShow);
-  const extraCount = Math.max(0, availableSlots.length - slotsToShow);
+  // Si hay un horario pre-seleccionado, filtrar para mostrar solo desde ese horario en adelante
+  let slotsToDisplay = availableSlotsForDay;
+  if (preselectedHour) {
+    const preselectedIndex = availableSlotsForDay.findIndex(slot => slot.time === preselectedHour);
+    if (preselectedIndex !== -1) {
+      // Mostrar solo desde el horario pre-seleccionado en adelante
+      slotsToDisplay = availableSlotsForDay.slice(preselectedIndex);
+    }
+  }
+  
+  // Calcular slots visibles (primeros N slots de los que vamos a mostrar)
+  const visibleSlots = slotsToDisplay.slice(0, slotsToShow);
+  
+  // Contar horarios extras (los que quedan después de los visibles)
+  const extraCount = Math.max(0, slotsToDisplay.length - visibleSlots.length);
+  
   const nextAvailability = visibleSlots.length === 0 ? getNextAvailability(cancha, date) : null;
   
   // Calcular el badge de urgencia
   let urgencyBadge = null;
-  if (showingTomorrow && availableSlots.length > 0) {
+  if (showingTomorrow && availableSlotsForDay.length > 0) {
     // Si estamos mostrando horarios de mañana, mostrar badge "Disponible mañana"
     urgencyBadge = { text: 'Disponible mañana', className: 'bg-white/95 text-blue-600', dotColor: 'bg-blue-600' };
   } else {
-    // Usar la lógica normal para el día actual
-    urgencyBadge = getUrgencyBadge(cancha, date, availableSlots);
+    // Usar slotsToDisplay para calcular el badge (considera el filtro de hora pre-seleccionada)
+    urgencyBadge = getUrgencyBadge(cancha, displayDate, slotsToDisplay);
   }
 
-  const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(() => availableSlots[0] ?? null);
+  // Generar texto dinámico para los horarios según la fecha
+  const getHorariosText = () => {
+    const today = getLocalDateString();
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = getLocalDateString(tomorrow);
+
+    if (showingTomorrow) {
+      return (
+        <>
+          Próximos horarios <span className="text-green-600">mañana</span>
+        </>
+      );
+    } else if (displayDate === today) {
+      return 'Próximos horarios hoy';
+    } else if (displayDate === tomorrowStr) {
+      return (
+        <>
+          Próximos horarios <span className="text-green-600">mañana</span>
+        </>
+      );
+    } else {
+      // Para cualquier otra fecha, mostrar la fecha formateada
+      const targetDate = new Date(displayDate + 'T00:00:00');
+      const formattedDate = targetDate.toLocaleDateString('es-PE', { 
+        day: 'numeric', 
+        month: 'short' 
+      });
+      return (
+        <>
+          Horarios para el <span className="text-green-600">{formattedDate}</span>
+        </>
+      );
+    }
+  };
+
+  // Inicializar selectedSlot con preselectedHour si está disponible
+  const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(() => {
+    if (preselectedHour) {
+      const preselected = availableSlotsForDay.find(slot => slot.time === preselectedHour);
+      if (preselected) return preselected;
+    }
+    return visibleSlots[0] ?? null;
+  });
   const [reservando, setReservando] = useState(false);
   const [ocupadoModal, setOcupadoModal] = useState(false);
   const [countdown, setCountdown] = useState(0);
@@ -466,13 +541,7 @@ export function CanchaCard({ cancha, distancia, selectedDate, availableHours }: 
         <div className="mb-3 w-full">
           <div className="mb-2 flex items-center justify-between">
             <p className="text-sm font-medium text-foreground">
-              {showingTomorrow ? (
-                <>
-                  Próximos horarios <span className="text-green-600">mañana</span>
-                </>
-              ) : (
-                'Próximos horarios hoy'
-              )}
+              {getHorariosText()}
             </p>
             <Link
               href={`/cancha/${cancha.id}`}
@@ -484,14 +553,14 @@ export function CanchaCard({ cancha, distancia, selectedDate, availableHours }: 
           </div>
 
           {visibleSlots.length > 0 ? (
-            <div className="flex items-center gap-2 w-full">
+            <div className="flex items-center gap-1.5 w-full">
               {visibleSlots.map(slot => (
                 <button
                   key={slot.id}
                   onClick={(e) => handleSlotClick(e, slot)}
                   aria-pressed={selectedSlot?.id === slot.id}
                   aria-label={`Seleccionar horario ${slot.time}`}
-                  className={`flex-1 rounded-lg border px-2 py-2 text-sm font-medium transition-all text-center ${
+                  className={`flex-1 min-w-0 rounded-lg border px-2 py-2 text-sm font-medium transition-all text-center ${
                     selectedSlot?.id === slot.id
                       ? 'bg-primary border-primary text-primary-foreground'
                       : 'border-border bg-background text-foreground hover:border-primary/50'
@@ -503,7 +572,7 @@ export function CanchaCard({ cancha, distancia, selectedDate, availableHours }: 
               {extraCount > 0 && (
                 <button
                   onClick={handleMoreClick}
-                  className="rounded-lg border border-border bg-background px-2 py-2 text-sm font-medium text-muted-foreground hover:border-primary/50 hover:text-primary transition-all"
+                  className="flex-shrink-0 w-12 rounded-lg border border-border bg-background px-2 py-2 text-sm font-medium text-muted-foreground hover:border-primary/50 hover:text-primary transition-all"
                   aria-label={`Ver ${extraCount} horarios más`}
                 >
                   +{extraCount}
