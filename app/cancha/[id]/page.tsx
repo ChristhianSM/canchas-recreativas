@@ -183,8 +183,7 @@ export default function CanchaDetailPage() {
     // Disponible — ir a pago (el bloqueo se crea allí)
     setReservaStep(2); // Paso 2: Redirigiendo
     setTimeout(() => {
-      setReservando(false);
-      setReservaStep(0);
+      // NO resetear el estado de loading aquí - mantener el botón deshabilitado hasta la redirección
       const extrasParams = [
         quiereBalon && cancha.balon_disponible ? `balon=1` : '',
         quiereChalecos && cancha.chalecos_disponible ? `chalecos=1` : '',

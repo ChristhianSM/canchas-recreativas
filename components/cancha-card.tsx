@@ -361,15 +361,17 @@ export function CanchaCard({ cancha, distancia, selectedDate, availableHours, pr
       return;
     }
 
-    setReservando(false);
+    // NO resetear reservando aquí - mantener el botón en loading hasta la redirección
 
     if (!disponible) {
+      setReservando(false); // Solo resetear si el horario está ocupado
       setSelectedSlot(null);
       setOcupadoModal(true);
       startCountdown(5 * 60);
       return;
     }
 
+    // Mantener el loading activo hasta que la redirección ocurra
     router.push(
       `/pago?canchaId=${cancha.id}&fecha=${displayDate}&hora=${selectedSlot.time}&precio=${selectedSlot.price}&from=card`
     );
