@@ -254,3 +254,18 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 800;
   letter-spacing: -0.03em;
 }
+
+/* Prevenir scroll automático en elementos de filtros */
+[data-slot="checkbox"],
+[data-slot="checkbox"] *,
+.overflow-y-auto [role="checkbox"],
+.overflow-y-auto input[type="checkbox"],
+.overflow-y-auto button {
+  scroll-margin: 0 !important;
+}
+
+/* Desactivar scroll automático en contenedores de filtros */
+.overflow-y-auto {
+  scroll-behavior: auto !important;
+  overflow-anchor: none !important;
+}

@@ -105,7 +105,7 @@ export default function HomePage() {  const router = useRouter();
   useEffect(() => {
     // Fecha de hoy formateada
     const hoy = new Date();
-    const opciones: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'long' };
+    const opciones: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' };
     setFecha(`Hoy, ${hoy.toLocaleDateString('es-PE', opciones)}`);
     
     // Calcular la hora siguiente (redondear hacia arriba)
@@ -237,7 +237,7 @@ export default function HomePage() {  const router = useRouter();
 
   const handleDateSelect = (date: Date) => {
     setSelectedDate(date);
-    const opciones: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'long' };
+    const opciones: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' };
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const selectedDay = new Date(date);
@@ -346,13 +346,18 @@ export default function HomePage() {  const router = useRouter();
                     setShowDatePicker(false);
                     setShowTimePicker(false);
                   }}
-                  className="flex items-center gap-3 px-4 py-3 w-full text-left hover:bg-gray-50 dark:hover:bg-muted/50 transition-colors rounded-md sm:rounded-none sm:rounded-l-md border-b sm:border-b-0 sm:border-r border-gray-100 dark:border-border"
+                  className="flex items-center justify-between gap-3 px-4 py-3 w-full text-left hover:bg-gray-50 dark:hover:bg-muted/50 transition-colors rounded-md sm:rounded-none sm:rounded-l-md border-b sm:border-b-0 sm:border-r border-gray-100 dark:border-border cursor-pointer group"
                 >
-                  <MapPin className="h-4 w-4 text-gray-400 shrink-0" />
-                  <div>
-                    <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">Ubicación</p>
-                    <p className="text-sm font-semibold text-gray-800 dark:text-foreground">{ubicacion}</p>
+                  <div className="flex items-center gap-3">
+                    <MapPin className="h-4 w-4 text-gray-400 shrink-0 group-hover:text-[#16a34a] transition-colors" />
+                    <div>
+                      <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">Ubicación</p>
+                      <p className="text-sm font-semibold text-gray-800 dark:text-foreground group-hover:text-[#16a34a] transition-colors">{ubicacion}</p>
+                    </div>
                   </div>
+                  <svg className={`h-4 w-4 text-gray-400 shrink-0 group-hover:text-[#16a34a] transition-all ${showLocationModal ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
                 </button>
                 
                 {/* Modal de ubicación */}
@@ -367,7 +372,8 @@ export default function HomePage() {  const router = useRouter();
                       className="absolute z-50 bg-white dark:bg-card rounded-lg shadow-2xl border border-gray-200 dark:border-border p-4"
                       style={{
                         top: 'calc(100% - 2px)',
-                        left: '0',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
                         minWidth: '320px',
                       }}
                     >
@@ -418,13 +424,18 @@ export default function HomePage() {  const router = useRouter();
                     setShowLocationModal(false);
                     setShowTimePicker(false);
                   }}
-                  className="flex items-center gap-3 px-4 py-3 w-full text-left hover:bg-gray-50 dark:hover:bg-muted/50 transition-colors border-b sm:border-b-0 sm:border-r border-gray-100 dark:border-border"
+                  className="flex items-center justify-between gap-3 px-4 py-3 w-full text-left hover:bg-gray-50 dark:hover:bg-muted/50 transition-colors border-b sm:border-b-0 sm:border-r border-gray-100 dark:border-border cursor-pointer group"
                 >
-                  <Calendar className="h-4 w-4 text-gray-400 shrink-0" />
-                  <div>
-                    <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">Fecha</p>
-                    <p className="text-sm font-semibold text-gray-800 dark:text-foreground">{fecha}</p>
+                  <div className="flex items-center gap-3">
+                    <Calendar className="h-4 w-4 text-gray-400 shrink-0 group-hover:text-[#16a34a] transition-colors" />
+                    <div>
+                      <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">Fecha</p>
+                      <p className="text-sm font-semibold text-gray-800 dark:text-foreground group-hover:text-[#16a34a] transition-colors">{fecha}</p>
+                    </div>
                   </div>
+                  <svg className={`h-4 w-4 text-gray-400 shrink-0 group-hover:text-[#16a34a] transition-all ${showDatePicker ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
                 </button>
                 
                 {/* Calendario */}
@@ -439,7 +450,8 @@ export default function HomePage() {  const router = useRouter();
                       className="absolute z-50 bg-white dark:bg-card rounded-lg shadow-2xl border border-gray-200 dark:border-border p-4"
                       style={{
                         top: 'calc(100% - 2px)',
-                        left: '0',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
                         width: '320px',
                         maxWidth: '90vw',
                       }}
@@ -511,13 +523,18 @@ export default function HomePage() {  const router = useRouter();
                     setShowLocationModal(false);
                     setShowDatePicker(false);
                   }}
-                  className="flex items-center gap-3 px-4 py-3 w-full text-left hover:bg-gray-50 dark:hover:bg-muted/50 transition-colors border-b sm:border-b-0 sm:border-r border-gray-100 dark:border-border"
+                  className="flex items-center justify-between gap-3 px-4 py-3 w-full text-left hover:bg-gray-50 dark:hover:bg-muted/50 transition-colors border-b sm:border-b-0 sm:border-r border-gray-100 dark:border-border cursor-pointer group"
                 >
-                  <Clock className="h-4 w-4 text-gray-400 shrink-0" />
-                  <div>
-                    <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">Hora</p>
-                    <p className="text-sm font-semibold text-gray-800 dark:text-foreground">{hora}</p>
+                  <div className="flex items-center gap-3">
+                    <Clock className="h-4 w-4 text-gray-400 shrink-0 group-hover:text-[#16a34a] transition-colors" />
+                    <div>
+                      <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">Hora</p>
+                      <p className="text-sm font-semibold text-gray-800 dark:text-foreground group-hover:text-[#16a34a] transition-colors">{hora}</p>
+                    </div>
                   </div>
+                  <svg className={`h-4 w-4 text-gray-400 shrink-0 group-hover:text-[#16a34a] transition-all ${showTimePicker ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
                 </button>
                 
                 {/* Selector de hora */}
@@ -532,7 +549,8 @@ export default function HomePage() {  const router = useRouter();
                       className="absolute z-50 bg-white dark:bg-card rounded-lg shadow-2xl border border-gray-200 dark:border-border p-4 max-h-96 overflow-y-auto"
                       style={{
                         top: 'calc(100% - 2px)',
-                        left: '0',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
                         minWidth: '320px',
                       }}
                     >

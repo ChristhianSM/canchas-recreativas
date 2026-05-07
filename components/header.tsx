@@ -120,7 +120,7 @@ export function Header() {
             <Link
               key={item.href}
               href={item.href}
-              className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+              className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-foreground transition-all hover:bg-[#16a34a]/10 hover:text-[#16a34a] border border-transparent hover:border-[#16a34a]/20"
             >
               <item.icon className="h-4 w-4" />
               {item.label}

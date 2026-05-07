@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, Suspense, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { MapPin, X, Search, SlidersHorizontal, ArrowUpDown } from 'lucide-react';
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import { Header } from '@/components/header';
 import { CanchaCard } from '@/components/cancha-card';
 import { AdvancedFiltersComponent } from '@/components/advanced-filters';
@@ -105,6 +106,7 @@ function CanchasContent() {
   // Estados para modales editables
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
+  const [showFiltersSheet, setShowFiltersSheet] = useState(false);
   const [tempDate, setTempDate] = useState<Date>(new Date());
   const [tempTime, setTempTime] = useState('');
   const [tempUbicacion, setTempUbicacion] = useState('');
@@ -112,8 +114,10 @@ function CanchasContent() {
   const [loadingHours, setLoadingHours] = useState(false);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   
-  // Ref para el botón de filtros existente
+  // Refs para posicionar modales
   const filterButtonRef = useRef<HTMLButtonElement>(null);
+  const dateButtonRef = useRef<HTMLButtonElement>(null);
+  const timeButtonRef = useRef<HTMLButtonElement>(null);
 
   // Datos para los filtros
   const [allAmenities, setAllAmenities] = useState<string[]>([]);
@@ -370,10 +374,10 @@ function CanchasContent() {
   };
 
   return (
-    <div className="flex flex-col flex-1 bg-background">
+    <div className="flex flex-col flex-1 bg-white">
       <Header />
 
-      {/* Modales globales - Funcionan para desktop y mobile */}
+      {/* Modales globales - Posicionados relativos a sus botones */}
       {showDatePicker && (
         <>
           <div 
@@ -381,11 +385,15 @@ function CanchasContent() {
             onClick={() => setShowDatePicker(false)}
           />
           <div 
-            className="fixed z-50 bg-white dark:bg-card rounded-lg shadow-2xl border border-gray-200 dark:border-border p-4"
+            className="absolute z-50 bg-white dark:bg-card rounded-lg shadow-md border border-gray-200 dark:border-border p-4"
             style={{
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
+              top: dateButtonRef.current 
+                ? `${dateButtonRef.current.getBoundingClientRect().bottom + window.scrollY -1}px`
+                : '50%',
+              left: dateButtonRef.current
+                ? `${dateButtonRef.current.getBoundingClientRect().left + (dateButtonRef.current.getBoundingClientRect().width / 2)}px`
+                : '50%',
+              transform: 'translateX(-50%)',
               width: '320px',
               maxWidth: '90vw',
             }}
@@ -454,11 +462,15 @@ function CanchasContent() {
             onClick={() => setShowTimePicker(false)}
           />
           <div 
-            className="fixed z-50 bg-white dark:bg-card rounded-lg shadow-2xl border border-gray-200 dark:border-border p-4 max-h-96 overflow-y-auto"
+            className="absolute z-50 bg-white dark:bg-card rounded-lg shadow-md border border-gray-200 dark:border-border p-4 max-h-96 overflow-y-auto"
             style={{
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
+              top: timeButtonRef.current 
+                ? `${timeButtonRef.current.getBoundingClientRect().bottom + window.scrollY -1}px`
+                : '50%',
+              left: timeButtonRef.current
+                ? `${timeButtonRef.current.getBoundingClientRect().left + (timeButtonRef.current.getBoundingClientRect().width / 2)}px`
+                : '50%',
+              transform: 'translateX(-50%)',
               minWidth: '320px',
               maxWidth: '90vw',
             }}
@@ -504,180 +516,191 @@ function CanchasContent() {
         </>
       )}
 
-      {/* Barra de búsqueda editable - Solo en desktop, arriba de todo */}
-      <div className="hidden lg:block">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-center">
-            <div className="grid grid-cols-[1fr_auto_1fr_auto_1fr_auto_1fr] items-center gap-3 bg-white dark:bg-card border border-border rounded-lg px-6 py-3 max-w-4xl w-full shadow-sm">
-              {/* Ubicación - Por ahora no editable */}
-              <div className="flex items-center gap-2 justify-center">
-                <MapPin className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium text-foreground">
-                  {searchParams.get('ubicacion') || 'Piura, Perú'}
-                </span>
-              </div>
-
-              {/* Separador */}
-              <div className="h-8 w-px bg-border"></div>
-
-              {/* Fecha - Editable */}
-              <div className="relative flex items-center justify-center">
-                <button
-                  onClick={handleOpenDatePicker}
-                  className="flex items-center gap-2 hover:bg-muted/50 px-3 py-1.5 rounded-md transition-colors group"
-                >
-                  <svg className="h-4 w-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  <span className="text-sm font-medium text-foreground">
-                    {(() => {
-                      const displayDate = tempDate || new Date(filters.selectedDate + 'T00:00:00');
-                      const today = getLocalDateString();
-                      const dateStr = getLocalDateString(displayDate);
-                      if (dateStr === today) return 'Hoy';
-                      return displayDate.toLocaleDateString('es-PE', { 
-                        day: 'numeric', 
-                        month: 'short' 
-                      });
-                    })()}
-                  </span>
-                  <svg className="h-3 w-3 text-muted-foreground group-hover:text-foreground transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-              </div>
-
-              {/* Separador */}
-              <div className="h-8 w-px bg-border"></div>
-
-              {/* Hora - Editable */}
-              <div className="relative flex items-center justify-center">
-                <button
-                  onClick={handleOpenTimePicker}
-                  className="flex items-center gap-2 hover:bg-muted/50 px-3 py-1.5 rounded-md transition-colors group"
-                >
-                  <svg className="h-4 w-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span className="text-sm font-medium text-foreground">
-                    {tempTime || filters.availableHours[0] || 'Cualquier hora'}
-                  </span>
-                  <svg className="h-3 w-3 text-muted-foreground group-hover:text-foreground transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-              </div>
-
-              {/* Separador */}
-              <div className="h-8 w-px bg-border"></div>
-
-              {/* Botón buscar */}
-              <button
-                onClick={handleBuscarCanchas}
-                className="bg-primary text-primary-foreground px-5 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity whitespace-nowrap"
-              >
-                Buscar canchas
-              </button>
-            </div>
+      {/* Sheet de filtros para mobile */}
+      <Sheet open={showFiltersSheet} onOpenChange={setShowFiltersSheet}>
+        <SheetContent side="right" className="p-0 flex flex-col sm:max-w-md w-full">
+          {/* Header fijo con título y botón de cerrar */}
+          <div className="sticky top-0 z-10 bg-white border-b border-border px-6 py-4 flex items-center justify-between">
+            <SheetTitle className="text-lg font-semibold">Filtros</SheetTitle>
           </div>
-        </div>
-      </div>
+          
+          {/* Botón Limpiar todo */}
+          <div className="px-6 pb-3 pt-0 border-b border-border flex justify-end">
+            <button
+              onClick={() => setFilters(DEFAULT_FILTERS)}
+              className="flex items-center gap-2 text-[#16a34a] hover:text-[#15803d] text-sm font-medium transition-colors"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Limpiar todo
+            </button>
+          </div>
+          
+          {/* Contenido scrolleable con filtros */}
+          <div 
+            className="flex-1 overflow-y-auto px-6 py-2" 
+            style={{ 
+              scrollBehavior: 'auto',
+              overflowAnchor: 'none'
+            }}
+            onScroll={(e) => {
+              // Prevenir cualquier scroll automático
+              e.stopPropagation();
+            }}
+          >
+            <AdvancedFiltersComponent
+              filters={filters}
+              onFiltersChange={setFilters}
+              allAmenities={allAmenities}
+              allDistricts={allDistricts}
+              priceRange={priceRange}
+              sports={sports}
+              activeFilterCount={activeFilterCount}
+              isSidebar={true}
+              resultCount={filtered.length}
+              ubicacion={ubicacion}
+              onUbicacionObtenida={handleUbicacionObtenida}
+              onUbicacionLimpiada={handleUbicacionLimpiada}
+            />
+          </div>
 
-      {/* Barra de búsqueda mobile - Diseño vertical */}
-      <div className="lg:hidden bg-white dark:bg-card">
-        <div className="container mx-auto px-4 py-4">
-          {/* Botón de filtros - Solo ícono */}
-          <div className="flex justify-end mb-3">
+          {/* Footer sticky con botón de ver resultados */}
+          <div className="sticky bottom-0 z-10 bg-white border-t border-border px-6 py-4">
+            <button
+              onClick={() => setShowFiltersSheet(false)}
+              className="w-full bg-[#16a34a] hover:bg-[#15803d] text-white font-semibold py-3 rounded-lg transition-colors"
+            >
+              Ver {filtered.length} {filtered.length === 1 ? 'cancha' : 'canchas'}
+            </button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Barra de búsqueda estilo booking - Igual que en home */}
+      <div className="bg-white dark:bg-background py-4">
+        <div className="container mx-auto px-4">
+          {/* Botón de filtros - Solo mobile, arriba del search bar */}
+          <div className="lg:hidden flex justify-end mb-4">
             <button 
-              onClick={() => filterButtonRef.current?.click()}
-              className="p-2 rounded-lg border border-border hover:bg-muted/50 transition-colors"
+              onClick={() => setShowFiltersSheet(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border hover:bg-muted/50 transition-colors"
             >
               <SlidersHorizontal className="h-5 w-5 text-foreground" />
+              <span className="text-sm font-medium">Filtros</span>
+              {activeFilterCount > 0 && (
+                <span className="ml-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#16a34a] text-xs font-semibold text-white">
+                  {activeFilterCount}
+                </span>
+              )}
             </button>
           </div>
 
-          <div className="space-y-3">
-            {/* Ubicación - Solo informativa */}
-            <div className="w-full flex items-center gap-3 px-4 py-3 bg-muted/30 rounded-lg">
-              <MapPin className="h-5 w-5 text-muted-foreground" />
-              <span className="text-base font-medium text-foreground">
-                {searchParams.get('ubicacion') || 'Piura, Perú'}
-              </span>
+          <div className="bg-white dark:bg-card rounded-lg p-2 flex flex-col sm:flex-row gap-0 sm:gap-0 max-w-3xl mx-auto" style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 -2px 4px -1px rgba(0, 0, 0, 0.06)' }}>
+            {/* Ubicación */}
+            <div className="relative flex-1">
+              <button
+                onClick={() => {
+                  // Por ahora solo muestra la ubicación actual, no editable
+                }}
+                className="flex items-center gap-3 px-4 py-2 w-full text-left hover:bg-gray-50 dark:hover:bg-muted/50 transition-colors rounded-md sm:rounded-none sm:rounded-l-md border-b sm:border-b-0 sm:border-r border-gray-100 dark:border-border"
+              >
+                <MapPin className="h-4 w-4 text-gray-400 shrink-0" />
+                <div>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">Ubicación</p>
+                  <p className="text-sm font-semibold text-gray-800 dark:text-foreground">
+                    {searchParams.get('ubicacion') || 'Piura, Perú'}
+                  </p>
+                </div>
+              </button>
             </div>
 
-            {/* Fecha - Clickeable */}
-            <button 
-              onClick={handleOpenDatePicker}
-              className="w-full flex items-center justify-between px-4 py-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <svg className="h-5 w-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            {/* Fecha */}
+            <div className="relative flex-1">
+              <button
+                ref={dateButtonRef}
+                onClick={handleOpenDatePicker}
+                className="flex items-center justify-between gap-3 px-4 py-2 w-full text-left hover:bg-gray-50 dark:hover:bg-muted/50 transition-colors border-b sm:border-b-0 sm:border-r border-gray-100 dark:border-border"
+              >
+                <div className="flex items-center gap-3">
+                  <svg className="h-4 w-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <div>
+                    <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">Fecha</p>
+                    <p className="text-sm font-semibold text-gray-800 dark:text-foreground">
+                      {(() => {
+                        const displayDate = tempDate || new Date(filters.selectedDate + 'T00:00:00');
+                        const today = getLocalDateString();
+                        const dateStr = getLocalDateString(displayDate);
+                        if (dateStr === today) {
+                          return 'Hoy, ' + displayDate.toLocaleDateString('es-PE', { day: 'numeric', month: 'short' });
+                        }
+                        return displayDate.toLocaleDateString('es-PE', { day: 'numeric', month: 'long' });
+                      })()}
+                    </p>
+                  </div>
+                </div>
+                <svg className="h-4 w-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
-                <span className="text-base font-medium text-foreground">
-                  {(() => {
-                    const displayDate = tempDate || new Date(filters.selectedDate + 'T00:00:00');
-                    const today = getLocalDateString();
-                    const dateStr = getLocalDateString(displayDate);
-                    if (dateStr === today) return 'Hoy, ' + displayDate.toLocaleDateString('es-PE', { day: 'numeric', month: 'long' });
-                    return displayDate.toLocaleDateString('es-PE', { 
-                      weekday: 'short',
-                      day: 'numeric', 
-                      month: 'long' 
-                    });
-                  })()}
-                </span>
-              </div>
-              <svg className="h-4 w-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
+              </button>
+            </div>
 
-            {/* Hora - Clickeable */}
-            <button 
-              onClick={handleOpenTimePicker}
-              className="w-full flex items-center justify-between px-4 py-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <svg className="h-5 w-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            {/* Hora */}
+            <div className="relative flex-1">
+              <button
+                ref={timeButtonRef}
+                onClick={handleOpenTimePicker}
+                className="flex items-center justify-between gap-3 px-4 py-2 w-full text-left hover:bg-gray-50 dark:hover:bg-muted/50 transition-colors border-b sm:border-b-0 sm:border-r border-gray-100 dark:border-border"
+              >
+                <div className="flex items-center gap-3">
+                  <svg className="h-4 w-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div>
+                    <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">Hora</p>
+                    <p className="text-sm font-semibold text-gray-800 dark:text-foreground">
+                      {tempTime || filters.availableHours[0] || 'Cualquier hora'}
+                    </p>
+                  </div>
+                </div>
+                <svg className="h-4 w-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
-                <span className="text-base font-medium text-foreground">
-                  {tempTime || filters.availableHours[0] || 'Cualquier hora'}
-                </span>
-              </div>
-              <svg className="h-4 w-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
+              </button>
+            </div>
 
             {/* Botón buscar */}
             <button
               onClick={handleBuscarCanchas}
-              className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground px-5 py-3 rounded-lg text-base font-semibold hover:opacity-90 transition-opacity"
+              className="flex items-center justify-center gap-2 bg-[#16a34a] hover:bg-[#15803d] text-white font-semibold px-5 py-2 rounded-md transition-colors text-sm whitespace-nowrap"
             >
+              <Search className="h-4 w-4" />
               Buscar canchas
-              <Search className="h-5 w-5" />
             </button>
           </div>
         </div>
       </div>
 
-      <div className="flex flex-1">
-        <div className="container mx-auto px-4 flex">
+      <div className="flex flex-1 bg-white">
+        <div className="container mx-auto px-4 flex bg-white">
           {/* Sidebar de filtros - Solo en desktop */}
           <aside className="hidden lg:block w-[320px] shrink-0 pr-6">
-            <div className="sticky mt-2 py-6 px-6 space-y-6 bg-card rounded-xl border border-border shadow-sm">
-              <div className="flex items-start justify-between gap-4">
+            <div className="sticky py-6 px-3 space-y-6 bg-card rounded-xl border border-border shadow-sm">
+              <div className="flex items-center justify-between gap-4">
                 <div>
                   <h2 className="text-xl font-bold text-foreground">Filtros</h2>
                 </div>
-                <UbicacionButton
-                  onUbicacionObtenida={handleUbicacionObtenida}
-                  onUbicacionLimpiada={handleUbicacionLimpiada}
-                  ubicacionActual={ubicacion}
-                  className="shrink-0"
-                />
+                <button
+                  onClick={() => setFilters(DEFAULT_FILTERS)}
+                  className="flex items-center gap-2 text-[#16a34a] hover:text-[#15803d] text-sm font-medium transition-colors shrink-0"
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Limpiar
+                </button>
               </div>
               <AdvancedFiltersComponent
                 filters={filters}
@@ -699,7 +722,7 @@ function CanchasContent() {
           {/* Contenido principal */}
           <main className="flex-1 min-w-0">
             {/* Nueva sección mobile con diseño actualizado */}
-            <section className="bg-card pt-0 lg:hidden">
+            <section className="bg-white pt-0 lg:hidden">
               {/* Contador de resultados con ordenamiento */}
               <div className="flex items-center justify-between pb-2">
                 <p className="text-md font-semibold text-foreground">
@@ -721,30 +744,11 @@ function CanchasContent() {
                   </Select>
                 </div>
               </div>
-
-              {/* Componente de filtros invisible - Solo para el sheet */}
-              <div className="hidden">
-                <AdvancedFiltersComponent
-                  filters={filters}
-                  onFiltersChange={setFilters}
-                  allAmenities={allAmenities}
-                  allDistricts={allDistricts}
-                  priceRange={priceRange}
-                  sports={sports}
-                  activeFilterCount={activeFilterCount}
-                  isSidebar={false}
-                  resultCount={filtered.length}
-                  ubicacion={ubicacion}
-                  triggerRef={filterButtonRef}
-                  onUbicacionObtenida={handleUbicacionObtenida}
-                  onUbicacionLimpiada={handleUbicacionLimpiada}
-                />
-              </div>
             </section>
 
             <section className="flex-1">
               {/* Header con título y ordenamiento */}
-              <div className="hidden lg:flex items-center justify-between mb-6">
+              <div className="hidden lg:flex items-center justify-between mb-2 mt-4">
                 <div>
                   <h2 className="text-xl font-semibold text-foreground">
                     {loading ? 'Cargando...' : `${filtered.length} ${filtered.length === 1 ? 'cancha encontrada' : 'canchas encontradas'}`}
@@ -825,7 +829,7 @@ function CanchasContent() {
 export default function CanchasPage() {
   return (
     <Suspense fallback={
-      <div className="flex flex-col flex-1 bg-background">
+      <div className="flex flex-col flex-1 bg-white md:bg-background">
         <Header />
         <main className="flex-1 container mx-auto px-4 py-8">
           <div className="mb-6 space-y-2">
