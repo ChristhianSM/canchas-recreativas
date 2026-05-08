@@ -85,6 +85,9 @@ export default function HomePage() {  const router = useRouter();
   const [fecha, setFecha] = useState('');
   const [hora, setHora] = useState('');
   
+  // Cache de todas las canchas para evitar re-fetch al calcular horarios disponibles
+  const allCanchasRef = useRef<Cancha[]>([]);
+
   // Estados para el buscador avanzado
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -122,8 +125,12 @@ export default function HomePage() {  const router = useRouter();
     fetch('/api/canchas/list')
       .then(r => r.json())
       .then(data => {
-        setCanchas(Array.isArray(data) ? data.filter((c: Cancha) => c.destacada) : []);
+        const todas = Array.isArray(data) ? data : [];
+        allCanchasRef.current = todas; // guardar en cache para reutilizar
+        setCanchas(todas.filter((c: Cancha) => c.destacada));
         setLoading(false);
+        // Calcular horarios disponibles con los datos ya cargados (sin segundo fetch)
+        computeAvailableHours(new Date(), todas);
       })
       .catch(() => setLoading(false));
   }, []);
@@ -158,27 +165,24 @@ export default function HomePage() {  const router = useRouter();
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showLocationModal, showDatePicker, showTimePicker]);
 
-  // Cargar horarios disponibles cuando cambia la fecha
+  // Recalcular horarios disponibles cuando cambia la fecha (sin fetch extra)
   useEffect(() => {
-    if (selectedDate) {
-      loadAvailableHours(selectedDate);
+    if (selectedDate && allCanchasRef.current.length > 0) {
+      computeAvailableHours(selectedDate, allCanchasRef.current);
     }
   }, [selectedDate]);
 
-  const loadAvailableHours = async (date: Date) => {
+  // Calcula horarios disponibles a partir de los datos ya cargados — sin llamar a la BD
+  const computeAvailableHours = (date: Date, todasCanchas: Cancha[]) => {
     setLoadingHours(true);
     try {
       const dateStr = getLocalDateString(date);
-      const response = await fetch(`/api/canchas/list`);
-      const canchas = await response.json();
-      
-      // Obtener todos los horarios disponibles de todas las canchas para esa fecha
       const hoursSet = new Set<string>();
-      
-      canchas.forEach((cancha: any) => {
+
+      todasCanchas.forEach((cancha) => {
         const horariosOcupados = cancha.horariosOcupados || {};
         const horariosRestringidos = cancha.horariosRestringidos || [];
-        
+
         HORAS.forEach(hora => {
           if (!horariosRestringidos.includes(hora)) {
             const key = `${dateStr}|${hora}`;
@@ -188,13 +192,34 @@ export default function HomePage() {  const router = useRouter();
           }
         });
       });
-      
+
       setAvailableHours(Array.from(hoursSet).sort());
     } catch (error) {
-      console.error('Error loading available hours:', error);
+      console.error('Error computing available hours:', error);
       setAvailableHours([]);
     } finally {
       setLoadingHours(false);
+    }
+  };
+
+  // Mantener loadAvailableHours como wrapper por compatibilidad con handleDateSelect
+  const loadAvailableHours = async (date: Date) => {
+    if (allCanchasRef.current.length > 0) {
+      // Datos ya en cache — calcular sin fetch
+      computeAvailableHours(date, allCanchasRef.current);
+    } else {
+      // Fallback: si por alguna razón el cache está vacío, hacer fetch
+      setLoadingHours(true);
+      try {
+        const response = await fetch('/api/canchas/list');
+        const data = await response.json();
+        const todas = Array.isArray(data) ? data : [];
+        allCanchasRef.current = todas;
+        computeAvailableHours(date, todas);
+      } catch {
+        setAvailableHours([]);
+        setLoadingHours(false);
+      }
     }
   };
 
@@ -711,61 +736,39 @@ export default function HomePage() {  const router = useRouter();
       </section>
 
       {/* ── BENEFICIOS ────────────────────────────────────────────── */}
-      <section className="py-16 bg-white dark:bg-background border-t border-gray-100 dark:border-border">
+      <section className="py-8 dark:bg-muted/10" style={{ backgroundColor: '#eef2ee' }}>
         <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-foreground mb-3">
-              ¿Por qué elegirnos?
-            </h2>
-            <p className="text-gray-500 dark:text-muted-foreground max-w-2xl mx-auto">
-              Hacemos que reservar tu cancha sea rápido, seguro y sin complicaciones
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
+          <div className="flex flex-col gap-4 max-w-lg mx-auto lg:max-w-6xl lg:grid lg:grid-cols-4">
             {[
               {
                 icon: Zap,
-                title: 'Reserva en tiempo real',
-                desc: 'Consulta disponibilidad al instante y confirma tu reserva en segundos.',
-                gradient: 'from-yellow-50 to-orange-50 dark:from-yellow-950/20 dark:to-orange-950/20',
-                iconBg: 'bg-gradient-to-br from-yellow-400 to-orange-500',
-                iconColor: 'text-white',
+                title: 'Reservas en tiempo real',
+                desc: 'Consulta disponibilidad actualizada al segundo. Sin esperas.',
               },
               {
                 icon: Phone,
                 title: 'Sin llamadas',
-                desc: 'Todo el proceso es 100% online. Olvídate de esperar respuestas.',
-                gradient: 'from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20',
-                iconBg: 'bg-gradient-to-br from-blue-400 to-cyan-500',
-                iconColor: 'text-white',
+                desc: 'Olvida marcar y esperar que alguien conteste. Todo es digital.',
               },
               {
                 icon: CreditCard,
                 title: 'Pagos fáciles',
-                desc: 'Paga de forma segura y rápida con múltiples métodos de pago.',
-                gradient: 'from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20',
-                iconBg: 'bg-gradient-to-br from-purple-400 to-pink-500',
-                iconColor: 'text-white',
+                desc: 'Paga con tarjeta, transferencia o saldo en la app de forma segura.',
               },
               {
                 icon: ShieldCheck,
                 title: 'Canchas verificadas',
-                desc: 'Todas las canchas pasan por un riguroso proceso de verificación.',
-                gradient: 'from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20',
-                iconBg: 'bg-gradient-to-br from-green-400 to-emerald-500',
-                iconColor: 'text-white',
+                desc: 'Trabajamos solo con centros deportivos de alta calidad y confianza.',
               },
             ].map(b => (
-              <div 
-                key={b.title} 
-                className={`relative group bg-gradient-to-br ${b.gradient} rounded-xl p-6 border border-gray-100 dark:border-border hover:shadow-lg transition-all duration-300 hover:-translate-y-1`}
+              <div
+                key={b.title}
+                className="bg-white dark:bg-card rounded-2xl p-6 dark:border-border"
+                style={{ border: '1.5px solid #d4e6d4' }}
               >
-                <div className={`h-12 w-12 rounded-lg ${b.iconBg} flex items-center justify-center mb-4 shadow-md group-hover:scale-110 transition-transform duration-300`}>
-                  <b.icon className={`h-6 w-6 ${b.iconColor}`} />
-                </div>
-                <h3 className="font-bold text-gray-900 dark:text-foreground text-base mb-2">{b.title}</h3>
-                <p className="text-sm text-gray-600 dark:text-muted-foreground leading-relaxed">{b.desc}</p>
+                <b.icon className="h-8 w-8 text-[#16a34a] mb-4" strokeWidth={1.75} />
+                <h3 className="font-bold text-gray-900 dark:text-foreground text-lg mb-1.5">{b.title}</h3>
+                <p className="text-sm text-gray-500 dark:text-muted-foreground leading-relaxed">{b.desc}</p>
               </div>
             ))}
           </div>
@@ -786,7 +789,7 @@ export default function HomePage() {  const router = useRouter();
               </p>
               <ul className="space-y-2 mb-7">
                 {[
-                  'Publica tu cancha gratis',
+                  'Publica tu cancha',
                   'Gestiona tus horarios',
                   'Aumenta tus reservas y ganancias',
                 ].map(item => (

@@ -108,5 +108,9 @@ export async function GET(req: NextRequest) {
     horariosRestringidos: horariosRestringidosPorCancha[cancha.id] || [],
   }));
 
-  return NextResponse.json(canchasConHorarios);
+  return NextResponse.json(canchasConHorarios, {
+    headers: {
+      'Cache-Control': 's-maxage=60, stale-while-revalidate=30',
+    },
+  });
 }
