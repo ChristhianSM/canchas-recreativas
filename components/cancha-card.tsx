@@ -20,6 +20,8 @@ interface CanchaCardProps {
   selectedDate?: string;
   availableHours?: string[];
   preselectedHour?: string;
+  isFav?: boolean;
+  onToggleFav?: (id: string) => void;
 }
 
 function getAvailableSlots(
@@ -154,7 +156,7 @@ function getUrgencyBadge(
   return { text: 'Disponible', className: 'bg-white/95 text-green-600', dotColor: 'bg-green-600' };
 }
 
-export function CanchaCard({ cancha, distancia, selectedDate, availableHours, preselectedHour }: CanchaCardProps) {
+export function CanchaCard({ cancha, distancia, selectedDate, availableHours, preselectedHour, isFav: isFavProp, onToggleFav }: CanchaCardProps) {
   const router = useRouter();
   const date = selectedDate ?? getLocalDateString();
   const today = getLocalDateString();
@@ -274,17 +276,23 @@ export function CanchaCard({ cancha, distancia, selectedDate, availableHours, pr
   const [ocupadoModal, setOcupadoModal] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const [isFav, setIsFav] = useState(false);
+  const [isFav, setIsFav] = useState<boolean>(isFavProp ?? false);
   const [togglingFav, setTogglingFav] = useState(false);
 
-  // Cargar estado de favorito al montar
+  // Sincronizar con prop externa si cambia
   useEffect(() => {
+    if (isFavProp !== undefined) setIsFav(isFavProp);
+  }, [isFavProp]);
+
+  // Solo cargar desde API si no se pasó prop (uso standalone, ej: página de detalle)
+  useEffect(() => {
+    if (isFavProp !== undefined) return; // ya viene del padre
     const token = getToken();
     if (!token) return;
     apiGetFavoritos().then((ids: string[]) => {
       if (Array.isArray(ids)) setIsFav(ids.includes(cancha.id));
     }).catch(() => {});
-  }, [cancha.id]);
+  }, [cancha.id, isFavProp]);
 
   const handleToggleFav = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -303,6 +311,7 @@ export function CanchaCard({ cancha, distancia, selectedDate, availableHours, pr
 
     try {
       await apiToggleFavorito(cancha.id);
+      onToggleFav?.(cancha.id); // notificar al padre
     } catch {
       setIsFav(prev); // revertir si falla
     } finally {

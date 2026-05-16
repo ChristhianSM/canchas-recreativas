@@ -10,7 +10,7 @@ interface ImageSliderProps {
   images: string[];
   alt: string;
   className?: string;
-  aspectRatio?: 'video' | 'square' | 'wide';
+  aspectRatio?: 'video' | 'square' | 'wide' | 'fill';
 }
 
 export function ImageSlider({ images, alt, className, aspectRatio = 'video' }: ImageSliderProps) {
@@ -44,12 +44,13 @@ export function ImageSlider({ images, alt, className, aspectRatio = 'video' }: I
     video: 'aspect-video',
     square: 'aspect-square',
     wide: 'aspect-[2/1]',
+    fill: 'h-full',
   }[aspectRatio];
 
   return (
-    <div className={cn('relative group', className)}>
-      <div ref={emblaRef} className="overflow-hidden">
-        <div className="flex">
+    <div className={cn('relative group', aspectRatio === 'fill' ? 'h-full' : '', className)}>
+      <div ref={emblaRef} className={cn('overflow-hidden', aspectRatio === 'fill' ? 'h-full' : '')}>
+        <div className={cn('flex', aspectRatio === 'fill' ? 'h-full' : '')}>
           {images.map((image, index) => (
             <div
               key={index}

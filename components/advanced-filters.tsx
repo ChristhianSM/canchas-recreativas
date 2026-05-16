@@ -321,7 +321,7 @@ export function AdvancedFiltersComponent({
       </AccordionSection>
 
       {/* Extras disponibles */}
-      <AccordionSection id="extras" icon="🎽" title="Extras disponibles" badge={(filters.conBalon ? 1 : 0) + (filters.conChalecos ? 1 : 0)}>
+      <AccordionSection id="extras" icon="🎽" title="Ext. disponibles" badge={(filters.conBalon ? 1 : 0) + (filters.conChalecos ? 1 : 0)}>
         <div className="mt-2 space-y-2">
           <div className="flex items-center gap-2">
             <Checkbox 
@@ -387,7 +387,7 @@ export function AdvancedFiltersComponent({
       </AccordionSection>
 
       {/* Mínimo de jugadores */}
-      <AccordionSection id="jugadores" icon="👥" title="Mínimo de jugadores" badge={filters.minJugadores > 0 ? 1 : 0}>
+      <AccordionSection id="jugadores" icon="👥" title="Min de jugadores" badge={filters.minJugadores > 0 ? 1 : 0}>
         <div className="mt-2 grid grid-cols-4 gap-1.5">
           {[0, 8, 10, 12, 14, 16, 20, 22].map(n => (
             <button
@@ -440,7 +440,7 @@ export function AdvancedFiltersComponent({
       </AccordionSection>
 
       {/* Rating */}
-      <AccordionSection id="rating" icon="⭐" title="Calificación mínima" badge={filters.minRating > 0 ? 1 : 0}>
+      <AccordionSection id="rating" icon="⭐" title="Calificación" badge={filters.minRating > 0 ? 1 : 0}>
         <div className="mt-2 grid grid-cols-4 gap-1.5">
           {[{ value: 0, label: 'Todas' }, { value: 3, label: '3+⭐' }, { value: 4, label: '4+⭐' }, { value: 4.5, label: '4.5+⭐' }].map(opt => (
             <button
@@ -480,30 +480,6 @@ export function AdvancedFiltersComponent({
                   className="text-sm cursor-pointer"
                 >
                   {amenity}
-                </label>
-              </div>
-            ))}
-          </div>
-        </AccordionSection>
-      )}
-
-      {/* Distritos */}
-      {allDistricts.length > 0 && (
-        <AccordionSection id="distritos" icon="🗺️" title="Distritos" badge={filters.districts.length}>
-          <div className="mt-2 space-y-2 max-h-40 overflow-y-auto">
-            {allDistricts.map(district => (
-              <div key={district} className="flex items-center gap-2">
-                <Checkbox
-                  id={`district-${district}`}
-                  checked={filters.districts.includes(district)}
-                  onCheckedChange={preventScrollOnClick(() => handleDistrictToggle(district))}
-                  className="h-4 w-4"
-                />
-                <label 
-                  onClick={preventScrollOnClick(() => handleDistrictToggle(district))}
-                  className="text-sm cursor-pointer"
-                >
-                  {district}
                 </label>
               </div>
             ))}

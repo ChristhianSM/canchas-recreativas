@@ -351,10 +351,11 @@ export default function HomePage() {  const router = useRouter();
 
         <div className="relative container mx-auto px-4 py-16 md:py-24">
           <div className="max-w-4xl">
+            <h3 className='text-[#4ade80]'> Reserva en segundos </h3>
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white leading-tight mb-3 tracking-tight">
-              Reserva tu cancha
+              Tu pichanchaga
               <br />
-              <span className="text-[#4ade80]">en segundos</span>
+              <span className="text-[#4ade80]">empieza aquí</span>
             </h1>
             <p className="text-white/80 text-lg mb-8 max-w-md">
               Encuentra canchas cerca de ti, elige horario y reserva sin llamadas.
@@ -431,9 +432,23 @@ export default function HomePage() {  const router = useRouter();
                       </button>
                       
                       <div className="mt-3 pt-3 border-t border-gray-100 dark:border-border">
-                        <p className="text-xs text-gray-500 dark:text-muted-foreground">
-                          Necesitamos tu permiso para acceder a tu ubicación
-                        </p>
+                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">Distritos de Piura</p>
+                        <div className="space-y-1">
+                          {['Piura', 'Castilla', 'Catacaos', 'La Unión', 'Las Lomas', 'Tambogrande', 'Sullana', 'Paita', 'Talara', 'Chulucanas'].map(distrito => (
+                            <button
+                              key={distrito}
+                              onClick={() => { setUbicacion(distrito); setShowLocationModal(false); }}
+                              className={`flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm transition-colors text-left ${
+                                ubicacion === distrito
+                                  ? 'bg-[#16a34a]/10 text-[#16a34a] font-medium'
+                                  : 'text-gray-700 hover:bg-gray-50'
+                              }`}
+                            >
+                              <MapPin className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+                              {distrito}, Piura
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   </>
