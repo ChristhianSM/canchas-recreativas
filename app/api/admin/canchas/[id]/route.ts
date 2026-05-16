@@ -7,7 +7,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const sb = createServiceClient();
 
   const body = await req.json();
-  const { descripcion, telefono, precioHora, amenidades, imagenes, horariosRestringidos, lat, lng, direccion } = body;
+  const {
+    descripcion, telefono, precioHora, amenidades, imagenes, horariosRestringidos,
+    lat, lng, direccion, distrito,
+    preciosPorHora, balonDisponible, balonPrecio, chalecosDisponible, chalecosPrecio,
+    superficie, maxJugadores,
+  } = body;
 
   const updateData: Record<string, any> = {
     descripcion, telefono, precio_por_hora: precioHora, amenidades, imagenes,
@@ -15,6 +20,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (lat !== undefined) updateData.lat = lat;
   if (lng !== undefined) updateData.lng = lng;
   if (direccion !== undefined) updateData.direccion = direccion;
+  if (distrito !== undefined) updateData.distrito = distrito;
+  if (preciosPorHora !== undefined) updateData.precios_por_hora = preciosPorHora;
+  if (balonDisponible !== undefined) updateData.balon_disponible = balonDisponible;
+  if (balonPrecio !== undefined) updateData.balon_precio = balonPrecio;
+  if (chalecosDisponible !== undefined) updateData.chalecos_disponible = chalecosDisponible;
+  if (chalecosPrecio !== undefined) updateData.chalecos_precio = chalecosPrecio;
+  if (superficie !== undefined) updateData.superficie = superficie;
+  if (maxJugadores !== undefined) updateData.max_jugadores = maxJugadores;
 
   const { error: canchaError } = await sb
     .from('canchas')

@@ -84,6 +84,7 @@ export default function HomePage() {  const router = useRouter();
   const [ubicacion, setUbicacion] = useState('Mi ubicación');
   const [fecha, setFecha] = useState('');
   const [hora, setHora] = useState('');
+  const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
   
   // Cache de todas las canchas para evitar re-fetch al calcular horarios disponibles
   const allCanchasRef = useRef<Cancha[]>([]);
@@ -233,8 +234,9 @@ export default function HomePage() {  const router = useRouter();
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
+        // Guardar coordenadas para mostrar canchas cercanas
+        setUserCoords({ lat: latitude, lng: longitude });
         
-        // Usar API de geocodificación inversa para obtener la ciudad
         try {
           const response = await fetch(
             `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=es`
@@ -398,9 +400,9 @@ export default function HomePage() {  const router = useRouter();
                       className="absolute z-50 bg-white dark:bg-card rounded-lg shadow-2xl border border-gray-200 dark:border-border p-4"
                       style={{
                         top: 'calc(100% - 2px)',
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        minWidth: '320px',
+                        left: '0',
+                        minWidth: '300px',
+                        maxWidth: '90vw',
                       }}
                     >
                       <div className="flex items-center justify-between mb-3">
@@ -661,11 +663,15 @@ export default function HomePage() {  const router = useRouter();
         </div>
       </section>
 
-      {/* ── CANCHAS CERCA DE TI ───────────────────────────────────── */}
+      {/* ── CANCHAS MEJOR CALIFICADAS / CERCA DE TI ──────────────── */}
       <section className="py-12 bg-white dark:bg-background">
         <div className="container mx-auto px-4">
+
+          {/* Sección 1: Canchas mejor calificadas (siempre visible) */}
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-foreground">Canchas cerca de ti</h2>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-foreground">
+              {userCoords ? 'Canchas mejor calificadas' : 'Canchas mejor calificadas'}
+            </h2>
             <Link href="/canchas" className="text-[#16a34a] text-sm font-medium hover:underline flex items-center gap-1">
               Ver todas <ArrowRight className="h-3.5 w-3.5" />
             </Link>
@@ -685,13 +691,16 @@ export default function HomePage() {  const router = useRouter();
             </div>
           ) : canchas.length > 0 ? (
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {canchas.slice(0, 4).map(c => (
-                <CanchaCard 
-                  key={c.id} 
-                  cancha={adaptCancha(c)} 
-                  selectedDate={getLocalDateString()}
-                />
-              ))}
+              {[...canchas]
+                .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
+                .slice(0, 4)
+                .map(c => (
+                  <CanchaCard
+                    key={c.id}
+                    cancha={adaptCancha(c)}
+                    selectedDate={getLocalDateString()}
+                  />
+                ))}
             </div>
           ) : (
             <div className="text-center py-12 text-muted-foreground">
@@ -701,6 +710,47 @@ export default function HomePage() {  const router = useRouter();
               </Link>
             </div>
           )}
+
+          {/* Sección 2: Canchas cerca de ti (solo si el usuario dio permiso de ubicación) */}
+          {userCoords && canchas.length > 0 && (() => {
+            // Calcular distancia y ordenar por cercanía
+            const conDistancia = canchas
+              .filter(c => c.lat && c.lng)
+              .map(c => {
+                const dLat = c.lat - userCoords.lat;
+                const dLng = c.lng - userCoords.lng;
+                const distKm = Math.sqrt(dLat * dLat + dLng * dLng) * 111;
+                return { ...c, distKm };
+              })
+              .sort((a, b) => a.distKm - b.distKm)
+              .slice(0, 4);
+
+            if (conDistancia.length === 0) return null;
+
+            return (
+              <div className="mt-12">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-foreground">Canchas cerca de ti</h2>
+                    <p className="text-sm text-gray-500 mt-0.5">Basado en tu ubicación actual</p>
+                  </div>
+                  <Link href={`/canchas?ubicacion=${encodeURIComponent(ubicacion)}`} className="text-[#16a34a] text-sm font-medium hover:underline flex items-center gap-1">
+                    Ver todas <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                </div>
+                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {conDistancia.map(c => (
+                    <CanchaCard
+                      key={c.id}
+                      cancha={adaptCancha(c)}
+                      selectedDate={getLocalDateString()}
+                      distancia={c.distKm}
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </section>
 

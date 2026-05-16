@@ -359,7 +359,7 @@ function CanchasContent() {
     return days;
   };
 
-  // Toggle favorito desde cualquier card — actualiza el Set local sin re-fetch
+  // Toggle favorito desde cualquier card
   const handleToggleFav = (canchaId: string) => {
     setFavIds(prev => {
       const next = new Set(prev);
@@ -367,6 +367,18 @@ function CanchasContent() {
       else next.add(canchaId);
       return next;
     });
+  };
+
+  // Limpiar todos los filtros incluyendo la barra de búsqueda
+  const handleClearAll = () => {
+    setFilters(DEFAULT_FILTERS);
+    setDesktopUbicacion('');
+    setDesktopFecha(null);
+    setDesktopHora('');
+    setTempUbicacion('');
+    setTempDate(new Date());
+    setTempTime('');
+    window.location.href = '/canchas';
   };
 
   const openSearchModal = (step: 'ubicacion' | 'fecha' | 'hora' = 'ubicacion') => {
@@ -845,7 +857,7 @@ function CanchasContent() {
             <SheetTitle className="text-lg font-semibold">Filtros</SheetTitle>
           </div>
           <div className="px-6 pb-3 pt-0 border-b border-border flex justify-end">
-            <button onClick={() => setFilters(DEFAULT_FILTERS)} className="flex items-center gap-2 text-[#16a34a] hover:text-[#15803d] text-sm font-medium transition-colors">
+            <button onClick={() => handleClearAll()} className="flex items-center gap-2 text-[#16a34a] hover:text-[#15803d] text-sm font-medium transition-colors">
               <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
               Limpiar todo
             </button>
@@ -868,7 +880,7 @@ function CanchasContent() {
             <div className="sticky top-20 py-4 px-3 space-y-4 bg-white rounded-xl border border-gray-100 shadow-sm max-h-[calc(100vh-100px)] overflow-y-auto">
               <div className="flex items-center justify-between">
                 <h2 className="text-base font-bold text-gray-900">Filtros</h2>
-                <button onClick={() => setFilters(DEFAULT_FILTERS)} className="text-xs text-[#16a34a] hover:text-[#15803d] font-medium transition-colors">
+                <button onClick={() => handleClearAll()} className="text-xs text-[#16a34a] hover:text-[#15803d] font-medium transition-colors">
                   Limpiar todo
                 </button>
               </div>
@@ -990,7 +1002,7 @@ function CanchasContent() {
                 </div>
                 <h3 className="mb-2 text-lg font-semibold text-gray-800">No se encontraron canchas</h3>
                 <p className="text-gray-500 text-sm mb-4">Intenta ajustar los filtros</p>
-                <button onClick={() => setFilters(DEFAULT_FILTERS)} className="text-[#16a34a] font-medium hover:underline text-sm">
+                <button onClick={() => handleClearAll()} className="text-[#16a34a] font-medium hover:underline text-sm">
                   Limpiar filtros
                 </button>
               </div>
