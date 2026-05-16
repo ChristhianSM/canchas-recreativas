@@ -202,21 +202,31 @@ function CanchasContent() {
       setTempUbicacion(ubicacionParam);
     }
     
-    // Si hay ubicación en los parámetros, actualizar el texto de ubicación
-    if (ubicacionParam && ubicacionParam !== 'Mi ubicación') {
-      // Aquí podrías hacer una búsqueda de geocodificación para obtener las coordenadas
-      // Por ahora solo actualizamos el filtro de distrito si coincide
-      const distritoEncontrado = allDistricts.find(d => 
-        d.toLowerCase().includes(ubicacionParam.toLowerCase())
+    // Si hay ubicación en los parámetros, filtrar por distrito
+    if (ubicacionParam && ubicacionParam !== 'Mi ubicación' && ubicacionParam !== 'Piura, Perú') {
+      // Buscar coincidencia exacta o parcial en los distritos de las canchas
+      const distritoEncontrado = allDistricts.find(d =>
+        d.toLowerCase().includes(ubicacionParam.toLowerCase()) ||
+        ubicacionParam.toLowerCase().includes(d.toLowerCase())
       );
       if (distritoEncontrado) {
         setFilters(prev => ({
           ...prev,
           districts: [distritoEncontrado],
         }));
+      } else {
+        // Si no hay coincidencia en allDistricts, filtrar directamente por el nombre
+        // usando searchQuery para que filterCanchas lo tome en cuenta
+        setFilters(prev => ({
+          ...prev,
+          districts: [ubicacionParam], // intentar con el nombre tal cual
+        }));
       }
+    } else if (!ubicacionParam || ubicacionParam === 'Piura, Perú') {
+      // Sin filtro de distrito — mostrar todas
+      setFilters(prev => ({ ...prev, districts: [] }));
     }
-  }, [searchParams, allDistricts]);
+  }, [searchParams]); // Solo depende de searchParams, no de allDistricts
 
   // Aplicar filtros, ordenamiento y geolocalización
   const filtered = useMemo(() => {
@@ -1006,6 +1016,7 @@ function CanchasContent() {
                     }))}
                   selectedId={hoveredCanchaId ?? undefined}
                   onSelectCancha={setHoveredCanchaId}
+                  centerLocation={desktopUbicacion || searchParams.get('ubicacion') || undefined}
                 />
               </div>
 
