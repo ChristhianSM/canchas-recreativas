@@ -47,10 +47,10 @@ const HORAS = [
   '18:00', '19:00', '20:00', '21:00', '22:00', '23:00',
 ];
 
-const DISTRITOS_PIURA = [
-  'Piura', 'Castilla', 'Catacaos', 'La Unión', 'Las Lomas',
-  'Tambogrande', 'Sullana', 'Paita', 'Talara', 'Chulucanas',
-];
+const UBICACIONES_POR_CIUDAD: Record<string, string[]> = {
+  'Piura': ['Piura', 'Castilla', 'Catacaos', 'La Unión', 'Las Lomas', 'Tambogrande', 'Sullana', 'Paita', 'Talara', 'Chulucanas'],
+  // Próximamente: Lima, Trujillo, Chiclayo, Arequipa...
+};
 
 function adaptCancha(c: Cancha) {
   // Construir schedule a partir de horariosOcupados
@@ -324,6 +324,7 @@ function CanchasContent() {
   const [searchStep, setSearchStep] = useState<'ubicacion' | 'fecha' | 'hora'>('ubicacion');
   // Valores temporales dentro del modal (se aplican solo al buscar)
   const [modalDate, setModalDate] = useState<Date>(new Date());
+  const [modalCalendarMonth, setModalCalendarMonth] = useState<Date>(new Date());
   const [modalTime, setModalTime] = useState('');
   const [modalUbicacion, setModalUbicacion] = useState(searchParams.get('ubicacion') || '');
   // ID de cancha hovereada (para resaltar en el mapa)
@@ -359,6 +360,12 @@ function CanchasContent() {
     return days;
   };
 
+  // Aplica filtros desde el sidebar desktop y sube al inicio
+  const handleFiltersChange = (newFilters: AdvancedFilters) => {
+    setFilters(newFilters);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   // Toggle favorito desde cualquier card
   const handleToggleFav = (canchaId: string) => {
     setFavIds(prev => {
@@ -382,7 +389,9 @@ function CanchasContent() {
   };
 
   const openSearchModal = (step: 'ubicacion' | 'fecha' | 'hora' = 'ubicacion') => {
-    setModalDate(tempDate || new Date());
+    const startDate = tempDate || new Date();
+    setModalDate(startDate);
+    setModalCalendarMonth(startDate);
     setModalTime(tempTime || filters.availableHours[0] || '');
     setSearchStep(step as any);
     setShowSearchModal(true);
@@ -401,10 +410,10 @@ function CanchasContent() {
     window.location.href = `/canchas?${params.toString()}`;
   };
 
-  // Generar calendario para el modal
+  // Generar calendario para el modal (usa modalCalendarMonth para no pisar la fecha seleccionada al navegar)
   const generateModalCalendar = () => {
-    const year = modalDate.getFullYear();
-    const month = modalDate.getMonth();
+    const year = modalCalendarMonth.getFullYear();
+    const month = modalCalendarMonth.getMonth();
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
     const daysInMonth = lastDay.getDate();
@@ -490,19 +499,23 @@ function CanchasContent() {
                   </div>
                 </button>
 
-                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">Distritos de Piura</p>
-                <div className="space-y-1">
-                  {DISTRITOS_PIURA.map(distrito => (
-                    <button
-                      key={distrito}
-                      onClick={() => { setModalUbicacion(distrito); setSearchStep('fecha'); }}
-                      className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl border transition-colors ${modalUbicacion === distrito ? 'border-[#16a34a] bg-green-50 text-[#16a34a]' : 'border-gray-100 hover:border-gray-300 text-gray-700'}`}
-                    >
-                      <MapPin className="h-3.5 w-3.5 shrink-0 text-gray-400" />
-                      <span className="text-sm">{distrito}, Piura</span>
-                    </button>
-                  ))}
-                </div>
+                {Object.entries(UBICACIONES_POR_CIUDAD).map(([ciudad, distritos]) => (
+                  <div key={ciudad} className="mb-3">
+                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">{ciudad}</p>
+                    <div className="space-y-1">
+                      {distritos.map(distrito => (
+                        <button
+                          key={distrito}
+                          onClick={() => { setModalUbicacion(distrito); setSearchStep('fecha'); }}
+                          className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl border transition-colors ${modalUbicacion === distrito ? 'border-[#16a34a] bg-green-50 text-[#16a34a]' : 'border-gray-100 hover:border-gray-300 text-gray-700'}`}
+                        >
+                          <MapPin className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+                          <span className="text-sm">{distrito}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
 
@@ -529,11 +542,23 @@ function CanchasContent() {
                 {/* Calendario compacto */}
                 <div className="max-w-xs mx-auto">
                   <div className="flex items-center justify-between mb-3">
-                    <button onClick={() => { const d = new Date(modalDate); d.setMonth(d.getMonth() - 1); setModalDate(d); }} className="p-1.5 rounded-full hover:bg-gray-100">
+                    <button
+                      onClick={() => {
+                        const today = new Date();
+                        const d = new Date(modalCalendarMonth);
+                        d.setMonth(d.getMonth() - 1);
+                        if (d >= new Date(today.getFullYear(), today.getMonth(), 1)) setModalCalendarMonth(d);
+                      }}
+                      className="p-1.5 rounded-full hover:bg-gray-100 disabled:opacity-30"
+                      disabled={
+                        modalCalendarMonth.getFullYear() === new Date().getFullYear() &&
+                        modalCalendarMonth.getMonth() <= new Date().getMonth()
+                      }
+                    >
                       <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
                     </button>
-                    <span className="text-sm font-semibold capitalize">{modalDate.toLocaleDateString('es-PE', { month: 'long', year: 'numeric' })}</span>
-                    <button onClick={() => { const d = new Date(modalDate); d.setMonth(d.getMonth() + 1); setModalDate(d); }} className="p-1.5 rounded-full hover:bg-gray-100">
+                    <span className="text-sm font-semibold capitalize">{modalCalendarMonth.toLocaleDateString('es-PE', { month: 'long', year: 'numeric' })}</span>
+                    <button onClick={() => { const d = new Date(modalCalendarMonth); d.setMonth(d.getMonth() + 1); setModalCalendarMonth(d); }} className="p-1.5 rounded-full hover:bg-gray-100">
                       <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                     </button>
                   </div>
@@ -663,22 +688,28 @@ function CanchasContent() {
                       </div>
                     </button>
 
-                    {/* Distritos de Piura */}
-                    <div className="px-4 pt-3 pb-1">
-                      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">Distritos de Piura</p>
-                    </div>
-                    {DISTRITOS_PIURA.map(distrito => (
-                      <button
-                        key={distrito}
-                        onClick={() => { setDesktopUbicacion(distrito); setActiveField('fecha'); }}
-                        className="flex items-center gap-3 w-full px-4 py-2.5 hover:bg-gray-50 transition-colors"
-                      >
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gray-100">
-                          <MapPin className="h-3.5 w-3.5 text-gray-500" />
+                    {/* Ubicaciones agrupadas por ciudad */}
+                    <div className="max-h-64 overflow-y-auto">
+                      {Object.entries(UBICACIONES_POR_CIUDAD).map(([ciudad, distritos]) => (
+                        <div key={ciudad}>
+                          <div className="px-4 pt-3 pb-1">
+                            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">{ciudad}</p>
+                          </div>
+                          {distritos.map(distrito => (
+                            <button
+                              key={distrito}
+                              onClick={() => { setDesktopUbicacion(distrito); setActiveField('fecha'); }}
+                              className="flex items-center gap-3 w-full px-4 py-2.5 hover:bg-gray-50 transition-colors"
+                            >
+                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gray-100">
+                                <MapPin className="h-3.5 w-3.5 text-gray-500" />
+                              </div>
+                              <span className="text-sm text-gray-700">{distrito}</span>
+                            </button>
+                          ))}
                         </div>
-                        <span className="text-sm text-gray-700">{distrito}, Piura</span>
-                      </button>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 </>
               )}
@@ -807,10 +838,14 @@ function CanchasContent() {
             {/* Botón filtros — solo en md-lg (768-1023px) */}
             <button
               onClick={() => setShowFiltersSheet(true)}
-              className="lg:hidden flex items-center gap-1.5 px-3 py-2.5 rounded-full transition-all bg-white shrink-0"
+              className="lg:hidden relative flex items-center gap-1.5 px-3 py-2.5 rounded-full transition-all bg-white border border-gray-200 shrink-0"
             >
-              <SlidersHorizontal className="h-6 w-8 text-gray-600" />
-             
+              <SlidersHorizontal className="h-5 w-5 text-gray-600" />
+              {activeFilterCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#16a34a] text-[9px] font-bold text-white leading-none">
+                  {activeFilterCount}
+                </span>
+              )}
             </button>
           </div>
 
@@ -840,10 +875,14 @@ function CanchasContent() {
             </button>
             <button
               onClick={() => setShowFiltersSheet(true)}
-              className="flex items-center gap-1.5 px-1 py-2.5 rounded-full  transition-all bg-white"
+              className="relative flex items-center gap-1.5 px-3 py-2.5 rounded-full transition-all bg-white border border-gray-200 shrink-0"
             >
-              <SlidersHorizontal className="h-6 w-8 text-gray-600" />
-             
+              <SlidersHorizontal className="h-5 w-5 text-gray-600" />
+              {activeFilterCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#16a34a] text-[9px] font-bold text-white leading-none">
+                  {activeFilterCount}
+                </span>
+              )}
             </button>
           </div>
 
@@ -866,7 +905,13 @@ function CanchasContent() {
             <AdvancedFiltersComponent filters={filters} onFiltersChange={setFilters} allAmenities={allAmenities} allDistricts={allDistricts} priceRange={priceRange} sports={sports} activeFilterCount={activeFilterCount} isSidebar={true} resultCount={filtered.length} ubicacion={ubicacion} onUbicacionObtenida={handleUbicacionObtenida} onUbicacionLimpiada={handleUbicacionLimpiada} />
           </div>
           <div className="sticky bottom-0 z-10 bg-white border-t border-border px-6 py-4">
-            <button onClick={() => setShowFiltersSheet(false)} className="w-full bg-[#16a34a] hover:bg-[#15803d] text-white font-semibold py-3 rounded-lg transition-colors">
+            <button
+              onClick={() => {
+                setShowFiltersSheet(false);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="w-full bg-[#16a34a] hover:bg-[#15803d] text-white font-semibold py-3 rounded-lg transition-colors"
+            >
               Ver {filtered.length} {filtered.length === 1 ? 'cancha' : 'canchas'}
             </button>
           </div>
@@ -876,7 +921,7 @@ function CanchasContent() {
       <div className="flex flex-1 bg-white">
         <div className="container mx-auto px-4 flex bg-white">
           {/* ── COL 1: Filtros (lg+, ≥1024px) ────────────────────── */}
-          <aside className="hidden lg:block w-[240px] xl:w-[280px] shrink-0 pr-3 pt-4">
+          <aside className="hidden lg:block w-[280px] xl:w-[300px] shrink-0 pr-3 pt-4">
             <div className="sticky top-20 py-4 px-3 space-y-4 bg-white rounded-xl border border-gray-100 shadow-sm max-h-[calc(100vh-100px)] overflow-y-auto">
               <div className="flex items-center justify-between">
                 <h2 className="text-base font-bold text-gray-900">Filtros</h2>
@@ -886,7 +931,7 @@ function CanchasContent() {
               </div>
               <AdvancedFiltersComponent
                 filters={filters}
-                onFiltersChange={setFilters}
+                onFiltersChange={handleFiltersChange}
                 allAmenities={allAmenities}
                 allDistricts={allDistricts}
                 priceRange={priceRange}
@@ -926,18 +971,46 @@ function CanchasContent() {
             </div>
             {/* Cards */}
             {loading ? (
-              <div className="space-y-3">
-                {[1,2,3,4].map(i => (
-                  <div key={i} className="flex rounded-xl border border-gray-100 overflow-hidden h-[140px] animate-pulse bg-gray-50">
-                    <div className="w-[200px] bg-gray-200 shrink-0" />
-                    <div className="flex-1 p-4 space-y-2">
-                      <div className="h-4 bg-gray-200 rounded w-3/4" />
-                      <div className="h-3 bg-gray-200 rounded w-1/2" />
-                      <div className="h-3 bg-gray-200 rounded w-2/3" />
+              <>
+                {/* Mobile skeleton — tarjetas verticales */}
+                <div className="md:hidden grid gap-4 grid-cols-1 sm:grid-cols-2">
+                  {[1,2,3,4].map(i => (
+                    <div key={i} className="rounded-xl border border-gray-100 overflow-hidden animate-pulse">
+                      <div className="aspect-[2/1] bg-gray-200" />
+                      <div className="p-4 space-y-3">
+                        <div className="h-4 bg-gray-200 rounded-full w-3/4" />
+                        <div className="h-3 bg-gray-200 rounded-full w-1/3" />
+                        <div className="h-3 bg-gray-200 rounded-full w-1/2" />
+                        <div className="flex gap-1.5 pt-1">
+                          {[1,2,3,4].map(j => <div key={j} className="h-9 flex-1 bg-gray-200 rounded-lg" />)}
+                        </div>
+                        <div className="h-10 bg-gray-200 rounded-lg" />
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+                {/* Desktop skeleton — tarjetas horizontales */}
+                <div className="hidden md:block space-y-3">
+                  {[1,2,3,4].map(i => (
+                    <div key={i} className="flex rounded-xl border border-gray-100 overflow-hidden animate-pulse">
+                      <div className="w-[160px] h-[160px] bg-gray-200 shrink-0" />
+                      <div className="flex-1 p-4 space-y-2.5">
+                        <div className="h-4 bg-gray-200 rounded-full w-3/4" />
+                        <div className="h-3 bg-gray-200 rounded-full w-1/3" />
+                        <div className="h-3 bg-gray-200 rounded-full w-1/2" />
+                        <div className="flex gap-1.5 pt-2">
+                          {[1,2,3,4].map(j => <div key={j} className="h-8 w-16 bg-gray-200 rounded-lg" />)}
+                        </div>
+                      </div>
+                      <div className="w-[120px] p-4 flex flex-col gap-3 justify-end">
+                        <div className="h-6 bg-gray-200 rounded-full w-full" />
+                        <div className="h-10 bg-gray-200 rounded-xl w-full" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+
             ) : filtered.length > 0 ? (
               <>
                 {/* < 768px: cards verticales sin mapa */}
@@ -996,14 +1069,25 @@ function CanchasContent() {
                 </div>
               </>
             ) : (
-              <div className="py-16 text-center">
-                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">
-                  <MapPin className="h-8 w-8 text-gray-400" />
+              <div className="flex flex-col items-center py-16 px-4 text-center">
+                <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-gray-100">
+                  <SlidersHorizontal className="h-9 w-9 text-gray-400" />
                 </div>
-                <h3 className="mb-2 text-lg font-semibold text-gray-800">No se encontraron canchas</h3>
-                <p className="text-gray-500 text-sm mb-4">Intenta ajustar los filtros</p>
-                <button onClick={() => handleClearAll()} className="text-[#16a34a] font-medium hover:underline text-sm">
-                  Limpiar filtros
+                <h3 className="mb-1 text-lg font-bold text-gray-800">Sin resultados</h3>
+                <p className="text-sm text-gray-500 max-w-xs leading-relaxed mb-1">
+                  Ninguna cancha coincide con tu búsqueda actual.
+                </p>
+                {activeFilterCount > 0 && (
+                  <p className="text-xs text-gray-400 mb-5">
+                    Tienes {activeFilterCount} {activeFilterCount === 1 ? 'filtro activo' : 'filtros activos'}
+                  </p>
+                )}
+                <button
+                  onClick={() => handleClearAll()}
+                  className="flex items-center gap-2 bg-[#16a34a] hover:bg-[#15803d] active:scale-95 text-white font-semibold px-6 py-3.5 rounded-xl transition-all mt-2"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Limpiar todos los filtros
                 </button>
               </div>
             )}
@@ -1012,7 +1096,7 @@ function CanchasContent() {
           {/* ── COL 3: Mapa + panel (md+, ≥768px) ────────────────── */}
           <aside className="hidden md:flex flex-col w-[260px] lg:w-[300px] xl:w-[340px] shrink-0 pl-3 pt-4 gap-4">
             {/* Mapa sticky */}
-            <div className="sticky top-20 flex flex-col gap-4">
+            <div className="sticky top-40 flex flex-col gap-4">
               {/* Mapa */}
               <div className="rounded-xl overflow-hidden border border-gray-100 shadow-sm" style={{ height: '420px' }}>
                 <CanchasMap
@@ -1058,20 +1142,6 @@ function CanchasContent() {
         </div>
       </div>
 
-      <footer className="border-t border-border bg-card py-8 mt-12">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col items-center justify-center gap-4">
-            <Image
-              src="/images/logo.png"
-              alt="CanchaGo"
-              width={280}
-              height={50}
-              className="h-16 w-auto object-contain"
-            />
-            <p className="text-sm text-muted-foreground">&copy; 2026 CanchaGo. Todos los derechos reservados.</p>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

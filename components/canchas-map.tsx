@@ -23,13 +23,24 @@ export function CanchasMap({ canchas, selectedId, onSelectCancha, centerLocation
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
+  // Trackear los IDs de las canchas para detectar cambios reales en la lista
+  const prevCanchaIdsRef = useRef<string>('');
 
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
     if (typeof window === 'undefined') return;
 
+    // Verificar si el div ya tiene un mapa de Leaflet inicializado
+    if ((mapRef.current as any)._leaflet_id) return;
+
+    let cancelled = false;
+
     // Importar Leaflet dinámicamente (solo client-side)
     import('leaflet').then((L) => {
+      if (cancelled || !mapRef.current || mapInstanceRef.current) return;
+      if ((mapRef.current as any)._leaflet_id) return;
+
+      try {
       // Fix para los iconos de Leaflet con Next.js
       delete (L.Icon.Default.prototype as any)._getIconUrl;
       L.Icon.Default.mergeOptions({
@@ -107,6 +118,10 @@ export function CanchasMap({ canchas, selectedId, onSelectCancha, centerLocation
 
         markersRef.current.push(marker);
       });
+      } catch (e) {
+        // El mapa ya fue inicializado, ignorar
+        console.warn('Leaflet map init skipped:', e);
+      }
     });
 
     // Importar CSS de Leaflet
@@ -116,10 +131,15 @@ export function CanchasMap({ canchas, selectedId, onSelectCancha, centerLocation
     document.head.appendChild(link);
 
     return () => {
+      cancelled = true;
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
         markersRef.current = [];
+      }
+      // Limpiar el _leaflet_id del div para permitir re-inicialización
+      if (mapRef.current) {
+        delete (mapRef.current as any)._leaflet_id;
       }
     };
   }, []); // Solo montar una vez
@@ -127,6 +147,12 @@ export function CanchasMap({ canchas, selectedId, onSelectCancha, centerLocation
   // Actualizar marcadores cuando cambia la lista de canchas (filtros, ubicación)
   useEffect(() => {
     if (!mapInstanceRef.current) return;
+
+    // Verificar si la lista de canchas realmente cambió (por IDs)
+    const currentIds = canchas.map(c => c.id).join(',');
+    const listChanged = currentIds !== prevCanchaIdsRef.current;
+    prevCanchaIdsRef.current = currentIds;
+
     import('leaflet').then((L) => {
       // Limpiar marcadores existentes
       markersRef.current.forEach(m => m.remove());
@@ -134,8 +160,8 @@ export function CanchasMap({ canchas, selectedId, onSelectCancha, centerLocation
 
       const validCanchas = canchas.filter(c => c.lat && c.lng);
 
-      // Re-centrar el mapa si hay canchas
-      if (validCanchas.length > 0) {
+      // Re-centrar SOLO si la lista de canchas cambió realmente
+      if (listChanged && validCanchas.length > 0) {
         const centerLat = validCanchas.reduce((s, c) => s + c.lat, 0) / validCanchas.length;
         const centerLng = validCanchas.reduce((s, c) => s + c.lng, 0) / validCanchas.length;
         mapInstanceRef.current.setView([centerLat, centerLng], 13);

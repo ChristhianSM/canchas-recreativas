@@ -243,6 +243,7 @@ export function CanchaCardHorizontal({
           </div>
 
           {/* Fila 2: info izquierda + precio derecha */}
+          <Link href={`/cancha/${cancha.id}`}>
           <div className="flex items-start justify-between gap-2 mb-1.5">
             <div className="flex-1 min-w-0 space-y-0.5">
               <div className="flex items-center gap-1 text-xs text-gray-500 flex-wrap">
@@ -282,6 +283,7 @@ export function CanchaCardHorizontal({
               <p className="text-[10px] text-gray-400 mt-0.5">por hora</p>
             </div>
           </div>
+          </Link>
 
           {/* Horarios + botón */}
           <div className="mt-auto">

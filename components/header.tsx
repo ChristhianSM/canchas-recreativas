@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
-import { Menu, MapPin, Calendar, User, LogOut, ChevronDown } from 'lucide-react';
+import { useRouter, usePathname } from 'next/navigation';
+import { Menu, Home, Calendar, User, LogOut, ChevronDown, CalendarCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
 import {
@@ -14,11 +14,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { getUser, logout, type User as AuthUser } from '@/lib/auth';
+import { logout, type User as AuthUser } from '@/lib/auth';
 import { getStoredUser, apiLogout, getToken, isTokenLikelyExpired } from '@/lib/api';
 
 export function Header() {
   const router = useRouter();
+  const pathname = usePathname();
   const [open, setOpen]       = useState(false);
   const [user, setUser]       = useState<AuthUser | null>(null);
   const [hydrated, setHydrated] = useState(false);
@@ -95,9 +96,9 @@ export function Header() {
   };
 
   const navItems = [
-    { href: '/', label: 'Inicio', icon: MapPin },
+    { href: '/', label: 'Inicio', icon: Home },
     { href: '/canchas', label: 'Canchas', icon: Calendar },
-    { href: '/mis-reservas', label: 'Mis Reservas', icon: User },
+    ...(user ? [{ href: '/mis-reservas', label: 'Mis Reservas', icon: CalendarCheck }] : []),
   ];
 
   return (
@@ -116,16 +117,23 @@ export function Header() {
 
         {/* Desktop Navigation */}
         <nav className="hidden flex-1 items-center justify-center gap-1 md:flex">
-          {navItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-foreground transition-all hover:bg-[#16a34a]/10 hover:text-[#16a34a] border border-transparent hover:border-[#16a34a]/20"
-            >
-              <item.icon className="h-4 w-4" />
-              {item.label}
-            </Link>
-          ))}
+          {navItems.map((item) => {
+            const isActive = pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all border ${
+                  isActive
+                    ? 'bg-[#16a34a]/10 text-[#16a34a] border-[#16a34a]/20'
+                    : 'text-foreground border-transparent hover:bg-[#16a34a]/10 hover:text-[#16a34a] hover:border-[#16a34a]/20'
+                }`}
+              >
+                <item.icon className="h-4 w-4" />
+                {item.label}
+              </Link>
+            );
+          })}
         </nav>
 
         {/* Desktop Auth */}
@@ -140,7 +148,7 @@ export function Header() {
                   <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
                     {user.name.charAt(0).toUpperCase()}
                   </div>
-                  <span className="max-w-[120px] truncate">{user.name}</span>
+                  <span className="max-w-30 truncate">{user.name}</span>
                   <ChevronDown className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -166,9 +174,9 @@ export function Header() {
             </DropdownMenu>
           ) : (
             <>
-              <Button variant="outline" size="sm" asChild>
-                <Link href="/login">Iniciar Sesión</Link>
-              </Button>
+              <Link href="/login" className="text-sm font-medium text-foreground hover:text-[#16a34a] transition-colors">
+                Iniciar Sesión
+              </Link>
               <Button size="sm" asChild>
                 <Link href="/registro">Registrarse</Link>
               </Button>
@@ -189,17 +197,24 @@ export function Header() {
             <SheetTitle className="sr-only">Menú de navegación</SheetTitle>
             <div className="h-16 border-b border-border" />
             <nav className="flex flex-col gap-1 p-4 pt-0">
-              {navItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setOpen(false)}
-                  className="flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-foreground transition-colors hover:bg-secondary"
-                >
-                  <item.icon className="h-5 w-5 text-primary" />
-                  {item.label}
-                </Link>
-              ))}
+              {navItems.map((item) => {
+                const isActive = pathname === item.href;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setOpen(false)}
+                    className={`flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium transition-colors ${
+                      isActive
+                        ? 'bg-[#16a34a]/10 text-[#16a34a]'
+                        : 'text-foreground hover:bg-secondary'
+                    }`}
+                  >
+                    <item.icon className={`h-5 w-5 ${isActive ? 'text-[#16a34a]' : 'text-primary'}`} />
+                    {item.label}
+                  </Link>
+                );
+              })}
               <div className="mt-4 flex flex-col gap-2 border-t border-border pt-4">
                 {!hydrated ? (
                   /* Skeleton mobile */

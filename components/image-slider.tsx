@@ -91,6 +91,13 @@ export function ImageSlider({ images, alt, className, aspectRatio = 'video' }: I
         </>
       )}
 
+      {/* Contador numérico — bottom right */}
+      {images.length > 1 && (
+        <div className="absolute bottom-3 right-3 z-10 rounded-full bg-black/50 px-2 py-0.5 text-xs font-semibold text-white backdrop-blur-sm leading-none pointer-events-none">
+          {selectedIndex + 1}/{images.length}
+        </div>
+      )}
+
       {/* Dots Indicator */}
       {images.length > 1 && (
         <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5">

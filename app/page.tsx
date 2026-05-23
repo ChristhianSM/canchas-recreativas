@@ -7,10 +7,10 @@ import { useRouter } from 'next/navigation';
 import {
   MapPin, Search, Calendar, CheckCircle, ArrowRight,
   Zap, Phone, CreditCard, ShieldCheck, Clock, X, Loader2,
+  ChevronLeft, ChevronRight, MessageCircle,
 } from 'lucide-react';
 import { Header } from '@/components/header';
 import { CanchaCard } from '@/components/cancha-card';
-import { Button } from '@/components/ui/button';
 import { SportType } from '@/lib/types';
 import { getLocalDateString } from '@/lib/date-utils';
 
@@ -35,6 +35,11 @@ const HORAS = [
   '12:00','13:00','14:00','15:00','16:00','17:00',
   '18:00','19:00','20:00','21:00','22:00','23:00',
 ];
+
+const UBICACIONES_POR_CIUDAD: Record<string, string[]> = {
+  'Piura': ['Piura', 'Castilla', 'Catacaos', 'La Unión', 'Las Lomas', 'Tambogrande', 'Sullana', 'Paita', 'Talara', 'Chulucanas'],
+  // Próximamente: Lima, Trujillo, Chiclayo, Arequipa...
+};
 
 function adaptCancha(c: Cancha) {
   // Construir schedule para los próximos 14 días usando horarios reales
@@ -85,6 +90,7 @@ export default function HomePage() {  const router = useRouter();
   const [fecha, setFecha] = useState('');
   const [hora, setHora] = useState('');
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [favIds, setFavIds] = useState<Set<string>>(new Set());
   
   // Cache de todas las canchas para evitar re-fetch al calcular horarios disponibles
   const allCanchasRef = useRef<Cancha[]>([]);
@@ -99,6 +105,8 @@ export default function HomePage() {  const router = useRouter();
   const [availableHours, setAvailableHours] = useState<string[]>([]);
   const [loadingHours, setLoadingHours] = useState(false);
   
+  const [calendarMonth, setCalendarMonth] = useState(new Date());
+
   const locationRef = useRef<HTMLDivElement>(null);
   const dateRef = useRef<HTMLDivElement>(null);
   const timeRef = useRef<HTMLDivElement>(null);
@@ -128,12 +136,22 @@ export default function HomePage() {  const router = useRouter();
       .then(data => {
         const todas = Array.isArray(data) ? data : [];
         allCanchasRef.current = todas; // guardar en cache para reutilizar
-        setCanchas(todas.filter((c: Cancha) => c.destacada));
+        setCanchas(todas);
         setLoading(false);
         // Calcular horarios disponibles con los datos ya cargados (sin segundo fetch)
         computeAvailableHours(new Date(), todas);
       })
       .catch(() => setLoading(false));
+
+    // Una sola llamada a favoritos para toda la página
+    import('@/lib/api').then(({ apiGetFavoritos, getToken }) => {
+      const token = getToken();
+      if (token) {
+        apiGetFavoritos().then((ids: string[]) => {
+          if (Array.isArray(ids)) setFavIds(new Set(ids));
+        }).catch(() => {});
+      }
+    });
   }, []);
 
   // Cerrar modales al hacer click fuera
@@ -203,26 +221,6 @@ export default function HomePage() {  const router = useRouter();
     }
   };
 
-  // Mantener loadAvailableHours como wrapper por compatibilidad con handleDateSelect
-  const loadAvailableHours = async (date: Date) => {
-    if (allCanchasRef.current.length > 0) {
-      // Datos ya en cache — calcular sin fetch
-      computeAvailableHours(date, allCanchasRef.current);
-    } else {
-      // Fallback: si por alguna razón el cache está vacío, hacer fetch
-      setLoadingHours(true);
-      try {
-        const response = await fetch('/api/canchas/list');
-        const data = await response.json();
-        const todas = Array.isArray(data) ? data : [];
-        allCanchasRef.current = todas;
-        computeAvailableHours(date, todas);
-      } catch {
-        setAvailableHours([]);
-        setLoadingHours(false);
-      }
-    }
-  };
 
   const handleRequestLocation = () => {
     if (!navigator.geolocation) {
@@ -284,6 +282,18 @@ export default function HomePage() {  const router = useRouter();
     setShowTimePicker(false);
   };
 
+  const handlePrevMonth = () => {
+    const today = new Date();
+    setCalendarMonth(prev => {
+      const d = new Date(prev.getFullYear(), prev.getMonth() - 1, 1);
+      return d >= new Date(today.getFullYear(), today.getMonth(), 1) ? d : prev;
+    });
+  };
+
+  const handleNextMonth = () => {
+    setCalendarMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+  };
+
   const handleBuscar = () => {
     // Construir query params para la búsqueda
     const params = new URLSearchParams();
@@ -307,10 +317,10 @@ export default function HomePage() {  const router = useRouter();
     router.push(`/canchas?${params.toString()}`);
   };
 
-  // Generar calendario para el mes actual
+  // Generar calendario para el mes mostrado (puede diferir del mes seleccionado)
   const generateCalendar = () => {
-    const year = selectedDate.getFullYear();
-    const month = selectedDate.getMonth();
+    const year = calendarMonth.getFullYear();
+    const month = calendarMonth.getMonth();
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
     const daysInMonth = lastDay.getDate();
@@ -433,24 +443,30 @@ export default function HomePage() {  const router = useRouter();
                         )}
                       </button>
                       
-                      <div className="mt-3 pt-3 border-t border-gray-100 dark:border-border">
-                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">Distritos de Piura</p>
-                        <div className="space-y-1">
-                          {['Piura', 'Castilla', 'Catacaos', 'La Unión', 'Las Lomas', 'Tambogrande', 'Sullana', 'Paita', 'Talara', 'Chulucanas'].map(distrito => (
-                            <button
-                              key={distrito}
-                              onClick={() => { setUbicacion(distrito); setShowLocationModal(false); }}
-                              className={`flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm transition-colors text-left ${
-                                ubicacion === distrito
-                                  ? 'bg-[#16a34a]/10 text-[#16a34a] font-medium'
-                                  : 'text-gray-700 hover:bg-gray-50'
-                              }`}
-                            >
-                              <MapPin className="h-3.5 w-3.5 shrink-0 text-gray-400" />
-                              {distrito}, Piura
-                            </button>
-                          ))}
-                        </div>
+                      <div className="mt-3 pt-3 border-t border-gray-100 dark:border-border max-h-64 overflow-y-auto">
+                        {Object.entries(UBICACIONES_POR_CIUDAD).map(([ciudad, distritos]) => (
+                          <div key={ciudad} className="mb-2">
+                            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1 px-1">
+                              {ciudad}
+                            </p>
+                            <div className="space-y-0.5">
+                              {distritos.map(distrito => (
+                                <button
+                                  key={distrito}
+                                  onClick={() => { setUbicacion(distrito); setShowLocationModal(false); }}
+                                  className={`flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm transition-colors text-left ${
+                                    ubicacion === distrito
+                                      ? 'bg-[#16a34a]/10 text-[#16a34a] font-medium'
+                                      : 'text-gray-700 dark:text-foreground hover:bg-gray-50 dark:hover:bg-muted'
+                                  }`}
+                                >
+                                  <MapPin className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+                                  {distrito}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   </>
@@ -462,6 +478,7 @@ export default function HomePage() {  const router = useRouter();
                 <button
                   ref={dateButtonRef}
                   onClick={() => {
+                    if (!showDatePicker) setCalendarMonth(new Date(selectedDate));
                     setShowDatePicker(!showDatePicker);
                     setShowLocationModal(false);
                     setShowTimePicker(false);
@@ -499,14 +516,24 @@ export default function HomePage() {  const router = useRouter();
                       }}
                     >
                       <div className="flex items-center justify-between mb-4">
-                        <h3 className="font-semibold text-sm">
-                          {selectedDate.toLocaleDateString('es-PE', { month: 'long', year: 'numeric' })}
+                        <button
+                          onClick={handlePrevMonth}
+                          disabled={
+                            calendarMonth.getFullYear() === new Date().getFullYear() &&
+                            calendarMonth.getMonth() <= new Date().getMonth()
+                          }
+                          className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        >
+                          <ChevronLeft className="h-4 w-4 text-gray-600 dark:text-foreground" />
+                        </button>
+                        <h3 className="font-semibold text-sm capitalize">
+                          {calendarMonth.toLocaleDateString('es-PE', { month: 'long', year: 'numeric' })}
                         </h3>
                         <button
-                          onClick={() => setShowDatePicker(false)}
-                          className="text-gray-400 hover:text-gray-600"
+                          onClick={handleNextMonth}
+                          className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-muted transition-colors"
                         >
-                          <X className="h-4 w-4" />
+                          <ChevronRight className="h-4 w-4 text-gray-600 dark:text-foreground" />
                         </button>
                       </div>
                       
@@ -641,9 +668,9 @@ export default function HomePage() {  const router = useRouter();
               {/* Botón buscar */}
               <button
                 onClick={handleBuscar}
-                className="flex items-center justify-center gap-2 bg-[#16a34a] hover:bg-[#15803d] text-white font-semibold px-5 py-3 rounded-md transition-colors text-sm whitespace-nowrap"
+                className="flex items-center justify-center gap-2 bg-[#16a34a] hover:bg-[#15803d] active:scale-95 text-white font-bold sm:font-semibold py-4 sm:py-3 px-5 rounded-xl sm:rounded-md transition-all text-base sm:text-sm whitespace-nowrap w-full sm:w-auto mt-1 sm:mt-0"
               >
-                <Search className="h-4 w-4" />
+                <Search className="h-5 w-5 sm:h-4 sm:w-4" />
                 Buscar canchas
               </button>
             </div>
@@ -680,11 +707,16 @@ export default function HomePage() {  const router = useRouter();
           {loading ? (
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {[1, 2, 3, 4].map(i => (
-                <div key={i} className="rounded-md overflow-hidden border border-border">
-                  <div className="aspect-video bg-muted animate-pulse" />
-                  <div className="p-4 space-y-2">
-                    <div className="h-4 bg-muted rounded animate-pulse w-3/4" />
-                    <div className="h-3 bg-muted rounded animate-pulse w-1/2" />
+                <div key={i} className="rounded-xl overflow-hidden border border-border animate-pulse">
+                  <div className="aspect-[2/1] bg-muted" />
+                  <div className="p-4 space-y-3">
+                    <div className="h-4 bg-muted rounded-full w-3/4" />
+                    <div className="h-3 bg-muted rounded-full w-1/3" />
+                    <div className="h-3 bg-muted rounded-full w-1/2" />
+                    <div className="flex gap-1.5 pt-1">
+                      {[1,2,3,4].map(j => <div key={j} className="h-9 flex-1 bg-muted rounded-lg" />)}
+                    </div>
+                    <div className="h-10 bg-muted rounded-lg" />
                   </div>
                 </div>
               ))}
@@ -699,6 +731,8 @@ export default function HomePage() {  const router = useRouter();
                     key={c.id}
                     cancha={adaptCancha(c)}
                     selectedDate={getLocalDateString()}
+                    isFav={favIds.has(c.id)}
+                    onToggleFav={(id) => setFavIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; })}
                   />
                 ))}
             </div>
@@ -745,6 +779,8 @@ export default function HomePage() {  const router = useRouter();
                       cancha={adaptCancha(c)}
                       selectedDate={getLocalDateString()}
                       distancia={c.distKm}
+                      isFav={favIds.has(c.id)}
+                      onToggleFav={(id) => setFavIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; })}
                     />
                   ))}
                 </div>
@@ -757,42 +793,60 @@ export default function HomePage() {  const router = useRouter();
       {/* ── CÓMO FUNCIONA ─────────────────────────────────────────── */}
       <section className="py-14 bg-gray-50 dark:bg-muted/20">
         <div className="container mx-auto px-4">
-          <h2 className="text-2xl font-bold text-center text-gray-900 dark:text-foreground mb-10">¿Cómo funciona?</h2>
+          <div className="text-center mb-10">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-foreground">¿Cómo funciona?</h2>
+            <p className="text-sm text-gray-500 dark:text-muted-foreground mt-2">Reserva tu cancha en menos de 2 minutos</p>
+          </div>
 
-          <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-0 max-w-3xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
             {[
               {
+                num: '1',
                 icon: Search,
-                step: '1. Busca tu cancha',
-                desc: 'Explora canchas disponibles cerca de ti.',
-                color: 'bg-[#dcfce7] dark:bg-[#16a34a]/20',
-                iconColor: 'text-[#16a34a]',
+                title: 'Busca en tu zona',
+                desc: 'Filtra por deporte, fecha y hora. Ve disponibilidad en tiempo real, sin llamar a nadie.',
+                tag: 'Fútbol, vóley, básquet y más',
+                highlight: false,
               },
               {
+                num: '2',
                 icon: Calendar,
-                step: '2. Elige fecha y hora',
-                desc: 'Selecciona el día y horario que más te convenga.',
-                color: 'bg-[#dcfce7] dark:bg-[#16a34a]/20',
-                iconColor: 'text-[#16a34a]',
+                title: 'Elige tu horario',
+                desc: 'Selecciona el día y la hora exacta. Los slots disponibles se actualizan al instante.',
+                tag: 'Sin dobles reservas',
+                highlight: false,
               },
               {
-                icon: CheckCircle,
-                step: '3. Reserva y juega',
-                desc: 'Confirma tu reserva y disfruta del juego.',
-                color: 'bg-[#16a34a]',
-                iconColor: 'text-white',
+                num: '3',
+                icon: CreditCard,
+                title: 'Paga con Yape o Plin',
+                desc: 'Confirma con un adelanto desde la app. Recibes tu reserva al momento, sin llamadas.',
+                tag: 'También transferencia bancaria',
+                highlight: true,
               },
             ].map((item, idx) => (
-              <div key={idx} className="flex items-center gap-0">
-                <div className="flex flex-col items-center text-center w-48">
-                  <div className={`h-14 w-14 rounded-full flex items-center justify-center mb-3 ${item.color}`}>
-                    <item.icon className={`h-6 w-6 ${item.iconColor}`} />
+              <div key={idx} className="relative">
+                <div className={`h-full rounded-2xl p-6 border ${item.highlight ? 'bg-[#16a34a] border-[#16a34a]' : 'bg-white dark:bg-card border-gray-100 dark:border-border shadow-sm'}`}>
+                  {/* Número */}
+                  <div className={`inline-flex items-center justify-center h-8 w-8 rounded-full text-sm font-bold mb-4 ${item.highlight ? 'bg-white/20 text-white' : 'bg-[#16a34a]/10 text-[#16a34a]'}`}>
+                    {item.num}
                   </div>
-                  <p className="font-semibold text-gray-900 dark:text-foreground text-base">{item.step}</p>
-                  <p className="text-sm text-gray-500 dark:text-muted-foreground mt-1">{item.desc}</p>
+                  <item.icon className={`h-6 w-6 mb-3 ${item.highlight ? 'text-white' : 'text-[#16a34a]'}`} />
+                  <h3 className={`font-bold text-base mb-2 ${item.highlight ? 'text-white' : 'text-gray-900 dark:text-foreground'}`}>
+                    {item.title}
+                  </h3>
+                  <p className={`text-sm leading-relaxed mb-4 ${item.highlight ? 'text-white/80' : 'text-gray-500 dark:text-muted-foreground'}`}>
+                    {item.desc}
+                  </p>
+                  <span className={`inline-block text-xs font-medium px-2.5 py-1 rounded-full ${item.highlight ? 'bg-white/20 text-white' : 'bg-[#16a34a]/10 text-[#16a34a]'}`}>
+                    {item.tag}
+                  </span>
                 </div>
+                {/* Flecha entre cards — solo desktop */}
                 {idx < 2 && (
-                  <ArrowRight className="h-5 w-5 text-gray-300 dark:text-muted-foreground mx-2 shrink-0 hidden md:block" />
+                  <div className="hidden md:flex absolute -right-5 top-1/2 -translate-y-1/2 z-10 h-8 w-8 items-center justify-center rounded-full bg-white dark:bg-card border border-gray-100 dark:border-border shadow-sm">
+                    <ArrowRight className="h-4 w-4 text-gray-400" />
+                  </div>
                 )}
               </div>
             ))}
@@ -843,68 +897,80 @@ export default function HomePage() {  const router = useRouter();
       {/* ── ¿TIENES UNA CANCHA? ───────────────────────────────────── */}
       <section className="py-14 bg-gray-50 dark:bg-muted/20">
         <div className="container mx-auto px-4">
-          <div className="max-w-5xl mx-auto rounded-md overflow-hidden bg-white dark:bg-card border border-gray-100 dark:border-border shadow-sm flex flex-col md:flex-row">
+          <div className="max-w-5xl mx-auto rounded-2xl overflow-hidden bg-white dark:bg-card border border-gray-100 dark:border-border shadow-sm flex flex-col md:flex-row">
             {/* Texto */}
             <div className="flex-1 p-8 md:p-10 flex flex-col justify-center">
-              <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-foreground mb-3">
-                ¿Tienes una cancha?
+              {/* Badge */}
+              <span className="inline-flex items-center gap-1.5 bg-[#16a34a]/10 text-[#16a34a] text-xs font-semibold px-3 py-1 rounded-full w-fit mb-4">
+                <MessageCircle className="h-3.5 w-3.5" />
+                Atención personalizada · Cupos disponibles
+              </span>
+
+              <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-foreground mb-2 leading-tight">
+                Llena tus horas vacías{' '}
+                <span className="text-[#16a34a]">y cobra sin complicaciones</span>
               </h2>
-              <p className="text-gray-500 dark:text-muted-foreground mb-5">
-                Únete a nuestra plataforma y aumenta tus reservas.
+              <p className="text-gray-500 dark:text-muted-foreground mb-6 text-sm leading-relaxed">
+                Escríbenos por WhatsApp y te explicamos cómo funciona. Nos encargamos de configurar tu cancha desde cero.
               </p>
-              <ul className="space-y-2 mb-7">
+
+              <ul className="space-y-3 mb-7">
                 {[
-                  'Publica tu cancha',
-                  'Gestiona tus horarios',
-                  'Aumenta tus reservas y ganancias',
+                  'Olvida coordinar por WhatsApp: las reservas llegan solas',
+                  'Cobros registrados y sin efectivo perdido',
+                  'Tus horarios disponibles visibles las 24 horas',
                 ].map(item => (
-                  <li key={item} className="flex items-center gap-2 text-sm text-gray-700 dark:text-foreground">
-                    <CheckCircle className="h-4 w-4 text-[#16a34a] shrink-0" />
+                  <li key={item} className="flex items-start gap-2.5 text-sm text-gray-700 dark:text-foreground">
+                    <CheckCircle className="h-4 w-4 text-[#16a34a] shrink-0 mt-0.5" />
                     {item}
                   </li>
                 ))}
               </ul>
-              <Link href="/admin-cancha/login">
-                <button className="inline-flex items-center gap-2 bg-[#16a34a] hover:bg-[#15803d] text-white font-semibold px-6 py-3 rounded-md transition-colors text-sm w-fit">
-                  Publicar mi cancha
-                  <ArrowRight className="h-4 w-4" />
-                </button>
-              </Link>
+
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                <a
+                  href="https://wa.me/51959686193?text=Hola%2C%20me%20interesa%20publicar%20mi%20cancha%20en%20CanchaGo.%20%C2%BFMe%20pueden%20dar%20m%C3%A1s%20informaci%C3%B3n%3F"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 bg-[#16a34a] hover:bg-[#15803d] active:scale-[0.98] text-white font-bold px-6 py-3.5 rounded-xl transition-all text-sm"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  Quiero publicar mi cancha
+                </a>
+                <p className="text-xs text-gray-400">Sin compromiso · Te respondemos rápido</p>
+              </div>
             </div>
 
             {/* Imagen + mockup */}
-            <div className="relative flex-1 min-h-[280px] md:min-h-0 overflow-hidden">
+            <div className="relative flex-1 min-h-70 md:min-h-0 overflow-hidden">
               <Image
                 src="/images/cancha-login.png"
                 alt="Panel de administración"
                 fill
                 className="object-cover object-center"
               />
-              {/* Overlay con mockup de stats */}
-              <div className="absolute inset-0 bg-black/30" />
-              <div className="absolute bottom-4 right-4 bg-white dark:bg-card rounded-md shadow-xl p-4 w-44">
-                <p className="text-xs text-gray-500 dark:text-muted-foreground font-medium mb-2">Mis reservas</p>
-                <div className="space-y-1.5 mb-3">
+              <div className="absolute inset-0 bg-black/35" />
+
+              {/* Mockup de estadísticas */}
+              <div className="absolute bottom-4 right-4 bg-white dark:bg-card rounded-xl shadow-2xl p-4 w-48">
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-3">Esta semana</p>
+                <div className="space-y-2 mb-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-600 dark:text-foreground">Hoy 18:00 - 20:00</span>
-                    <div className="h-4 w-4 rounded-full bg-[#16a34a] flex items-center justify-center">
-                      <svg className="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </div>
+                    <span className="text-xs text-gray-500 dark:text-muted-foreground">Reservas</span>
+                    <span className="text-xs font-bold text-gray-900 dark:text-foreground">12</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-600 dark:text-foreground">Mañana 10:00 - 12:00</span>
-                    <div className="h-4 w-4 rounded-full bg-[#16a34a] flex items-center justify-center">
-                      <svg className="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </div>
+                    <span className="text-xs text-gray-500 dark:text-muted-foreground">Horas ocupadas</span>
+                    <span className="text-xs font-bold text-gray-900 dark:text-foreground">24 hrs</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-500 dark:text-muted-foreground">Por WhatsApp</span>
+                    <span className="text-xs font-bold text-gray-400 line-through">0</span>
                   </div>
                 </div>
-                <div className="border-t border-gray-100 dark:border-border pt-2">
+                <div className="border-t border-gray-100 dark:border-border pt-2.5">
                   <p className="text-[10px] text-gray-400">Ganancias</p>
-                  <p className="text-base font-bold text-gray-900 dark:text-foreground">S/ 1,250</p>
+                  <p className="text-lg font-bold text-[#16a34a]">S/ 1,250</p>
                 </div>
               </div>
             </div>
@@ -913,45 +979,50 @@ export default function HomePage() {  const router = useRouter();
       </section>
 
       {/* ── CTA FINAL ─────────────────────────────────────────────── */}
-      <section className="py-14 bg-gray-900 dark:bg-gray-950 relative overflow-hidden">
-        <div className="absolute right-8 bottom-0 opacity-20 pointer-events-none select-none">
-          <span className="text-[160px]">⚽</span>
+      <section className="py-16 bg-gray-900 dark:bg-gray-950 relative overflow-hidden">
+        {/* Decoración */}
+        <div className="absolute right-0 top-0 h-full flex items-center pr-6 opacity-[0.07] pointer-events-none select-none">
+          <span className="text-[220px] leading-none">⚽</span>
         </div>
+        <div className="absolute -left-12 top-1/2 -translate-y-1/2 w-64 h-64 rounded-full bg-[#16a34a]/20 blur-3xl pointer-events-none" />
+
         <div className="container mx-auto px-4 relative">
-          <div className="max-w-xl">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-2">¿Listo para jugar?</h2>
-            <p className="text-gray-400 mb-7">Encuentra tu cancha ideal y reserva ahora.</p>
-            <Link href="/canchas">
-              <button className="inline-flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-900 font-semibold px-7 py-3.5 rounded-xl transition-colors text-sm">
-                Buscar canchas ahora
-                <ArrowRight className="h-4 w-4" />
-              </button>
-            </Link>
+          <div className="max-w-2xl">
+            {/* Badges de confianza */}
+            <div className="flex flex-wrap gap-2 mb-6">
+              {[
+                'Reserva en 60 segundos',
+                'Sin llamadas',
+                'Paga con Yape o Plin',
+              ].map(tag => (
+                <span key={tag} className="inline-flex items-center gap-1.5 bg-white/10 text-white/80 text-xs font-medium px-3 py-1.5 rounded-full">
+                  <CheckCircle className="h-3 w-3 text-[#4ade80]" />
+                  {tag}
+                </span>
+              ))}
+            </div>
+
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-white mb-3 leading-tight">
+              Tu partido empieza<br />
+              <span className="text-[#4ade80]">cuando tú decides</span>
+            </h2>
+            <p className="text-gray-400 mb-8 text-base leading-relaxed max-w-md">
+              Encuentra cancha, elige horario y reserva en minutos. Sin llamadas, sin esperas.
+            </p>
+
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <Link href="/canchas">
+                <button className="inline-flex items-center gap-2 bg-[#16a34a] hover:bg-[#15803d] active:scale-[0.98] text-white font-bold px-7 py-4 rounded-xl transition-all text-base shadow-lg shadow-[#16a34a]/30">
+                  Buscar cancha ahora
+                  <ArrowRight className="h-5 w-5" />
+                </button>
+              </Link>
+              <p className="text-sm text-gray-500">Gratis · Sin registro previo</p>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ── FOOTER ────────────────────────────────────────────────── */}
-      <footer className="border-t border-gray-100 dark:border-border bg-white dark:bg-card py-10">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col items-center justify-center gap-5">
-            <Image
-              src="/images/logo.png"
-              alt="CanchaGo"
-              width={200}
-              height={50}
-              className="h-12 w-auto object-contain"
-            />
-            <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-gray-500 dark:text-muted-foreground">
-              <Link href="/canchas" className="hover:text-gray-900 dark:hover:text-foreground transition-colors">Canchas</Link>
-              <Link href="/mis-reservas" className="hover:text-gray-900 dark:hover:text-foreground transition-colors">Mis Reservas</Link>
-              <Link href="/login" className="hover:text-gray-900 dark:hover:text-foreground transition-colors">Iniciar Sesión</Link>
-              <Link href="/registro" className="hover:text-gray-900 dark:hover:text-foreground transition-colors">Registrarse</Link>
-            </div>
-            <p className="text-xs text-gray-400 dark:text-muted-foreground">&copy; 2026 CanchaGo. Todos los derechos reservados.</p>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

@@ -647,8 +647,11 @@ export function CanchaCard({ cancha, distancia, selectedDate, availableHours, pr
         <button
           onClick={handleReservar}
           disabled={reservando}
-          className="w-full rounded-lg bg-primary py-3 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
+          className="w-full rounded-lg bg-primary py-3 text-sm font-semibold text-primary-foreground transition-all hover:opacity-90 active:scale-95 disabled:opacity-60 flex items-center justify-center gap-2"
         >
+          {reservando && (
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent shrink-0" />
+          )}
           {buttonLabel}
         </button>
       </div>

@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
   MapPin, Star, Phone, Clock, CheckCircle2,
-  Navigation, Share2, Heart, CalendarDays, ChevronRight, AlertTriangle, Timer,
+  Navigation, Share2, Heart, CalendarDays, ChevronRight, AlertTriangle, Timer, ArrowLeft,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StepButton } from '@/components/loading-button';
@@ -37,6 +37,14 @@ function formatTo12Hour(time24: string): string {
   const period = hours >= 12 ? 'PM' : 'AM';
   const hours12 = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
   return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`;
+}
+
+const HORAS_OPERACION = ['06:00','07:00','08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00','22:00','23:00'];
+
+function getOperatingHours(horariosRestringidos: string[]): string {
+  const open = HORAS_OPERACION.filter(h => !horariosRestringidos.includes(h));
+  if (!open.length) return '6:00 AM – 11:00 PM';
+  return `${formatTo12Hour(open[0])} – ${formatTo12Hour(open[open.length - 1])}`;
 }
 
 type CanchaDB = {
@@ -118,6 +126,13 @@ export default function CanchaDetailPage() {
   // Extras seleccionados por el usuario
   const [quiereBalon, setQuiereBalon]       = useState(false);
   const [quiereChalecos, setQuiereChalecos] = useState(false);
+
+  // Pulso en el botón de la barra inferior para guiar al usuario (se apaga a los 3 s)
+  const [barPulse, setBarPulse] = useState(true);
+  useEffect(() => {
+    const t = setTimeout(() => setBarPulse(false), 3000);
+    return () => clearTimeout(t);
+  }, []);
 
   const sessionId = useRef(
     typeof window !== 'undefined'
@@ -349,6 +364,12 @@ export default function CanchaDetailPage() {
     cancha.precio_por_hora,
     cancha.precios_por_hora ?? {},
   );
+
+  const extraBalon    = quiereBalon    && cancha.balon_precio    != null ? cancha.balon_precio    : 0;
+  const extraChalecos = quiereChalecos && cancha.chalecos_precio != null ? cancha.chalecos_precio : 0;
+  const precioConExtras = selectedSlot ? selectedSlot.price + extraBalon + extraChalecos : 0;
+  const hayExtras = extraBalon > 0 || extraChalecos > 0;
+
   const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${cancha.lat},${cancha.lng}`;
   const selectedDateLabel = new Date(selectedDate + 'T00:00:00').toLocaleDateString('es-PE', {
     weekday: 'long', day: 'numeric', month: 'long',
@@ -441,7 +462,17 @@ export default function CanchaDetailPage() {
         </DialogContent>
       </Dialog>
 
-      <div className="container mx-auto flex items-center justify-between px-4 pt-4">
+      <div className="container mx-auto px-4 pt-3 pb-1">
+        <button
+          onClick={() => router.back()}
+          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Volver
+        </button>
+      </div>
+
+      <div className="container mx-auto flex items-center justify-between px-4 pt-3">
         <div>
           <div className="flex flex-wrap items-center gap-2 mb-1">
             <Badge className="bg-primary text-primary-foreground">{sportLabels[cancha.tipo]}</Badge>
@@ -523,7 +554,7 @@ export default function CanchaDetailPage() {
               <Separator orientation="vertical" className="h-10" />
               <div className="flex-1 text-center">
                 <p className="text-xs text-muted-foreground">Horario</p>
-                <p className="text-sm font-medium text-foreground">6am – 10pm</p>
+                <p className="text-sm font-medium text-foreground">{getOperatingHours(cancha.horariosRestringidos)}</p>
               </div>
               {cancha.max_jugadores && (
                 <>
@@ -546,6 +577,21 @@ export default function CanchaDetailPage() {
                 </>
               )}
             </div>
+
+            {/* Mobile: CTA inline donde el usuario busca los horarios */}
+            <button
+              onClick={() => setSheetOpen(true)}
+              className="lg:hidden group w-full flex items-center gap-4 rounded-2xl border-2 border-primary bg-primary/5 active:bg-primary/10 px-5 py-4 text-left transition-all active:scale-[0.98]"
+            >
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary">
+                <CalendarDays className="h-6 w-6 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-foreground">Ver horarios disponibles</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Toca para elegir fecha y hora</p>
+              </div>
+              <ChevronRight className="h-5 w-5 text-primary shrink-0" />
+            </button>
 
             <div>
               <h2 className="mb-2 text-lg font-semibold text-foreground">Descripción</h2>
@@ -675,7 +721,7 @@ export default function CanchaDetailPage() {
               <div className="mb-4 space-y-3">
                 <div className="flex items-center gap-2 text-sm">
                   <Clock className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-foreground">Horario: 6:00 AM - 10:00 PM</span>
+                  <span className="text-foreground">Horario: {getOperatingHours(cancha.horariosRestringidos)}</span>
                 </div>
                 {cancha.max_jugadores && (
                   <div className="flex items-center gap-2 text-sm">
@@ -692,10 +738,36 @@ export default function CanchaDetailPage() {
               </div>
               {selectedSlot ? (
                 <div className="space-y-4">
-                  <div className="rounded-lg bg-secondary p-3">
+                  <div className="rounded-lg bg-secondary p-3 space-y-1">
                     <p className="text-sm text-muted-foreground">Tu selección:</p>
                     <p className="font-semibold capitalize text-foreground">{selectedDateLabel}</p>
-                    <p className="text-primary">{selectedSlot.time} — S/ {selectedSlot.price}</p>
+                    <p className="text-sm text-muted-foreground">{selectedSlot.time}</p>
+                    {hayExtras ? (
+                      <div className="mt-2 pt-2 border-t border-border/50 space-y-0.5">
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>Hora</span>
+                          <span>S/ {selectedSlot.price}</span>
+                        </div>
+                        {extraBalon > 0 && (
+                          <div className="flex justify-between text-xs text-muted-foreground">
+                            <span>⚽ Balón</span>
+                            <span>+ S/ {extraBalon}</span>
+                          </div>
+                        )}
+                        {extraChalecos > 0 && (
+                          <div className="flex justify-between text-xs text-muted-foreground">
+                            <span>🎽 Chalecos</span>
+                            <span>+ S/ {extraChalecos}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between text-sm font-bold text-primary pt-0.5">
+                          <span>Total</span>
+                          <span>S/ {precioConExtras}</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="font-bold text-primary">S/ {selectedSlot.price}</p>
+                    )}
                   </div>
 
                   {/* Extras desktop */}
@@ -752,7 +824,13 @@ export default function CanchaDetailPage() {
                   </StepButton>
                 </div>
               ) : (
-                <Button className="w-full" size="lg" disabled>Selecciona un horario</Button>
+                <div className="rounded-xl border-2 border-dashed border-border p-6 text-center">
+                  <CalendarDays className="mx-auto h-10 w-10 text-muted-foreground/30 mb-3" />
+                  <p className="text-sm font-semibold text-foreground mb-1">Elige tu horario</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Selecciona una fecha y hora disponible en el panel de la izquierda para continuar
+                  </p>
+                </div>
               )}
             </Card>
           </div>
@@ -767,7 +845,10 @@ export default function CanchaDetailPage() {
               {selectedSlot ? (
                 <>
                   <p className="text-xs text-muted-foreground capitalize">{selectedDateLabel} · {selectedSlot.time}</p>
-                  <p className="text-xl font-bold text-foreground">S/ {selectedSlot.price}</p>
+                  <p className="text-xl font-bold text-foreground">
+                    S/ {precioConExtras}
+                    {hayExtras && <span className="text-xs font-normal text-muted-foreground ml-1">c/extras</span>}
+                  </p>
                 </>
               ) : (
                 <>
@@ -776,7 +857,11 @@ export default function CanchaDetailPage() {
                 </>
               )}
             </div>
-            <Button size="lg" className="gap-2 px-6" onClick={() => setSheetOpen(true)}>
+            <Button
+              size="lg"
+              className={`gap-2 px-6 transition-all ${barPulse && !selectedSlot ? 'ring-2 ring-primary ring-offset-2 ring-offset-card' : ''}`}
+              onClick={() => { setSheetOpen(true); setBarPulse(false); }}
+            >
               <CalendarDays className="h-5 w-5" />
               {selectedSlot ? 'Confirmar reserva' : 'Ver horarios'}
             </Button>
@@ -818,6 +903,26 @@ export default function CanchaDetailPage() {
                     <span className="text-primary font-medium">{formatTo12Hour(selectedSlot.time)}</span>
                     <span className="text-lg font-bold text-foreground">S/ {selectedSlot.price}</span>
                   </div>
+                  {hayExtras && (
+                    <div className="mt-2 pt-2 border-t border-border/50 space-y-0.5">
+                      {extraBalon > 0 && (
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>⚽ Balón</span>
+                          <span>+ S/ {extraBalon}</span>
+                        </div>
+                      )}
+                      {extraChalecos > 0 && (
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>🎽 Chalecos</span>
+                          <span>+ S/ {extraChalecos}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between text-sm font-bold text-primary">
+                        <span>Total</span>
+                        <span>S/ {precioConExtras}</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 

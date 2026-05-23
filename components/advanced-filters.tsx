@@ -258,7 +258,7 @@ export function AdvancedFiltersComponent({
                 () => alert('No se pudo obtener tu ubicación. Por favor, verifica los permisos.')
               );
             }}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-[#16a34a] text-white rounded-md hover:bg-[#15803d] transition-colors text-sm font-medium mt-2"
+            className="w-full flex items-center justify-center gap-2 px-2.5 py-2.5 bg-[#16a34a] text-white rounded-md hover:bg-[#15803d] transition-colors text-sm font-medium mt-2"
           >
             <MapPin className="h-4 w-4" />
             Activar "Cerca de mí"

@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import {
   ArrowLeft, Calendar, Clock, CheckCircle2, Copy,
-  Smartphone, Shield, ChevronRight, Upload, ImageIcon, Timer, Mail,
+  Smartphone, Shield, ChevronRight, Upload, ImageIcon, Timer, Mail, ExternalLink,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { LoadingButton } from '@/components/loading-button';
@@ -73,6 +73,7 @@ function PagoContent() {
   const [enviando, setEnviando]                   = useState(false);
   const [segundos, setSegundos]                   = useState(TIEMPO_LIMITE);
   const [bloqueado, setBloqueado]                 = useState(false);
+  const [montoCopiado, setMontoCopiado]           = useState(false);
 
   const [modoPago, setModoPago]                       = useState<'completo' | 'parcial'>('completo');
 
@@ -262,6 +263,15 @@ function PagoContent() {
     }
   }, []);
 
+  // Scroll instantáneo al tope solo cuando avanza al paso 2 (no en mount ni al retroceder)
+  const prevPaso = useRef<Paso>('metodo');
+  useEffect(() => {
+    if (paso === 'instrucciones' && prevPaso.current === 'metodo') {
+      window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+    }
+    prevPaso.current = paso;
+  }, [paso]);
+
   if (canchaLoading) return (
     <div className="flex min-h-screen items-center justify-center">
       <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
@@ -397,11 +407,15 @@ function PagoContent() {
   if (paso === 'exito') {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 text-center">
-        <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-yellow-500/10">
-          <Clock className="h-12 w-12 text-yellow-500" />
+        <div className="mb-4 flex h-24 w-24 items-center justify-center rounded-full bg-primary/10">
+          <CheckCircle2 className="h-12 w-12 text-primary" />
         </div>
-        <h1 className="mb-2 text-2xl font-bold text-foreground">¡Reserva enviada!</h1>
-        <p className="mb-1 text-muted-foreground">Tu comprobante fue recibido correctamente.</p>
+        <h1 className="mb-2 text-2xl font-bold text-foreground">¡Listo, ya casi!</h1>
+        <p className="mb-3 text-muted-foreground">Tu comprobante fue recibido correctamente.</p>
+        <div className="mb-6 flex items-center gap-2 rounded-full bg-yellow-500/10 border border-yellow-500/20 px-4 py-2">
+          <Clock className="h-4 w-4 text-yellow-600 shrink-0" />
+          <p className="text-sm text-yellow-700 dark:text-yellow-400 font-medium">El admin verificará tu pago en breve</p>
+        </div>
 
         {esInvitado && emailInvitado ? (
           <div className="mb-8 flex flex-col items-center gap-2">
@@ -491,17 +505,35 @@ function PagoContent() {
 
   return (
     <div className="min-h-screen bg-background pb-10">
-      <header className="sticky top-0 z-50 flex h-14 items-center gap-3 border-b border-border bg-card/95 px-4 backdrop-blur">
-        <Button variant="ghost" size="icon" onClick={() => router.back()}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <h1 className="text-base font-semibold text-foreground">Confirmar pago</h1>
-        <div className={cn(
-          'ml-auto flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold',
-          segundos > 60 ? 'bg-primary/10 text-primary' : 'bg-destructive/10 text-destructive animate-pulse'
-        )}>
-          <Timer className="h-4 w-4" />
-          {String(Math.floor(segundos / 60)).padStart(2, '0')}:{String(segundos % 60).padStart(2, '0')}
+      <header className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur">
+        <div className="flex h-14 items-center gap-3 px-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => paso === 'instrucciones' ? setPaso('metodo') : router.back()}
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-sm font-semibold text-foreground leading-tight">Confirmar reserva</h1>
+            <p className="text-xs text-muted-foreground">
+              {paso === 'metodo' ? 'Paso 1 de 2 · Elige método de pago' : 'Paso 2 de 2 · Sube tu comprobante'}
+            </p>
+          </div>
+          <div className={cn(
+            'flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold shrink-0',
+            segundos > 60 ? 'bg-primary/10 text-primary' : 'bg-destructive/10 text-destructive animate-pulse'
+          )}>
+            <Timer className="h-4 w-4" />
+            {String(Math.floor(segundos / 60)).padStart(2, '0')}:{String(segundos % 60).padStart(2, '0')}
+          </div>
+        </div>
+        {/* Barra de progreso */}
+        <div className="h-0.5 bg-muted">
+          <div
+            className="h-full bg-primary transition-all duration-500"
+            style={{ width: paso === 'metodo' ? '50%' : '100%' }}
+          />
         </div>
       </header>
 
@@ -714,6 +746,19 @@ function PagoContent() {
           </div>
         </div>
 
+        {/* Warning adelanto — solo visible cuando está seleccionado */}
+        {modoPago === 'parcial' && (
+          <div className="flex items-start gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4">
+            <span className="text-xl shrink-0 leading-none mt-0.5">⚠️</span>
+            <div>
+              <p className="text-sm font-bold text-amber-700 dark:text-amber-400">El adelanto no se devuelve si cancelas</p>
+              <p className="text-xs text-amber-600 dark:text-amber-500 mt-1 leading-relaxed">
+                Si cancelas tu reserva, los <span className="font-bold">S/ {Math.round(total * 0.20)}</span> del adelanto no son reembolsables. El saldo de <span className="font-bold">S/ {total - Math.round(total * 0.20)}</span> lo pagas directamente en la cancha el día del partido.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Precio */}
         <Card className="border-border p-4">
           <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Detalle del pago</p>
@@ -860,14 +905,47 @@ function PagoContent() {
                 <div>
                   <p className="mb-1 text-xs text-muted-foreground">Monto exacto</p>
                   <div className="flex items-center justify-between rounded-xl bg-primary/5 border border-primary/20 px-4 py-3">
-                    <span className="text-sm text-muted-foreground">Total</span>
-                    <span className="text-2xl font-bold text-primary">S/ {total}</span>
+                    <span className="text-sm text-muted-foreground">Total a pagar</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl font-bold text-primary">S/ {total}</span>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(String(total));
+                          setMontoCopiado(true);
+                          setTimeout(() => setMontoCopiado(false), 2000);
+                        }}
+                        className="flex items-center gap-1 rounded-lg bg-primary/10 px-2 py-1 text-xs font-medium text-primary hover:bg-primary/20 transition-colors"
+                      >
+                        <Copy className="h-3 w-3" />{montoCopiado ? '¡Copiado!' : 'Copiar'}
+                      </button>
+                    </div>
                   </div>
                 </div>
+
+                {/* Botón directo para abrir la app de pago */}
+                <a
+                  href={metodo === 'yape' ? 'yape://' : 'plin://'}
+                  className="flex items-center justify-center gap-3 w-full rounded-xl py-3.5 font-bold text-white active:scale-[0.98] transition-all"
+                  style={{ backgroundColor: metodo === 'yape' ? '#6C1FC6' : '#00B4D8' }}
+                >
+                  <Image
+                    src={metodo === 'yape' ? '/images/yape.png' : '/images/plin.png'}
+                    alt={metodo === 'yape' ? 'Yape' : 'Plin'}
+                    width={22}
+                    height={22}
+                    className="object-contain rounded"
+                  />
+                  Abrir {metodo === 'yape' ? 'Yape' : 'Plin'} · Enviar S/ {total}
+                  <ExternalLink className="h-4 w-4 opacity-70" />
+                </a>
+                <p className="text-center text-xs text-muted-foreground -mt-1">
+                  Si no abre automáticamente, sigue los pasos de abajo
+                </p>
+
                 <div className="space-y-2">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Pasos</p>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Pasos manuales</p>
                   {[
-                    `Abre tu app de ${metodo === 'yape' ? 'Yape' : 'plin'}`,
+                    `Abre tu app de ${metodo === 'yape' ? 'Yape' : 'Plin'}`,
                     `Envía S/ ${total} al número de arriba`,
                     'Toma captura de pantalla del comprobante',
                     'Súbela abajo y envía tu reserva',
