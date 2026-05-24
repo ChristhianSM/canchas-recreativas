@@ -48,8 +48,8 @@ export default function RegistroPage() {
 
     if (!formData.name) {
       newErrors.name = "El nombre es requerido";
-    } else if (formData.name.length < 3) {
-      newErrors.name = "El nombre debe tener al menos 3 caracteres";
+    } else if (formData.name.trim().length < 6) {
+      newErrors.name = "El nombre debe tener al menos 6 caracteres";
     }
 
     if (!formData.email) {
@@ -68,6 +68,8 @@ export default function RegistroPage() {
       newErrors.password = "La contraseña es requerida";
     } else if (formData.password.length < 6) {
       newErrors.password = "La contraseña debe tener al menos 6 caracteres";
+    } else if (!/[A-Z]/.test(formData.password)) {
+      newErrors.password = "La contraseña debe contener al menos una mayúscula";
     }
 
     if (!formData.confirmPassword) {

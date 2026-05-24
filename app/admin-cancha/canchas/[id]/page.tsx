@@ -20,9 +20,11 @@ const HORAS = [
   '18:00','19:00','20:00','21:00','22:00','23:00',
 ];
 
-type Cancha = {  id: string; nombre: string; descripcion: string; telefono: string;
+type Cancha = {
+  id: string; nombre: string; descripcion: string; telefono: string;
   precio_por_hora: number; amenidades: string[]; imagenes: string[];
   lat: number; lng: number; direccion: string;
+  yape_numero?: string; plin_numero?: string;
 };
 
 function getOwnerToken() {
@@ -148,7 +150,7 @@ function UbicacionTab({
           <MapPicker
             lat={mapLat}
             lng={mapLng}
-            onChange={(newLat, newLng, newDireccion) => {
+            onChange={(newLat: number, newLng: number, newDireccion?: string) => {
               onCoordsChange(String(newLat), String(newLng));
               if (newDireccion) onDireccionChange(newDireccion);
             }}
@@ -211,6 +213,10 @@ export default function OwnerEditarCanchaPage() {
   const [lng, setLng]               = useState('');
   const [direccion, setDireccion]   = useState('');
   const [distrito, setDistrito]     = useState('');
+  const [yapeNumero, setYapeNumero] = useState('');
+  const [plinNumero, setPlinNumero] = useState('');
+  const [yapeError, setYapeError]   = useState('');
+  const [plinError, setPlinError]   = useState('');
 
   useEffect(() => {
     const token = getOwnerToken();
@@ -246,6 +252,8 @@ export default function OwnerEditarCanchaPage() {
         setLng(String(canchaData.lng ?? ''));
         setDireccion(canchaData.direccion ?? '');
         setDistrito(canchaData.distrito ?? '');
+        setYapeNumero(canchaData.yape_numero ?? '');
+        setPlinNumero(canchaData.plin_numero ?? '');
       })
       .catch(err => {
         console.error('Error de red:', err);
@@ -253,9 +261,20 @@ export default function OwnerEditarCanchaPage() {
       });
   }, [id, router]);
 
+  const validarNumero = (num: string) =>
+    num === '' || /^9\d{8}$/.test(num);
+
   const handleSave = async () => {
     const token = getOwnerToken();
     if (!token) return;
+
+    // Validar números de pago antes de guardar
+    const yapeOk = validarNumero(yapeNumero);
+    const plinOk = validarNumero(plinNumero);
+    setYapeError(yapeOk ? '' : 'Debe ser un número peruano válido (9 dígitos, empieza con 9)');
+    setPlinError(plinOk ? '' : 'Debe ser un número peruano válido (9 dígitos, empieza con 9)');
+    if (!yapeOk || !plinOk) return;
+
     setSaving(true);
     setSaveError('');
 
@@ -288,6 +307,8 @@ export default function OwnerEditarCanchaPage() {
         lng: lng ? Number(lng) : undefined,
         direccion: direccion || undefined,
         distrito: distrito || undefined,
+        yapeNumero: yapeNumero || null,
+        plinNumero: plinNumero || null,
       }),
     });
 
@@ -456,6 +477,62 @@ export default function OwnerEditarCanchaPage() {
               <p className="text-xs text-muted-foreground">
                 {maxJugadores ? `Máximo ${maxJugadores} jugadores por partido` : 'Sin límite definido'}
               </p>
+            </div>
+
+            {/* Métodos de pago */}
+            <div className="space-y-3 pt-1">
+              <div>
+                <label className="text-sm font-medium text-foreground">Métodos de pago aceptados</label>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Ingresa el número de cada billetera. Déjalo vacío si no aceptas ese método.
+                </p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-6 w-6 items-center justify-center rounded-md bg-[#6C1FC6]/10">
+                      <span className="text-xs font-bold text-[#6C1FC6]">Y</span>
+                    </div>
+                    <label className="text-sm font-medium text-foreground">Número Yape</label>
+                  </div>
+                  <Input
+                    type="tel"
+                    placeholder="Ej: 987654321 (vacío = no aceptas Yape)"
+                    value={yapeNumero}
+                    onChange={e => { setYapeNumero(e.target.value); setYapeError(''); }}
+                    className={cn(yapeError && 'border-destructive focus-visible:ring-destructive')}
+                  />
+                  {yapeError && <p className="text-xs text-destructive">{yapeError}</p>}
+                </div>
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-6 w-6 items-center justify-center rounded-md bg-[#00C2CB]/10">
+                      <span className="text-xs font-bold text-[#00A0A8]">P</span>
+                    </div>
+                    <label className="text-sm font-medium text-foreground">Número Plin</label>
+                  </div>
+                  <Input
+                    type="tel"
+                    placeholder="Ej: 987654321 (vacío = no aceptas Plin)"
+                    value={plinNumero}
+                    onChange={e => { setPlinNumero(e.target.value); setPlinError(''); }}
+                    className={cn(plinError && 'border-destructive focus-visible:ring-destructive')}
+                  />
+                  {plinError && <p className="text-xs text-destructive">{plinError}</p>}
+                </div>
+              </div>
+              <div className={cn(
+                'flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-medium',
+                !yapeNumero && !plinNumero
+                  ? 'bg-amber-500/10 border border-amber-500/20 text-amber-700'
+                  : 'bg-primary/5 border border-primary/20 text-primary'
+              )}>
+                {!yapeNumero && !plinNumero ? (
+                  <>⚠️ Sin Yape ni Plin configurado — los clientes pagarán en <strong className="ml-1">efectivo en cancha</strong></>
+                ) : (
+                  <>✓ Acepta: {[yapeNumero && 'Yape', plinNumero && 'Plin'].filter(Boolean).join(' y ')}</>
+                )}
+              </div>
             </div>
           </Card>
 

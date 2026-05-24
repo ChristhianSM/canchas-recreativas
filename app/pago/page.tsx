@@ -18,11 +18,8 @@ import { cn } from '@/lib/utils';
 import { type Cupon } from '@/lib/auth';
 import { apiCrearReserva, apiGetLoyalty, getToken } from '@/lib/api';
 
-type MetodoPago = 'yape' | 'plin';
+type MetodoPago = 'yape' | 'plin' | 'efectivo';
 type Paso = 'metodo' | 'instrucciones' | 'exito';
-
-const NUMERO_YAPE = '987 654 321';
-const NUMERO_Plin = '987 654 321';
 const TIEMPO_LIMITE = 5 * 60; // 5 minutos
 
 // Clave única por bloqueo en localStorage
@@ -72,7 +69,6 @@ function PagoContent() {
   const [comprobante, setComprobante]             = useState<string | null>(null);
   const [enviando, setEnviando]                   = useState(false);
   const [segundos, setSegundos]                   = useState(TIEMPO_LIMITE);
-  const [bloqueado, setBloqueado]                 = useState(false);
   const [montoCopiado, setMontoCopiado]           = useState(false);
 
   const [modoPago, setModoPago]                       = useState<'completo' | 'parcial'>('completo');
@@ -112,6 +108,8 @@ function PagoContent() {
             chalecosPrecio:  data.chalecos_precio ?? null,
             lat:             data.latitud         ?? null,
             lng:             data.longitud        ?? null,
+            yapeNumero:      data.yape_numero     ?? '',
+            plinNumero:      data.plin_numero     ?? '',
           });
         } else {
           // Fallback a datos hardcodeados
@@ -156,7 +154,6 @@ function PagoContent() {
     const crearBloqueo = async () => {
       // Si ya existe el bloqueo en localStorage, no volver a crearlo en el servidor
       if (yaExiste) {
-        setBloqueado(true);
         return;
       }
 
@@ -180,7 +177,6 @@ function PagoContent() {
 
       if (data.ok) {
         guardarInicioBloqueo(canchaId, fecha, hora);
-        setBloqueado(true);
       }
     };
 
@@ -272,6 +268,28 @@ function PagoContent() {
     prevPaso.current = paso;
   }, [paso]);
 
+  // Métodos de pago disponibles según la cancha
+  const numeroYape     = cancha?.yapeNumero ?? '';
+  const numeroPlin     = cancha?.plinNumero ?? '';
+  const yapeDisponible = !!numeroYape;
+  const plinDisponible = !!numeroPlin;
+  const soloEfectivo   = !yapeDisponible && !plinDisponible;
+
+  // Cuando carga la cancha: si solo tiene un método, saltar el selector
+  const [pasoListo, setPasoListo] = useState(false);
+  useEffect(() => {
+    if (!cancha || pasoListo) return;
+    setPasoListo(true);
+    if (!yapeDisponible && plinDisponible) {
+      setMetodo('plin');
+      setPaso('instrucciones');
+    } else if (yapeDisponible && !plinDisponible) {
+      setMetodo('yape');
+      setPaso('instrucciones');
+    }
+    // Ambos o ninguno: comportamiento por defecto
+  }, [cancha, pasoListo, yapeDisponible, plinDisponible]);
+
   if (canchaLoading) return (
     <div className="flex min-h-screen items-center justify-center">
       <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
@@ -297,7 +315,7 @@ function PagoContent() {
   });
 
   const copiarNumero = () => {
-    const num = metodo === 'yape' ? NUMERO_YAPE : NUMERO_Plin;
+    const num = metodo === 'yape' ? numeroYape : numeroPlin;
     navigator.clipboard.writeText(num.replace(/\s/g, ''));
     setCopiado(true);
     setTimeout(() => setCopiado(false), 2000);
@@ -306,12 +324,53 @@ function PagoContent() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
     const reader = new FileReader();
-    reader.onload = ev => setComprobante(ev.target?.result as string);
+    reader.onload = ev => {
+      const original = ev.target?.result as string;
+      const img = new window.Image();
+      img.onload = () => {
+        const MAX = 1200;
+        let { width, height } = img;
+        if (width > MAX || height > MAX) {
+          if (width > height) { height = Math.round((height * MAX) / width); width = MAX; }
+          else                { width  = Math.round((width  * MAX) / height); height = MAX; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext('2d')!.drawImage(img, 0, 0, width, height);
+        setComprobante(canvas.toDataURL('image/jpeg', 0.75));
+      };
+      img.src = original;
+    };
     reader.readAsDataURL(file);
   };
 
   const handleEnviar = async () => {
+    // Caso efectivo: flujo simplificado sin comprobante
+    if (soloEfectivo) {
+      if (esInvitado) {
+        if (!emailInvitado.trim()) { setEmailError('Ingresa tu correo para recibir la confirmación'); return; }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInvitado)) { setEmailError('Ingresa un correo válido'); return; }
+        setEmailError('');
+      }
+      setEnviando(true);
+      await apiCrearReserva({
+        canchaId, canchaNombre: cancha.name, fecha, hora,
+        precio: total, precioOriginal: precioRaw,
+        cuponId: cuponSeleccionado, metodoPago: 'efectivo',
+        balonIncluido: conBalon, chalecosIncluido: conChalecos,
+        modoPago, montoAdelanto, saldoPendiente,
+        ...(esInvitado && emailInvitado ? { emailInvitado, telefonoInvitado: '', metodoDevolucion: 'yape' } : {}),
+      });
+      limpiarInicioBloqueo(canchaId, fecha, hora);
+      fetch('/api/bloqueos', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ canchaId, fecha, hora }) });
+      setEnviando(false);
+      setPaso('exito');
+      return;
+    }
+
     // Validar teléfono para usuarios registrados
     if (!esInvitado) {
       if (!telefonoRegistrado && !otroTelefono.trim()) {
@@ -410,11 +469,17 @@ function PagoContent() {
         <div className="mb-4 flex h-24 w-24 items-center justify-center rounded-full bg-primary/10">
           <CheckCircle2 className="h-12 w-12 text-primary" />
         </div>
-        <h1 className="mb-2 text-2xl font-bold text-foreground">¡Listo, ya casi!</h1>
-        <p className="mb-3 text-muted-foreground">Tu comprobante fue recibido correctamente.</p>
+        <h1 className="mb-2 text-2xl font-bold text-foreground">
+          {metodo === 'efectivo' ? '¡Reserva confirmada!' : '¡Listo, ya casi!'}
+        </h1>
+        <p className="mb-3 text-muted-foreground">
+          {metodo === 'efectivo' ? 'Tu reserva fue registrada. Paga en efectivo el día del partido.' : 'Tu comprobante fue recibido correctamente.'}
+        </p>
         <div className="mb-6 flex items-center gap-2 rounded-full bg-yellow-500/10 border border-yellow-500/20 px-4 py-2">
           <Clock className="h-4 w-4 text-yellow-600 shrink-0" />
-          <p className="text-sm text-yellow-700 dark:text-yellow-400 font-medium">El admin verificará tu pago en breve</p>
+          <p className="text-sm text-yellow-700 dark:text-yellow-400 font-medium">
+            {metodo === 'efectivo' ? 'El admin confirmará tu reserva en breve' : 'El admin verificará tu pago en breve'}
+          </p>
         </div>
 
         {esInvitado && emailInvitado ? (
@@ -451,7 +516,7 @@ function PagoContent() {
             </div>
             <Separator />
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Total pagado</span>
+              <span className="text-muted-foreground">{metodo === 'efectivo' ? 'Monto a pagar en cancha' : 'Total pagado'}</span>
               <span className="font-bold text-primary">S/ {total}</span>
             </div>
             <div className="flex items-center justify-between">
@@ -517,7 +582,7 @@ function PagoContent() {
           <div className="flex-1 min-w-0">
             <h1 className="text-sm font-semibold text-foreground leading-tight">Confirmar reserva</h1>
             <p className="text-xs text-muted-foreground">
-              {paso === 'metodo' ? 'Paso 1 de 2 · Elige método de pago' : 'Paso 2 de 2 · Sube tu comprobante'}
+              {soloEfectivo ? 'Pago en efectivo en cancha' : paso === 'metodo' ? 'Paso 1 de 2 · Elige método de pago' : 'Paso 2 de 2 · Sube tu comprobante'}
             </p>
           </div>
           <div className={cn(
@@ -532,7 +597,7 @@ function PagoContent() {
         <div className="h-0.5 bg-muted">
           <div
             className="h-full bg-primary transition-all duration-500"
-            style={{ width: paso === 'metodo' ? '50%' : '100%' }}
+            style={{ width: soloEfectivo || paso === 'instrucciones' ? '100%' : '50%' }}
           />
         </div>
       </header>
@@ -662,101 +727,105 @@ function PagoContent() {
           </Card>
         )}
 
-        {/* Selector de modo de pago */}
-        <div>
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">¿Cómo quieres pagar?</p>
-          <div className="space-y-3">
-            {/* Pago completo */}
-            <button
-              onClick={() => setModoPago('completo')}
-              className={cn(
-                'w-full text-left rounded-2xl border-2 p-4 transition-all',
-                modoPago === 'completo'
-                  ? 'border-primary bg-primary/5 shadow-sm'
-                  : 'border-border hover:border-muted-foreground/40'
-              )}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <div className={cn(
-                    'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-all',
-                    modoPago === 'completo' ? 'border-primary bg-primary' : 'border-muted-foreground/40'
-                  )}>
-                    {modoPago === 'completo' && (
-                      <svg className="h-3 w-3 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                      </svg>
-                    )}
-                  </div>
-                  <span className="font-semibold text-foreground">Pago completo (100%)</span>
-                </div>
-                <Badge className="shrink-0 bg-primary/10 text-primary border-primary/20 text-xs">Recomendado</Badge>
-              </div>
-              <p className="mt-2 ml-7 text-sm font-bold text-primary">S/ {total} ahora</p>
-              <ul className="mt-2 ml-7 space-y-1">
-                <li className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-500" />
-                  Cancelación con devolución hasta 85%
-                </li>
-                <li className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-500" />
-                  Reserva garantizada
-                </li>
-              </ul>
-            </button>
-
-            {/* Pago con adelanto */}
-            <button
-              onClick={() => total > 0 && setModoPago('parcial')}
-              disabled={total === 0}
-              className={cn(
-                'w-full text-left rounded-2xl border-2 p-4 transition-all',
-                total === 0 && 'opacity-50 cursor-not-allowed',
-                modoPago === 'parcial' && total > 0
-                  ? 'border-amber-500 bg-amber-500/5 shadow-sm'
-                  : 'border-border hover:border-muted-foreground/40'
-              )}
-            >
-              <div className="flex items-center gap-2">
-                <div className={cn(
-                  'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-all',
-                  modoPago === 'parcial' && total > 0 ? 'border-amber-500 bg-amber-500' : 'border-muted-foreground/40'
-                )}>
-                  {modoPago === 'parcial' && total > 0 && (
-                    <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                </div>
-                <span className="font-semibold text-foreground">Pago con adelanto (20%)</span>
-              </div>
-              {total > 0 ? (
-                <p className="mt-2 ml-7 text-sm text-muted-foreground">
-                  <span className="font-bold text-foreground">S/ {Math.round(total * 0.20)}</span> ahora
-                  {' · '}
-                  <span className="font-medium">S/ {total - Math.round(total * 0.20)}</span> en cancha
-                </p>
-              ) : (
-                <p className="mt-2 ml-7 text-xs text-muted-foreground">Agrega precio para habilitar esta opción</p>
-              )}
-              <div className="mt-2 ml-7 flex items-center gap-1.5">
-                <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">⚠ Sin devolución al cancelar</span>
-              </div>
-            </button>
-          </div>
-        </div>
-
-        {/* Warning adelanto — solo visible cuando está seleccionado */}
-        {modoPago === 'parcial' && (
-          <div className="flex items-start gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4">
-            <span className="text-xl shrink-0 leading-none mt-0.5">⚠️</span>
+        {/* Selector de modo de pago y warning adelanto — solo con Yape/Plin */}
+        {!soloEfectivo && (
+          <>
             <div>
-              <p className="text-sm font-bold text-amber-700 dark:text-amber-400">El adelanto no se devuelve si cancelas</p>
-              <p className="text-xs text-amber-600 dark:text-amber-500 mt-1 leading-relaxed">
-                Si cancelas tu reserva, los <span className="font-bold">S/ {Math.round(total * 0.20)}</span> del adelanto no son reembolsables. El saldo de <span className="font-bold">S/ {total - Math.round(total * 0.20)}</span> lo pagas directamente en la cancha el día del partido.
-              </p>
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">¿Cómo quieres pagar?</p>
+              <div className="space-y-3">
+                {/* Pago completo */}
+                <button
+                  onClick={() => setModoPago('completo')}
+                  className={cn(
+                    'w-full text-left rounded-2xl border-2 p-4 transition-all',
+                    modoPago === 'completo'
+                      ? 'border-primary bg-primary/5 shadow-sm'
+                      : 'border-border hover:border-muted-foreground/40'
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <div className={cn(
+                        'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-all',
+                        modoPago === 'completo' ? 'border-primary bg-primary' : 'border-muted-foreground/40'
+                      )}>
+                        {modoPago === 'completo' && (
+                          <svg className="h-3 w-3 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </div>
+                      <span className="font-semibold text-foreground">Pago completo (100%)</span>
+                    </div>
+                    <Badge className="shrink-0 bg-primary/10 text-primary border-primary/20 text-xs">Recomendado</Badge>
+                  </div>
+                  <p className="mt-2 ml-7 text-sm font-bold text-primary">S/ {total} ahora</p>
+                  <ul className="mt-2 ml-7 space-y-1">
+                    <li className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-500" />
+                      Cancelación con devolución hasta 85%
+                    </li>
+                    <li className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-500" />
+                      Reserva garantizada
+                    </li>
+                  </ul>
+                </button>
+
+                {/* Pago con adelanto */}
+                <button
+                  onClick={() => total > 0 && setModoPago('parcial')}
+                  disabled={total === 0}
+                  className={cn(
+                    'w-full text-left rounded-2xl border-2 p-4 transition-all',
+                    total === 0 && 'opacity-50 cursor-not-allowed',
+                    modoPago === 'parcial' && total > 0
+                      ? 'border-amber-500 bg-amber-500/5 shadow-sm'
+                      : 'border-border hover:border-muted-foreground/40'
+                  )}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className={cn(
+                      'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-all',
+                      modoPago === 'parcial' && total > 0 ? 'border-amber-500 bg-amber-500' : 'border-muted-foreground/40'
+                    )}>
+                      {modoPago === 'parcial' && total > 0 && (
+                        <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </div>
+                    <span className="font-semibold text-foreground">Pago con adelanto (20%)</span>
+                  </div>
+                  {total > 0 ? (
+                    <p className="mt-2 ml-7 text-sm text-muted-foreground">
+                      <span className="font-bold text-foreground">S/ {Math.round(total * 0.20)}</span> ahora
+                      {' · '}
+                      <span className="font-medium">S/ {total - Math.round(total * 0.20)}</span> en cancha
+                    </p>
+                  ) : (
+                    <p className="mt-2 ml-7 text-xs text-muted-foreground">Agrega precio para habilitar esta opción</p>
+                  )}
+                  <div className="mt-2 ml-7 flex items-center gap-1.5">
+                    <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">⚠ Sin devolución al cancelar</span>
+                  </div>
+                </button>
+              </div>
             </div>
-          </div>
+
+            {/* Warning adelanto — solo visible cuando está seleccionado */}
+            {modoPago === 'parcial' && (
+              <div className="flex items-start gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4">
+                <span className="text-xl shrink-0 leading-none mt-0.5">⚠️</span>
+                <div>
+                  <p className="text-sm font-bold text-amber-700 dark:text-amber-400">El adelanto no se devuelve si cancelas</p>
+                  <p className="text-xs text-amber-600 dark:text-amber-500 mt-1 leading-relaxed">
+                    Si cancelas tu reserva, los <span className="font-bold">S/ {Math.round(total * 0.20)}</span> del adelanto no son reembolsables. El saldo de <span className="font-bold">S/ {total - Math.round(total * 0.20)}</span> lo pagas directamente en la cancha el día del partido.
+                  </p>
+                </div>
+              </div>
+            )}
+          </>
         )}
 
         {/* Precio */}
@@ -824,8 +893,56 @@ function PagoContent() {
           )}
         </Card>
 
+        {/* Efectivo — cancha sin Yape ni Plin */}
+        {soloEfectivo && (
+          <>
+            <div className="flex items-start gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4">
+              <span className="text-xl shrink-0 leading-none mt-0.5">💵</span>
+              <div>
+                <p className="text-sm font-bold text-amber-700 dark:text-amber-400">Pago en efectivo en cancha</p>
+                <p className="text-xs text-amber-600 dark:text-amber-500 mt-1 leading-relaxed">
+                  Esta cancha no acepta Yape ni Plin. Paga directamente en la cancha el día de tu partido.
+                </p>
+              </div>
+            </div>
+
+            {esInvitado && (
+              <Card className="border-primary/30 bg-primary/5 p-5 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Mail className="h-4 w-4 text-primary" />
+                  <p className="font-medium text-foreground">Tu correo de contacto</p>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Lo necesitamos para enviarte la confirmación de tu reserva.
+                </p>
+                <div className="space-y-1">
+                  <Input
+                    type="email"
+                    placeholder="tu@correo.com"
+                    value={emailInvitado}
+                    onChange={e => { setEmailInvitado(e.target.value); setEmailError(''); }}
+                    className={cn('bg-background', emailError && 'border-destructive focus-visible:ring-destructive')}
+                  />
+                  {emailError && <p className="text-xs text-destructive">{emailError}</p>}
+                </div>
+              </Card>
+            )}
+
+            <LoadingButton
+              size="lg"
+              className="w-full"
+              onClick={handleEnviar}
+              isLoading={enviando}
+              loadingText="Confirmando..."
+              loadingVariant="spinner"
+            >
+              Confirmar reserva (pago en cancha)
+            </LoadingButton>
+          </>
+        )}
+
         {/* Método */}
-        {paso === 'metodo' && (
+        {!soloEfectivo && paso === 'metodo' && (
           <>
             <div>
               <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Método de pago</p>
@@ -868,7 +985,7 @@ function PagoContent() {
         )}
 
         {/* Instrucciones + comprobante */}
-        {paso === 'instrucciones' && (
+        {!soloEfectivo && paso === 'instrucciones' && (
           <>
             <Card className="border-border overflow-hidden">
               <div className={cn('flex items-center gap-3 px-5 py-4', metodo === 'yape' ? 'bg-[#6C1FC6]' : 'bg-[#00B4D8]')}>
@@ -893,7 +1010,7 @@ function PagoContent() {
                     <div className="flex items-center gap-2">
                       <Smartphone className="h-5 w-5 text-primary" />
                       <span className="text-xl font-bold tracking-widest text-foreground">
-                        {metodo === 'yape' ? NUMERO_YAPE : NUMERO_Plin}
+                        {metodo === 'yape' ? numeroYape : numeroPlin}
                       </span>
                     </div>
                     <button onClick={copiarNumero}
@@ -1179,9 +1296,11 @@ function PagoContent() {
             )}
 
             <div className="flex gap-3">
-              <Button variant="outline" size="lg" className="flex-1" onClick={() => setPaso('metodo')}>
-                Cambiar método
-              </Button>
+              {yapeDisponible && plinDisponible && (
+                <Button variant="outline" size="lg" className="flex-1" onClick={() => setPaso('metodo')}>
+                  Cambiar método
+                </Button>
+              )}
               <LoadingButton
                 size="lg"
                 className="flex-1"

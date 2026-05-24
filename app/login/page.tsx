@@ -33,8 +33,6 @@ function LoginContent() {
     }
     if (!formData.password) {
       newErrors.password = "La contraseña es requerida";
-    } else if (formData.password.length < 6) {
-      newErrors.password = "La contraseña debe tener al menos 6 caracteres";
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;

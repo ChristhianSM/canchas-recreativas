@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
 import { sendReservaRecibidaEmail } from '@/lib/email';
+import { rateLimit } from '@/lib/rate-limit';
 
 // GET — obtener reservas del usuario autenticado
 export async function GET(req: NextRequest) {
@@ -23,6 +24,9 @@ export async function GET(req: NextRequest) {
 
 // POST — crear nueva reserva
 export async function POST(req: NextRequest) {
+  const limited = rateLimit(req, { maxRequests: 10, windowMs: 60 * 1000 });
+  if (limited) return limited;
+
   const token = req.headers.get('authorization')?.replace('Bearer ', '');
   const sb = createServiceClient();
 

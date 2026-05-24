@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase, createServiceClient } from '@/lib/supabase';
+import { rateLimit } from '@/lib/rate-limit';
 
 export async function POST(req: NextRequest) {
+  const limited = rateLimit(req, { maxRequests: 10, windowMs: 60 * 1000 });
+  if (limited) return limited;
+
   const { email, password } = await req.json();
 
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });

@@ -80,6 +80,7 @@ export default function CalificarCancha({ canchaId }: Props) {
         total: prev.total + 1,
         promedio: Math.round(((prev.promedio * prev.total + seleccion) / (prev.total + 1)) * 10) / 10,
         distribucion: nuevaDistribucion,
+        miCalificacion: seleccion,
       };
     });
   };

@@ -71,7 +71,7 @@ export async function validateToken(): Promise<boolean> {
   }
 }
 
-function authHeaders() {
+function authHeaders(): Record<string, string> {
   const token = getToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
