@@ -47,23 +47,29 @@ function adaptCancha(c: Cancha) {
   const horariosOcupados = c.horariosOcupados || {};
   const horariosRestringidos = c.horariosRestringidos || [];
   
+  const ahora = new Date();
+  const horaActualMinutos = ahora.getHours() * 60 + ahora.getMinutes();
+  const hoyStr = getLocalDateString(ahora);
+
   for (let i = 0; i < 14; i++) {
     const d = new Date();
     d.setDate(d.getDate() + i);
     const dateStr = getLocalDateString(d);
-    
+    const esHoy = dateStr === hoyStr;
+
     schedule[dateStr] = HORAS
-      .filter(hora => !horariosRestringidos.includes(hora)) // Excluir horarios restringidos
+      .filter(hora => !horariosRestringidos.includes(hora))
       .map(hora => {
         const key = `${dateStr}|${hora}`;
         const estadoOcupado = horariosOcupados[key];
-        
+        const esPasada = esHoy && (() => { const [h] = hora.split(':').map(Number); return h * 60 <= horaActualMinutos; })();
+
         return {
           id: `${dateStr}-${hora}`,
           time: hora,
-          available: !estadoOcupado,
+          available: !estadoOcupado && !esPasada,
           price: c.precio_por_hora,
-          status: estadoOcupado || 'disponible',
+          status: esPasada ? 'en_proceso' : (estadoOcupado || 'disponible'),
         };
       });
   }
@@ -637,25 +643,40 @@ export default function HomePage() {  const router = useRouter();
                         <div className="flex items-center justify-center py-8">
                           <Loader2 className="h-6 w-6 animate-spin text-[#16a34a]" />
                         </div>
-                      ) : availableHours.length > 0 ? (
-                        <div className="grid grid-cols-3 gap-2">
-                          {availableHours.map((time) => (
-                            <button
-                              key={time}
-                              onClick={() => handleTimeSelect(time)}
-                              className={`
-                                px-3 py-2 text-sm rounded-md transition-colors
-                                ${selectedTime === time 
-                                  ? 'bg-[#16a34a] text-white' 
-                                  : 'bg-gray-50 dark:bg-muted hover:bg-gray-100 dark:hover:bg-muted/80'
-                                }
-                              `}
-                            >
-                              {time}
-                            </button>
-                          ))}
-                        </div>
                       ) : (
+                        <div className="grid grid-cols-3 gap-2">
+                          {HORAS.map((time) => {
+                            const ahora = new Date();
+                            const esHoy = selectedDate ? getLocalDateString(selectedDate) === getLocalDateString(ahora) : true;
+                            const [h] = time.split(':').map(Number);
+                            const esPasada = esHoy && h * 60 <= ahora.getHours() * 60 + ahora.getMinutes();
+                            const estaDisponible = availableHours.includes(time);
+                            const deshabilitada = esPasada || !estaDisponible;
+
+                            return (
+                              <button
+                                key={time}
+                                onClick={() => !deshabilitada && handleTimeSelect(time)}
+                                disabled={deshabilitada}
+                                className={`
+                                  px-3 py-2 text-sm rounded-md transition-colors
+                                  ${selectedTime === time
+                                    ? 'bg-[#16a34a] text-white'
+                                    : esPasada
+                                      ? 'bg-gray-100 dark:bg-muted text-gray-300 dark:text-gray-600 cursor-not-allowed line-through'
+                                      : !estaDisponible
+                                        ? 'bg-gray-100 dark:bg-muted text-gray-300 dark:text-gray-600 cursor-not-allowed'
+                                        : 'bg-gray-50 dark:bg-muted hover:bg-gray-100 dark:hover:bg-muted/80'
+                                  }
+                                `}
+                              >
+                                {time}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                      {availableHours.length === 0 && (
                         <div className="text-center py-8 text-sm text-gray-500">
                           No hay horarios disponibles para esta fecha
                         </div>
