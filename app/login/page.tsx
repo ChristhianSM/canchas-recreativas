@@ -78,8 +78,8 @@ function LoginContent() {
       </div>
 
       {/* Header transparente */}
-      <header className="border-b border-white/10 bg-black/20 backdrop-blur-sm sticky top-0">
-        <div className="container bg-white mx-auto flex items-center gap-4 px-4 py-4">
+      <header className="border-b border-gray-200 bg-white backdrop-blur-sm sticky top-0 z-10">
+        <div className="container  mx-auto flex items-center gap-4 px-4 py-4">
           <button
             onClick={() => router.back()}
             className="flex cursor-pointer items-center text-black/80 hover:text-white transition-colors"
