@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import Image from 'next/image';
-import { CheckCircle2, XCircle, Clock, Eye, AlertCircle } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, Eye, AlertCircle, Search, X, CalendarDays } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { LoadingButton } from '@/components/loading-button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -31,6 +32,11 @@ type Reserva = {
   penalidad_aplicada: number | null;
   porcentaje_devolucion: number | null;
   devolucion_procesada: boolean | null;
+  modo_pago?: 'completo' | 'parcial';
+  monto_adelanto?: number;
+  saldo_pendiente?: number;
+  saldo_cobrado?: boolean;
+  saldo_cobrado_en?: string | null;
 };
 
 function getOwnerToken() {
@@ -70,6 +76,33 @@ export default function OwnerReservasPage() {
   const [procesando, setProcesando]     = useState(false);
   const [confirmando, setConfirmando]   = useState(false);
   const [rechazando, setRechazando]     = useState(false);
+  const [marcandoSaldo, setMarcandoSaldo] = useState(false);
+  const [filtroFecha, setFiltroFecha]   = useState('');
+  const [filtroEmail, setFiltroEmail]   = useState('');
+  const [filtroCancha, setFiltroCancha] = useState('');
+  const [filtroModoPago, setFiltroModoPago] = useState<'todos' | 'completo' | 'parcial'>('todos');
+
+  const cancharUnicas = useMemo(() =>
+    [...new Set(reservas.map(r => r.cancha_nombre).filter(Boolean))].sort(),
+    [reservas],
+  );
+
+  const hayFiltrosActivos = filtroFecha || filtroEmail || filtroCancha || filtroModoPago !== 'todos';
+
+  const limpiarFiltros = () => {
+    setFiltroFecha('');
+    setFiltroEmail('');
+    setFiltroCancha('');
+    setFiltroModoPago('todos');
+  };
+
+  const aplicarFiltros = (lista: Reserva[]) => lista.filter(r => {
+    if (filtroFecha    && r.fecha !== filtroFecha) return false;
+    if (filtroEmail    && !r.usuario_email?.toLowerCase().includes(filtroEmail.toLowerCase())) return false;
+    if (filtroCancha   && r.cancha_nombre !== filtroCancha) return false;
+    if (filtroModoPago !== 'todos' && (r.modo_pago ?? 'completo') !== filtroModoPago) return false;
+    return true;
+  });
 
   const reload = async () => {
     const token = getOwnerToken();
@@ -78,7 +111,14 @@ export default function OwnerReservasPage() {
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();
-    setReservas(Array.isArray(data) ? data : []);
+    setReservas(Array.isArray(data) ? data.map((r: any) => ({
+      ...r,
+      modo_pago: r.modo_pago ?? 'completo',
+      monto_adelanto: r.monto_adelanto,
+      saldo_pendiente: r.saldo_pendiente ?? 0,
+      saldo_cobrado: r.saldo_cobrado ?? false,
+      saldo_cobrado_en: r.saldo_cobrado_en ?? null,
+    })) : []);
     setLoading(false);
   };
 
@@ -165,7 +205,35 @@ export default function OwnerReservasPage() {
     }
   };
 
-  const byEstado = (e: ReservaEstado) => reservas.filter(r => r.estado === e);
+  const marcarSaldoCobrado = async (id: string) => {
+    setMarcandoSaldo(true);
+    
+    // Optimistic update - actualizar inmediatamente en el estado local
+    setReservas(prev => prev.map(r => 
+      r.id === id ? { ...r, saldo_cobrado: true, saldo_cobrado_en: new Date().toISOString() } : r
+    ));
+    
+    // Cerrar modal inmediatamente
+    setSelected(null);
+    
+    // Hacer la petición al servidor en segundo plano
+    const token = getOwnerToken();
+    try {
+      await fetch(`/api/reservas/update?id=${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ saldo_cobrado: true }),
+      });
+    } catch (error) {
+      // Si falla, recargar para obtener el estado real
+      reload();
+    } finally {
+      setMarcandoSaldo(false);
+    }
+  };
+
+  const byEstado = (e: ReservaEstado) => aplicarFiltros(reservas.filter(r => r.estado === e));
+  const todasFiltradas = () => aplicarFiltros(reservas);
 
   // Solo las canceladas con devolución pendiente (monto > 0 y aún no procesada)
   const devolucionesPendientes = byEstado('cancelada').filter(
@@ -195,6 +263,19 @@ export default function OwnerReservasPage() {
       </td>
       <td className="px-4 py-3 text-sm text-muted-foreground">{r.hora}</td>
       <td className="px-4 py-3 text-sm font-semibold text-primary">S/ {r.precio}</td>
+      <td className="px-4 py-3">
+        {r.modo_pago === 'parcial' && !r.saldo_cobrado ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-2 py-0.5 text-xs font-semibold text-orange-700">
+            S/ {r.saldo_pendiente}
+          </span>
+        ) : r.modo_pago === 'parcial' && r.saldo_cobrado ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">
+            ✓ Completo
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground">—</span>
+        )}
+      </td>
       <td className="px-4 py-3 text-sm capitalize text-muted-foreground">{r.metodo_pago}</td>
       <td className="px-4 py-3">{estadoBadge(r.estado)}</td>
       <td className="px-4 py-3">
@@ -233,7 +314,7 @@ export default function OwnerReservasPage() {
         <table className="w-full text-sm">
           <thead className="border-b border-border bg-muted/40">
             <tr>
-              {['Cliente', 'Cancha', 'Fecha', 'Hora', 'Monto', 'Método', 'Estado', 'Devolución', ''].map(h => (
+              {['Cliente', 'Cancha', 'Fecha', 'Hora', 'Monto', 'Saldo', 'Método', 'Estado', 'Devolución', ''].map(h => (
                 <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">{h}</th>
               ))}
             </tr>
@@ -325,6 +406,56 @@ export default function OwnerReservasPage() {
         </Card>
       )}
 
+      {/* Filtros */}
+      <Card className="border-border p-4">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-sm font-medium text-muted-foreground">Filtros</p>
+          {hayFiltrosActivos && (
+            <button onClick={limpiarFiltros} className="flex items-center gap-1 text-xs text-primary hover:underline">
+              <X className="h-3 w-3" />
+              Limpiar filtros
+            </button>
+          )}
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="relative">
+            <CalendarDays className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            <input
+              type="date"
+              value={filtroFecha}
+              onChange={e => setFiltroFecha(e.target.value)}
+              className="w-full rounded-md border border-border bg-background pl-9 pr-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por correo..."
+              value={filtroEmail}
+              onChange={e => setFiltroEmail(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <select
+            value={filtroCancha}
+            onChange={e => setFiltroCancha(e.target.value)}
+            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            <option value="">Todas las canchas</option>
+            {cancharUnicas.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <select
+            value={filtroModoPago}
+            onChange={e => setFiltroModoPago(e.target.value as 'todos' | 'completo' | 'parcial')}
+            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            <option value="todos">Modo de pago</option>
+            <option value="completo">Completo</option>
+            <option value="parcial">Parcial</option>
+          </select>
+        </div>
+      </Card>
+
       <Card className="border-border overflow-hidden">
         <Tabs defaultValue="pendiente">
           <div className="border-b border-border overflow-x-auto -mx-4 px-4 pb-4">
@@ -352,7 +483,7 @@ export default function OwnerReservasPage() {
                 )}
               </TabsTrigger>
               <TabsTrigger value="todas" className="shrink-0 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                Todas ({reservas.length})
+                Todas ({todasFiltradas().length})
               </TabsTrigger>
             </TabsList>
           </div>
@@ -360,7 +491,7 @@ export default function OwnerReservasPage() {
           <TabsContent value="confirmada" className="mt-0"><Table list={byEstado('confirmada')} /></TabsContent>
           <TabsContent value="rechazada"  className="mt-0"><Table list={byEstado('rechazada')} /></TabsContent>
           <TabsContent value="cancelada"  className="mt-0"><Table list={byEstado('cancelada')} /></TabsContent>
-          <TabsContent value="todas"      className="mt-0"><Table list={reservas} /></TabsContent>
+          <TabsContent value="todas"      className="mt-0"><Table list={todasFiltradas()} /></TabsContent>
         </Tabs>
       </Card>
 
@@ -395,6 +526,65 @@ export default function OwnerReservasPage() {
                   <p className="text-xs capitalize text-muted-foreground">{selected.metodo_pago}</p>
                 </div>
               </div>
+
+              {/* Bloque pago parcial — mostrar desglose y botón para marcar saldo cobrado */}
+              {selected.modo_pago === 'parcial' && selected.estado !== 'cancelada' && (
+                <div className={`rounded-lg border p-4 space-y-3 ${
+                  selected.saldo_cobrado
+                    ? 'border-green-200 bg-green-50'
+                    : 'border-orange-200 bg-orange-50'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-foreground">Pago parcial — Saldo en cancha</p>
+                    {selected.saldo_cobrado
+                      ? <Badge className="bg-green-100 text-green-700 border-green-300">✓ Cobrado</Badge>
+                      : <Badge className="bg-orange-100 text-orange-700 border-orange-300">Pendiente</Badge>
+                    }
+                  </div>
+
+                  {/* Resumen montos */}
+                  <div className="grid grid-cols-3 gap-2 text-center text-sm">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Adelanto online</p>
+                      <p className="font-bold text-green-600">S/ {selected.monto_adelanto}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Saldo en cancha</p>
+                      <p className={`font-bold ${selected.saldo_cobrado ? 'text-green-600' : 'text-orange-600'}`}>
+                        S/ {selected.saldo_pendiente}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Total</p>
+                      <p className="font-bold text-primary">S/ {selected.precio}</p>
+                    </div>
+                  </div>
+
+                  {/* Botón o confirmación */}
+                  {!selected.saldo_cobrado ? (
+                    <>
+                      <p className="text-xs text-orange-700 font-medium">
+                        Cobra S/ {selected.saldo_pendiente} al cliente cuando llegue a la cancha
+                      </p>
+                      <LoadingButton
+                        className="w-full bg-green-600 hover:bg-green-700 text-white"
+                        onClick={() => marcarSaldoCobrado(selected.id)}
+                        isLoading={marcandoSaldo}
+                        loadingText="Guardando"
+                        loadingVariant="spinner"
+                      >
+                        <CheckCircle2 className="mr-2 h-4 w-4" />
+                        ✅ Ya cobré el saldo
+                      </LoadingButton>
+                    </>
+                  ) : (
+                    <p className="text-xs text-green-700">
+                      ✓ Saldo de S/ {selected.saldo_pendiente} marcado como cobrado
+                      {selected.saldo_cobrado_en && ` el ${new Date(selected.saldo_cobrado_en).toLocaleDateString('es-PE', { day: 'numeric', month: 'long' })}`}
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* Bloque devolución — solo si está cancelada */}
               {selected.estado === 'cancelada' && (selected.devolucion_calculada ?? 0) > 0 && (

@@ -28,7 +28,7 @@
   --chart-3: oklch(0.5 0.15 250);
   --chart-4: oklch(0.7 0.15 80);
   --chart-5: oklch(0.6 0.2 320);
-  --radius: 0.75rem;
+  --radius: 0.6rem;
   --sidebar: oklch(0.98 0.005 90);
   --sidebar-foreground: oklch(0.15 0.02 250);
   --sidebar-primary: oklch(0.55 0.2 145);
@@ -75,7 +75,7 @@
 }
 
 @theme inline {
-  --font-sans: var(--font-inter), 'Inter', system-ui, sans-serif;
+  --font-sans: var(--font-poppins), 'Poppins', system-ui, sans-serif;
   --font-display: var(--font-poppins), 'Poppins', system-ui, sans-serif;
   --font-mono: 'Geist Mono', 'Geist Mono Fallback';
   --color-background: var(--background);
@@ -253,4 +253,19 @@ h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-display);
   font-weight: 800;
   letter-spacing: -0.03em;
+}
+
+/* Prevenir scroll automático en elementos de filtros */
+[data-slot="checkbox"],
+[data-slot="checkbox"] *,
+.overflow-y-auto [role="checkbox"],
+.overflow-y-auto input[type="checkbox"],
+.overflow-y-auto button {
+  scroll-margin: 0 !important;
+}
+
+/* Desactivar scroll automático en contenedores de filtros */
+.overflow-y-auto {
+  scroll-behavior: auto !important;
+  overflow-anchor: none !important;
 }

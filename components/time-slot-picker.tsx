@@ -37,6 +37,11 @@ function formatDate(dateString: string): { day: string; date: number; month: str
   };
 }
 
+// Cuenta slots disponibles para una fecha (excluye pasados)
+function getDisponiblesCount(slots: TimeSlot[], dateStr: string): number {
+  return slots.filter(s => s.status === 'disponible' && !isSlotPasado(dateStr, s.time)).length;
+}
+
 // Devuelve true si el slot ya pasó hoy (solo aplica cuando la fecha seleccionada es hoy)
 function isSlotPasado(selectedDate: string, slotTime: string): boolean {
   const now = new Date();
@@ -82,17 +87,26 @@ export function TimeSlotPicker({
       <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none snap-x snap-mandatory md:hidden">
         {dates.map((date) => {
           const formatted = formatDate(date);
+          const disponibles = getDisponiblesCount(schedule[date] || [], date);
+          const totalSlots = (schedule[date] || []).length;
+          const agotado = totalSlots > 0 && disponibles === 0;
+          const pocos = disponibles > 0 && disponibles <= 2;
           return (
             <button
               key={date}
               onClick={() => onDateChange(date)}
               className={cn(
-                'flex shrink-0 snap-start flex-col items-center justify-center rounded-lg py-3 px-3 transition-all w-[64px] h-[70px]',
+                'relative flex shrink-0 snap-start flex-col items-center justify-center rounded-lg py-3 px-3 transition-all w-[64px] h-[70px]',
                 selectedDate === date
                   ? 'bg-primary text-primary-foreground'
+                  : agotado
+                  ? 'bg-secondary text-secondary-foreground opacity-50'
                   : 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
               )}
             >
+              {pocos && selectedDate !== date && (
+                <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-orange-500" />
+              )}
               <span className="text-xs font-medium">
                 {formatted.isToday ? 'Hoy' : formatted.day}
               </span>
@@ -119,6 +133,10 @@ export function TimeSlotPicker({
             <div className="grid gap-2 w-full grid-cols-6">
               {visibleDates.map((date) => {
                 const formatted = formatDate(date);
+                const disponibles = getDisponiblesCount(schedule[date] || [], date);
+                const totalSlots = (schedule[date] || []).length;
+                const agotado = totalSlots > 0 && disponibles === 0;
+                const pocos = disponibles > 0 && disponibles <= 2;
                 return (
                   <button
                     key={date}
@@ -127,10 +145,15 @@ export function TimeSlotPicker({
                       'relative flex flex-col items-center justify-center rounded-lg py-3 px-1 transition-all w-full h-[80px]',
                       selectedDate === date
                         ? 'bg-primary text-primary-foreground'
+                        : agotado
+                        ? 'bg-secondary text-secondary-foreground opacity-50'
                         : 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
                     )}
                   >
-                    <span className="text-xs font-medium">{formatted.day}</span>
+                    {pocos && selectedDate !== date && (
+                      <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-orange-500" />
+                    )}
+                    <span className="text-xs font-medium">{formatted.isToday ? 'Hoy' : formatted.day}</span>
                     <span className="text-lg font-bold">{formatted.date}</span>
                     <span className="text-xs opacity-75">{formatted.month}</span>
                   </button>

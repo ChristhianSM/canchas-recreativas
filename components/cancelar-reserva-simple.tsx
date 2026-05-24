@@ -19,6 +19,8 @@ interface Reserva {
   precio: number;
   estado: 'pendiente' | 'confirmada' | 'rechazada' | 'cancelada';
   metodoPago: string;
+  modoPago?: 'completo' | 'parcial';
+  montoAdelanto?: number;
 }
 
 interface CancelarReservaSimpleProps {
@@ -84,6 +86,7 @@ export default function CancelarReservaSimple({ reserva, onClose, onConfirm }: C
   if (!reserva) return null;
 
   const devolucion = calcularDevolucionEstimada(reserva);
+  const esParcial = reserva.modoPago === 'parcial';
   const fechaLabel = new Date(reserva.fecha).toLocaleDateString('es-PE', { 
     day: 'numeric', 
     month: 'long',
@@ -128,47 +131,62 @@ export default function CancelarReservaSimple({ reserva, onClose, onConfirm }: C
             </div>
           </div>
 
-          {/* Cálculo de devolución */}
-          <div className="rounded-lg border p-2.5 sm:p-3 space-y-2.5 sm:space-y-3">
-            <h4 className="font-medium flex items-center gap-2 text-sm sm:text-base">
-              <Info className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
-              <span className="break-words">Devolución Estimada</span>
-            </h4>
-            
-            <div className={`text-xs sm:text-sm break-words ${devolucion.color}`}>
-              {devolucion.descripcion}
+          {/* Aviso pago parcial / Cálculo de devolución */}
+          {esParcial ? (
+            <div className="rounded-lg border border-orange-200 bg-orange-50 p-2.5 sm:p-3 space-y-2">
+              <h4 className="font-medium flex items-center gap-2 text-sm sm:text-base text-orange-800">
+                <AlertTriangle className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+                <span>Sin devolución</span>
+              </h4>
+              <p className="text-xs sm:text-sm text-orange-700 break-words">
+                Al cancelar una reserva con adelanto, perderás el monto abonado (S/ {reserva.montoAdelanto ?? reserva.precio}). No hay devolución.
+              </p>
             </div>
+          ) : (
+            /* Cálculo de devolución estándar */
+            <div className="rounded-lg border p-2.5 sm:p-3 space-y-2.5 sm:space-y-3">
+              <h4 className="font-medium flex items-center gap-2 text-sm sm:text-base">
+                <Info className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+                <span className="break-words">Devolución Estimada</span>
+              </h4>
+              
+              <div className={`text-xs sm:text-sm break-words ${devolucion.color}`}>
+                {devolucion.descripcion}
+              </div>
 
-            <div className="grid grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm">
-              <div className="text-center p-1.5 sm:p-2 rounded bg-green-50 min-w-0">
-                <p className="text-[10px] sm:text-xs text-muted-foreground">Devolución</p>
-                <p className="font-bold text-green-600 break-words text-sm sm:text-base">S/ {devolucion.monto}</p>
-                <p className="text-[10px] sm:text-xs text-green-600">({devolucion.porcentaje}%)</p>
+              <div className="grid grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm">
+                <div className="text-center p-1.5 sm:p-2 rounded bg-green-50 min-w-0">
+                  <p className="text-[10px] sm:text-xs text-muted-foreground">Devolución</p>
+                  <p className="font-bold text-green-600 break-words text-sm sm:text-base">S/ {devolucion.monto}</p>
+                  <p className="text-[10px] sm:text-xs text-green-600">({devolucion.porcentaje}%)</p>
+                </div>
+                <div className="text-center p-1.5 sm:p-2 rounded bg-red-50 min-w-0">
+                  <p className="text-[10px] sm:text-xs text-muted-foreground">Penalidad</p>
+                  <p className="font-bold text-red-600 break-words text-sm sm:text-base">S/ {reserva.precio - devolucion.monto}</p>
+                  <p className="text-[10px] sm:text-xs text-red-600">({100 - devolucion.porcentaje}%)</p>
+                </div>
               </div>
-              <div className="text-center p-1.5 sm:p-2 rounded bg-red-50 min-w-0">
-                <p className="text-[10px] sm:text-xs text-muted-foreground">Penalidad</p>
-                <p className="font-bold text-red-600 break-words text-sm sm:text-base">S/ {reserva.precio - devolucion.monto}</p>
-                <p className="text-[10px] sm:text-xs text-red-600">({100 - devolucion.porcentaje}%)</p>
-              </div>
+
+              {devolucion.monto > 0 && (
+                <div className="text-[10px] sm:text-xs text-muted-foreground bg-blue-50 p-2 rounded break-words">
+                  💰 La devolución se procesará por {reserva.metodoPago === 'yape' ? 'Yape' : 'Plin'} en 24-48 horas
+                </div>
+              )}
             </div>
+          )}
 
-            {devolucion.monto > 0 && (
-              <div className="text-[10px] sm:text-xs text-muted-foreground bg-blue-50 p-2 rounded break-words">
-                💰 La devolución se procesará por {reserva.metodoPago === 'yape' ? 'Yape' : 'Plin'} en 24-48 horas
-              </div>
-            )}
-          </div>
-
-          {/* Política general */}
-          <div className="rounded-lg bg-muted/50 p-2.5 sm:p-3 text-[10px] sm:text-xs text-muted-foreground">
-            <p className="font-medium mb-1">Política de Cancelación:</p>
-            <ul className="space-y-0.5">
-              <li className="break-words">• +4 horas: 85% devolución</li>
-              <li className="break-words">• 2-4 horas: 60% devolución</li>
-              <li className="break-words">• 1-2 horas: 30% devolución</li>
-              <li className="break-words">• -1 hora: Sin devolución</li>
-            </ul>
-          </div>
+          {/* Política general — solo aplica a pago completo */}
+          {!esParcial && (
+            <div className="rounded-lg bg-muted/50 p-2.5 sm:p-3 text-[10px] sm:text-xs text-muted-foreground">
+              <p className="font-medium mb-1">Política de Cancelación:</p>
+              <ul className="space-y-0.5">
+                <li className="break-words">• +4 horas: 85% devolución</li>
+                <li className="break-words">• 2-4 horas: 60% devolución</li>
+                <li className="break-words">• 1-2 horas: 30% devolución</li>
+                <li className="break-words">• -1 hora: Sin devolución</li>
+              </ul>
+            </div>
+          )}
 
           {/* Casos especiales */}
           <div className="rounded-lg bg-blue-50 p-2.5 sm:p-3 text-[10px] sm:text-xs">

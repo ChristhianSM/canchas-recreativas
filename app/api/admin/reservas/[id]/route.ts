@@ -1,31 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
 import { sendReservaEmail } from '@/lib/email';
+import { verifyAdmin } from '@/lib/admin-auth';
 
-// PATCH — admin general confirma o rechaza una reserva
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
   const token = req.headers.get('authorization')?.replace('Bearer ', '');
-  if (!token) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+  if (!await verifyAdmin(token)) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
   const sb = createServiceClient();
 
-  // Verificar que el usuario es admin
-  const { data: { user }, error: authError } = await sb.auth.getUser(token);
-  if (authError || !user) return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
+  const body = await req.json();
 
-  const { data: usuario } = await sb
-    .from('usuarios')
-    .select('rol')
-    .eq('id', user.id)
-    .single();
-
-  if (!usuario || usuario.rol !== 'superadmin') {
-    return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
+  // Marcar devolución procesada
+  if (body.devolucion_procesada === true) {
+    const { data: reserva, error } = await sb
+      .from('reservas')
+      .update({ devolucion_procesada: true })
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json(reserva);
   }
 
-  const { estado } = await req.json();
+  const { estado } = body;
 
   if (!['confirmada', 'rechazada'].includes(estado)) {
     return NextResponse.json({ error: 'Estado inválido' }, { status: 400 });

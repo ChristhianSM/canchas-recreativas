@@ -126,6 +126,7 @@ function ResetPasswordContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password.length < 6) { setError('La contraseña debe tener al menos 6 caracteres'); return; }
+    if (!/[A-Z]/.test(password)) { setError('La contraseña debe contener al menos una mayúscula'); return; }
     if (password !== confirm) { setError('Las contraseñas no coinciden'); return; }
 
     setLoading(true);

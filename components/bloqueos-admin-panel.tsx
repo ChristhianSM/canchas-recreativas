@@ -41,30 +41,41 @@ function badgeModo(tipo: Modo) {
 function HorasSelector({
   selected,
   onChange,
+  bloqueadas = [],
 }: {
   selected: string[];
   onChange: (horas: string[]) => void;
+  bloqueadas?: string[]; // Horas que ya están bloqueadas en la BD
 }) {
-  const toggle = (h: string) =>
+  const toggle = (h: string) => {
+    // No permitir seleccionar horas ya bloqueadas
+    if (bloqueadas.includes(h)) return;
+    
     onChange(selected.includes(h) ? selected.filter(x => x !== h) : [...selected, h]);
+  };
 
   return (
     <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 lg:grid-cols-6">
       {HORAS_APP.map(hora => {
         const activo = selected.includes(hora);
+        const yaBloqueada = bloqueadas.includes(hora);
         return (
           <button
             key={hora}
             type="button"
             onClick={() => toggle(hora)}
+            disabled={yaBloqueada}
             className={cn(
-              'flex items-center justify-center gap-1 rounded-lg border px-2 py-2 text-xs font-medium transition-all',
+              'flex items-center justify-center gap-1 rounded-lg border px-2 py-2 text-xs font-medium transition-all relative',
               activo
                 ? 'border-destructive bg-destructive/10 text-destructive'
+                : yaBloqueada
+                ? 'border-orange-500/40 bg-orange-500/5 text-orange-600 cursor-not-allowed opacity-60'
                 : 'border-border bg-card text-foreground hover:border-primary/40'
             )}
           >
             {activo && <Ban className="h-3 w-3 shrink-0" />}
+            {yaBloqueada && !activo && <span className="absolute top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-orange-500" />}
             {hora}
           </button>
         );
@@ -79,10 +90,12 @@ function FormNuevoBloqueo({
   canchaId,
   token,
   onCreado,
+  bloqueosExistentes,
 }: {
   canchaId: string;
   token: string;
   onCreado: () => void;
+  bloqueosExistentes: BloqueoAdmin[];
 }) {
   const [modo, setModo]             = useState<Modo>('fecha_especifica');
   const [horas, setHoras]           = useState<string[]>([]);
@@ -93,6 +106,24 @@ function FormNuevoBloqueo({
   const [motivo, setMotivo]         = useState('');
   const [guardando, setGuardando]   = useState(false);
   const [error, setError]           = useState('');
+
+  // Calcular qué horas ya están bloqueadas según el modo actual
+  const horasBloqueadas = bloqueosExistentes
+    .filter(b => {
+      if (modo === 'permanente') {
+        return b.tipo === 'permanente';
+      } else if (modo === 'fecha_especifica' && fecha) {
+        return b.tipo === 'fecha_especifica' && b.fecha === fecha;
+      } else if (modo === 'recurrente_semanal') {
+        return b.tipo === 'recurrente_semanal' && b.dia_semana === diaSemana;
+      }
+      return false;
+    })
+    .map(b => {
+      // Normalizar formato de hora: "06:00:00" -> "06:00"
+      const hora = b.hora_inicio;
+      return hora.length > 5 ? hora.substring(0, 5) : hora;
+    });
 
   const handleGuardar = async () => {
     if (horas.length === 0) {
@@ -259,7 +290,15 @@ function FormNuevoBloqueo({
             <span className="ml-2 text-xs text-muted-foreground">({horas.length} seleccionada{horas.length > 1 ? 's' : ''})</span>
           )}
         </label>
-        <HorasSelector selected={horas} onChange={setHoras} />
+        <HorasSelector selected={horas} onChange={setHoras} bloqueadas={horasBloqueadas} />
+        {horasBloqueadas.length > 0 && (
+          <div className="flex items-start gap-2 rounded-lg bg-orange-500/5 border border-orange-500/20 px-3 py-2">
+            <span className="h-1.5 w-1.5 rounded-full bg-orange-500 mt-1.5 shrink-0" />
+            <p className="text-xs text-orange-600">
+              Las horas con punto naranja ya están bloqueadas para este {modo === 'permanente' ? 'tipo' : modo === 'fecha_especifica' ? 'día' : 'día de la semana'}.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Motivo */}
@@ -398,7 +437,7 @@ export function BloqueosAdminPanel({ canchaId, token }: Props) {
 
   return (
     <div className="space-y-6">
-      <FormNuevoBloqueo canchaId={canchaId} token={token} onCreado={cargar} />
+      <FormNuevoBloqueo canchaId={canchaId} token={token} onCreado={cargar} bloqueosExistentes={bloqueos} />
 
       <div className="space-y-3">
         <div className="flex items-center justify-between">

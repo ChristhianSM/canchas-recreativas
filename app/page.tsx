@@ -1,15 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { MapPin, TrendingUp, Shield, Search, Calendar, Star, ArrowRight, Zap, Users, Clock } from 'lucide-react';
+import {
+  MapPin, Search, Calendar, CheckCircle, ArrowRight,
+  Zap, Phone, CreditCard, ShieldCheck, Clock, X, Loader2,
+  ChevronLeft, ChevronRight, MessageCircle,
+} from 'lucide-react';
 import { Header } from '@/components/header';
 import { CanchaCard } from '@/components/cancha-card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { SportType } from '@/lib/types';
+import { getLocalDateString } from '@/lib/date-utils';
 
 type Cancha = {
   id: string; nombre: string; tipo: SportType; direccion: string;
@@ -23,15 +26,54 @@ type Cancha = {
   balon_precio?: number | null;
   chalecos_disponible?: boolean;
   chalecos_precio?: number | null;
+  horariosOcupados?: Record<string, 'reservado' | 'en_proceso'>;
+  horariosRestringidos?: string[];
+};
+
+const HORAS = [
+  '06:00','07:00','08:00','09:00','10:00','11:00',
+  '12:00','13:00','14:00','15:00','16:00','17:00',
+  '18:00','19:00','20:00','21:00','22:00','23:00',
+];
+
+const UBICACIONES_POR_CIUDAD: Record<string, string[]> = {
+  'Piura': ['Piura', 'Castilla', 'Catacaos', 'La Unión', 'Las Lomas', 'Tambogrande', 'Sullana', 'Paita', 'Talara', 'Chulucanas'],
+  // Próximamente: Lima, Trujillo, Chiclayo, Arequipa...
 };
 
 function adaptCancha(c: Cancha) {
+  // Construir schedule para los próximos 14 días usando horarios reales
+  const schedule: Record<string, Array<{ id: string; time: string; available: boolean; price: number; status: 'disponible' | 'reservado' | 'en_proceso' }>> = {};
+  const horariosOcupados = c.horariosOcupados || {};
+  const horariosRestringidos = c.horariosRestringidos || [];
+  
+  for (let i = 0; i < 14; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() + i);
+    const dateStr = getLocalDateString(d);
+    
+    schedule[dateStr] = HORAS
+      .filter(hora => !horariosRestringidos.includes(hora)) // Excluir horarios restringidos
+      .map(hora => {
+        const key = `${dateStr}|${hora}`;
+        const estadoOcupado = horariosOcupados[key];
+        
+        return {
+          id: `${dateStr}-${hora}`,
+          time: hora,
+          available: !estadoOcupado,
+          price: c.precio_por_hora,
+          status: estadoOcupado || 'disponible',
+        };
+      });
+  }
+
   return {
     id: c.id, name: c.nombre, type: c.tipo, address: c.direccion,
     district: c.distrito, description: c.descripcion, images: c.imagenes ?? [],
     rating: c.rating, reviewCount: c.total_resenas, pricePerHour: c.precio_por_hora,
     amenities: c.amenidades ?? [], coordinates: { lat: c.lat, lng: c.lng },
-    phone: c.telefono, featured: c.destacada, schedule: {},
+    phone: c.telefono, featured: c.destacada, schedule,
     superficie:        (c.superficie ?? null) as any,
     maxJugadores:      c.max_jugadores ?? null,
     balonDisponible:   c.balon_disponible  ?? false,
@@ -41,316 +83,946 @@ function adaptCancha(c: Cancha) {
   };
 }
 
-export default function HomePage() {
-  const router = useRouter();
+export default function HomePage() {  const router = useRouter();
   const [canchas, setCanchas] = useState<Cancha[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [ubicacion, setUbicacion] = useState('Mi ubicación');
+  const [fecha, setFecha] = useState('');
+  const [hora, setHora] = useState('');
+  const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [favIds, setFavIds] = useState<Set<string>>(new Set());
+  
+  // Cache de todas las canchas para evitar re-fetch al calcular horarios disponibles
+  const allCanchasRef = useRef<Cancha[]>([]);
+
+  // Estados para el buscador avanzado
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [loadingLocation, setLoadingLocation] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedTime, setSelectedTime] = useState('');
+  const [availableHours, setAvailableHours] = useState<string[]>([]);
+  const [loadingHours, setLoadingHours] = useState(false);
+  
+  const [calendarMonth, setCalendarMonth] = useState(new Date());
+
+  const locationRef = useRef<HTMLDivElement>(null);
+  const dateRef = useRef<HTMLDivElement>(null);
+  const timeRef = useRef<HTMLDivElement>(null);
+  const locationButtonRef = useRef<HTMLButtonElement>(null);
+  const dateButtonRef = useRef<HTMLButtonElement>(null);
+  const timeButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
+    // Fecha de hoy formateada
+    const hoy = new Date();
+    const opciones: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' };
+    setFecha(`Hoy, ${hoy.toLocaleDateString('es-PE', opciones)}`);
+    
+    // Calcular la hora siguiente (redondear hacia arriba)
+    const horaActual = hoy.getHours();
+    const horaSiguiente = horaActual + 1;
+    
+    // Formatear en formato 24 horas (HH:00)
+    const horaSiguienteFormateada = `${String(horaSiguiente).padStart(2, '0')}:00`;
+    
+    // Establecer la hora siguiente como predeterminada
+    setSelectedTime(horaSiguienteFormateada);
+    setHora(horaSiguienteFormateada);
+
     fetch('/api/canchas/list')
       .then(r => r.json())
-      .then(data => { 
-        setCanchas(Array.isArray(data) ? data.filter(c => c.destacada) : []); 
-        setLoading(false); 
-      });
+      .then(data => {
+        const todas = Array.isArray(data) ? data : [];
+        allCanchasRef.current = todas; // guardar en cache para reutilizar
+        setCanchas(todas);
+        setLoading(false);
+        // Calcular horarios disponibles con los datos ya cargados (sin segundo fetch)
+        computeAvailableHours(new Date(), todas);
+      })
+      .catch(() => setLoading(false));
+
+    // Una sola llamada a favoritos para toda la página
+    import('@/lib/api').then(({ apiGetFavoritos, getToken }) => {
+      const token = getToken();
+      if (token) {
+        apiGetFavoritos().then((ids: string[]) => {
+          if (Array.isArray(ids)) setFavIds(new Set(ids));
+        }).catch(() => {});
+      }
+    });
   }, []);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      router.push(`/canchas?q=${encodeURIComponent(searchQuery.trim())}`);
-    } else {
-      router.push('/canchas');
+  // Cerrar modales al hacer click fuera
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      const target = event.target as Node;
+      
+      // Solo cerrar si se hace click en el overlay (no en el contenido del modal)
+      if (showLocationModal && locationRef.current && !locationRef.current.contains(target)) {
+        const isOverlay = (event.target as HTMLElement).classList.contains('fixed');
+        if (isOverlay) {
+          setShowLocationModal(false);
+        }
+      }
+      if (showDatePicker && dateRef.current && !dateRef.current.contains(target)) {
+        const isOverlay = (event.target as HTMLElement).classList.contains('fixed');
+        if (isOverlay) {
+          setShowDatePicker(false);
+        }
+      }
+      if (showTimePicker && timeRef.current && !timeRef.current.contains(target)) {
+        const isOverlay = (event.target as HTMLElement).classList.contains('fixed');
+        if (isOverlay) {
+          setShowTimePicker(false);
+        }
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showLocationModal, showDatePicker, showTimePicker]);
+
+  // Recalcular horarios disponibles cuando cambia la fecha (sin fetch extra)
+  useEffect(() => {
+    if (selectedDate && allCanchasRef.current.length > 0) {
+      computeAvailableHours(selectedDate, allCanchasRef.current);
+    }
+  }, [selectedDate]);
+
+  // Calcula horarios disponibles a partir de los datos ya cargados — sin llamar a la BD
+  const computeAvailableHours = (date: Date, todasCanchas: Cancha[]) => {
+    setLoadingHours(true);
+    try {
+      const dateStr = getLocalDateString(date);
+      const hoursSet = new Set<string>();
+
+      todasCanchas.forEach((cancha) => {
+        const horariosOcupados = cancha.horariosOcupados || {};
+        const horariosRestringidos = cancha.horariosRestringidos || [];
+
+        HORAS.forEach(hora => {
+          if (!horariosRestringidos.includes(hora)) {
+            const key = `${dateStr}|${hora}`;
+            if (!horariosOcupados[key]) {
+              hoursSet.add(hora);
+            }
+          }
+        });
+      });
+
+      setAvailableHours(Array.from(hoursSet).sort());
+    } catch (error) {
+      console.error('Error computing available hours:', error);
+      setAvailableHours([]);
+    } finally {
+      setLoadingHours(false);
     }
   };
 
+
+  const handleRequestLocation = () => {
+    if (!navigator.geolocation) {
+      alert('Tu navegador no soporta geolocalización');
+      return;
+    }
+
+    setLoadingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        // Guardar coordenadas para mostrar canchas cercanas
+        setUserCoords({ lat: latitude, lng: longitude });
+        
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=es`
+          );
+          const data = await response.json();
+          
+          const city = data.address?.city || data.address?.town || data.address?.village || data.address?.state || 'Ubicación actual';
+          setUbicacion(city);
+          setShowLocationModal(false);
+        } catch (error) {
+          console.error('Error getting location name:', error);
+          setUbicacion('Ubicación actual');
+          setShowLocationModal(false);
+        } finally {
+          setLoadingLocation(false);
+        }
+      },
+      (error) => {
+        console.error('Error getting location:', error);
+        alert('No se pudo obtener tu ubicación. Por favor, verifica los permisos.');
+        setLoadingLocation(false);
+      }
+    );
+  };
+
+  const handleDateSelect = (date: Date) => {
+    setSelectedDate(date);
+    const opciones: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' };
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const selectedDay = new Date(date);
+    selectedDay.setHours(0, 0, 0, 0);
+    
+    if (selectedDay.getTime() === today.getTime()) {
+      setFecha(`Hoy, ${date.toLocaleDateString('es-PE', opciones)}`);
+    } else {
+      setFecha(date.toLocaleDateString('es-PE', opciones));
+    }
+    setShowDatePicker(false);
+  };
+
+  const handleTimeSelect = (time: string) => {
+    setSelectedTime(time);
+    setHora(time);
+    setShowTimePicker(false);
+  };
+
+  const handlePrevMonth = () => {
+    const today = new Date();
+    setCalendarMonth(prev => {
+      const d = new Date(prev.getFullYear(), prev.getMonth() - 1, 1);
+      return d >= new Date(today.getFullYear(), today.getMonth(), 1) ? d : prev;
+    });
+  };
+
+  const handleNextMonth = () => {
+    setCalendarMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+  };
+
+  const handleBuscar = () => {
+    // Construir query params para la búsqueda
+    const params = new URLSearchParams();
+    
+    // Agregar fecha seleccionada
+    if (selectedDate) {
+      const dateStr = getLocalDateString(selectedDate);
+      params.set('fecha', dateStr);
+    }
+    
+    // Agregar hora seleccionada
+    if (selectedTime) {
+      params.set('hora', selectedTime);
+    }
+    
+    // Agregar ubicación si no es la predeterminada
+    if (ubicacion !== 'Mi ubicación') {
+      params.set('ubicacion', ubicacion);
+    }
+    
+    router.push(`/canchas?${params.toString()}`);
+  };
+
+  // Generar calendario para el mes mostrado (puede diferir del mes seleccionado)
+  const generateCalendar = () => {
+    const year = calendarMonth.getFullYear();
+    const month = calendarMonth.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDayOfWeek = firstDay.getDay();
+    
+    const days = [];
+    
+    // Días vacíos al inicio
+    for (let i = 0; i < startingDayOfWeek; i++) {
+      days.push(null);
+    }
+    
+    // Días del mes
+    for (let day = 1; day <= daysInMonth; day++) {
+      days.push(new Date(year, month, day));
+    }
+    
+    return days;
+  };
+
   return (
-    <div className="flex flex-col flex-1 bg-background">
+    <div className="flex flex-col flex-1 bg-white dark:bg-background">
       <Header />
 
-      {/* Hero Section - Más impactante */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-primary via-primary/95 to-primary/90 px-4 py-16 md:py-24 lg:py-32">
-        {/* Patrón de fondo decorativo */}
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute inset-0" style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-          }} />
+      {/* ── HERO ─────────────────────────────────────────────────── */}
+      <section className="relative min-h-[520px] md:min-h-[600px] flex items-center">
+        {/* Imagen de fondo */}
+        <div className="absolute inset-0">
+          <Image
+            src="/images/cancha-login.png"
+            alt="Cancha deportiva"
+            fill
+            className="object-cover object-center"
+            priority
+          />
+          {/* Overlay oscuro degradado */}
+          <div className="absolute inset-0 bg-black/60" />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-transparent" />
         </div>
 
-        <div className="container relative mx-auto">
-          <div className="mx-auto max-w-4xl text-center">
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm text-white backdrop-blur-sm">
-              <Zap className="h-4 w-4" />
-              <span>Reserva en menos de 2 minutos</span>
-            </div>
-            
-            <h1 className="mb-6 text-4xl font-extrabold text-white md:text-5xl lg:text-6xl xl:text-7xl text-balance leading-[1.05] tracking-tighter font-display">
-              Encuentra y reserva tu cancha deportiva ideal
+        <div className="relative container mx-auto px-4 py-16 md:py-24">
+          <div className="max-w-4xl">
+            <h3 className='text-[#4ade80]'> Reserva en segundos </h3>
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white leading-tight mb-3 tracking-tight">
+              Tu pichanchaga
+              <br />
+              <span className="text-[#4ade80]">empieza aquí</span>
             </h1>
-            
-            <p className="mb-10 text-lg md:text-xl text-white/90 max-w-2xl mx-auto">
-              Las mejores canchas de fútbol, vóley, básquet y más en Piura. Reserva online, paga seguro y juega sin preocupaciones.
+            <p className="text-white/80 text-lg mb-8 max-w-md">
+              Encuentra canchas cerca de ti, elige horario y reserva sin llamadas.
             </p>
 
-            {/* Buscador Hero */}
-            <form onSubmit={handleSearch} className="mx-auto max-w-2xl">
-              <div className="flex flex-col sm:flex-row gap-3 p-2 bg-white rounded-2xl shadow-2xl">
-                <div className="flex-1 flex items-center gap-3 px-4">
-                  <Search className="h-5 w-5 text-muted-foreground shrink-0" />
-                  <Input
-                    type="text"
-                    placeholder="Buscar por nombre, distrito o dirección..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-base"
-                  />
-                </div>
-                <Button 
-                  type="submit"
-                  size="lg" 
-                  className="bg-primary hover:bg-primary/90 text-white font-semibold px-8 rounded-xl"
+            {/* Buscador tipo booking */}
+            <div className="bg-white dark:bg-card rounded-lg shadow-2xl p-2 flex flex-col sm:flex-row gap-0 sm:gap-0 max-w-3xl">
+              {/* Ubicación */}
+              <div className="relative flex-1">
+                <button
+                  ref={locationButtonRef}
+                  onClick={() => {
+                    setShowLocationModal(!showLocationModal);
+                    setShowDatePicker(false);
+                    setShowTimePicker(false);
+                  }}
+                  className="flex items-center justify-between gap-3 px-4 py-3 w-full text-left hover:bg-gray-50 dark:hover:bg-muted/50 transition-colors rounded-md sm:rounded-none sm:rounded-l-md border-b sm:border-b-0 sm:border-r border-gray-100 dark:border-border cursor-pointer group"
                 >
-                  Buscar canchas
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </div>
-            </form>
-
-            {/* Quick Actions */}
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-              <Link href="/canchas?sport=futbol">
-                <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20 backdrop-blur-sm">
-                  ⚽ Fútbol
-                </Button>
-              </Link>
-              <Link href="/canchas?sport=voley">
-                <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20 backdrop-blur-sm">
-                  🏐 Vóley
-                </Button>
-              </Link>
-              <Link href="/canchas?sport=basquet">
-                <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20 backdrop-blur-sm">
-                  🏀 Básquet
-                </Button>
-              </Link>
-              <Link href="/canchas">
-                <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20 backdrop-blur-sm">
-                  Ver todas
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Features - Más visual */}
-      <section className="border-b border-border bg-card py-16">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-extrabold text-foreground mb-3 font-display tracking-tight">¿Por qué elegir CanchaGo?</h2>
-            <p className="text-muted-foreground text-lg">La forma más fácil de reservar canchas deportivas</p>
-          </div>
-          
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
-            {[
-              { 
-                icon: MapPin, 
-                title: '+15 Canchas', 
-                desc: 'En toda la región de Piura', 
-                color: 'text-blue-600', 
-                bg: 'bg-blue-50',
-                darkBg: 'dark:bg-blue-950/30'
-              },
-              { 
-                icon: Zap, 
-                title: 'Reserva Instantánea', 
-                desc: 'Confirma en menos de 2 minutos', 
-                color: 'text-yellow-600', 
-                bg: 'bg-yellow-50',
-                darkBg: 'dark:bg-yellow-950/30'
-              },
-              { 
-                icon: Shield, 
-                title: 'Pago Seguro', 
-                desc: 'Yape, Plin y transferencias', 
-                color: 'text-green-600', 
-                bg: 'bg-green-50',
-                darkBg: 'dark:bg-green-950/30'
-              },
-              { 
-                icon: Clock, 
-                title: 'Disponible 24/7', 
-                desc: 'Reserva cuando quieras', 
-                color: 'text-purple-600', 
-                bg: 'bg-purple-50',
-                darkBg: 'dark:bg-purple-950/30'
-              },
-            ].map(f => (
-              <div key={f.title} className="flex flex-col items-center text-center p-6">
-                <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl ${f.bg} ${f.darkBg} mb-4`}>
-                  <f.icon className={`h-8 w-8 ${f.color}`} />
-                </div>
-                <h3 className="font-extrabold text-foreground text-lg mb-2 font-display">{f.title}</h3>
-                <p className="text-sm text-muted-foreground">{f.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Canchas Destacadas */}
-      {!loading && canchas.length > 0 && (
-        <section className="py-16 bg-muted/30">
-          <div className="container mx-auto px-4">
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <h2 className="text-3xl font-bold text-foreground mb-2 font-display">Canchas Destacadas</h2>
-                <p className="text-muted-foreground text-lg">Las más populares y mejor valoradas</p>
-              </div>
-              <Link href="/canchas">
-                <Button variant="outline" className="hidden sm:flex items-center gap-2">
-                  Ver todas
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </Link>
-            </div>
-            
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {canchas.slice(0, 4).map(c => <CanchaCard key={c.id} cancha={adaptCancha(c)} />)}
-            </div>
-
-            <div className="mt-8 text-center sm:hidden">
-              <Link href="/canchas">
-                <Button variant="outline" className="w-full sm:w-auto">
-                  Ver todas las canchas
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* Cómo funciona */}
-      <section className="py-16">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-extrabold text-foreground mb-3 font-display tracking-tight">¿Cómo funciona?</h2>
-            <p className="text-muted-foreground text-lg">Reserva tu cancha en 3 simples pasos</p>
-          </div>
-
-          <div className="grid gap-8 md:grid-cols-3 max-w-5xl mx-auto">
-            {[
-              {
-                step: '1',
-                icon: Search,
-                title: 'Busca tu cancha',
-                desc: 'Explora canchas por deporte, ubicación, precio y disponibilidad',
-                color: 'text-blue-600',
-                bg: 'bg-blue-50',
-                darkBg: 'dark:bg-blue-950/30'
-              },
-              {
-                step: '2',
-                icon: Calendar,
-                title: 'Selecciona fecha y hora',
-                desc: 'Elige el horario que mejor se ajuste a tu agenda',
-                color: 'text-green-600',
-                bg: 'bg-green-50',
-                darkBg: 'dark:bg-green-950/30'
-              },
-              {
-                step: '3',
-                icon: Star,
-                title: 'Confirma y juega',
-                desc: 'Paga de forma segura y recibe tu confirmación al instante',
-                color: 'text-purple-600',
-                bg: 'bg-purple-50',
-                darkBg: 'dark:bg-purple-950/30'
-              },
-            ].map((item, idx) => (
-              <div key={item.step} className="relative">
-                {idx < 2 && (
-                  <div className="hidden md:block absolute top-12 left-[60%] w-[80%] h-0.5 bg-border" />
+                  <div className="flex items-center gap-3">
+                    <MapPin className="h-4 w-4 text-gray-400 shrink-0 group-hover:text-[#16a34a] transition-colors" />
+                    <div>
+                      <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">Ubicación</p>
+                      <p className="text-sm font-semibold text-gray-800 dark:text-foreground group-hover:text-[#16a34a] transition-colors">{ubicacion}</p>
+                    </div>
+                  </div>
+                  <svg className={`h-4 w-4 text-gray-400 shrink-0 group-hover:text-[#16a34a] transition-all ${showLocationModal ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                
+                {/* Modal de ubicación */}
+                {showLocationModal && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-40" 
+                      onClick={() => setShowLocationModal(false)}
+                    />
+                    <div 
+                      ref={locationRef}
+                      className="absolute z-50 bg-white dark:bg-card rounded-lg shadow-2xl border border-gray-200 dark:border-border p-4"
+                      style={{
+                        top: 'calc(100% - 2px)',
+                        left: '0',
+                        minWidth: '300px',
+                        maxWidth: '90vw',
+                      }}
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="font-semibold text-sm">Seleccionar ubicación</h3>
+                        <button
+                          onClick={() => setShowLocationModal(false)}
+                          className="text-gray-400 hover:text-gray-600"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                      
+                      <button
+                        onClick={handleRequestLocation}
+                        disabled={loadingLocation}
+                        className="w-full flex items-center justify-center gap-2 bg-[#16a34a] hover:bg-[#15803d] disabled:bg-gray-300 text-white font-medium px-4 py-2.5 rounded-md transition-colors text-sm"
+                      >
+                        {loadingLocation ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Obteniendo ubicación...
+                          </>
+                        ) : (
+                          <>
+                            <MapPin className="h-4 w-4" />
+                            Usar mi ubicación actual
+                          </>
+                        )}
+                      </button>
+                      
+                      <div className="mt-3 pt-3 border-t border-gray-100 dark:border-border max-h-64 overflow-y-auto">
+                        {Object.entries(UBICACIONES_POR_CIUDAD).map(([ciudad, distritos]) => (
+                          <div key={ciudad} className="mb-2">
+                            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1 px-1">
+                              {ciudad}
+                            </p>
+                            <div className="space-y-0.5">
+                              {distritos.map(distrito => (
+                                <button
+                                  key={distrito}
+                                  onClick={() => { setUbicacion(distrito); setShowLocationModal(false); }}
+                                  className={`flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm transition-colors text-left ${
+                                    ubicacion === distrito
+                                      ? 'bg-[#16a34a]/10 text-[#16a34a] font-medium'
+                                      : 'text-gray-700 dark:text-foreground hover:bg-gray-50 dark:hover:bg-muted'
+                                  }`}
+                                >
+                                  <MapPin className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+                                  {distrito}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
                 )}
-                <div className="relative bg-card rounded-2xl p-8 border border-border hover:shadow-lg transition-shadow">
-                  <div className={`inline-flex h-12 w-12 items-center justify-center rounded-xl ${item.bg} ${item.darkBg} mb-4`}>
-                    <item.icon className={`h-6 w-6 ${item.color}`} />
-                  </div>
-                  <div className="absolute top-6 right-6 text-6xl font-bold ">
-                    {item.step}
-                  </div>
-                  <h3 className="font-extrabold text-foreground text-xl mb-2 font-display">{item.title}</h3>
-                  <p className="text-muted-foreground">{item.desc}</p>
-                </div>
               </div>
-            ))}
-          </div>
 
-          <div className="mt-12 text-center">
-            <Link href="/canchas">
-              <Button size="lg" className="px-8">
-                Comenzar ahora
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
+              {/* Fecha */}
+              <div className="relative flex-1">
+                <button
+                  ref={dateButtonRef}
+                  onClick={() => {
+                    if (!showDatePicker) setCalendarMonth(new Date(selectedDate));
+                    setShowDatePicker(!showDatePicker);
+                    setShowLocationModal(false);
+                    setShowTimePicker(false);
+                  }}
+                  className="flex items-center justify-between gap-3 px-4 py-3 w-full text-left hover:bg-gray-50 dark:hover:bg-muted/50 transition-colors border-b sm:border-b-0 sm:border-r border-gray-100 dark:border-border cursor-pointer group"
+                >
+                  <div className="flex items-center gap-3">
+                    <Calendar className="h-4 w-4 text-gray-400 shrink-0 group-hover:text-[#16a34a] transition-colors" />
+                    <div>
+                      <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">Fecha</p>
+                      <p className="text-sm font-semibold text-gray-800 dark:text-foreground group-hover:text-[#16a34a] transition-colors">{fecha}</p>
+                    </div>
+                  </div>
+                  <svg className={`h-4 w-4 text-gray-400 shrink-0 group-hover:text-[#16a34a] transition-all ${showDatePicker ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                
+                {/* Calendario */}
+                {showDatePicker && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-40" 
+                      onClick={() => setShowDatePicker(false)}
+                    />
+                    <div 
+                      ref={dateRef}
+                      className="absolute z-50 bg-white dark:bg-card rounded-lg shadow-2xl border border-gray-200 dark:border-border p-4"
+                      style={{
+                        top: 'calc(100% - 2px)',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        width: '320px',
+                        maxWidth: '90vw',
+                      }}
+                    >
+                      <div className="flex items-center justify-between mb-4">
+                        <button
+                          onClick={handlePrevMonth}
+                          disabled={
+                            calendarMonth.getFullYear() === new Date().getFullYear() &&
+                            calendarMonth.getMonth() <= new Date().getMonth()
+                          }
+                          className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        >
+                          <ChevronLeft className="h-4 w-4 text-gray-600 dark:text-foreground" />
+                        </button>
+                        <h3 className="font-semibold text-sm capitalize">
+                          {calendarMonth.toLocaleDateString('es-PE', { month: 'long', year: 'numeric' })}
+                        </h3>
+                        <button
+                          onClick={handleNextMonth}
+                          className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-muted transition-colors"
+                        >
+                          <ChevronRight className="h-4 w-4 text-gray-600 dark:text-foreground" />
+                        </button>
+                      </div>
+                      
+                      {/* Días de la semana */}
+                      <div className="grid grid-cols-7 gap-1 mb-2">
+                        {['D', 'L', 'M', 'M', 'J', 'V', 'S'].map((day, i) => (
+                          <div key={i} className="text-center text-xs font-medium text-gray-500 py-1">
+                            {day}
+                          </div>
+                        ))}
+                      </div>
+                      
+                      {/* Días del mes */}
+                      <div className="grid grid-cols-7 gap-1">
+                        {generateCalendar().map((day, index) => {
+                          if (!day) {
+                            return <div key={`empty-${index}`} />;
+                          }
+                          
+                          const today = new Date();
+                          today.setHours(0, 0, 0, 0);
+                          const dayDate = new Date(day);
+                          dayDate.setHours(0, 0, 0, 0);
+                          const isToday = dayDate.getTime() === today.getTime();
+                          const isSelected = dayDate.getTime() === new Date(selectedDate).setHours(0, 0, 0, 0);
+                          const isPast = dayDate < today;
+                          
+                          return (
+                            <button
+                              key={index}
+                              onClick={() => !isPast && handleDateSelect(day)}
+                              disabled={isPast}
+                              className={`
+                                aspect-square flex items-center justify-center text-sm rounded-md transition-colors
+                                ${isPast ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-muted'}
+                                ${isSelected ? 'bg-[#16a34a] text-white hover:bg-[#15803d]' : ''}
+                                ${isToday && !isSelected ? 'border-2 border-[#16a34a] text-[#16a34a] font-semibold' : ''}
+                              `}
+                            >
+                              {day.getDate()}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Hora */}
+              <div className="relative flex-1">
+                <button
+                  ref={timeButtonRef}
+                  onClick={() => {
+                    setShowTimePicker(!showTimePicker);
+                    setShowLocationModal(false);
+                    setShowDatePicker(false);
+                  }}
+                  className="flex items-center justify-between gap-3 px-4 py-3 w-full text-left hover:bg-gray-50 dark:hover:bg-muted/50 transition-colors border-b sm:border-b-0 sm:border-r border-gray-100 dark:border-border cursor-pointer group"
+                >
+                  <div className="flex items-center gap-3">
+                    <Clock className="h-4 w-4 text-gray-400 shrink-0 group-hover:text-[#16a34a] transition-colors" />
+                    <div>
+                      <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">Hora</p>
+                      <p className="text-sm font-semibold text-gray-800 dark:text-foreground group-hover:text-[#16a34a] transition-colors">{hora}</p>
+                    </div>
+                  </div>
+                  <svg className={`h-4 w-4 text-gray-400 shrink-0 group-hover:text-[#16a34a] transition-all ${showTimePicker ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                
+                {/* Selector de hora */}
+                {showTimePicker && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-40" 
+                      onClick={() => setShowTimePicker(false)}
+                    />
+                    <div 
+                      ref={timeRef}
+                      className="absolute z-50 bg-white dark:bg-card rounded-lg shadow-2xl border border-gray-200 dark:border-border p-4 max-h-96 overflow-y-auto"
+                      style={{
+                        top: 'calc(100% - 2px)',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        minWidth: '320px',
+                      }}
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="font-semibold text-sm">Horarios disponibles</h3>
+                        <button
+                          onClick={() => setShowTimePicker(false)}
+                          className="text-gray-400 hover:text-gray-600"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                      
+                      {loadingHours ? (
+                        <div className="flex items-center justify-center py-8">
+                          <Loader2 className="h-6 w-6 animate-spin text-[#16a34a]" />
+                        </div>
+                      ) : availableHours.length > 0 ? (
+                        <div className="grid grid-cols-3 gap-2">
+                          {availableHours.map((time) => (
+                            <button
+                              key={time}
+                              onClick={() => handleTimeSelect(time)}
+                              className={`
+                                px-3 py-2 text-sm rounded-md transition-colors
+                                ${selectedTime === time 
+                                  ? 'bg-[#16a34a] text-white' 
+                                  : 'bg-gray-50 dark:bg-muted hover:bg-gray-100 dark:hover:bg-muted/80'
+                                }
+                              `}
+                            >
+                              {time}
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8 text-sm text-gray-500">
+                          No hay horarios disponibles para esta fecha
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Botón buscar */}
+              <button
+                onClick={handleBuscar}
+                className="flex items-center justify-center gap-2 bg-[#16a34a] hover:bg-[#15803d] active:scale-95 text-white font-bold sm:font-semibold py-4 sm:py-3 px-5 rounded-xl sm:rounded-md transition-all text-base sm:text-sm whitespace-nowrap w-full sm:w-auto mt-1 sm:mt-0"
+              >
+                <Search className="h-5 w-5 sm:h-4 sm:w-4" />
+                Buscar canchas
+              </button>
+            </div>
+
+            {/* Badges de confianza */}
+            <div className="mt-5 flex flex-wrap gap-4">
+              <div className="flex items-center gap-1.5 text-white/90 text-sm">
+                <CheckCircle className="h-4 w-4 text-[#4ade80]" />
+                Sin llamadas
+              </div>
+              <div className="flex items-center gap-1.5 text-white/90 text-sm">
+                <CheckCircle className="h-4 w-4 text-[#4ade80]" />
+                Reserva 100% online
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── CANCHAS MEJOR CALIFICADAS / CERCA DE TI ──────────────── */}
+      <section className="py-12 bg-white dark:bg-background">
+        <div className="container mx-auto px-4">
+
+          {/* Sección 1: Canchas mejor calificadas (siempre visible) */}
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-foreground">
+              {userCoords ? 'Canchas mejor calificadas' : 'Canchas mejor calificadas'}
+            </h2>
+            <Link href="/canchas" className="text-[#16a34a] text-sm font-medium hover:underline flex items-center gap-1">
+              Ver todas <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </div>
-        </div>
-      </section>
 
-      {/* CTA Final */}
-      <section className="bg-primary py-16">
-        <div className="container mx-auto px-4 text-center">
-          <div className="mx-auto max-w-3xl">
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-black text-white mb-4 font-display tracking-tighter">
-              ¿Listo para tu próximo partido?
-            </h2>
-            <p className="text-lg text-white/90 mb-8">
-              Únete a miles de deportistas que ya reservan sus canchas con CanchaGo
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/canchas">
-                <Button size="lg" variant="secondary" className="w-full sm:w-auto px-8">
-                  Explorar canchas
-                </Button>
-              </Link>
-              <Link href="/registro">
-                <Button size="lg" variant="outline" className="w-full sm:w-auto px-8 bg-white/10 border-white/20 text-white hover:bg-white/20">
-                  Crear cuenta gratis
-                </Button>
+          {loading ? (
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} className="rounded-xl overflow-hidden border border-border animate-pulse">
+                  <div className="aspect-[2/1] bg-muted" />
+                  <div className="p-4 space-y-3">
+                    <div className="h-4 bg-muted rounded-full w-3/4" />
+                    <div className="h-3 bg-muted rounded-full w-1/3" />
+                    <div className="h-3 bg-muted rounded-full w-1/2" />
+                    <div className="flex gap-1.5 pt-1">
+                      {[1,2,3,4].map(j => <div key={j} className="h-9 flex-1 bg-muted rounded-lg" />)}
+                    </div>
+                    <div className="h-10 bg-muted rounded-lg" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : canchas.length > 0 ? (
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {[...canchas]
+                .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
+                .slice(0, 4)
+                .map(c => (
+                  <CanchaCard
+                    key={c.id}
+                    cancha={adaptCancha(c)}
+                    selectedDate={getLocalDateString()}
+                    isFav={favIds.has(c.id)}
+                    onToggleFav={(id) => setFavIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; })}
+                  />
+                ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 text-muted-foreground">
+              <p>No hay canchas disponibles por el momento.</p>
+              <Link href="/canchas" className="mt-3 inline-block text-primary font-medium hover:underline">
+                Ver todas las canchas
               </Link>
             </div>
-          </div>
+          )}
+
+          {/* Sección 2: Canchas cerca de ti (solo si el usuario dio permiso de ubicación) */}
+          {userCoords && canchas.length > 0 && (() => {
+            // Calcular distancia y ordenar por cercanía
+            const conDistancia = canchas
+              .filter(c => c.lat && c.lng)
+              .map(c => {
+                const dLat = c.lat - userCoords.lat;
+                const dLng = c.lng - userCoords.lng;
+                const distKm = Math.sqrt(dLat * dLat + dLng * dLng) * 111;
+                return { ...c, distKm };
+              })
+              .sort((a, b) => a.distKm - b.distKm)
+              .slice(0, 4);
+
+            if (conDistancia.length === 0) return null;
+
+            return (
+              <div className="mt-12">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-foreground">Canchas cerca de ti</h2>
+                    <p className="text-sm text-gray-500 mt-0.5">Basado en tu ubicación actual</p>
+                  </div>
+                  <Link href={`/canchas?ubicacion=${encodeURIComponent(ubicacion)}`} className="text-[#16a34a] text-sm font-medium hover:underline flex items-center gap-1">
+                    Ver todas <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                </div>
+                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {conDistancia.map(c => (
+                    <CanchaCard
+                      key={c.id}
+                      cancha={adaptCancha(c)}
+                      selectedDate={getLocalDateString()}
+                      distancia={c.distKm}
+                      isFav={favIds.has(c.id)}
+                      onToggleFav={(id) => setFavIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; })}
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-border bg-card py-12">
+      {/* ── CÓMO FUNCIONA ─────────────────────────────────────────── */}
+      <section className="py-14 bg-gray-50 dark:bg-muted/20">
         <div className="container mx-auto px-4">
-          <div className="flex flex-col items-center justify-center gap-6">
-            <Image
-              src="/images/logo.png"
-              alt="CanchaGo"
-              width={280}
-              height={50}
-              className="h-16 w-auto object-contain"
-            />
-            <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
-              <Link href="/canchas" className="hover:text-foreground transition-colors">
-                Canchas
-              </Link>
-              <Link href="/mis-reservas" className="hover:text-foreground transition-colors">
-                Mis Reservas
-              </Link>
-              <Link href="/login" className="hover:text-foreground transition-colors">
-                Iniciar Sesión
-              </Link>
-            </div>
-            <p className="text-sm text-muted-foreground">&copy; 2026 CanchaGo. Todos los derechos reservados.</p>
+          <div className="text-center mb-10">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-foreground">¿Cómo funciona?</h2>
+            <p className="text-sm text-gray-500 dark:text-muted-foreground mt-2">Reserva tu cancha en menos de 2 minutos</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
+            {[
+              {
+                num: '1',
+                icon: Search,
+                title: 'Busca en tu zona',
+                desc: 'Filtra por deporte, fecha y hora. Ve disponibilidad en tiempo real, sin llamar a nadie.',
+                tag: 'Fútbol, vóley, básquet y más',
+                highlight: false,
+              },
+              {
+                num: '2',
+                icon: Calendar,
+                title: 'Elige tu horario',
+                desc: 'Selecciona el día y la hora exacta. Los slots disponibles se actualizan al instante.',
+                tag: 'Sin dobles reservas',
+                highlight: false,
+              },
+              {
+                num: '3',
+                icon: CreditCard,
+                title: 'Paga con Yape o Plin',
+                desc: 'Confirma con un adelanto desde la app. Recibes tu reserva al momento, sin llamadas.',
+                tag: 'También transferencia bancaria',
+                highlight: true,
+              },
+            ].map((item, idx) => (
+              <div key={idx} className="relative">
+                <div className={`h-full rounded-2xl p-6 border ${item.highlight ? 'bg-[#16a34a] border-[#16a34a]' : 'bg-white dark:bg-card border-gray-100 dark:border-border shadow-sm'}`}>
+                  {/* Número */}
+                  <div className={`inline-flex items-center justify-center h-8 w-8 rounded-full text-sm font-bold mb-4 ${item.highlight ? 'bg-white/20 text-white' : 'bg-[#16a34a]/10 text-[#16a34a]'}`}>
+                    {item.num}
+                  </div>
+                  <item.icon className={`h-6 w-6 mb-3 ${item.highlight ? 'text-white' : 'text-[#16a34a]'}`} />
+                  <h3 className={`font-bold text-base mb-2 ${item.highlight ? 'text-white' : 'text-gray-900 dark:text-foreground'}`}>
+                    {item.title}
+                  </h3>
+                  <p className={`text-sm leading-relaxed mb-4 ${item.highlight ? 'text-white/80' : 'text-gray-500 dark:text-muted-foreground'}`}>
+                    {item.desc}
+                  </p>
+                  <span className={`inline-block text-xs font-medium px-2.5 py-1 rounded-full ${item.highlight ? 'bg-white/20 text-white' : 'bg-[#16a34a]/10 text-[#16a34a]'}`}>
+                    {item.tag}
+                  </span>
+                </div>
+                {/* Flecha entre cards — solo desktop */}
+                {idx < 2 && (
+                  <div className="hidden md:flex absolute -right-5 top-1/2 -translate-y-1/2 z-10 h-8 w-8 items-center justify-center rounded-full bg-white dark:bg-card border border-gray-100 dark:border-border shadow-sm">
+                    <ArrowRight className="h-4 w-4 text-gray-400" />
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         </div>
-      </footer>
+      </section>
+
+      {/* ── BENEFICIOS ────────────────────────────────────────────── */}
+      <section className="py-8 dark:bg-muted/10" style={{ backgroundColor: '#eef2ee' }}>
+        <div className="container mx-auto px-4">
+          <div className="flex flex-col gap-4 max-w-lg mx-auto lg:max-w-6xl lg:grid lg:grid-cols-4">
+            {[
+              {
+                icon: Zap,
+                title: 'Reservas en tiempo real',
+                desc: 'Consulta disponibilidad actualizada al segundo. Sin esperas.',
+              },
+              {
+                icon: Phone,
+                title: 'Sin llamadas',
+                desc: 'Olvida marcar y esperar que alguien conteste. Todo es digital.',
+              },
+              {
+                icon: CreditCard,
+                title: 'Pagos fáciles',
+                desc: 'Paga con tarjeta, transferencia o saldo en la app de forma segura.',
+              },
+              {
+                icon: ShieldCheck,
+                title: 'Canchas verificadas',
+                desc: 'Trabajamos solo con centros deportivos de alta calidad y confianza.',
+              },
+            ].map(b => (
+              <div
+                key={b.title}
+                className="bg-white dark:bg-card rounded-2xl p-6 dark:border-border"
+                style={{ border: '1.5px solid #d4e6d4' }}
+              >
+                <b.icon className="h-8 w-8 text-[#16a34a] mb-4" strokeWidth={1.75} />
+                <h3 className="font-bold text-gray-900 dark:text-foreground text-lg mb-1.5">{b.title}</h3>
+                <p className="text-sm text-gray-500 dark:text-muted-foreground leading-relaxed">{b.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── ¿TIENES UNA CANCHA? ───────────────────────────────────── */}
+      <section className="py-14 bg-gray-50 dark:bg-muted/20">
+        <div className="container mx-auto px-4">
+          <div className="max-w-5xl mx-auto rounded-2xl overflow-hidden bg-white dark:bg-card border border-gray-100 dark:border-border shadow-sm flex flex-col md:flex-row">
+            {/* Texto */}
+            <div className="flex-1 p-8 md:p-10 flex flex-col justify-center">
+              {/* Badge */}
+              <span className="inline-flex items-center gap-1.5 bg-[#16a34a]/10 text-[#16a34a] text-xs font-semibold px-3 py-1 rounded-full w-fit mb-4">
+                <MessageCircle className="h-3.5 w-3.5" />
+                Atención personalizada · Cupos disponibles
+              </span>
+
+              <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-foreground mb-2 leading-tight">
+                Llena tus horas vacías{' '}
+                <span className="text-[#16a34a]">y cobra sin complicaciones</span>
+              </h2>
+              <p className="text-gray-500 dark:text-muted-foreground mb-6 text-sm leading-relaxed">
+                Escríbenos por WhatsApp y te explicamos cómo funciona. Nos encargamos de configurar tu cancha desde cero.
+              </p>
+
+              <ul className="space-y-3 mb-7">
+                {[
+                  'Olvida coordinar por WhatsApp: las reservas llegan solas',
+                  'Cobros registrados y sin efectivo perdido',
+                  'Tus horarios disponibles visibles las 24 horas',
+                ].map(item => (
+                  <li key={item} className="flex items-start gap-2.5 text-sm text-gray-700 dark:text-foreground">
+                    <CheckCircle className="h-4 w-4 text-[#16a34a] shrink-0 mt-0.5" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                <a
+                  href="https://wa.me/51959686193?text=Hola%2C%20me%20interesa%20publicar%20mi%20cancha%20en%20CanchaGo.%20%C2%BFMe%20pueden%20dar%20m%C3%A1s%20informaci%C3%B3n%3F"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 bg-[#16a34a] hover:bg-[#15803d] active:scale-[0.98] text-white font-bold px-6 py-3.5 rounded-xl transition-all text-sm"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  Quiero publicar mi cancha
+                </a>
+                <p className="text-xs text-gray-400">Sin compromiso · Te respondemos rápido</p>
+              </div>
+            </div>
+
+            {/* Imagen + mockup */}
+            <div className="relative flex-1 min-h-70 md:min-h-0 overflow-hidden">
+              <Image
+                src="/images/cancha-login.png"
+                alt="Panel de administración"
+                fill
+                className="object-cover object-center"
+              />
+              <div className="absolute inset-0 bg-black/35" />
+
+              {/* Mockup de estadísticas */}
+              <div className="absolute bottom-4 right-4 bg-white dark:bg-card rounded-xl shadow-2xl p-4 w-48">
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-3">Esta semana</p>
+                <div className="space-y-2 mb-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-500 dark:text-muted-foreground">Reservas</span>
+                    <span className="text-xs font-bold text-gray-900 dark:text-foreground">12</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-500 dark:text-muted-foreground">Horas ocupadas</span>
+                    <span className="text-xs font-bold text-gray-900 dark:text-foreground">24 hrs</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-500 dark:text-muted-foreground">Por WhatsApp</span>
+                    <span className="text-xs font-bold text-gray-400 line-through">0</span>
+                  </div>
+                </div>
+                <div className="border-t border-gray-100 dark:border-border pt-2.5">
+                  <p className="text-[10px] text-gray-400">Ganancias</p>
+                  <p className="text-lg font-bold text-[#16a34a]">S/ 1,250</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── CTA FINAL ─────────────────────────────────────────────── */}
+      <section className="py-16 bg-gray-900 dark:bg-gray-950 relative overflow-hidden">
+        {/* Decoración */}
+        <div className="absolute right-0 top-0 h-full flex items-center pr-6 opacity-[0.07] pointer-events-none select-none">
+          <span className="text-[220px] leading-none">⚽</span>
+        </div>
+        <div className="absolute -left-12 top-1/2 -translate-y-1/2 w-64 h-64 rounded-full bg-[#16a34a]/20 blur-3xl pointer-events-none" />
+
+        <div className="container mx-auto px-4 relative">
+          <div className="max-w-2xl">
+            {/* Badges de confianza */}
+            <div className="flex flex-wrap gap-2 mb-6">
+              {[
+                'Reserva en 60 segundos',
+                'Sin llamadas',
+                'Paga con Yape o Plin',
+              ].map(tag => (
+                <span key={tag} className="inline-flex items-center gap-1.5 bg-white/10 text-white/80 text-xs font-medium px-3 py-1.5 rounded-full">
+                  <CheckCircle className="h-3 w-3 text-[#4ade80]" />
+                  {tag}
+                </span>
+              ))}
+            </div>
+
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-white mb-3 leading-tight">
+              Tu partido empieza<br />
+              <span className="text-[#4ade80]">cuando tú decides</span>
+            </h2>
+            <p className="text-gray-400 mb-8 text-base leading-relaxed max-w-md">
+              Encuentra cancha, elige horario y reserva en minutos. Sin llamadas, sin esperas.
+            </p>
+
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <Link href="/canchas">
+                <button className="inline-flex items-center gap-2 bg-[#16a34a] hover:bg-[#15803d] active:scale-[0.98] text-white font-bold px-7 py-4 rounded-xl transition-all text-base shadow-lg shadow-[#16a34a]/30">
+                  Buscar cancha ahora
+                  <ArrowRight className="h-5 w-5" />
+                </button>
+              </Link>
+              <p className="text-sm text-gray-500">Gratis · Sin registro previo</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
     </div>
   );
 }

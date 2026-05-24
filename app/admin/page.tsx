@@ -1,19 +1,25 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { CalendarCheck, Clock, CheckCircle2, XCircle, TrendingUp } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import ReservasAnalytics from '@/components/reservas-analytics';
 import { type Reserva } from '@/lib/store';
 import { canchas } from '@/lib/data';
+import { getAdminTokenFresh } from '@/lib/supabase-browser';
 
 export default function AdminDashboard() {
   const [reservas, setReservas] = useState<Reserva[]>([]);
   const [rawReservas, setRawReservas] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/reservas/all').then(r => r.json()).then(data => {
+    (async () => {
+      const token = await getAdminTokenFresh();
+      const r = await fetch('/api/reservas/all', { headers: { Authorization: `Bearer ${token}` } });
+      const data = await r.json();
       if (Array.isArray(data)) {
         setRawReservas(data);
         setReservas(data.map((r: any) => ({
@@ -24,7 +30,8 @@ export default function AdminDashboard() {
           estado: r.estado, creadaEn: r.creado_en, notificado: true,
         })));
       }
-    });
+      setLoading(false);
+    })();
   }, []);
 
   const pendientes  = reservas.filter(r => r.estado === 'pendiente').length;
@@ -33,10 +40,10 @@ export default function AdminDashboard() {
   const ingresos    = reservas.filter(r => r.estado === 'confirmada').reduce((s, r) => s + r.precio, 0);
 
   const stats = [
-    { label: 'Pendientes',  value: pendientes,  icon: Clock,         color: 'text-yellow-500', bg: 'bg-yellow-500/10' },
-    { label: 'Confirmadas', value: confirmadas, icon: CheckCircle2,  color: 'text-primary',    bg: 'bg-primary/10' },
-    { label: 'Rechazadas',  value: rechazadas,  icon: XCircle,       color: 'text-destructive', bg: 'bg-destructive/10' },
-    { label: 'Ingresos',    value: `S/ ${ingresos}`, icon: TrendingUp, color: 'text-primary', bg: 'bg-primary/10' },
+    { label: 'Pendientes',  value: pendientes,  icon: Clock,         color: 'text-yellow-500',  bg: 'bg-yellow-500/10',    href: '/admin/reservas' },
+    { label: 'Confirmadas', value: confirmadas, icon: CheckCircle2,  color: 'text-primary',     bg: 'bg-primary/10',       href: '/admin/reservas' },
+    { label: 'Rechazadas',  value: rechazadas,  icon: XCircle,       color: 'text-destructive', bg: 'bg-destructive/10',   href: '/admin/reservas' },
+    { label: 'Ingresos',    value: `S/ ${ingresos}`, icon: TrendingUp, color: 'text-primary',  bg: 'bg-primary/10' },
   ];
 
   const recientes = reservas.slice(0, 5);
@@ -52,6 +59,47 @@ export default function AdminDashboard() {
     return <Badge variant="outline" className={s.class}>{s.label}</Badge>;
   };
 
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+          <p className="text-muted-foreground">Resumen general de tu negocio</p>
+        </div>
+        {/* Stats skeleton */}
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Card key={i} className="border-border p-5">
+              <div className="flex items-center justify-between">
+                <div className="space-y-2">
+                  <div className="h-3 w-20 animate-pulse rounded bg-muted" />
+                  <div className="h-8 w-12 animate-pulse rounded bg-muted" />
+                </div>
+                <div className="h-10 w-10 animate-pulse rounded-xl bg-muted" />
+              </div>
+            </Card>
+          ))}
+        </div>
+        {/* Reservas recientes skeleton */}
+        <div>
+          <div className="h-5 w-36 animate-pulse rounded bg-muted mb-3" />
+          <Card className="border-border overflow-hidden">
+            <div className="divide-y divide-border">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-4 px-4 py-4">
+                  <div className="h-4 w-32 animate-pulse rounded bg-muted flex-1" />
+                  <div className="h-4 w-24 animate-pulse rounded bg-muted" />
+                  <div className="h-4 w-16 animate-pulse rounded bg-muted" />
+                  <div className="h-6 w-20 animate-pulse rounded-full bg-muted" />
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -61,19 +109,24 @@ export default function AdminDashboard() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {stats.map(s => (
-          <Card key={s.label} className="border-border p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">{s.label}</p>
-                <p className="mt-1 text-2xl font-bold text-foreground">{s.value}</p>
+        {stats.map(s => {
+          const card = (
+            <Card className={`border-border p-5 ${s.href ? 'hover:shadow-md transition-shadow cursor-pointer' : ''}`}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">{s.label}</p>
+                  <p className="mt-1 text-2xl font-bold text-foreground">{s.value}</p>
+                </div>
+                <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${s.bg}`}>
+                  <s.icon className={`h-5 w-5 ${s.color}`} />
+                </div>
               </div>
-              <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${s.bg}`}>
-                <s.icon className={`h-5 w-5 ${s.color}`} />
-              </div>
-            </div>
-          </Card>
-        ))}
+            </Card>
+          );
+          return s.href
+            ? <Link key={s.label} href={s.href}>{card}</Link>
+            : <div key={s.label}>{card}</div>;
+        })}
       </div>
 
       {/* Canchas */}

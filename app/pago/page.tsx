@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import {
   ArrowLeft, Calendar, Clock, CheckCircle2, Copy,
-  Smartphone, Shield, ChevronRight, Upload, ImageIcon, Timer, Mail,
+  Smartphone, Shield, ChevronRight, Upload, ImageIcon, Timer, Mail, ExternalLink,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { LoadingButton } from '@/components/loading-button';
@@ -18,11 +18,8 @@ import { cn } from '@/lib/utils';
 import { type Cupon } from '@/lib/auth';
 import { apiCrearReserva, apiGetLoyalty, getToken } from '@/lib/api';
 
-type MetodoPago = 'yape' | 'plin';
+type MetodoPago = 'yape' | 'plin' | 'efectivo';
 type Paso = 'metodo' | 'instrucciones' | 'exito';
-
-const NUMERO_YAPE = '987 654 321';
-const NUMERO_Plin = '987 654 321';
 const TIEMPO_LIMITE = 5 * 60; // 5 minutos
 
 // Clave única por bloqueo en localStorage
@@ -56,9 +53,10 @@ function PagoContent() {
   const fecha     = params.get('fecha') ?? '';
   const hora      = params.get('hora') ?? '';
   const precioRaw = Number(params.get('precio') ?? 0);
-  // Extras seleccionados desde la página de detalle
-  const conBalon    = params.get('balon') === '1';
-  const conChalecos = params.get('chalecos') === '1';
+  const fromCard  = params.get('from') === 'card';
+  // Extras — pueden venir preseleccionados desde el detalle, o el usuario los elige aquí
+  const [conBalon, setConBalon]       = useState(params.get('balon') === '1');
+  const [conChalecos, setConChalecos] = useState(params.get('chalecos') === '1');
 
   const [cancha, setCancha]                       = useState<any>(null);
   const [canchaLoading, setCanchaLoading]         = useState(true);
@@ -71,7 +69,9 @@ function PagoContent() {
   const [comprobante, setComprobante]             = useState<string | null>(null);
   const [enviando, setEnviando]                   = useState(false);
   const [segundos, setSegundos]                   = useState(TIEMPO_LIMITE);
-  const [bloqueado, setBloqueado]                 = useState(false);
+  const [montoCopiado, setMontoCopiado]           = useState(false);
+
+  const [modoPago, setModoPago]                       = useState<'completo' | 'parcial'>('completo');
 
   // Email y teléfono para usuarios invitados
   const [esInvitado, setEsInvitado]                   = useState(false);
@@ -106,19 +106,23 @@ function PagoContent() {
             phone:           data.telefono,
             balonPrecio:     data.balon_precio    ?? null,
             chalecosPrecio:  data.chalecos_precio ?? null,
+            lat:             data.latitud         ?? null,
+            lng:             data.longitud        ?? null,
+            yapeNumero:      data.yape_numero     ?? '',
+            plinNumero:      data.plin_numero     ?? '',
           });
         } else {
           // Fallback a datos hardcodeados
           import('@/lib/data').then(({ getCanchaById }) => {
             const c = getCanchaById(canchaId);
-            if (c) setCancha({ id: c.id, name: c.name, images: c.images, address: c.address, phone: c.phone });
+            if (c) setCancha({ id: c.id, name: c.name, images: c.images, address: c.address, phone: c.phone, lat: c.coordinates?.lat ?? null, lng: c.coordinates?.lng ?? null });
           });
         }
       })
       .catch(() => {
         import('@/lib/data').then(({ getCanchaById }) => {
           const c = getCanchaById(canchaId);
-          if (c) setCancha({ id: c.id, name: c.name, images: c.images, address: c.address, phone: c.phone });
+          if (c) setCancha({ id: c.id, name: c.name, images: c.images, address: c.address, phone: c.phone, lat: c.coordinates?.lat ?? null, lng: c.coordinates?.lng ?? null });
         });
       })
       .finally(() => setCanchaLoading(false));
@@ -150,7 +154,6 @@ function PagoContent() {
     const crearBloqueo = async () => {
       // Si ya existe el bloqueo en localStorage, no volver a crearlo en el servidor
       if (yaExiste) {
-        setBloqueado(true);
         return;
       }
 
@@ -167,14 +170,13 @@ function PagoContent() {
       if (!activo) return;
 
       if (res.status === 409) {
-        // Horario ocupado por otro usuario — redirigir al detalle
-        router.replace(`/cancha/${canchaId}`);
+        // Horario ocupado por otro usuario — redirigir al detalle con aviso
+        router.replace(`/cancha/${canchaId}?ocupado=1&hora=${encodeURIComponent(hora)}`);
         return;
       }
 
       if (data.ok) {
         guardarInicioBloqueo(canchaId, fecha, hora);
-        setBloqueado(true);
       }
     };
 
@@ -212,7 +214,8 @@ function PagoContent() {
       clearInterval(interval);
       clearTimeout(timeout);
       window.removeEventListener('beforeunload', liberarBloqueo);
-      // Liberar bloqueo al desmontar (navegación hacia atrás)
+      // Liberar bloqueo al desmontar (navegación hacia atrás) y limpiar localStorage
+      limpiarInicioBloqueo(canchaId, fecha, hora);
       fetch('/api/bloqueos', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
@@ -256,6 +259,37 @@ function PagoContent() {
     }
   }, []);
 
+  // Scroll instantáneo al tope solo cuando avanza al paso 2 (no en mount ni al retroceder)
+  const prevPaso = useRef<Paso>('metodo');
+  useEffect(() => {
+    if (paso === 'instrucciones' && prevPaso.current === 'metodo') {
+      window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+    }
+    prevPaso.current = paso;
+  }, [paso]);
+
+  // Métodos de pago disponibles según la cancha
+  const numeroYape     = cancha?.yapeNumero ?? '';
+  const numeroPlin     = cancha?.plinNumero ?? '';
+  const yapeDisponible = !!numeroYape;
+  const plinDisponible = !!numeroPlin;
+  const soloEfectivo   = !yapeDisponible && !plinDisponible;
+
+  // Cuando carga la cancha: si solo tiene un método, saltar el selector
+  const [pasoListo, setPasoListo] = useState(false);
+  useEffect(() => {
+    if (!cancha || pasoListo) return;
+    setPasoListo(true);
+    if (!yapeDisponible && plinDisponible) {
+      setMetodo('plin');
+      setPaso('instrucciones');
+    } else if (yapeDisponible && !plinDisponible) {
+      setMetodo('yape');
+      setPaso('instrucciones');
+    }
+    // Ambos o ninguno: comportamiento por defecto
+  }, [cancha, pasoListo, yapeDisponible, plinDisponible]);
+
   if (canchaLoading) return (
     <div className="flex min-h-screen items-center justify-center">
       <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
@@ -273,12 +307,15 @@ function PagoContent() {
   const extraChalecos = conChalecos && cancha?.chalecosPrecio != null ? cancha.chalecosPrecio : 0;
   const total       = Math.max(0, precioRaw + extraBalon + extraChalecos - descuento);
 
+  const montoAdelanto  = modoPago === 'parcial' ? Math.round(total * 0.20) : total;
+  const saldoPendiente = modoPago === 'parcial' ? total - montoAdelanto : 0;
+
   const fechaLabel = new Date(fecha + 'T00:00:00').toLocaleDateString('es-PE', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   });
 
   const copiarNumero = () => {
-    const num = metodo === 'yape' ? NUMERO_YAPE : NUMERO_Plin;
+    const num = metodo === 'yape' ? numeroYape : numeroPlin;
     navigator.clipboard.writeText(num.replace(/\s/g, ''));
     setCopiado(true);
     setTimeout(() => setCopiado(false), 2000);
@@ -287,12 +324,53 @@ function PagoContent() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
     const reader = new FileReader();
-    reader.onload = ev => setComprobante(ev.target?.result as string);
+    reader.onload = ev => {
+      const original = ev.target?.result as string;
+      const img = new window.Image();
+      img.onload = () => {
+        const MAX = 1200;
+        let { width, height } = img;
+        if (width > MAX || height > MAX) {
+          if (width > height) { height = Math.round((height * MAX) / width); width = MAX; }
+          else                { width  = Math.round((width  * MAX) / height); height = MAX; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext('2d')!.drawImage(img, 0, 0, width, height);
+        setComprobante(canvas.toDataURL('image/jpeg', 0.75));
+      };
+      img.src = original;
+    };
     reader.readAsDataURL(file);
   };
 
   const handleEnviar = async () => {
+    // Caso efectivo: flujo simplificado sin comprobante
+    if (soloEfectivo) {
+      if (esInvitado) {
+        if (!emailInvitado.trim()) { setEmailError('Ingresa tu correo para recibir la confirmación'); return; }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInvitado)) { setEmailError('Ingresa un correo válido'); return; }
+        setEmailError('');
+      }
+      setEnviando(true);
+      await apiCrearReserva({
+        canchaId, canchaNombre: cancha.name, fecha, hora,
+        precio: total, precioOriginal: precioRaw,
+        cuponId: cuponSeleccionado, metodoPago: 'efectivo',
+        balonIncluido: conBalon, chalecosIncluido: conChalecos,
+        modoPago, montoAdelanto, saldoPendiente,
+        ...(esInvitado && emailInvitado ? { emailInvitado, telefonoInvitado: '', metodoDevolucion: 'yape' } : {}),
+      });
+      limpiarInicioBloqueo(canchaId, fecha, hora);
+      fetch('/api/bloqueos', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ canchaId, fecha, hora }) });
+      setEnviando(false);
+      setPaso('exito');
+      return;
+    }
+
     // Validar teléfono para usuarios registrados
     if (!esInvitado) {
       if (!telefonoRegistrado && !otroTelefono.trim()) {
@@ -350,6 +428,9 @@ function PagoContent() {
       comprobanteUrl: comprobante,
       balonIncluido:    conBalon,
       chalecosIncluido: conChalecos,
+      modoPago,
+      montoAdelanto,
+      saldoPendiente,
       ...(esInvitado && emailInvitado ? { 
         emailInvitado, 
         telefonoInvitado: mismoNumero ? 'MISMO_NUMERO_PAGO' : telefonoInvitado,
@@ -385,11 +466,21 @@ function PagoContent() {
   if (paso === 'exito') {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 text-center">
-        <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-yellow-500/10">
-          <Clock className="h-12 w-12 text-yellow-500" />
+        <div className="mb-4 flex h-24 w-24 items-center justify-center rounded-full bg-primary/10">
+          <CheckCircle2 className="h-12 w-12 text-primary" />
         </div>
-        <h1 className="mb-2 text-2xl font-bold text-foreground">¡Reserva enviada!</h1>
-        <p className="mb-1 text-muted-foreground">Tu comprobante fue recibido correctamente.</p>
+        <h1 className="mb-2 text-2xl font-bold text-foreground">
+          {metodo === 'efectivo' ? '¡Reserva confirmada!' : '¡Listo, ya casi!'}
+        </h1>
+        <p className="mb-3 text-muted-foreground">
+          {metodo === 'efectivo' ? 'Tu reserva fue registrada. Paga en efectivo el día del partido.' : 'Tu comprobante fue recibido correctamente.'}
+        </p>
+        <div className="mb-6 flex items-center gap-2 rounded-full bg-yellow-500/10 border border-yellow-500/20 px-4 py-2">
+          <Clock className="h-4 w-4 text-yellow-600 shrink-0" />
+          <p className="text-sm text-yellow-700 dark:text-yellow-400 font-medium">
+            {metodo === 'efectivo' ? 'El admin confirmará tu reserva en breve' : 'El admin verificará tu pago en breve'}
+          </p>
+        </div>
 
         {esInvitado && emailInvitado ? (
           <div className="mb-8 flex flex-col items-center gap-2">
@@ -425,7 +516,7 @@ function PagoContent() {
             </div>
             <Separator />
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Total pagado</span>
+              <span className="text-muted-foreground">{metodo === 'efectivo' ? 'Monto a pagar en cancha' : 'Total pagado'}</span>
               <span className="font-bold text-primary">S/ {total}</span>
             </div>
             <div className="flex items-center justify-between">
@@ -444,6 +535,13 @@ function PagoContent() {
               `⚽ *¡Acabo de reservar una cancha!*`,
               ``,
               `📍 *${cancha.name}*`,
+              ...(cancha.address ? [`🗺 ${cancha.address}`] : []),
+              ...(cancha.lat && cancha.lng
+                ? [`📌 Cómo llegar: https://maps.google.com/?q=${cancha.lat},${cancha.lng}`]
+                : cancha.address
+                ? [`📌 Cómo llegar: https://maps.google.com/?q=${encodeURIComponent(cancha.address)}`]
+                : []),
+              ``,
               `📅 ${fechaLabel}`,
               `🕐 ${hora}`,
               `💰 S/ ${total}`,
@@ -472,17 +570,35 @@ function PagoContent() {
 
   return (
     <div className="min-h-screen bg-background pb-10">
-      <header className="sticky top-0 z-50 flex h-14 items-center gap-3 border-b border-border bg-card/95 px-4 backdrop-blur">
-        <Button variant="ghost" size="icon" onClick={() => router.back()}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <h1 className="text-base font-semibold text-foreground">Confirmar pago</h1>
-        <div className={cn(
-          'ml-auto flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold',
-          segundos > 60 ? 'bg-primary/10 text-primary' : 'bg-destructive/10 text-destructive animate-pulse'
-        )}>
-          <Timer className="h-4 w-4" />
-          {String(Math.floor(segundos / 60)).padStart(2, '0')}:{String(segundos % 60).padStart(2, '0')}
+      <header className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur">
+        <div className="flex h-14 items-center gap-3 px-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => paso === 'instrucciones' ? setPaso('metodo') : router.back()}
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-sm font-semibold text-foreground leading-tight">Confirmar reserva</h1>
+            <p className="text-xs text-muted-foreground">
+              {soloEfectivo ? 'Pago en efectivo en cancha' : paso === 'metodo' ? 'Paso 1 de 2 · Elige método de pago' : 'Paso 2 de 2 · Sube tu comprobante'}
+            </p>
+          </div>
+          <div className={cn(
+            'flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold shrink-0',
+            segundos > 60 ? 'bg-primary/10 text-primary' : 'bg-destructive/10 text-destructive animate-pulse'
+          )}>
+            <Timer className="h-4 w-4" />
+            {String(Math.floor(segundos / 60)).padStart(2, '0')}:{String(segundos % 60).padStart(2, '0')}
+          </div>
+        </div>
+        {/* Barra de progreso */}
+        <div className="h-0.5 bg-muted">
+          <div
+            className="h-full bg-primary transition-all duration-500"
+            style={{ width: soloEfectivo || paso === 'instrucciones' ? '100%' : '50%' }}
+          />
         </div>
       </header>
 
@@ -504,6 +620,63 @@ function PagoContent() {
             </div>
           </div>
         </Card>
+
+        {/* Extras opcionales — solo si viene del card y la cancha tiene extras con precio */}
+        {fromCard && cancha && (cancha.balonPrecio != null || cancha.chalecosPrecio != null) && (
+          <Card className="border-border p-4">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">¿Necesitas extras?</p>
+            <div className="space-y-3">
+              {cancha.balonPrecio != null && (
+                <label className="flex items-center justify-between gap-3 cursor-pointer">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">⚽</span>
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Balón</p>
+                      <p className="text-xs text-muted-foreground">+ S/ {cancha.balonPrecio} por reserva</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setConBalon(v => !v)}
+                    className={cn(
+                      'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors',
+                      conBalon ? 'bg-primary' : 'bg-muted-foreground/30'
+                    )}
+                  >
+                    <span className={cn(
+                      'inline-block h-5 w-5 rounded-full bg-white shadow transition-transform',
+                      conBalon ? 'translate-x-[22px]' : 'translate-x-[2px]'
+                    )} />
+                  </button>
+                </label>
+              )}
+              {cancha.chalecosPrecio != null && (
+                <label className="flex items-center justify-between gap-3 cursor-pointer">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">🎽</span>
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Chalecos</p>
+                      <p className="text-xs text-muted-foreground">+ S/ {cancha.chalecosPrecio} por reserva</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setConChalecos(v => !v)}
+                    className={cn(
+                      'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors',
+                      conChalecos ? 'bg-primary' : 'bg-muted-foreground/30'
+                    )}
+                  >
+                    <span className={cn(
+                      'inline-block h-5 w-5 rounded-full bg-white shadow transition-transform',
+                      conChalecos ? 'translate-x-[22px]' : 'translate-x-[2px]'
+                    )} />
+                  </button>
+                </label>
+              )}
+            </div>
+          </Card>
+        )}
 
         {/* Cupón — solo si el usuario tiene cupones disponibles */}
         {cupones.length > 0 && (
@@ -554,6 +727,107 @@ function PagoContent() {
           </Card>
         )}
 
+        {/* Selector de modo de pago y warning adelanto — solo con Yape/Plin */}
+        {!soloEfectivo && (
+          <>
+            <div>
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">¿Cómo quieres pagar?</p>
+              <div className="space-y-3">
+                {/* Pago completo */}
+                <button
+                  onClick={() => setModoPago('completo')}
+                  className={cn(
+                    'w-full text-left rounded-2xl border-2 p-4 transition-all',
+                    modoPago === 'completo'
+                      ? 'border-primary bg-primary/5 shadow-sm'
+                      : 'border-border hover:border-muted-foreground/40'
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <div className={cn(
+                        'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-all',
+                        modoPago === 'completo' ? 'border-primary bg-primary' : 'border-muted-foreground/40'
+                      )}>
+                        {modoPago === 'completo' && (
+                          <svg className="h-3 w-3 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </div>
+                      <span className="font-semibold text-foreground">Pago completo (100%)</span>
+                    </div>
+                    <Badge className="shrink-0 bg-primary/10 text-primary border-primary/20 text-xs">Recomendado</Badge>
+                  </div>
+                  <p className="mt-2 ml-7 text-sm font-bold text-primary">S/ {total} ahora</p>
+                  <ul className="mt-2 ml-7 space-y-1">
+                    <li className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-500" />
+                      Cancelación con devolución hasta 85%
+                    </li>
+                    <li className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-500" />
+                      Reserva garantizada
+                    </li>
+                  </ul>
+                </button>
+
+                {/* Pago con adelanto */}
+                <button
+                  onClick={() => total > 0 && setModoPago('parcial')}
+                  disabled={total === 0}
+                  className={cn(
+                    'w-full text-left rounded-2xl border-2 p-4 transition-all',
+                    total === 0 && 'opacity-50 cursor-not-allowed',
+                    modoPago === 'parcial' && total > 0
+                      ? 'border-amber-500 bg-amber-500/5 shadow-sm'
+                      : 'border-border hover:border-muted-foreground/40'
+                  )}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className={cn(
+                      'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-all',
+                      modoPago === 'parcial' && total > 0 ? 'border-amber-500 bg-amber-500' : 'border-muted-foreground/40'
+                    )}>
+                      {modoPago === 'parcial' && total > 0 && (
+                        <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </div>
+                    <span className="font-semibold text-foreground">Pago con adelanto (20%)</span>
+                  </div>
+                  {total > 0 ? (
+                    <p className="mt-2 ml-7 text-sm text-muted-foreground">
+                      <span className="font-bold text-foreground">S/ {Math.round(total * 0.20)}</span> ahora
+                      {' · '}
+                      <span className="font-medium">S/ {total - Math.round(total * 0.20)}</span> en cancha
+                    </p>
+                  ) : (
+                    <p className="mt-2 ml-7 text-xs text-muted-foreground">Agrega precio para habilitar esta opción</p>
+                  )}
+                  <div className="mt-2 ml-7 flex items-center gap-1.5">
+                    <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">⚠ Sin devolución al cancelar</span>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* Warning adelanto — solo visible cuando está seleccionado */}
+            {modoPago === 'parcial' && (
+              <div className="flex items-start gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4">
+                <span className="text-xl shrink-0 leading-none mt-0.5">⚠️</span>
+                <div>
+                  <p className="text-sm font-bold text-amber-700 dark:text-amber-400">El adelanto no se devuelve si cancelas</p>
+                  <p className="text-xs text-amber-600 dark:text-amber-500 mt-1 leading-relaxed">
+                    Si cancelas tu reserva, los <span className="font-bold">S/ {Math.round(total * 0.20)}</span> del adelanto no son reembolsables. El saldo de <span className="font-bold">S/ {total - Math.round(total * 0.20)}</span> lo pagas directamente en la cancha el día del partido.
+                  </p>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
         {/* Precio */}
         <Card className="border-border p-4">
           <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Detalle del pago</p>
@@ -589,6 +863,23 @@ function PagoContent() {
               <span className="text-foreground">Total a pagar</span>
               <span className="text-primary">S/ {total}</span>
             </div>
+            {modoPago === 'parcial' && (
+              <>
+                <div className="flex justify-between text-sm">
+                  <span className="text-primary font-medium">Pagas ahora (adelanto 20%)</span>
+                  <span className="text-primary font-semibold">S/ {montoAdelanto}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Pagas en cancha (80%)</span>
+                  <span className="text-muted-foreground">S/ {saldoPendiente}</span>
+                </div>
+              </>
+            )}
+            {modoPago === 'completo' && (
+              <div className="flex justify-between text-sm">
+                <span className="text-green-600 dark:text-green-400 font-medium">Reserva garantizada ✓</span>
+              </div>
+            )}
           </div>
 
           {/* Aviso si la cancha no tiene extras */}
@@ -602,8 +893,56 @@ function PagoContent() {
           )}
         </Card>
 
+        {/* Efectivo — cancha sin Yape ni Plin */}
+        {soloEfectivo && (
+          <>
+            <div className="flex items-start gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4">
+              <span className="text-xl shrink-0 leading-none mt-0.5">💵</span>
+              <div>
+                <p className="text-sm font-bold text-amber-700 dark:text-amber-400">Pago en efectivo en cancha</p>
+                <p className="text-xs text-amber-600 dark:text-amber-500 mt-1 leading-relaxed">
+                  Esta cancha no acepta Yape ni Plin. Paga directamente en la cancha el día de tu partido.
+                </p>
+              </div>
+            </div>
+
+            {esInvitado && (
+              <Card className="border-primary/30 bg-primary/5 p-5 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Mail className="h-4 w-4 text-primary" />
+                  <p className="font-medium text-foreground">Tu correo de contacto</p>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Lo necesitamos para enviarte la confirmación de tu reserva.
+                </p>
+                <div className="space-y-1">
+                  <Input
+                    type="email"
+                    placeholder="tu@correo.com"
+                    value={emailInvitado}
+                    onChange={e => { setEmailInvitado(e.target.value); setEmailError(''); }}
+                    className={cn('bg-background', emailError && 'border-destructive focus-visible:ring-destructive')}
+                  />
+                  {emailError && <p className="text-xs text-destructive">{emailError}</p>}
+                </div>
+              </Card>
+            )}
+
+            <LoadingButton
+              size="lg"
+              className="w-full"
+              onClick={handleEnviar}
+              isLoading={enviando}
+              loadingText="Confirmando..."
+              loadingVariant="spinner"
+            >
+              Confirmar reserva (pago en cancha)
+            </LoadingButton>
+          </>
+        )}
+
         {/* Método */}
-        {paso === 'metodo' && (
+        {!soloEfectivo && paso === 'metodo' && (
           <>
             <div>
               <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Método de pago</p>
@@ -646,7 +985,7 @@ function PagoContent() {
         )}
 
         {/* Instrucciones + comprobante */}
-        {paso === 'instrucciones' && (
+        {!soloEfectivo && paso === 'instrucciones' && (
           <>
             <Card className="border-border overflow-hidden">
               <div className={cn('flex items-center gap-3 px-5 py-4', metodo === 'yape' ? 'bg-[#6C1FC6]' : 'bg-[#00B4D8]')}>
@@ -671,7 +1010,7 @@ function PagoContent() {
                     <div className="flex items-center gap-2">
                       <Smartphone className="h-5 w-5 text-primary" />
                       <span className="text-xl font-bold tracking-widest text-foreground">
-                        {metodo === 'yape' ? NUMERO_YAPE : NUMERO_Plin}
+                        {metodo === 'yape' ? numeroYape : numeroPlin}
                       </span>
                     </div>
                     <button onClick={copiarNumero}
@@ -683,14 +1022,47 @@ function PagoContent() {
                 <div>
                   <p className="mb-1 text-xs text-muted-foreground">Monto exacto</p>
                   <div className="flex items-center justify-between rounded-xl bg-primary/5 border border-primary/20 px-4 py-3">
-                    <span className="text-sm text-muted-foreground">Total</span>
-                    <span className="text-2xl font-bold text-primary">S/ {total}</span>
+                    <span className="text-sm text-muted-foreground">Total a pagar</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl font-bold text-primary">S/ {total}</span>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(String(total));
+                          setMontoCopiado(true);
+                          setTimeout(() => setMontoCopiado(false), 2000);
+                        }}
+                        className="flex items-center gap-1 rounded-lg bg-primary/10 px-2 py-1 text-xs font-medium text-primary hover:bg-primary/20 transition-colors"
+                      >
+                        <Copy className="h-3 w-3" />{montoCopiado ? '¡Copiado!' : 'Copiar'}
+                      </button>
+                    </div>
                   </div>
                 </div>
+
+                {/* Botón directo para abrir la app de pago */}
+                <a
+                  href={metodo === 'yape' ? 'yape://' : 'plin://'}
+                  className="flex items-center justify-center gap-3 w-full rounded-xl py-3.5 font-bold text-white active:scale-[0.98] transition-all"
+                  style={{ backgroundColor: metodo === 'yape' ? '#6C1FC6' : '#00B4D8' }}
+                >
+                  <Image
+                    src={metodo === 'yape' ? '/images/yape.png' : '/images/plin.png'}
+                    alt={metodo === 'yape' ? 'Yape' : 'Plin'}
+                    width={22}
+                    height={22}
+                    className="object-contain rounded"
+                  />
+                  Abrir {metodo === 'yape' ? 'Yape' : 'Plin'} · Enviar S/ {total}
+                  <ExternalLink className="h-4 w-4 opacity-70" />
+                </a>
+                <p className="text-center text-xs text-muted-foreground -mt-1">
+                  Si no abre automáticamente, sigue los pasos de abajo
+                </p>
+
                 <div className="space-y-2">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Pasos</p>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Pasos manuales</p>
                   {[
-                    `Abre tu app de ${metodo === 'yape' ? 'Yape' : 'plin'}`,
+                    `Abre tu app de ${metodo === 'yape' ? 'Yape' : 'Plin'}`,
                     `Envía S/ ${total} al número de arriba`,
                     'Toma captura de pantalla del comprobante',
                     'Súbela abajo y envía tu reserva',
@@ -924,9 +1296,11 @@ function PagoContent() {
             )}
 
             <div className="flex gap-3">
-              <Button variant="outline" size="lg" className="flex-1" onClick={() => setPaso('metodo')}>
-                Cambiar método
-              </Button>
+              {yapeDisponible && plinDisponible && (
+                <Button variant="outline" size="lg" className="flex-1" onClick={() => setPaso('metodo')}>
+                  Cambiar método
+                </Button>
+              )}
               <LoadingButton
                 size="lg"
                 className="flex-1"

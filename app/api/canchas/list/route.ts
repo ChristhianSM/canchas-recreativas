@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
 import { getLocalDateString, addDaysToDateString } from '@/lib/date-utils';
+import { horasBloqueadasEnFecha, BloqueoAdmin } from '@/lib/bloqueos-utils';
 
 // GET — listar todas las canchas activas con horarios ocupados
 export async function GET(req: NextRequest) {
@@ -31,10 +32,15 @@ export async function GET(req: NextRequest) {
     .from('bloqueos_temporales')
     .select('cancha_id, fecha, hora');
 
-  // Horarios bloqueados por dueño
+  // Horarios bloqueados por dueño (legacy)
   const { data: horariosBloqueados } = await sb
     .from('horarios_bloqueados')
     .select('cancha_id, hora');
+
+  // Bloqueos admin (fecha específica + recurrente + permanente)
+  const { data: bloqueosAdmin } = await sb
+    .from('bloqueos_admin')
+    .select('*');
 
   // Construir mapa de horarios ocupados por cancha
   const horariosOcupadosPorCancha: Record<string, Record<string, 'reservado' | 'en_proceso'>> = {};
@@ -59,6 +65,33 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // Procesar bloqueos admin por cancha para los próximos 14 días
+  if ((bloqueosAdmin ?? []).length > 0) {
+    // Agrupar bloqueos por cancha
+    const bloqueosPorCancha: Record<string, BloqueoAdmin[]> = {};
+    for (const b of bloqueosAdmin ?? []) {
+      if (!bloqueosPorCancha[b.cancha_id]) bloqueosPorCancha[b.cancha_id] = [];
+      bloqueosPorCancha[b.cancha_id].push(b as BloqueoAdmin);
+    }
+
+    // Para cada cancha con bloqueos admin, marcar los slots bloqueados
+    for (const [canchaId, bloqueos] of Object.entries(bloqueosPorCancha)) {
+      if (!horariosOcupadosPorCancha[canchaId]) {
+        horariosOcupadosPorCancha[canchaId] = {};
+      }
+      for (let i = 0; i < 14; i++) {
+        const fecha = addDaysToDateString(hoy, i);
+        const horasBloq = horasBloqueadasEnFecha(bloqueos, fecha);
+        for (const hora of horasBloq) {
+          const key = `${fecha}|${hora}`;
+          if (!horariosOcupadosPorCancha[canchaId][key]) {
+            horariosOcupadosPorCancha[canchaId][key] = 'reservado';
+          }
+        }
+      }
+    }
+  }
+
   // Construir mapa de horarios bloqueados por cancha
   const horariosRestringidosPorCancha: Record<string, string[]> = {};
   for (const h of horariosBloqueados ?? []) {
@@ -75,5 +108,9 @@ export async function GET(req: NextRequest) {
     horariosRestringidos: horariosRestringidosPorCancha[cancha.id] || [],
   }));
 
-  return NextResponse.json(canchasConHorarios);
+  return NextResponse.json(canchasConHorarios, {
+    headers: {
+      'Cache-Control': 's-maxage=60, stale-while-revalidate=30',
+    },
+  });
 }

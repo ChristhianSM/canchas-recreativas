@@ -1,26 +1,45 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import Image from 'next/image';
-import { useRouter } from 'next/navigation';
-import { Menu, MapPin, Calendar, User, LogOut, ChevronDown } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { useRouter, usePathname } from "next/navigation";
+import {
+  Menu,
+  Home,
+  Calendar,
+  User,
+  LogOut,
+  ChevronDown,
+  CalendarCheck,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { getUser, logout, type User as AuthUser } from '@/lib/auth';
-import { getStoredUser, apiLogout, getToken, isTokenLikelyExpired } from '@/lib/api';
+} from "@/components/ui/dropdown-menu";
+import { logout, type User as AuthUser } from "@/lib/auth";
+import {
+  getStoredUser,
+  apiLogout,
+  getToken,
+  isTokenLikelyExpired,
+} from "@/lib/api";
 
 export function Header() {
   const router = useRouter();
-  const [open, setOpen]       = useState(false);
-  const [user, setUser]       = useState<AuthUser | null>(null);
+  const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [hydrated, setHydrated] = useState(false);
 
   // Cargar usuario sin validar token (optimización)
@@ -33,12 +52,12 @@ export function Header() {
       logout();
       apiLogout();
       setUser(null);
-    } 
+    }
     // Si hay token, verificar si probablemente expiró (sin consulta a BD)
     else if (token) {
       if (isTokenLikelyExpired()) {
         // Token probablemente expirado — limpiar
-        console.warn('Token expirado (basado en tiempo), cerrando sesión...');
+        console.warn("Token expirado (basado en tiempo), cerrando sesión...");
         logout();
         apiLogout();
         setUser(null);
@@ -53,7 +72,7 @@ export function Header() {
     const handleUpdate = () => {
       const storedUser = getStoredUser();
       const token = getToken();
-      
+
       // Si no hay token, limpiar usuario
       if (!token) {
         setUser(null);
@@ -67,37 +86,41 @@ export function Header() {
       }
     };
 
-    window.addEventListener('storage', handleUpdate);
-    window.addEventListener('user-login', handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+    window.addEventListener("user-login", handleUpdate);
     return () => {
-      window.removeEventListener('storage', handleUpdate);
-      window.removeEventListener('user-login', handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
+      window.removeEventListener("user-login", handleUpdate);
     };
   }, []);
 
   const handleLogout = () => {
-    logout();        // borra cancha_piura_user (legacy)
-    apiLogout();     // borra cp_token y cp_user
+    logout(); // borra cancha_piura_user (legacy)
+    apiLogout(); // borra cp_token y cp_user
     setUser(null);
-    window.dispatchEvent(new Event('user-login'));
-    
+    window.dispatchEvent(new Event("user-login"));
+
     // Solo redirigir si está en páginas protegidas
     const currentPath = window.location.pathname;
-    const protectedRoutes = ['/perfil', '/mis-reservas'];
-    const isProtectedRoute = protectedRoutes.some(route => currentPath.startsWith(route));
-    
+    const protectedRoutes = ["/perfil", "/mis-reservas"];
+    const isProtectedRoute = protectedRoutes.some((route) =>
+      currentPath.startsWith(route),
+    );
+
     if (isProtectedRoute) {
-      router.push('/');
+      router.push("/");
     }
     // Si no está en ruta protegida, se queda en la página actual
-    
+
     setOpen(false);
   };
 
   const navItems = [
-    { href: '/', label: 'Inicio', icon: MapPin },
-    { href: '/canchas', label: 'Canchas', icon: Calendar },
-    { href: '/mis-reservas', label: 'Mis Reservas', icon: User },
+    { href: "/", label: "Inicio", icon: Home },
+    { href: "/canchas", label: "Canchas", icon: Calendar },
+    ...(user
+      ? [{ href: "/mis-reservas", label: "Mis Reservas", icon: CalendarCheck }]
+      : []),
   ];
 
   return (
@@ -116,16 +139,23 @@ export function Header() {
 
         {/* Desktop Navigation */}
         <nav className="hidden flex-1 items-center justify-center gap-1 md:flex">
-          {navItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-            >
-              <item.icon className="h-4 w-4" />
-              {item.label}
-            </Link>
-          ))}
+          {navItems.map((item) => {
+            const isActive = pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all border ${
+                  isActive
+                    ? "bg-[#16a34a]/10 text-[#16a34a] border-[#16a34a]/20"
+                    : "text-foreground border-transparent hover:bg-[#16a34a]/10 hover:text-[#16a34a] hover:border-[#16a34a]/20"
+                }`}
+              >
+                <item.icon className="h-4 w-4" />
+                {item.label}
+              </Link>
+            );
+          })}
         </nav>
 
         {/* Desktop Auth */}
@@ -140,25 +170,34 @@ export function Header() {
                   <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
                     {user.name.charAt(0).toUpperCase()}
                   </div>
-                  <span className="max-w-[120px] truncate">{user.name}</span>
+                  <span className="max-w-30 truncate">{user.name}</span>
                   <ChevronDown className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem asChild>
-                  <Link href="/mis-reservas" className="flex items-center gap-2 cursor-pointer">
+                  <Link
+                    href="/mis-reservas"
+                    className="flex items-center gap-2 cursor-pointer"
+                  >
                     <Calendar className="h-4 w-4" />
                     Mis Reservas
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href="/perfil" className="flex items-center gap-2 cursor-pointer">
+                  <Link
+                    href="/perfil"
+                    className="flex items-center gap-2 cursor-pointer"
+                  >
                     <User className="h-4 w-4" />
                     Mi Perfil
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-destructive focus:text-destructive">
+                <DropdownMenuItem
+                  onClick={handleLogout}
+                  className="cursor-pointer text-destructive focus:text-destructive"
+                >
                   <LogOut className="mr-2 h-4 w-4" />
                   Cerrar Sesión
                 </DropdownMenuItem>
@@ -166,9 +205,12 @@ export function Header() {
             </DropdownMenu>
           ) : (
             <>
-              <Button variant="outline" size="sm" asChild>
-                <Link href="/login">Iniciar Sesión</Link>
-              </Button>
+              <Link
+                href="/login"
+                className="text-sm font-medium text-foreground hover:text-[#16a34a] transition-colors"
+              >
+                Iniciar Sesión
+              </Link>
               <Button size="sm" asChild>
                 <Link href="/registro">Registrarse</Link>
               </Button>
@@ -189,17 +231,26 @@ export function Header() {
             <SheetTitle className="sr-only">Menú de navegación</SheetTitle>
             <div className="h-16 border-b border-border" />
             <nav className="flex flex-col gap-1 p-4 pt-0">
-              {navItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setOpen(false)}
-                  className="flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-foreground transition-colors hover:bg-secondary"
-                >
-                  <item.icon className="h-5 w-5 text-primary" />
-                  {item.label}
-                </Link>
-              ))}
+              {navItems.map((item) => {
+                const isActive = pathname === item.href;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setOpen(false)}
+                    className={`flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium transition-colors ${
+                      isActive
+                        ? "bg-[#16a34a]/10 text-[#16a34a]"
+                        : "text-foreground hover:bg-secondary"
+                    }`}
+                  >
+                    <item.icon
+                      className={`h-5 w-5 ${isActive ? "text-[#16a34a]" : "text-primary"}`}
+                    />
+                    {item.label}
+                  </Link>
+                );
+              })}
               <div className="mt-4 flex flex-col gap-2 border-t border-border pt-4">
                 {!hydrated ? (
                   /* Skeleton mobile */
@@ -214,28 +265,48 @@ export function Header() {
                         {user.name.charAt(0).toUpperCase()}
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-foreground">{user.name}</p>
-                        <p className="text-xs text-muted-foreground">{user.email}</p>
+                        <p className="text-sm font-medium text-foreground">
+                          {user.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {user.email}
+                        </p>
                       </div>
                     </div>
-                    <Button variant="outline" className="w-full justify-start" asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start"
+                      asChild
+                    >
                       <Link href="/perfil" onClick={() => setOpen(false)}>
                         <User className="mr-2 h-4 w-4" />
                         Mi Perfil
                       </Link>
                     </Button>
-                    <Button variant="outline" className="w-full justify-start text-destructive hover:text-destructive" onClick={handleLogout}>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start text-destructive hover:text-destructive"
+                      onClick={handleLogout}
+                    >
                       <LogOut className="mr-2 h-4 w-4" />
                       Cerrar Sesión
                     </Button>
                   </>
                 ) : (
                   <>
-                    <Button variant="outline" className="w-full justify-center" asChild>
-                      <Link href="/login" onClick={() => setOpen(false)}>Iniciar Sesión</Link>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-center"
+                      asChild
+                    >
+                      <Link href="/login" onClick={() => setOpen(false)}>
+                        Iniciar Sesión
+                      </Link>
                     </Button>
                     <Button className="w-full justify-center" asChild>
-                      <Link href="/registro" onClick={() => setOpen(false)}>Registrarse</Link>
+                      <Link href="/registro" onClick={() => setOpen(false)}>
+                        Registrarse
+                      </Link>
                     </Button>
                   </>
                 )}

@@ -1,20 +1,16 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
-  X, Sliders, ChevronLeft, ChevronRight
+  Sliders, MapPin
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Slider } from '@/components/ui/slider';
-import { Input } from '@/components/ui/input';
 import {
-  Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger,
+  Sheet, SheetContent, SheetTitle, SheetTrigger,
 } from '@/components/ui/sheet';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
 import { AdvancedFilters, sportLabels, SportType, superficieLabels, SuperficieType } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import type { Coordenadas } from '@/lib/geolocation-utils';
@@ -31,46 +27,11 @@ interface AdvancedFiltersProps {
   isSidebar?: boolean; // Nueva prop para determinar si es sidebar o sheet
   resultCount?: number; // Contador de resultados filtrados
   ubicacion?: Coordenadas | null; // Ubicación del usuario
-}
-
-const HOURS = [
-  '06:00', '07:00', '08:00', '09:00', '10:00', '11:00',
-  '12:00', '13:00', '14:00', '15:00', '16:00', '17:00',
-  '18:00', '19:00', '20:00', '21:00', '22:00', '23:00',
-];
-
-import { getLocalDateString } from '@/lib/date-utils';
-
-// Convertir formato 24h a 12h (AM/PM)
-function formatTo12Hour(time24: string): string {
-  const [hours, minutes] = time24.split(':').map(Number);
-  const period = hours >= 12 ? 'PM' : 'AM';
-  const hours12 = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
-  return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`;
-}
-
-// Generar próximos 6 días incluyendo hoy
-function getNext6Days(): string[] {
-  const days: string[] = [];
-  for (let i = 0; i < 6; i++) {
-    const date = new Date();
-    date.setDate(date.getDate() + i);
-    days.push(getLocalDateString(date));
-  }
-  return days;
-}
-
-// Formatear fecha para mostrar
-function formatDateDisplay(dateStr: string): { day: string; date: number; isToday: boolean } {
-  const date = new Date(dateStr + 'T00:00:00');
-  const today = getLocalDateString();
-  const dayName = date.toLocaleDateString('es-PE', { weekday: 'short' });
-  
-  return {
-    day: dayName.charAt(0).toUpperCase() + dayName.slice(1),
-    date: date.getDate(),
-    isToday: dateStr === today,
-  };
+  triggerRef?: React.RefObject<HTMLButtonElement | null>; // Ref para el botón trigger
+  onUbicacionObtenida?: (coords: Coordenadas) => void; // Callback cuando se obtiene ubicación
+  onUbicacionLimpiada?: () => void; // Callback cuando se limpia ubicación
+  isOpen?: boolean; // Estado controlado del sheet
+  onOpenChange?: (open: boolean) => void; // Callback para cambiar el estado del sheet
 }
 
 export function AdvancedFiltersComponent({
@@ -81,14 +42,99 @@ export function AdvancedFiltersComponent({
   priceRange,
   sports,
   activeFilterCount,
-  onRefresh,
   isSidebar = false,
   resultCount,
   ubicacion,
+  triggerRef,
+  onUbicacionObtenida,
+  onUbicacionLimpiada,
+  isOpen: controlledIsOpen,
+  onOpenChange: controlledOnOpenChange,
 }: AdvancedFiltersProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [dateStartIndex, setDateStartIndex] = useState(0);
-  const next6Days = useMemo(() => getNext6Days(), []);
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
+  const scrollPositionRef = useRef<number>(0);
+  const scrollContainerRef = useRef<HTMLElement | null>(null);
+  const isUpdatingRef = useRef<boolean>(false);
+  
+  // Usar estado controlado si se proporciona, sino usar estado interno
+  const isOpen = controlledIsOpen !== undefined ? controlledIsOpen : internalIsOpen;
+  const setIsOpen = controlledOnOpenChange !== undefined ? controlledOnOpenChange : setInternalIsOpen;
+
+  // Guardar referencia al contenedor de scroll y bloquear scroll automático
+  useEffect(() => {
+    const container = document.querySelector('.overflow-y-auto') as HTMLElement;
+    if (container) {
+      scrollContainerRef.current = container;
+      
+      // Interceptar y bloquear scroll automático
+      const handleScroll = (e: Event) => {
+        if (isUpdatingRef.current) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (scrollContainerRef.current) {
+            scrollContainerRef.current.scrollTop = scrollPositionRef.current;
+          }
+        }
+      };
+      
+      container.addEventListener('scroll', handleScroll, { passive: false, capture: true });
+      
+      return () => {
+        container.removeEventListener('scroll', handleScroll, { capture: true });
+      };
+    }
+  }, [isOpen]);
+
+  // Restaurar posición de scroll después de cualquier cambio en filters
+  useEffect(() => {
+    if (isUpdatingRef.current && scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = scrollPositionRef.current;
+      setTimeout(() => {
+        isUpdatingRef.current = false;
+      }, 100);
+    }
+  }, [filters]);
+
+  // Estados para controlar qué secciones están expandidas
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    ubicacion: true,  // Expandido por defecto
+    deportes: true,   // Expandido por defecto
+    extras: true,     // Expandido por defecto
+    superficie: false,
+    jugadores: false,
+    precio: false,
+    rating: false,
+    servicios: false,
+    distritos: false,
+  });
+
+  const toggleSection = (section: string) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  };
+
+  // Helper para prevenir scroll al hacer click en controles
+  const preventScrollOnClick = (callback: () => void) => {
+    return (e?: any) => {
+      // Activar flag de actualización
+      isUpdatingRef.current = true;
+      
+      // Guardar posición actual del scroll
+      if (scrollContainerRef.current) {
+        scrollPositionRef.current = scrollContainerRef.current.scrollTop;
+      }
+      
+      // Quitar focus del elemento que disparó el evento
+      if (e?.target) {
+        e.target.blur();
+      }
+      
+      // Ejecutar el callback original
+      callback();
+    };
+  };
 
   const handleSportToggle = (sport: SportType) => {
     const newSports = filters.sports.includes(sport)
@@ -111,17 +157,6 @@ export function AdvancedFiltersComponent({
     onFiltersChange({ ...filters, districts: newDistricts });
   };
 
-  const handleHourToggle = (hour: string) => {
-    const newHours = filters.availableHours.includes(hour)
-      ? filters.availableHours.filter(h => h !== hour)
-      : [...filters.availableHours, hour];
-    onFiltersChange({ ...filters, availableHours: newHours });
-  };
-
-  const handleDateChange = (date: string) => {
-    onFiltersChange({ ...filters, selectedDate: date, availableHours: [] });
-  };
-
   const handlePriceChange = (value: number[]) => {
     onFiltersChange({ ...filters, priceRange: [value[0], value[1]] });
   };
@@ -137,8 +172,8 @@ export function AdvancedFiltersComponent({
       minRating: 0,
       amenities: [],
       districts: [],
-      selectedDate: getLocalDateString(),
-      availableHours: [],
+      selectedDate: filters.selectedDate, // Mantener la fecha del home
+      availableHours: filters.availableHours, // Mantener las horas del home
       onlyFeatured: false,
       searchQuery: '',
       conBalon: false,
@@ -148,437 +183,310 @@ export function AdvancedFiltersComponent({
     });
   };
 
-  const filterContent = (
-    <div className={cn("space-y-4", isSidebar && "space-y-5")}>
-      {/* Búsqueda */}
-      <div>
-        <label className="text-sm font-medium text-foreground flex items-center gap-2 mb-2">
-          <span className="text-sm">🔍</span>
-          Buscar
-        </label>
-        <Input
-          placeholder="Nombre, dirección..."
-          value={filters.searchQuery}
-          onChange={(e) => onFiltersChange({ ...filters, searchQuery: e.target.value })}
-          className="h-9 text-sm placeholder:text-sm"
-          autoFocus={false}
-        />
-      </div>
-
-      {/* Selector de Fecha y Horarios - Compacto para sidebar */}
-      {isSidebar ? (
-        <div>
-          <label className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
-            <span className="text-sm">📅</span>
-            Fecha y horarios
-          </label>
-          
-          {/* Días con slider mejorado */}
-          <div className="relative mb-4">
-            <div className="flex items-center">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute left-0 z-10 h-8 w-8 rounded-full bg-background shadow-md border"
-                onClick={() => {
-                  setDateStartIndex(Math.max(0, dateStartIndex - 1));
-                }}
-                disabled={dateStartIndex === 0}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              
-              <div className="mx-10 overflow-hidden">
-                <div className="flex gap-1.5">
-                  {next6Days.slice(dateStartIndex, dateStartIndex + 4).map(date => {
-                    const { day, date: dateNum, isToday } = formatDateDisplay(date);
-                    const isSelected = filters.selectedDate === date;
-
-                    return (
-                      <Button
-                        key={date}
-                        variant={isSelected ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => handleDateChange(date)}
-                        className="flex-1 h-16 flex flex-col gap-1 px-4 py-2 rounded-xl"
-                      >
-                        <span className="font-medium text-sm">{isToday ? 'Hoy' : day}</span>
-                        <span className="font-bold text-xl">{dateNum}</span>
-                      </Button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute right-0 z-10 h-8 w-8 rounded-full bg-background shadow-md border"
-                onClick={() => {
-                  setDateStartIndex(Math.min(next6Days.length - 4, dateStartIndex + 1));
-                }}
-                disabled={dateStartIndex >= next6Days.length - 4}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-
-          {/* Horarios - Mostrar todos */}
-          <div>
-            <div className="text-xs text-muted-foreground mb-2">
-              Horarios para el {new Date(filters.selectedDate + 'T00:00:00').toLocaleDateString('es-PE', { weekday: 'long' })} {formatDateDisplay(filters.selectedDate).date}
-            </div>
-            <div className="grid grid-cols-4 gap-1">
-              {HOURS.map(hour => (
-                <Button
-                  key={hour}
-                  variant={filters.availableHours.includes(hour) ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => handleHourToggle(hour)}
-                  className="h-8 text-xs p-1"
-                >
-                  {formatTo12Hour(hour)}
-                </Button>
-              ))}
-            </div>
-          </div>
+  // Helper para renderizar el header de cada sección acordeón
+  const AccordionSection = ({
+    id,
+    icon,
+    title,
+    badge,
+    children,
+  }: {
+    id: string;
+    icon: string;
+    title: string;
+    badge?: number;
+    children: React.ReactNode;
+  }) => (
+    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <button
+        type="button"
+        tabIndex={-1}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const target = e.currentTarget;
+          target.blur(); // Quitar el focus inmediatamente
+          toggleSection(id);
+        }}
+        className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-gray-50 transition-colors focus:outline-none"
+      >
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <span className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <span>{icon}</span>
+            <span>{title}</span>
+          </span>
+          {badge !== undefined && badge > 0 && (
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#16a34a] text-[10px] font-bold text-white shrink-0">
+              {badge}
+            </span>
+          )}
         </div>
-      ) : (
-        /* Versión completa para mobile */
-        <div>
-          <label className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-            <span className="text-base">📅</span>
-            Selecciona fecha y horarios
-          </label>
-          
-          <div className="space-y-4">
-            {/* Días con scroll horizontal */}
-            <div className="relative">
-              <div className="overflow-x-auto pb-2 -mx-1 px-1">
-                <div className="flex gap-2 min-w-max">
-                  {next6Days.map(date => {
-                    const { day, date: dateNum, isToday } = formatDateDisplay(date);
-                    const isSelected = filters.selectedDate === date;
+        <svg
+          className={`h-4 w-4 text-gray-400 transition-transform duration-200 shrink-0 ml-2 ${expandedSections[id] ? 'rotate-180' : ''}`}
+          fill="none" stroke="currentColor" viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      <div 
+        className={`transition-all duration-300 ease-in-out overflow-hidden ${
+          expandedSections[id] ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
+        }`}
+      >
+        <div className="px-4 pb-4 pt-1 border-t border-gray-100">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
 
-                    return (
-                      <Button
-                        key={date}
-                        variant={isSelected ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => handleDateChange(date)}
-                        className="text-xs h-12 px-2 py-1.5 flex flex-col items-center justify-center gap-0.5 shrink-0 min-w-[70px]"
-                      >
-                        <span className="font-semibold text-xs">{isToday ? 'Hoy' : day}</span>
-                        <span className="text-sm font-bold">{dateNum}</span>
-                      </Button>
-                    );
-                  })}
-                </div>
-              </div>
+  const filterContent = (
+    <div className={cn("space-y-2", isSidebar && "space-y-3")}>
+
+      {/* Ubicación */}
+      <AccordionSection id="ubicacion" icon="📍" title="Ubicación">
+        {!ubicacion ? (
+          <button
+            onClick={() => {
+              if (!navigator.geolocation) { alert('Tu navegador no soporta geolocalización'); return; }
+              navigator.geolocation.getCurrentPosition(
+                (position) => {
+                  const coords = { lat: position.coords.latitude, lng: position.coords.longitude };
+                  localStorage.setItem('user_location', JSON.stringify(coords));
+                  if (onUbicacionObtenida) onUbicacionObtenida(coords);
+                },
+                () => alert('No se pudo obtener tu ubicación. Por favor, verifica los permisos.')
+              );
+            }}
+            className="w-full flex items-center justify-center gap-2 px-2.5 py-2.5 bg-[#16a34a] text-white rounded-md hover:bg-[#15803d] transition-colors text-sm font-medium mt-2"
+          >
+            <MapPin className="h-4 w-4" />
+            Activar "Cerca de mí"
+          </button>
+        ) : (
+          <div className="mt-2 space-y-3">
+            <div className="flex items-center justify-between px-3 py-2 bg-green-50 rounded-md border border-green-200">
+              <span className="text-sm text-foreground flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-[#16a34a]" />
+                Ubicación activada
+              </span>
+              <button
+                onClick={() => { localStorage.removeItem('user_location'); if (onUbicacionLimpiada) onUbicacionLimpiada(); }}
+                className="text-xs text-gray-500 hover:text-gray-700 underline"
+              >
+                Desactivar
+              </button>
             </div>
-
+            {/* Radio */}
             <div>
-              <div className="text-xs text-muted-foreground mb-2">
-                Horarios para el {new Date(filters.selectedDate + 'T00:00:00').toLocaleDateString('es-PE', { weekday: 'long' })} {formatDateDisplay(filters.selectedDate).date}
-              </div>
-              <div className="grid grid-cols-4 gap-2">
-                {HOURS.map(hour => (
-                  <Button
-                    key={hour}
-                    variant={filters.availableHours.includes(hour) ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => handleHourToggle(hour)}
-                    className="text-xs"
+              <p className="text-xs text-gray-500 mb-2">Radio de búsqueda</p>
+              <div className="grid grid-cols-4 gap-1.5">
+                {[{ value: undefined, label: 'Todas' }, { value: 1, label: '1 km' }, { value: 3, label: '3 km' }, { value: 5, label: '5 km' }].map((opt) => (
+                  <button
+                    key={opt.label}
+                    onClick={() => onFiltersChange({ ...filters, radioKm: opt.value })}
+                    className={cn('px-2 py-1.5 text-xs font-medium rounded-md transition-colors border',
+                      filters.radioKm === opt.value ? 'bg-[#16a34a] text-white border-[#16a34a]' : 'bg-white text-foreground border-gray-200 hover:border-[#16a34a]'
+                    )}
                   >
-                    {formatTo12Hour(hour)}
-                  </Button>
+                    {opt.label}
+                  </button>
                 ))}
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </AccordionSection>
 
-      {/* Extras disponibles — justo después de horarios */}
-      <div>
-        <label className="text-sm font-medium text-foreground flex items-center gap-2 mb-2">
-          <span className="text-sm">🎽</span>
-          Extras disponibles
-        </label>
-        <div className="space-y-2">
+      {/* Deportes */}
+      <AccordionSection id="deportes" icon="⚽" title="Deportes" badge={filters.sports.length}>
+        <div className="mt-2 space-y-2">
+          {sports.map(sport => (
+            <div key={sport} className="flex items-center gap-2">
+              <Checkbox
+                id={`sport-${sport}`}
+                checked={filters.sports.includes(sport)}
+                onCheckedChange={preventScrollOnClick(() => handleSportToggle(sport))}
+                className="h-4 w-4"
+              />
+              <label 
+                onClick={preventScrollOnClick(() => handleSportToggle(sport))}
+                className="text-sm cursor-pointer"
+              >
+                {sportLabels[sport]}
+              </label>
+            </div>
+          ))}
+        </div>
+      </AccordionSection>
+
+      {/* Extras disponibles */}
+      <AccordionSection id="extras" icon="🎽" title="Ext. disponibles" badge={(filters.conBalon ? 1 : 0) + (filters.conChalecos ? 1 : 0)}>
+        <div className="mt-2 space-y-2">
           <div className="flex items-center gap-2">
-            <Checkbox
-              id="con-balon"
-              checked={filters.conBalon}
-              onCheckedChange={(checked) =>
-                onFiltersChange({ ...filters, conBalon: checked as boolean })
-              }
-              className="h-4 w-4"
+            <Checkbox 
+              id="con-balon" 
+              checked={filters.conBalon} 
+              onCheckedChange={preventScrollOnClick(() => onFiltersChange({ ...filters, conBalon: !filters.conBalon }))} 
+              className="h-4 w-4" 
             />
-            <label htmlFor="con-balon" className="text-sm cursor-pointer">
+            <label 
+              onClick={preventScrollOnClick(() => onFiltersChange({ ...filters, conBalon: !filters.conBalon }))}
+              className="text-sm cursor-pointer"
+            >
               ⚽ Con balón
             </label>
           </div>
           <div className="flex items-center gap-2">
-            <Checkbox
-              id="con-chalecos"
-              checked={filters.conChalecos}
-              onCheckedChange={(checked) =>
-                onFiltersChange({ ...filters, conChalecos: checked as boolean })
-              }
-              className="h-4 w-4"
+            <Checkbox 
+              id="con-chalecos" 
+              checked={filters.conChalecos} 
+              onCheckedChange={preventScrollOnClick(() => onFiltersChange({ ...filters, conChalecos: !filters.conChalecos }))} 
+              className="h-4 w-4" 
             />
-            <label htmlFor="con-chalecos" className="text-sm cursor-pointer">
+            <label 
+              onClick={preventScrollOnClick(() => onFiltersChange({ ...filters, conChalecos: !filters.conChalecos }))}
+              className="text-sm cursor-pointer"
+            >
               🎽 Con chalecos
             </label>
           </div>
         </div>
-      </div>
-
-      {/* Radio de distancia - Solo si hay ubicación */}
-      {ubicacion && (
-        <div>
-          <label className="text-sm font-medium text-foreground flex items-center gap-2 mb-2">
-            <span className="text-sm">📍</span>
-            Radio de distancia
-          </label>
-          <div className="grid grid-cols-4 gap-1.5">
-            {[
-              { value: undefined, label: 'Todas' },
-              { value: 1, label: '1 km' },
-              { value: 3, label: '3 km' },
-              { value: 5, label: '5 km' },
-              { value: 10, label: '10 km' },
-              { value: 20, label: '20 km' },
-            ].map(({ value, label }) => (
-              <button
-                key={label}
-                type="button"
-                onClick={() => onFiltersChange({ ...filters, radioKm: value })}
-                className={cn(
-                  'rounded-lg border px-2 py-2 text-xs font-medium transition-all',
-                  filters.radioKm === value
-                    ? 'border-primary bg-primary text-primary-foreground'
-                    : 'border-border bg-card text-foreground hover:border-primary/40'
-                )}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          {filters.radioKm && (
-            <p className="text-xs text-muted-foreground mt-2">
-              Mostrando canchas a menos de {filters.radioKm} km de tu ubicación
-            </p>
-          )}
-        </div>
-      )}
+      </AccordionSection>
 
       {/* Superficie */}
-      <div>
-        <label className="text-sm font-medium text-foreground flex items-center gap-2 mb-2">
-          <span className="text-sm">🏟️</span>
-          Superficie
-        </label>
-        <div className="space-y-2">
+      <AccordionSection id="superficie" icon="🏟️" title="Superficie" badge={filters.superficies.length}>
+        <div className="mt-2 space-y-2">
           {(Object.keys(superficieLabels) as SuperficieType[]).map(sup => (
             <div key={sup} className="flex items-center gap-2">
               <Checkbox
                 id={`sup-${sup}`}
                 checked={filters.superficies.includes(sup)}
-                onCheckedChange={checked => {
-                  const next = checked
-                    ? [...filters.superficies, sup]
-                    : filters.superficies.filter(s => s !== sup);
+                onCheckedChange={preventScrollOnClick(() => {
+                  const next = filters.superficies.includes(sup) 
+                    ? filters.superficies.filter(s => s !== sup) 
+                    : [...filters.superficies, sup];
                   onFiltersChange({ ...filters, superficies: next });
-                }}
+                })}
                 className="h-4 w-4"
               />
-              <label htmlFor={`sup-${sup}`} className="text-sm cursor-pointer">
+              <label 
+                onClick={preventScrollOnClick(() => {
+                  const next = filters.superficies.includes(sup) 
+                    ? filters.superficies.filter(s => s !== sup) 
+                    : [...filters.superficies, sup];
+                  onFiltersChange({ ...filters, superficies: next });
+                })}
+                className="text-sm cursor-pointer"
+              >
                 {superficieLabels[sup]}
               </label>
             </div>
           ))}
         </div>
-      </div>
+      </AccordionSection>
 
-      {/* Jugadores */}
-      <div>
-        <label className="text-sm font-medium text-foreground flex items-center gap-2 mb-2">
-          <span className="text-sm">👥</span>
-          Mínimo de jugadores
-        </label>
-        <div className="grid grid-cols-4 gap-1.5">
+      {/* Mínimo de jugadores */}
+      <AccordionSection id="jugadores" icon="👥" title="Min de jugadores" badge={filters.minJugadores > 0 ? 1 : 0}>
+        <div className="mt-2 grid grid-cols-4 gap-1.5">
           {[0, 8, 10, 12, 14, 16, 20, 22].map(n => (
             <button
               key={n}
               type="button"
-              onClick={() => onFiltersChange({ ...filters, minJugadores: n })}
-              className={cn(
-                'rounded-lg border px-2 py-2 text-xs font-medium transition-all',
-                filters.minJugadores === n
-                  ? 'border-primary bg-primary text-primary-foreground'
-                  : 'border-border bg-card text-foreground hover:border-primary/40'
+              tabIndex={-1}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                e.currentTarget.blur();
+                preventScrollOnClick(() => onFiltersChange({ ...filters, minJugadores: n }))();
+              }}
+              className={cn('rounded-lg border px-2 py-2 text-xs font-medium transition-all focus:outline-none',
+                filters.minJugadores === n ? 'border-[#16a34a] bg-[#16a34a] text-white' : 'border-gray-200 bg-white text-foreground hover:border-[#16a34a]'
               )}
             >
               {n === 0 ? 'Todos' : `${n}+`}
             </button>
           ))}
         </div>
-      </div>
+      </AccordionSection>
 
-      {/* Deportes - Compacto */}
-      <div>
-        <label className="text-sm font-medium text-foreground flex items-center gap-2 mb-2">
-          <span className="text-sm">⚽</span>
-          Deporte
-        </label>        <div className="space-y-2">
-          {sports.map(sport => (
-            <div key={sport} className="flex items-center gap-2">
-              <Checkbox
-                id={`sport-${sport}`}
-                checked={filters.sports.includes(sport)}
-                onCheckedChange={() => handleSportToggle(sport)}
-                className="h-4 w-4"
-              />
-              <label htmlFor={`sport-${sport}`} className="text-sm cursor-pointer">
-                {sportLabels[sport]}
-              </label>
-            </div>
+      {/* Precio */}
+      <AccordionSection id="precio" icon="💰" title="Precio por hora">
+        <div className="mt-3">
+          <div className="flex justify-between text-xs text-gray-500 mb-3">
+            <span>S/ {filters.priceRange[0]}</span>
+            <span>S/ {filters.priceRange[1]}</span>
+          </div>
+          <Slider
+            min={priceRange[0]}
+            max={priceRange[1]}
+            step={5}
+            value={filters.priceRange}
+            onValueChange={(value) => {
+              // Guardar posición y aplicar cambio sin scroll
+              if (scrollContainerRef.current) {
+                scrollPositionRef.current = scrollContainerRef.current.scrollTop;
+              }
+              handlePriceChange(value);
+              requestAnimationFrame(() => {
+                if (scrollContainerRef.current) {
+                  scrollContainerRef.current.scrollTop = scrollPositionRef.current;
+                }
+              });
+            }}
+            className="py-1"
+          />
+        </div>
+      </AccordionSection>
+
+      {/* Rating */}
+      <AccordionSection id="rating" icon="⭐" title="Calificación" badge={filters.minRating > 0 ? 1 : 0}>
+        <div className="mt-2 grid grid-cols-4 gap-1.5">
+          {[{ value: 0, label: 'Todas' }, { value: 3, label: '3+⭐' }, { value: 4, label: '4+⭐' }, { value: 4.5, label: '4.5+⭐' }].map(opt => (
+            <button
+              key={opt.value}
+              type="button"
+              tabIndex={-1}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                e.currentTarget.blur();
+                preventScrollOnClick(() => onFiltersChange({ ...filters, minRating: opt.value }))();
+              }}
+              className={cn('rounded-lg border px-2 py-2 text-xs font-medium transition-all text-center focus:outline-none',
+                filters.minRating === opt.value ? 'border-[#16a34a] bg-[#16a34a] text-white' : 'border-gray-200 bg-white text-foreground hover:border-[#16a34a]'
+              )}
+            >
+              {opt.label}
+            </button>
           ))}
         </div>
-      </div>
+      </AccordionSection>
 
-      {/* Precio - Compacto */}
-      <div>
-        <label className="text-sm font-medium text-foreground flex items-center gap-2 mb-2">
-          <span className="text-sm">💰</span>
-          S/ {filters.priceRange[0]} - S/ {filters.priceRange[1]}
-        </label>
-        <Slider
-          min={priceRange[0]}
-          max={priceRange[1]}
-          step={5}
-          value={filters.priceRange}
-          onValueChange={handlePriceChange}
-          className="py-2"
-        />
-      </div>
-
-      {/* Rating - Compacto */}
-      <div>
-        <label className="text-sm font-medium text-foreground flex items-center gap-2 mb-2">
-          <span className="text-sm">⭐</span>
-          Rating
-        </label>
-        <Select value={filters.minRating.toString()} onValueChange={handleRatingChange}>
-          <SelectTrigger className="h-9">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="0">Cualquiera</SelectItem>
-            <SelectItem value="3">3+ ⭐</SelectItem>
-            <SelectItem value="4">4+ ⭐</SelectItem>
-            <SelectItem value="4.5">4.5+ ⭐</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Distritos - Compacto */}
-      {allDistricts.length > 0 && (
-        <div>
-          <label className="text-sm font-medium text-foreground flex items-center gap-2 mb-2">
-            <span className="text-sm">📍</span>
-            Distritos
-          </label>
-          <div className="max-h-40 overflow-y-auto border border-border rounded-lg p-2">
-            <div className="space-y-2">
-              {allDistricts.map(district => (
-                <div key={district} className="flex items-center gap-2">
-                  <Checkbox
-                    id={`district-${district}`}
-                    checked={filters.districts.includes(district)}
-                    onCheckedChange={() => handleDistrictToggle(district)}
-                    className="h-4 w-4"
-                  />
-                  <label htmlFor={`district-${district}`} className="text-sm cursor-pointer">
-                    {district}
-                  </label>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Amenidades - Compacto */}
+      {/* Servicios */}
       {allAmenities.length > 0 && (
-        <div>
-          <label className="text-sm font-medium text-foreground flex items-center gap-2 mb-2">
-            <span className="text-sm">⚡</span>
-            Servicios
-          </label>
-          <div className="max-h-40 overflow-y-auto border border-border rounded-lg p-2">
-            <div className="space-y-2">
-              {allAmenities.map(amenity => (
-                <div key={amenity} className="flex items-center gap-2">
-                  <Checkbox
-                    id={`amenity-${amenity}`}
-                    checked={filters.amenities.includes(amenity)}
-                    onCheckedChange={() => handleAmenityToggle(amenity)}
-                    className="h-4 w-4"
-                  />
-                  <label htmlFor={`amenity-${amenity}`} className="text-sm cursor-pointer">
-                    {amenity}
-                  </label>
-                </div>
-              ))}
-            </div>
+        <AccordionSection id="servicios" icon="⚡" title="Servicios" badge={filters.amenities.length}>
+          <div className="mt-2 space-y-2 max-h-40 overflow-y-auto">
+            {allAmenities.map(amenity => (
+              <div key={amenity} className="flex items-center gap-2">
+                <Checkbox
+                  id={`amenity-${amenity}`}
+                  checked={filters.amenities.includes(amenity)}
+                  onCheckedChange={preventScrollOnClick(() => handleAmenityToggle(amenity))}
+                  className="h-4 w-4"
+                />
+                <label 
+                  onClick={preventScrollOnClick(() => handleAmenityToggle(amenity))}
+                  className="text-sm cursor-pointer"
+                >
+                  {amenity}
+                </label>
+              </div>
+            ))}
           </div>
-        </div>
+        </AccordionSection>
       )}
 
-      {/* Destacadas */}
-      <div className="flex items-center gap-2">
-        <Checkbox
-          id="featured"
-          checked={filters.onlyFeatured}
-          onCheckedChange={(checked) =>
-            onFiltersChange({ ...filters, onlyFeatured: checked as boolean })
-          }
-          className="h-4 w-4"
-        />
-        <label htmlFor="featured" className="text-sm cursor-pointer">
-          Solo destacadas
-        </label>
-      </div>
-
-      {/* Botones de acción - Compactos */}
-      <div className="flex gap-2 pt-2">
-        <Button
-          variant="outline"
-          size="sm"
-          className="flex-1 h-8"
-          onClick={handleClearFilters}
-          disabled={activeFilterCount === 0}
-        >
-          Limpiar
-        </Button>
-        {onRefresh && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 w-8 p-0"
-            onClick={onRefresh}
-            title="Recargar"
-          >
-            <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-          </Button>
-        )}
-      </div>
     </div>
   );
 
@@ -589,12 +497,12 @@ export function AdvancedFiltersComponent({
 
   // Si no es sidebar, usar el Sheet (mobile)
   return (
-    <div className="space-y-4">
+    <div className="w-full">
       {/* Barra de filtros rápidos */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-2">
+      <div className="flex items-center gap-2">
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
           <SheetTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-2 shrink-0">
+            <Button ref={triggerRef} variant="outline" size="sm" className="gap-2 w-full justify-center">
               <Sliders className="h-4 w-4" />
               Filtros
               {activeFilterCount > 0 && (
@@ -604,95 +512,44 @@ export function AdvancedFiltersComponent({
               )}
             </Button>
           </SheetTrigger>
-          <SheetContent side="right" className="p-0 flex flex-col sm:max-w-md">
-            {/* Header fijo con botón de cerrar */}
-            <div className="sticky top-0 z-10 bg-background border-b border-border px-6 py-4">
-              <SheetHeader>
-                <SheetTitle>Filtros avanzados</SheetTitle>
-                {resultCount !== undefined && (
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {resultCount} {resultCount === 1 ? 'cancha encontrada' : 'canchas encontradas'}
-                  </p>
-                )}
-              </SheetHeader>
+          <SheetContent side="right" className="p-0 flex flex-col sm:max-w-md w-full">
+            {/* Header fijo con título y botón de cerrar */}
+            <div className="sticky top-0 z-10 bg-white border-b border-border px-6 py-4 flex items-center justify-between">
+              <SheetTitle className="text-lg font-semibold">Filtros</SheetTitle>
+              {/* El botón de cerrar ya viene por defecto en SheetContent */}
             </div>
             
-            {/* Contenido scrolleable */}
-            <div className="flex-1 overflow-y-auto px-6 py-4 pt-0">
+            {/* Botón Limpiar todo */}
+            <div className="px-6 pb-3 border-b border-border flex justify-end">
+              <button
+                onClick={handleClearFilters}
+                className="flex items-center gap-2 text-[#16a34a] hover:text-[#15803d] text-sm font-medium transition-colors"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Limpiar todo
+              </button>
+            </div>
+            
+            {/* Contenido scrolleable con filtros */}
+            <div className="flex-1 overflow-y-auto px-6 py-4">
               {filterContent}
             </div>
 
-            {/* Footer sticky con contador de resultados */}
+            {/* Footer sticky con botón de ver resultados */}
             {resultCount !== undefined && (
-              <div className="sticky bottom-0 z-10 bg-background border-t border-border px-6 py-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-foreground">
-                      {resultCount} {resultCount === 1 ? 'resultado' : 'resultados'}
-                    </p>
-                    {activeFilterCount > 0 && (
-                      <p className="text-xs text-muted-foreground">
-                        {activeFilterCount} {activeFilterCount === 1 ? 'filtro activo' : 'filtros activos'}
-                      </p>
-                    )}
-                  </div>
-                  <Button
-                    size="sm"
-                    onClick={() => setIsOpen(false)}
-                    className="shrink-0"
-                  >
-                    Ver resultados
-                  </Button>
-                </div>
+              <div className="sticky bottom-0 z-10 bg-white border-t border-border px-6 py-4">
+                <button
+                  onClick={() => setIsOpen(false)}
+                  className="w-full bg-[#16a34a] hover:bg-[#15803d] text-white font-semibold py-3 rounded-lg transition-colors"
+                >
+                  Ver {resultCount} {resultCount === 1 ? 'cancha' : 'canchas'}
+                </button>
               </div>
             )}
           </SheetContent>
         </Sheet>
-
-        {/* Badges de filtros activos */}
-        {filters.sports.length > 0 && (
-          <div className="flex gap-1 shrink-0">
-            {filters.sports.map(sport => (
-              <Badge
-                key={sport}
-                variant="secondary"
-                className="cursor-pointer"
-                onClick={() => handleSportToggle(sport)}
-              >
-                {sportLabels[sport]}
-                <X className="ml-1 h-3 w-3" />
-              </Badge>
-            ))}
-          </div>
-        )}
-
-        {filters.districts.length > 0 && (
-          <div className="flex gap-1 shrink-0">
-            {filters.districts.map(district => (
-              <Badge
-                key={district}
-                variant="secondary"
-                className="cursor-pointer"
-                onClick={() => handleDistrictToggle(district)}
-              >
-                {district}
-                <X className="ml-1 h-3 w-3" />
-              </Badge>
-            ))}
-          </div>
-        )}
-
-        {filters.amenities.length > 0 && (
-          <Badge variant="secondary" className="shrink-0">
-            {filters.amenities.length} amenidades
-          </Badge>
-        )}
-
-        {filters.availableHours.length > 0 && (
-          <Badge variant="secondary" className="shrink-0">
-            {filters.availableHours.length} horas
-          </Badge>
-        )}
       </div>
     </div>
   );

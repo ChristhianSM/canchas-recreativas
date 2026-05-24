@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
+import { verifyAdmin } from '@/lib/admin-auth';
 
-// POST — asignar canchas a un dueño
-// Body: { dueno_id: string, cancha_ids: string[] }
 export async function POST(req: NextRequest) {
+  const token = req.headers.get('authorization')?.replace('Bearer ', '');
+  if (!await verifyAdmin(token)) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+
   const { dueno_id, cancha_ids } = await req.json();
 
   if (!dueno_id || !Array.isArray(cancha_ids) || cancha_ids.length === 0) {

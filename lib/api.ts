@@ -71,7 +71,7 @@ export async function validateToken(): Promise<boolean> {
   }
 }
 
-function authHeaders() {
+function authHeaders(): Record<string, string> {
   const token = getToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
@@ -148,11 +148,20 @@ export async function apiCrearReserva(data: {
   nuevoTelefono?: string;
   balonIncluido?: boolean;
   chalecosIncluido?: boolean;
+  modoPago?: 'completo' | 'parcial';
+  montoAdelanto?: number;
+  saldoPendiente?: number;
 }) {
+  const { modoPago, montoAdelanto, saldoPendiente, ...rest } = data;
+  const body: Record<string, unknown> = { ...rest };
+  if (modoPago !== undefined)    body.modo_pago       = modoPago;
+  if (montoAdelanto !== undefined) body.monto_adelanto = montoAdelanto;
+  if (saldoPendiente !== undefined) body.saldo_pendiente = saldoPendiente;
+
   const res = await fetch('/api/reservas', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
-    body: JSON.stringify(data),
+    body: JSON.stringify(body),
   });
   return res.json();
 }

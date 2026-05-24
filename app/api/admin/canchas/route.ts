@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
+import { verifyAdmin } from '@/lib/admin-auth';
 
 // GET — listar todas las canchas con su dueño asignado
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const token = req.headers.get('authorization')?.replace('Bearer ', '');
+  if (!await verifyAdmin(token)) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+
   const sb = createServiceClient();
 
   const { data: canchas, error } = await sb
@@ -31,6 +35,9 @@ export async function GET() {
 
 // POST — crear nueva cancha
 export async function POST(req: NextRequest) {
+  const token = req.headers.get('authorization')?.replace('Bearer ', '');
+  if (!await verifyAdmin(token)) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+
   const body = await req.json();
   const {
     nombre, tipo, direccion, distrito, descripcion,

@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { sportLabels } from '@/lib/types';
+import { getAdminTokenFresh } from '@/lib/supabase-browser';
 
 type CanchaAdmin = {
   id: string; nombre: string; tipo: string; direccion: string;
@@ -35,13 +36,16 @@ export default function AdminCanchasPage() {
   });
 
   const reload = () => {
-    Promise.all([
-      fetch('/api/admin/canchas').then(r => r.json()),
-      fetch('/api/admin/usuarios').then(r => r.json()),
-    ]).then(([c, u]) => {
-      setCanchas(Array.isArray(c) ? c : []);
-      setDuenos(Array.isArray(u) ? u.filter((x: Usuario) => x.rol === 'dueno') : []);
-      setLoading(false);
+    getAdminTokenFresh().then(token => {
+      const headers = { Authorization: `Bearer ${token}` };
+      Promise.all([
+        fetch('/api/admin/canchas',  { headers }).then(r => r.json()),
+        fetch('/api/admin/usuarios', { headers }).then(r => r.json()),
+      ]).then(([c, u]) => {
+        setCanchas(Array.isArray(c) ? c : []);
+        setDuenos(Array.isArray(u) ? u.filter((x: Usuario) => x.rol === 'dueno') : []);
+        setLoading(false);
+      });
     });
   };
 
@@ -54,9 +58,10 @@ export default function AdminCanchasPage() {
     }
     setSaving(true);
     setError('');
+    const token = await getAdminTokenFresh();
     const res = await fetch('/api/admin/canchas', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ ...form, precio_por_hora: Number(form.precio_por_hora) }),
     });
     const data = await res.json();
