@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
+import { verifyAdmin } from '@/lib/admin-auth';
 
 // GET — listar todos los usuarios dueños
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const token = req.headers.get('authorization')?.replace('Bearer ', '');
+  if (!await verifyAdmin(token)) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+
   const sb = createServiceClient();
   const { data, error } = await sb
     .from('usuarios')
@@ -15,6 +19,9 @@ export async function GET() {
 
 // POST — crear nuevo usuario dueño
 export async function POST(req: NextRequest) {
+  const token = req.headers.get('authorization')?.replace('Bearer ', '');
+  if (!await verifyAdmin(token)) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+
   const { nombre, email, password, telefono, rol } = await req.json();
 
   if (!nombre || !email || !password) {

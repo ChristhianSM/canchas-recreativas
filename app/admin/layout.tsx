@@ -17,14 +17,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { getAdminTokenFresh } from '@/lib/supabase-browser';
 
 function getAdminToken() {
   if (typeof window === 'undefined') return null;
   return localStorage.getItem('cp_admin_token');
-}
-
-function isAdmin() {
-  return !!getAdminToken();
 }
 
 function logoutAdmin() {
@@ -47,32 +44,26 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const isLoginPage = pathname === '/admin/login';
 
-  // Verificar auth y refrescar token si expiró
+  // Verificar token en cada navegación (solo presencia en localStorage)
   useEffect(() => {
     if (isLoginPage) return;
-    const token = getAdminToken();
-    if (!token) {
-      router.replace('/admin/login');
-      return;
-    }
+    if (!getAdminToken()) router.replace('/admin/login');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
 
-    import('@supabase/ssr').then(({ createBrowserClient }) => {
-      const supabase = createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      );
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session?.access_token && session.access_token !== token) {
-          localStorage.setItem('cp_admin_token', session.access_token);
-        } else if (!session) {
-          localStorage.removeItem('cp_admin_token');
-          localStorage.removeItem('cp_admin_user');
-          router.replace('/admin/login');
-        }
-      });
+  useEffect(() => {
+    if (isLoginPage) return;
+    getAdminTokenFresh().then(token => {
+      if (!token) return;
+      fetch('/api/reservas/all', { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.ok ? r.json() : [])
+        .then(data => {
+          if (Array.isArray(data)) setPendientes(data.filter((r: any) => r.estado === 'pendiente').length);
+        })
+        .catch(() => {});
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [pathname]);
 
   const handleLogout = () => {
     logoutAdmin();
@@ -85,7 +76,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex h-screen overflow-hidden bg-background">
 
       {/* Sidebar desktop */}
       <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-card lg:flex">

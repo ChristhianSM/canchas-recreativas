@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
 import { LayoutDashboard, CalendarCheck, Store, LogOut, Menu, X, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -35,35 +34,12 @@ export default function OwnerLayout({ children }: { children: React.ReactNode })
 
   const isLoginPage = pathname === '/admin-cancha/login';
 
-  // ── Verificar auth y refrescar token si expiró ──────────────
+  // ── Verificar token en cada navegación (solo presencia en localStorage) ──
   useEffect(() => {
     if (isLoginPage) return;
-    const token = getOwnerToken();
-    if (!token) {
-      router.replace('/admin-cancha/login');
-      return;
-    }
-
-    // Intentar refrescar el token con Supabase
-    import('@supabase/ssr').then(({ createBrowserClient }) => {
-      const supabase = createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      );
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session?.access_token && session.access_token !== token) {
-          // Token refrescado — actualizar localStorage
-          localStorage.setItem('cp_owner_token', session.access_token);
-        } else if (!session) {
-          // Sesión expirada — redirigir al login
-          localStorage.removeItem('cp_owner_token');
-          localStorage.removeItem('cp_owner_user');
-          router.replace('/admin-cancha/login');
-        }
-      });
-    });
+    if (!getOwnerToken()) router.replace('/admin-cancha/login');
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [pathname]);
 
   // ── Cargar datos del panel (solo cuando hay token y no es login) ──
   useEffect(() => {
@@ -100,7 +76,7 @@ export default function OwnerLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex h-screen overflow-hidden bg-background">
 
       {/* Sidebar desktop */}
       <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-card lg:flex">

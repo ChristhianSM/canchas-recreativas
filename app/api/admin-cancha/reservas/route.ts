@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
+import { verifyToken } from '@/lib/admin-auth';
 
 // GET — reservas de las canchas del dueño autenticado
 export async function GET(req: NextRequest) {
   const token = req.headers.get('authorization')?.replace('Bearer ', '');
-  if (!token) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+  const user = await verifyToken(token);
+  if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
   const sb = createServiceClient();
-  const { data: { user }, error: authError } = await sb.auth.getUser(token);
-  if (authError || !user) return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
 
   // Obtener todas las canchas del dueño (sin filtro doble)
   const { data: relaciones } = await sb

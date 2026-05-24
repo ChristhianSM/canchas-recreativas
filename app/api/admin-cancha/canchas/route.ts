@@ -1,16 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
+import { verifyToken } from '@/lib/admin-auth';
 
 export async function GET(req: NextRequest) {
   const token = req.headers.get('authorization')?.replace('Bearer ', '');
-  if (!token) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+  const user = await verifyToken(token);
+  if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
   const sb = createServiceClient();
-  const { data: { user }, error: authError } = await sb.auth.getUser(token);
-
-  console.log('[admin-cancha/canchas] token:', token?.slice(0, 20), '| user:', user?.id ?? 'NULL', '| error:', authError?.message ?? 'none');
-
-  if (authError || !user) return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
 
   // Obtener IDs de canchas del dueño
   const { data: relaciones } = await sb

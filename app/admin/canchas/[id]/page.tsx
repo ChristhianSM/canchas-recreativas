@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { getAdminTokenFresh } from '@/lib/supabase-browser';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { ArrowLeft, Save, Trash2, Plus, MapPin } from 'lucide-react';
@@ -140,6 +141,7 @@ export default function AdminEditarCanchaPage() {
   const [distrito, setDistrito] = useState('');
   const [duenos, setDuenos] = useState<Usuario[]>([]);
   const [duenoId, setDuenoId] = useState('');
+  const [adminToken, setAdminToken] = useState('');
 
   // Extras
   const [preciosPorHora, setPreciosPorHora] = useState<Record<string, number>>({});
@@ -151,10 +153,13 @@ export default function AdminEditarCanchaPage() {
   const [maxJugadores, setMaxJugadores] = useState<number | null>(null);
 
   useEffect(() => {
-    Promise.all([
-      fetch(`/api/canchas/detail?id=${id}`).then(r => r.json()),
-      fetch('/api/admin/usuarios').then(r => r.json()),
-    ]).then(([canchaData, usuariosData]) => {
+    getAdminTokenFresh().then(token => {
+      setAdminToken(token);
+      const authHeaders = { Authorization: `Bearer ${token}` };
+      Promise.all([
+        fetch(`/api/canchas/detail?id=${id}`).then(r => r.json()),
+        fetch('/api/admin/usuarios', { headers: authHeaders }).then(r => r.json()),
+      ]).then(([canchaData, usuariosData]) => {
       if (canchaData.error) { router.replace('/admin/canchas'); return; }
       setCancha(canchaData);
       setDescription(canchaData.descripcion ?? '');
@@ -179,19 +184,21 @@ export default function AdminEditarCanchaPage() {
       setLoading(false);
     }).catch(() => setLoading(false));
 
-    fetch('/api/admin/canchas').then(r => r.json()).then(data => {
+    fetch('/api/admin/canchas', { headers: authHeaders }).then(r => r.json()).then(data => {
       if (Array.isArray(data)) {
         const c = data.find((x: any) => x.id === id);
         if (c?.dueno) setDuenoId(c.dueno.id);
       }
     });
+  });
   }, [id, router]);
 
   const handleSave = async () => {
     setSaving(true); setSaveError('');
+    const token = await getAdminTokenFresh();
     const res = await fetch(`/api/admin/canchas/${id}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({
         descripcion: description, telefono: phone, precioHora: price,
         amenidades: amenities, imagenes: images,
@@ -206,10 +213,9 @@ export default function AdminEditarCanchaPage() {
       }),
     });
     if (duenoId) {
-      // Asignar dueño seleccionado
       await fetch('/api/admin/asignar-cancha', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ dueno_id: duenoId, cancha_ids: [id] }),
       });
     }
@@ -461,7 +467,7 @@ export default function AdminEditarCanchaPage() {
               Bloquea horarios para un día específico, de forma recurrente cada semana, o de forma permanente.
             </p>
           </div>
-          <BloqueosAdminPanel canchaId={id} token="" isAdmin={true} />
+          <BloqueosAdminPanel canchaId={id} token={adminToken} />
         </TabsContent>
 
         {/* ── Ubicación ── */}

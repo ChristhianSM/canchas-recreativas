@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Inter, Poppins } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { Toaster } from '@/components/ui/toaster'
-import { Footer } from '@/components/footer'
+import { ConditionalFooter } from '@/components/conditional-footer'
 import { generateOrganizationSchema } from '@/lib/seo-utils'
 import './globals.css'
 
@@ -91,7 +91,7 @@ export default function RootLayout({
       </head>
       <body className={`${inter.variable} ${poppins.variable} font-sans antialiased min-h-screen flex flex-col`}>
         {children}
-        <Footer />
+        <ConditionalFooter />
         <Toaster />
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>

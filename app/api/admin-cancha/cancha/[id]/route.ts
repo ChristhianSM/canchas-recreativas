@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
+import { verifyToken } from '@/lib/admin-auth';
 
 // GET — obtener cancha del dueño
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   const token = req.headers.get('authorization')?.replace('Bearer ', '');
-  if (!token) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+  const user = await verifyToken(token);
+  if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
   const sb = createServiceClient();
-  const { data: { user }, error: authError } = await sb.auth.getUser(token);
-  if (authError || !user) return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
 
   // Obtener todas las canchas del dueño y verificar
   const { data: relaciones } = await sb
@@ -29,11 +29,10 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 // PATCH — editar cancha
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const token = req.headers.get('authorization')?.replace('Bearer ', '');
-  if (!token) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+  const user = await verifyToken(token);
+  if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
   const sb = createServiceClient();
-  const { data: { user }, error: authError } = await sb.auth.getUser(token);
-  if (authError || !user) return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
 
   const { data: relaciones } = await sb
     .from('duenos_canchas')

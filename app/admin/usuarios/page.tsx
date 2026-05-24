@@ -1,13 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { UserPlus, Mail, Phone, Shield, User, Trash2, AlertTriangle } from 'lucide-react';
+import { UserPlus, Shield, User, Trash2, AlertTriangle, Search, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { getAdminTokenFresh } from '@/lib/supabase-browser';
 
 type Usuario = {
   id: string;
@@ -52,17 +53,26 @@ export default function AdminUsuariosPage() {
   const [form, setForm] = useState({
     nombre: '', email: '', password: '', telefono: '', rol: 'dueno',
   });
+  const [busqueda, setBusqueda]                 = useState('');
   const [usuarioAEliminar, setUsuarioAEliminar] = useState<Usuario | null>(null);
   const [eliminando, setEliminando]             = useState(false);
 
+  const usuariosFiltrados = usuarios.filter(u =>
+    u.nombre?.toLowerCase().includes(busqueda.toLowerCase()) ||
+    u.email?.toLowerCase().includes(busqueda.toLowerCase())
+  );
+
   const reload = () => {
-    Promise.all([
-      fetch('/api/admin/usuarios').then(r => r.json()),
-      fetch('/api/admin/canchas').then(r => r.json()),
-    ]).then(([u, c]) => {
-      setUsuarios(Array.isArray(u) ? u : []);
-      setCanchas(Array.isArray(c) ? c : []);
-      setLoading(false);
+    getAdminTokenFresh().then(token => {
+      const headers = { Authorization: `Bearer ${token}` };
+      Promise.all([
+        fetch('/api/admin/usuarios', { headers }).then(r => r.json()),
+        fetch('/api/admin/canchas',  { headers }).then(r => r.json()),
+      ]).then(([u, c]) => {
+        setUsuarios(Array.isArray(u) ? u : []);
+        setCanchas(Array.isArray(c) ? c : []);
+        setLoading(false);
+      });
     });
   };
 
@@ -75,9 +85,11 @@ export default function AdminUsuariosPage() {
     }
     setSaving(true);
     setError('');
+    const token = await getAdminTokenFresh();
+    const authHeader = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
     const res = await fetch('/api/admin/usuarios', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeader,
       body: JSON.stringify(form),
     });
     const data = await res.json();
@@ -88,7 +100,7 @@ export default function AdminUsuariosPage() {
     if (form.rol === 'dueno' && canchasSeleccionadas.length > 0) {
       await fetch('/api/admin/asignar-cancha', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeader,
         body: JSON.stringify({ dueno_id: data.id, cancha_ids: canchasSeleccionadas }),
       });
     }
@@ -102,7 +114,11 @@ export default function AdminUsuariosPage() {
   const handleEliminar = async () => {
     if (!usuarioAEliminar) return;
     setEliminando(true);
-    await fetch(`/api/admin/usuarios/${usuarioAEliminar.id}`, { method: 'DELETE' });
+    const token = await getAdminTokenFresh();
+    await fetch(`/api/admin/usuarios/${usuarioAEliminar.id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
     setEliminando(false);
     setUsuarioAEliminar(null);
     reload();
@@ -121,11 +137,21 @@ export default function AdminUsuariosPage() {
         </Button>
       </div>
 
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          placeholder="Buscar por nombre o correo..."
+          value={busqueda}
+          onChange={e => setBusqueda(e.target.value)}
+          className="pl-9"
+        />
+      </div>
+
       {loading ? (
         <div className="space-y-3">
           {[1,2,3].map(i => <div key={i} className="h-20 animate-pulse rounded-xl bg-muted" />)}
         </div>
-      ) : usuarios.length === 0 ? (
+      ) : usuariosFiltrados.length === 0 ? (
         <Card className="border-border p-12 text-center">
           <User className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
           <p className="font-medium text-foreground">No hay usuarios registrados</p>
@@ -143,7 +169,7 @@ export default function AdminUsuariosPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {usuarios.map(u => (
+                {usuariosFiltrados.map(u => (
                   <tr key={u.id} className="hover:bg-muted/30">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
@@ -273,6 +299,7 @@ export default function AdminUsuariosPage() {
                 Cancelar
               </Button>
               <Button className="flex-1" onClick={handleCrear} disabled={saving}>
+                {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {saving ? 'Creando...' : 'Crear usuario'}
               </Button>
             </div>
@@ -305,6 +332,7 @@ export default function AdminUsuariosPage() {
                   Cancelar
                 </Button>
                 <Button variant="destructive" className="flex-1" onClick={handleEliminar} disabled={eliminando}>
+                  {eliminando && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   {eliminando ? 'Eliminando...' : 'Sí, eliminar'}
                 </Button>
               </div>

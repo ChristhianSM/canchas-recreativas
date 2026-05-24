@@ -25,6 +25,10 @@ export interface Reserva {
   saldoPendiente?: number;
   saldoCobrado?: boolean;
   saldoCobradoEn?: string | null;
+  canceladoEn?: string | null;
+  devolucionCalculada?: number | null;
+  devolucionProcesada?: boolean | null;
+  penalidadAplicada?: number | null;
 }
 
 export interface Notificacion {

@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import Image from 'next/image';
-import { CheckCircle2, XCircle, Clock, Eye, AlertCircle } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, Eye, AlertCircle, Search, X, CalendarDays } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { LoadingButton } from '@/components/loading-button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -76,6 +77,32 @@ export default function OwnerReservasPage() {
   const [confirmando, setConfirmando]   = useState(false);
   const [rechazando, setRechazando]     = useState(false);
   const [marcandoSaldo, setMarcandoSaldo] = useState(false);
+  const [filtroFecha, setFiltroFecha]   = useState('');
+  const [filtroEmail, setFiltroEmail]   = useState('');
+  const [filtroCancha, setFiltroCancha] = useState('');
+  const [filtroModoPago, setFiltroModoPago] = useState<'todos' | 'completo' | 'parcial'>('todos');
+
+  const cancharUnicas = useMemo(() =>
+    [...new Set(reservas.map(r => r.cancha_nombre).filter(Boolean))].sort(),
+    [reservas],
+  );
+
+  const hayFiltrosActivos = filtroFecha || filtroEmail || filtroCancha || filtroModoPago !== 'todos';
+
+  const limpiarFiltros = () => {
+    setFiltroFecha('');
+    setFiltroEmail('');
+    setFiltroCancha('');
+    setFiltroModoPago('todos');
+  };
+
+  const aplicarFiltros = (lista: Reserva[]) => lista.filter(r => {
+    if (filtroFecha    && r.fecha !== filtroFecha) return false;
+    if (filtroEmail    && !r.usuario_email?.toLowerCase().includes(filtroEmail.toLowerCase())) return false;
+    if (filtroCancha   && r.cancha_nombre !== filtroCancha) return false;
+    if (filtroModoPago !== 'todos' && (r.modo_pago ?? 'completo') !== filtroModoPago) return false;
+    return true;
+  });
 
   const reload = async () => {
     const token = getOwnerToken();
@@ -205,7 +232,8 @@ export default function OwnerReservasPage() {
     }
   };
 
-  const byEstado = (e: ReservaEstado) => reservas.filter(r => r.estado === e);
+  const byEstado = (e: ReservaEstado) => aplicarFiltros(reservas.filter(r => r.estado === e));
+  const todasFiltradas = () => aplicarFiltros(reservas);
 
   // Solo las canceladas con devolución pendiente (monto > 0 y aún no procesada)
   const devolucionesPendientes = byEstado('cancelada').filter(
@@ -378,6 +406,56 @@ export default function OwnerReservasPage() {
         </Card>
       )}
 
+      {/* Filtros */}
+      <Card className="border-border p-4">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-sm font-medium text-muted-foreground">Filtros</p>
+          {hayFiltrosActivos && (
+            <button onClick={limpiarFiltros} className="flex items-center gap-1 text-xs text-primary hover:underline">
+              <X className="h-3 w-3" />
+              Limpiar filtros
+            </button>
+          )}
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="relative">
+            <CalendarDays className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            <input
+              type="date"
+              value={filtroFecha}
+              onChange={e => setFiltroFecha(e.target.value)}
+              className="w-full rounded-md border border-border bg-background pl-9 pr-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por correo..."
+              value={filtroEmail}
+              onChange={e => setFiltroEmail(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <select
+            value={filtroCancha}
+            onChange={e => setFiltroCancha(e.target.value)}
+            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            <option value="">Todas las canchas</option>
+            {cancharUnicas.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <select
+            value={filtroModoPago}
+            onChange={e => setFiltroModoPago(e.target.value as 'todos' | 'completo' | 'parcial')}
+            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            <option value="todos">Modo de pago</option>
+            <option value="completo">Completo</option>
+            <option value="parcial">Parcial</option>
+          </select>
+        </div>
+      </Card>
+
       <Card className="border-border overflow-hidden">
         <Tabs defaultValue="pendiente">
           <div className="border-b border-border overflow-x-auto -mx-4 px-4 pb-4">
@@ -405,7 +483,7 @@ export default function OwnerReservasPage() {
                 )}
               </TabsTrigger>
               <TabsTrigger value="todas" className="shrink-0 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                Todas ({reservas.length})
+                Todas ({todasFiltradas().length})
               </TabsTrigger>
             </TabsList>
           </div>
@@ -413,7 +491,7 @@ export default function OwnerReservasPage() {
           <TabsContent value="confirmada" className="mt-0"><Table list={byEstado('confirmada')} /></TabsContent>
           <TabsContent value="rechazada"  className="mt-0"><Table list={byEstado('rechazada')} /></TabsContent>
           <TabsContent value="cancelada"  className="mt-0"><Table list={byEstado('cancelada')} /></TabsContent>
-          <TabsContent value="todas"      className="mt-0"><Table list={reservas} /></TabsContent>
+          <TabsContent value="todas"      className="mt-0"><Table list={todasFiltradas()} /></TabsContent>
         </Tabs>
       </Card>
 

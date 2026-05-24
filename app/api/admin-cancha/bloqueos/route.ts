@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
+import { verifyToken } from '@/lib/admin-auth';
 
-/** Verifica que el token pertenece a un dueño y que la cancha le pertenece */
 async function verificarDueno(sb: ReturnType<typeof createServiceClient>, token: string, canchaId: string) {
-  const { data: { user }, error } = await sb.auth.getUser(token);
-  if (error || !user) return null;
+  const user = await verifyToken(token);
+  if (!user) return null;
 
   const { data: relaciones } = await sb
     .from('duenos_canchas')

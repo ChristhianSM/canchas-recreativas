@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
+import { verifyToken } from '@/lib/admin-auth';
 
-// Obtiene todos los cancha_ids del dueño (sin filtro doble que rompe con RLS)
 async function getCanchaIdsDelDueno(sb: ReturnType<typeof createServiceClient>, userId: string): Promise<string[]> {
   const { data } = await sb
     .from('duenos_canchas')
@@ -13,11 +13,10 @@ async function getCanchaIdsDelDueno(sb: ReturnType<typeof createServiceClient>, 
 // GET — obtener una cancha específica del dueño
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   const token = req.headers.get('authorization')?.replace('Bearer ', '');
-  if (!token) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+  const user = await verifyToken(token);
+  if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
   const sb = createServiceClient();
-  const { data: { user }, error: authError } = await sb.auth.getUser(token);
-  if (authError || !user) return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
 
   const ids = await getCanchaIdsDelDueno(sb, user.id);
   if (!ids.includes(params.id)) {
@@ -32,11 +31,10 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 // PATCH — editar cancha (solo si el dueño la posee)
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const token = req.headers.get('authorization')?.replace('Bearer ', '');
-  if (!token) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+  const user = await verifyToken(token);
+  if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
   const sb = createServiceClient();
-  const { data: { user }, error: authError } = await sb.auth.getUser(token);
-  if (authError || !user) return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
 
   const ids = await getCanchaIdsDelDueno(sb, user.id);
   if (!ids.includes(params.id)) {

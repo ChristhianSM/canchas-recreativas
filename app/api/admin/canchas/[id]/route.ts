@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
+import { verifyAdmin } from '@/lib/admin-auth';
 
-// PATCH — editar cancha desde el panel admin general (sin restricción de dueño)
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const token = req.headers.get('authorization')?.replace('Bearer ', '');
+  if (!await verifyAdmin(token)) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+
   const { id } = await params;
   const sb = createServiceClient();
 
