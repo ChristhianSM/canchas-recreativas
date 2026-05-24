@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
 import { sendReservaRecibidaEmail } from '@/lib/email';
+import { notificarNuevaReserva, notificarReservaRecibida } from '@/lib/whatsapp';
 import { rateLimit } from '@/lib/rate-limit';
 
 // GET — obtener reservas del usuario autenticado
@@ -31,7 +32,7 @@ export async function POST(req: NextRequest) {
   const sb = createServiceClient();
 
   const body = await req.json();
-  const { canchaId, canchaNombre, fecha, hora, precio, precioOriginal, cuponId, metodoPago, comprobanteUrl, emailInvitado, telefonoInvitado, metodoDevolucion, telefonoDevolucion, actualizarTelefono, nuevoTelefono, balonIncluido, chalecosIncluido, modo_pago, monto_adelanto, saldo_pendiente } = body;
+  const { canchaId, canchaNombre, fecha, hora, precio, precioOriginal, cuponId, metodoPago, comprobanteUrl, emailInvitado, telefonoInvitado, whatsappInvitado, metodoDevolucion, telefonoDevolucion, actualizarTelefono, nuevoTelefono, balonIncluido, chalecosIncluido, modo_pago, monto_adelanto, saldo_pendiente } = body;
 
   let usuarioId: string | null = null;
   let usuarioNombre = 'Invitado';
@@ -53,11 +54,12 @@ export async function POST(req: NextRequest) {
       }
     }
   } else if (emailInvitado) {
-    usuarioEmail    = emailInvitado;
-    // Construir el texto del teléfono con método de devolución
-    if (telefonoInvitado === 'MISMO_NUMERO_PAGO') {
+    usuarioEmail = emailInvitado;
+    if (whatsappInvitado && /^9\d{8}$/.test(whatsappInvitado)) {
+      usuarioTelefono = whatsappInvitado;
+    } else if (telefonoInvitado === 'MISMO_NUMERO_PAGO') {
       usuarioTelefono = `Mismo número de ${metodoPago}`;
-    } else {
+    } else if (telefonoInvitado) {
       const metodo = metodoDevolucion ?? 'yape';
       usuarioTelefono = `${telefonoInvitado} (${metodo})`;
     }
@@ -154,6 +156,42 @@ export async function POST(req: NextRequest) {
       metodoPago,
       reservaId:    reserva.id,
       baseUrl,
+    });
+  }
+
+  // Notificar al cliente por WhatsApp (recibida) — registrado o invitado con teléfono
+  if (usuarioTelefono) {
+    await notificarReservaRecibida({
+      clientePhone: usuarioTelefono,
+      canchaNombre,
+      fecha,
+      hora,
+      precio,
+      metodoPago,
+      reservaId: reserva.id,
+    });
+  }
+
+  // Notificar al dueño de la cancha por WhatsApp
+  const { data: dueno } = await sb
+    .from('duenos_canchas')
+    .select('usuarios(telefono)')
+    .eq('cancha_id', canchaId)
+    .maybeSingle();
+
+  const duenoPhone = (dueno?.usuarios as any)?.telefono ?? process.env.ADMIN_WHATSAPP_NUMBER;
+  if (duenoPhone) {
+    await notificarNuevaReserva({
+      adminPhone:      duenoPhone,
+      canchaNombre,
+      fecha,
+      hora,
+      precio,
+      metodoPago,
+      clienteNombre:   usuarioNombre,
+      clienteTelefono: usuarioTelefono,
+      reservaId:       reserva.id,
+      comprobanteUrl:  comprobanteUrl ?? null,
     });
   }
 

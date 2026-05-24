@@ -142,6 +142,7 @@ export async function apiCrearReserva(data: {
   precio: number; precioOriginal?: number; cuponId?: string | null;
   metodoPago: string; comprobanteUrl?: string | null;
   emailInvitado?: string; telefonoInvitado?: string;
+  whatsappInvitado?: string;
   metodoDevolucion?: string;
   telefonoDevolucion?: string;
   actualizarTelefono?: boolean;
