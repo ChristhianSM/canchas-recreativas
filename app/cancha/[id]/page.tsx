@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, Suspense } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -37,6 +37,11 @@ function formatTo12Hour(time24: string): string {
   const period = hours >= 12 ? 'PM' : 'AM';
   const hours12 = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
   return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`;
+}
+
+function addOneHour24(time24: string): string {
+  const [h] = time24.split(':').map(Number);
+  return `${String((h + 1) % 24).padStart(2, '0')}:00`;
 }
 
 const HORAS_OPERACION = ['06:00','07:00','08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00','22:00','23:00'];
@@ -113,12 +118,12 @@ export default function CanchaDetailPage() {
   const [cancha, setCancha]           = useState<CanchaDB | null>(null);
   const [loading, setLoading]         = useState(true);
   const [selectedDate, setSelectedDate] = useState(today);
-  const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
+  const [selectedSlots, setSelectedSlots] = useState<TimeSlot[]>([]);
   const [isFav, setIsFav]             = useState(false);
   const [togglingFav, setTogglingFav] = useState(false);
   const [sheetOpen, setSheetOpen]     = useState(false);
   const [reservando, setReservando]   = useState(false);
-  const [slotOcupado, setSlotOcupado] = useState(false);
+
   const [ocupadoModal, setOcupadoModal] = useState(false);
   const [countdown, setCountdown]     = useState(0);
   const [reservaStep, setReservaStep] = useState(0);
@@ -150,6 +155,10 @@ export default function CanchaDetailPage() {
       setOcupadoModal(true);
       startCountdown(5 * 60);
       router.replace(`/cancha/${id}`, { scroll: false });
+      // Refrescar horarios para mostrar el slot como bloqueado/ocupado
+      fetch(`/api/canchas/detail?id=${id}`)
+        .then(r => r.json())
+        .then(data => { if (!data.error) setCancha(data); });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -169,42 +178,71 @@ export default function CanchaDetailPage() {
     }, 1000);
   };
 
-  const handleReservar = async () => {
-    if (!cancha || !selectedSlot) return;
-    setReservando(true);
-    setReservaStep(1); // Paso 1: Verificando
-    setSlotOcupado(false);
-
-    // Consultar si el horario está disponible
-    const check = await fetch(
-      `/api/bloqueos/check?canchaId=${cancha.id}&fecha=${selectedDate}&hora=${encodeURIComponent(selectedSlot.time)}`
-    ).then(r => r.json());
-
-    if (!check.disponible) {
-      setReservando(false);
-      setReservaStep(0);
-      setSlotOcupado(true);
-      setSelectedSlot(null);
-      setSheetOpen(false);
-      setOcupadoModal(true);
-      startCountdown(5 * 60); // 5 minutos
-      // Recargar horarios para mostrar el slot ocupado
-      fetch(`/api/canchas/detail?id=${cancha.id}`)
+  const mostrarOcupado = (refrescarCancha = true) => {
+    setReservando(false);
+    setReservaStep(0);
+    setSelectedSlots([]);
+    setSheetOpen(false);
+    setOcupadoModal(true);
+    startCountdown(5 * 60);
+    if (refrescarCancha) {
+      fetch(`/api/canchas/detail?id=${cancha!.id}`)
         .then(r => r.json())
         .then(data => { if (!data.error) setCancha(data); });
+    }
+  };
+
+  const handleReservar = async () => {
+    if (!cancha || selectedSlots.length === 0) return;
+    setReservando(true);
+    setReservaStep(1);
+
+    // Crear bloqueo atómicamente — el UNIQUE constraint en BD garantiza que solo
+    // un usuario puede bloquear el mismo slot. No se hace check previo porque
+    // check + insert separados crean una ventana de race condition.
+    const token = typeof window !== 'undefined' ? localStorage.getItem('cp_token') : null;
+    const bloqueoRes = await fetch('/api/bloqueos', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({
+        canchaId: cancha.id,
+        fecha:    selectedDate,
+        hora:     selectedSlots[0].time,
+        horas:    selectedSlots.length,
+      }),
+    });
+
+    if (!bloqueoRes.ok) {
+      if (bloqueoRes.status === 409) {
+        mostrarOcupado();
+      } else {
+        setReservando(false);
+        setReservaStep(0);
+        toast({
+          title: 'Error',
+          description: 'No se pudo reservar el horario. Por favor intenta de nuevo.',
+          variant: 'destructive',
+        });
+      }
       return;
     }
 
-    // Disponible — ir a pago (el bloqueo se crea allí)
-    setReservaStep(2); // Paso 2: Redirigiendo
+    // Guardar timestamp en localStorage para que la página de pago arranque el timer
+    const bloqueoKey = `cp_bloqueo_inicio_${cancha.id}_${selectedDate}_${selectedSlots[0].time.replace(':', '-')}`;
+    localStorage.setItem(bloqueoKey, String(Date.now()));
+
+    setReservaStep(2);
     setTimeout(() => {
-      // NO resetear el estado de loading aquí - mantener el botón deshabilitado hasta la redirección
       const extrasParams = [
         quiereBalon && cancha.balon_disponible ? `balon=1` : '',
         quiereChalecos && cancha.chalecos_disponible ? `chalecos=1` : '',
       ].filter(Boolean).join('&');
       const extrasStr = extrasParams ? `&${extrasParams}` : '';
-      router.push(`/pago?canchaId=${cancha.id}&fecha=${selectedDate}&hora=${selectedSlot.time}&precio=${selectedSlot.price}&sid=${sessionId.current}${extrasStr}`);
+      const firstSlot = selectedSlots[0];
+      router.push(`/pago?canchaId=${cancha.id}&fecha=${selectedDate}&hora=${firstSlot.time}&horas=${selectedSlots.length}&precio=${firstSlot.price}&sid=${sessionId.current}${extrasStr}`);
     }, 800);
   };
 
@@ -233,6 +271,19 @@ export default function CanchaDetailPage() {
       })
       .finally(() => setLoading(false))
       .catch(() => setLoading(false));
+  }, [id]);
+
+  // Polling cada 15 segundos para mostrar bloqueos de otros usuarios en tiempo real
+  useEffect(() => {
+    if (!id) return;
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      fetch(`/api/canchas/detail?id=${id}`, { cache: 'no-store' })
+        .then(r => r.json())
+        .then(data => { if (!data.error) setCancha(data); })
+        .catch(() => {});
+    }, 15 * 1000);
+    return () => clearInterval(interval);
   }, [id]);
 
   useEffect(() => {
@@ -367,7 +418,8 @@ export default function CanchaDetailPage() {
 
   const extraBalon    = quiereBalon    && cancha.balon_precio    != null ? cancha.balon_precio    : 0;
   const extraChalecos = quiereChalecos && cancha.chalecos_precio != null ? cancha.chalecos_precio : 0;
-  const precioConExtras = selectedSlot ? selectedSlot.price + extraBalon + extraChalecos : 0;
+  const precioBase      = selectedSlots.reduce((sum, s) => sum + s.price, 0);
+  const precioConExtras = precioBase > 0 ? precioBase + extraBalon + extraChalecos : 0;
   const hayExtras = extraBalon > 0 || extraChalecos > 0;
 
   const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${cancha.lat},${cancha.lng}`;
@@ -670,9 +722,9 @@ export default function CanchaDetailPage() {
                 <TimeSlotPicker
                   schedule={schedule}
                   selectedDate={selectedDate}
-                  selectedSlot={selectedSlot}
-                  onDateChange={setSelectedDate}
-                  onSlotSelect={setSelectedSlot}
+                  selectedSlots={selectedSlots}
+                  onDateChange={(date) => { setSelectedDate(date); setSelectedSlots([]); }}
+                  onSlotsChange={setSelectedSlots}
                 />
               </Card>
             </div>
@@ -736,17 +788,17 @@ export default function CanchaDetailPage() {
                   </div>
                 )}
               </div>
-              {selectedSlot ? (
+              {selectedSlots.length > 0 ? (
                 <div className="space-y-4">
                   <div className="rounded-lg bg-secondary p-3 space-y-1">
-                    <p className="text-sm text-muted-foreground">Tu selección:</p>
+                    <p className="text-sm text-muted-foreground">Tu selección{selectedSlots.length > 1 ? ` (${selectedSlots.length} horas)` : ''}:</p>
                     <p className="font-semibold capitalize text-foreground">{selectedDateLabel}</p>
-                    <p className="text-sm text-muted-foreground">{selectedSlot.time}</p>
+                    <p className="text-sm text-muted-foreground">{selectedSlots[0].time} - {addOneHour24(selectedSlots[selectedSlots.length - 1].time)}</p>
                     {hayExtras ? (
                       <div className="mt-2 pt-2 border-t border-border/50 space-y-0.5">
                         <div className="flex justify-between text-xs text-muted-foreground">
-                          <span>Hora</span>
-                          <span>S/ {selectedSlot.price}</span>
+                          <span>Hora{selectedSlots.length > 1 ? `s (×${selectedSlots.length})` : ''}</span>
+                          <span>S/ {precioBase}</span>
                         </div>
                         {extraBalon > 0 && (
                           <div className="flex justify-between text-xs text-muted-foreground">
@@ -766,7 +818,7 @@ export default function CanchaDetailPage() {
                         </div>
                       </div>
                     ) : (
-                      <p className="font-bold text-primary">S/ {selectedSlot.price}</p>
+                      <p className="font-bold text-primary">S/ {precioConExtras}</p>
                     )}
                   </div>
 
@@ -842,9 +894,12 @@ export default function CanchaDetailPage() {
         <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-card px-4 py-3 shadow-xl">
           <div className="container mx-auto flex items-center gap-3">
             <div className="flex-1">
-              {selectedSlot ? (
+              {selectedSlots.length > 0 ? (
                 <>
-                  <p className="text-xs text-muted-foreground capitalize">{selectedDateLabel} · {selectedSlot.time}</p>
+                  <p className="text-xs text-muted-foreground capitalize">
+                    {selectedDateLabel} · {selectedSlots[0].time} - {addOneHour24(selectedSlots[selectedSlots.length - 1].time)}
+                    {selectedSlots.length > 1 ? ` (${selectedSlots.length}h)` : ''}
+                  </p>
                   <p className="text-xl font-bold text-foreground">
                     S/ {precioConExtras}
                     {hayExtras && <span className="text-xs font-normal text-muted-foreground ml-1">c/extras</span>}
@@ -859,11 +914,11 @@ export default function CanchaDetailPage() {
             </div>
             <Button
               size="lg"
-              className={`gap-2 px-6 transition-all ${barPulse && !selectedSlot ? 'ring-2 ring-primary ring-offset-2 ring-offset-card' : ''}`}
+              className={`gap-2 px-6 transition-all ${barPulse && selectedSlots.length === 0 ? 'ring-2 ring-primary ring-offset-2 ring-offset-card' : ''}`}
               onClick={() => { setSheetOpen(true); setBarPulse(false); }}
             >
               <CalendarDays className="h-5 w-5" />
-              {selectedSlot ? 'Confirmar reserva' : 'Ver horarios'}
+              {selectedSlots.length > 0 ? 'Confirmar reserva' : 'Ver horarios'}
             </Button>
           </div>
         </div>
@@ -877,31 +932,31 @@ export default function CanchaDetailPage() {
             <TimeSlotPicker
               schedule={schedule}
               selectedDate={selectedDate}
-              selectedSlot={selectedSlot}
-              onDateChange={setSelectedDate}
-              onSlotSelect={(slot) => {
-                setSelectedSlot(slot);
-                // Vibración háptica si está disponible
+              selectedSlots={selectedSlots}
+              onDateChange={(date) => { setSelectedDate(date); setSelectedSlots([]); }}
+              onSlotsChange={(slots) => {
+                setSelectedSlots(slots);
                 if (typeof navigator !== 'undefined' && navigator.vibrate) {
                   navigator.vibrate(50);
                 }
-                // Scroll automático hacia el botón de pagar después de un pequeño delay
-                setTimeout(() => {
-                  const sheetContent = document.querySelector('[data-slot-summary]');
-                  if (sheetContent) {
-                    sheetContent.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                  }
-                }, 100);
+                if (slots.length > 0) {
+                  setTimeout(() => {
+                    const sheetContent = document.querySelector('[data-slot-summary]');
+                    if (sheetContent) {
+                      sheetContent.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }
+                  }, 100);
+                }
               }}
             />
             <div className="mt-4 space-y-3" data-slot-summary>
-              {selectedSlot && (
+              {selectedSlots.length > 0 && (
                 <div className="rounded-xl bg-secondary p-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                  <p className="text-sm text-muted-foreground">Tu selección</p>
+                  <p className="text-sm text-muted-foreground">Tu selección{selectedSlots.length > 1 ? ` (${selectedSlots.length} horas)` : ''}</p>
                   <p className="font-semibold capitalize text-foreground">{selectedDateLabel}</p>
                   <div className="mt-1 flex items-center justify-between">
-                    <span className="text-primary font-medium">{formatTo12Hour(selectedSlot.time)}</span>
-                    <span className="text-lg font-bold text-foreground">S/ {selectedSlot.price}</span>
+                    <span className="text-primary font-medium">{selectedSlots[0].time} - {addOneHour24(selectedSlots[selectedSlots.length - 1].time)}</span>
+                    <span className="text-lg font-bold text-foreground">S/ {precioConExtras}</span>
                   </div>
                   {hayExtras && (
                     <div className="mt-2 pt-2 border-t border-border/50 space-y-0.5">
@@ -927,7 +982,7 @@ export default function CanchaDetailPage() {
               )}
 
               {/* Extras — solo si la cancha los ofrece */}
-              {selectedSlot && (cancha.balon_disponible || cancha.chalecos_disponible) ? (
+              {selectedSlots.length > 0 && (cancha.balon_disponible || cancha.chalecos_disponible) ? (
                 <div className="rounded-xl border border-border bg-card p-4 space-y-3">
                   <p className="text-sm font-semibold text-foreground">¿Necesitas extras?</p>
                   {cancha.balon_disponible && (
@@ -965,7 +1020,7 @@ export default function CanchaDetailPage() {
                     </label>
                   )}
                 </div>
-              ) : selectedSlot ? (
+              ) : selectedSlots.length > 0 ? (
                 <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/5 px-4 py-3 flex items-start gap-2">
                   <span className="text-base leading-none mt-0.5">⚠️</span>
                   <p className="text-xs text-yellow-700 dark:text-yellow-400 font-medium">
@@ -981,9 +1036,9 @@ export default function CanchaDetailPage() {
                 steps={['Verificando disponibilidad', 'Redirigiendo al pago']}
                 currentStep={reservaStep - 1}
                 onClick={handleReservar}
-                disabled={!selectedSlot}
+                disabled={selectedSlots.length === 0}
               >
-                {selectedSlot ? <>Continuar al pago <ChevronRight className="h-4 w-4" /></> : 'Selecciona un horario'}
+                {selectedSlots.length > 0 ? <>Continuar al pago <ChevronRight className="h-4 w-4" /></> : 'Selecciona un horario'}
               </StepButton>
             </div>
           </SheetContent>

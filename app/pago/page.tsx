@@ -36,13 +36,13 @@ function getSegundosRestantes(canchaId: string, fecha: string, hora: string): nu
   return Math.max(0, TIEMPO_LIMITE - transcurrido);
 }
 
-function guardarInicioBloqueo(canchaId: string, fecha: string, hora: string) {
-  localStorage.setItem(bloqueoKey(canchaId, fecha, hora), String(Date.now()));
-}
 
 function limpiarInicioBloqueo(canchaId: string, fecha: string, hora: string) {
   localStorage.removeItem(bloqueoKey(canchaId, fecha, hora));
 }
+
+// Tracks active sessions to distinguish StrictMode remount from real navigation
+const _sesionesActivas = new Set<string>();
 
 function PagoContent() {
   const router = useRouter();
@@ -52,8 +52,12 @@ function PagoContent() {
   const canchaId  = params.get('canchaId') ?? '';
   const fecha     = params.get('fecha') ?? '';
   const hora      = params.get('hora') ?? '';
-  const precioRaw = Number(params.get('precio') ?? 0);
+  const horas     = Math.max(1, Number(params.get('horas') ?? 1));
+  const precioRaw = Number(params.get('precio') ?? 0); // precio por hora
   const fromCard  = params.get('from') === 'card';
+
+  // Hora de fin calculada a partir de inicio + duración
+  const horaFin = `${String((parseInt(hora.split(':')[0]) + horas) % 24).padStart(2, '0')}:00`;
   // Extras — pueden venir preseleccionados desde el detalle, o el usuario los elige aquí
   const [conBalon, setConBalon]       = useState(params.get('balon') === '1');
   const [conChalecos, setConChalecos] = useState(params.get('chalecos') === '1');
@@ -70,6 +74,7 @@ function PagoContent() {
   const [enviando, setEnviando]                   = useState(false);
   const [segundos, setSegundos]                   = useState(TIEMPO_LIMITE);
   const [montoCopiado, setMontoCopiado]           = useState(false);
+  const [submitError, setSubmitError]             = useState<string | null>(null);
 
   const [modoPago, setModoPago]                       = useState<'completo' | 'parcial'>('completo');
 
@@ -130,63 +135,30 @@ function PagoContent() {
       .finally(() => setCanchaLoading(false));
   }, [canchaId]);
 
-  // Crear bloqueo temporal al entrar y countdown
+  // Gestionar timer del bloqueo (el bloqueo fue creado al clickar "Continuar al pago")
   useEffect(() => {
     if (!canchaId || !fecha || !hora) return;
 
-    let activo = true;
-    const token = getToken();
+    const sesionKey = `${canchaId}_${fecha}_${hora}`;
+    _sesionesActivas.add(sesionKey);
 
-    // ¿Ya hay un bloqueo activo guardado en localStorage?
-    const yaExiste = !!localStorage.getItem(bloqueoKey(canchaId, fecha, hora));
     const restantes = getSegundosRestantes(canchaId, fecha, hora);
 
-    // Si el tiempo ya venció (recargó tarde), liberar y redirigir
-    if (yaExiste && restantes <= 0) {
+    // Si el tiempo ya venció (recargó demasiado tarde), liberar y redirigir
+    if (restantes <= 0) {
+      _sesionesActivas.delete(sesionKey);
       limpiarInicioBloqueo(canchaId, fecha, hora);
       fetch('/api/bloqueos', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ canchaId, fecha, hora }),
+        body: JSON.stringify({ canchaId, fecha, hora, horas }),
       });
       router.replace('/');
       return;
     }
 
-    const crearBloqueo = async () => {
-      // Si ya existe el bloqueo en localStorage, no volver a crearlo en el servidor
-      if (yaExiste) {
-        return;
-      }
-
-      const res = await fetch('/api/bloqueos', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ canchaId, fecha, hora }),
-      });
-      const data = await res.json();
-
-      if (!activo) return;
-
-      if (res.status === 409) {
-        // Horario ocupado por otro usuario — redirigir al detalle con aviso
-        router.replace(`/cancha/${canchaId}?ocupado=1&hora=${encodeURIComponent(hora)}`);
-        return;
-      }
-
-      if (data.ok) {
-        guardarInicioBloqueo(canchaId, fecha, hora);
-      }
-    };
-
-    crearBloqueo();
-
     // Sincronizar segundos con localStorage (evita hydration mismatch)
-    const restantesActuales = getSegundosRestantes(canchaId, fecha, hora);
-    setSegundos(restantesActuales);
+    setSegundos(restantes);
 
     // Countdown arrancando desde el tiempo restante real
     const interval = setInterval(() => {
@@ -197,31 +169,33 @@ function PagoContent() {
 
     // Redirigir cuando llegue a 0
     const timeout = setTimeout(() => {
+      _sesionesActivas.delete(sesionKey);
       limpiarInicioBloqueo(canchaId, fecha, hora);
       fetch('/api/bloqueos', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ canchaId, fecha, hora }),
+        body: JSON.stringify({ canchaId, fecha, hora, horas }),
       });
       router.push('/');
     }, restantes * 1000);
 
-    const liberarBloqueo = () => {
-      navigator.sendBeacon('/api/bloqueos', JSON.stringify({ canchaId, fecha, hora }));
-    };
-    window.addEventListener('beforeunload', liberarBloqueo);
-
     return () => {
-      activo = false;
       clearInterval(interval);
       clearTimeout(timeout);
-      window.removeEventListener('beforeunload', liberarBloqueo);
-      // Liberar bloqueo al desmontar (navegación hacia atrás) y limpiar localStorage
       limpiarInicioBloqueo(canchaId, fecha, hora);
-      fetch('/api/bloqueos', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ canchaId, fecha, hora }),
+      _sesionesActivas.delete(sesionKey);
+      // queueMicrotask corre DESPUÉS de que React termine la reconciliación.
+      // Si StrictMode re-monta el componente, add() habrá corrido antes del microtask
+      // y la clave estará de vuelta en el Set — no borramos el bloqueo.
+      // Si es navegación real (back button), la clave no regresa y sí borramos.
+      queueMicrotask(() => {
+        if (!_sesionesActivas.has(sesionKey)) {
+          fetch('/api/bloqueos', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ canchaId, fecha, hora, horas }),
+          });
+        }
       });
     };
   }, [canchaId, fecha, hora]);
@@ -307,7 +281,7 @@ function PagoContent() {
   const descuento   = cuponSeleccionado ? 5 : 0;
   const extraBalon    = conBalon    && cancha?.balonPrecio    != null ? cancha.balonPrecio    : 0;
   const extraChalecos = conChalecos && cancha?.chalecosPrecio != null ? cancha.chalecosPrecio : 0;
-  const total       = Math.max(0, precioRaw + extraBalon + extraChalecos - descuento);
+  const total       = Math.max(0, precioRaw * horas + extraBalon + extraChalecos - descuento);
 
   const montoAdelanto  = modoPago === 'parcial' ? Math.round(total * 0.20) : total;
   const saldoPendiente = modoPago === 'parcial' ? total - montoAdelanto : 0;
@@ -350,6 +324,7 @@ function PagoContent() {
   };
 
   const handleEnviar = async () => {
+    setSubmitError(null);
     // Caso efectivo: flujo simplificado sin comprobante
     if (soloEfectivo) {
       if (esInvitado) {
@@ -362,16 +337,23 @@ function PagoContent() {
         setTelefonoWaError('');
       }
       setEnviando(true);
-      await apiCrearReserva({
-        canchaId, canchaNombre: cancha.name, fecha, hora,
+      const resEfectivo = await apiCrearReserva({
+        canchaId, canchaNombre: cancha.name, fecha, hora, horas,
         precio: total, precioOriginal: precioRaw,
         cuponId: cuponSeleccionado, metodoPago: 'efectivo',
         balonIncluido: conBalon, chalecosIncluido: conChalecos,
         modoPago, montoAdelanto, saldoPendiente,
         ...(esInvitado && emailInvitado ? { emailInvitado, telefonoInvitado: '', metodoDevolucion: 'yape', ...(telefonoWa ? { whatsappInvitado: telefonoWa } : {}) } : {}),
       });
+      if (resEfectivo.error) {
+        setEnviando(false);
+        setSubmitError(resEfectivo.error.includes('ya fue reservado')
+          ? 'Este horario ya fue reservado por otro usuario. Vuelve y elige otro horario.'
+          : 'No se pudo crear la reserva. Intenta de nuevo.');
+        return;
+      }
       limpiarInicioBloqueo(canchaId, fecha, hora);
-      fetch('/api/bloqueos', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ canchaId, fecha, hora }) });
+      fetch('/api/bloqueos', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ canchaId, fecha, hora, horas }) });
       setEnviando(false);
       setPaso('exito');
       return;
@@ -428,11 +410,12 @@ function PagoContent() {
 
     setEnviando(true);
 
-    await apiCrearReserva({
+    const result = await apiCrearReserva({
       canchaId:       canchaId,
       canchaNombre:   cancha.name,
       fecha,
       hora,
+      horas,
       precio:         total,
       precioOriginal: precioRaw,
       cuponId:        cuponSeleccionado,
@@ -463,13 +446,21 @@ function PagoContent() {
       } : {}),
     });
 
+    if (result.error) {
+      setEnviando(false);
+      setSubmitError(result.error.includes('ya fue reservado')
+        ? 'Este horario ya fue reservado por otro usuario. Vuelve y elige otro horario.'
+        : 'No se pudo crear la reserva. Intenta de nuevo.');
+      return;
+    }
+
     await new Promise(r => setTimeout(r, 800));
     // Liberar bloqueo al completar el pago
     limpiarInicioBloqueo(canchaId, fecha, hora);
     fetch('/api/bloqueos', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ canchaId, fecha, hora }),
+      body: JSON.stringify({ canchaId, fecha, hora, horas }),
     });
     setEnviando(false);
     setPaso('exito');
@@ -525,7 +516,7 @@ function PagoContent() {
             </div>
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4 shrink-0 text-primary" />
-              <span className="text-foreground">{hora}</span>
+              <span className="text-foreground">{hora} - {horaFin}</span>
             </div>
             <Separator />
             <div className="flex items-center justify-between">
@@ -628,7 +619,7 @@ function PagoContent() {
               <p className="font-semibold text-foreground line-clamp-1">{cancha.name}</p>
               <div className="mt-1 space-y-0.5 text-sm text-muted-foreground">
                 <p className="flex items-center gap-1.5 capitalize"><Calendar className="h-3.5 w-3.5" />{fechaLabel}</p>
-                <p className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" />{hora}</p>
+                <p className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" />{hora} - {horaFin}</p>
               </div>
             </div>
           </div>
@@ -846,8 +837,10 @@ function PagoContent() {
           <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Detalle del pago</p>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Precio por hora</span>
-              <span className="text-foreground">S/ {precioRaw}</span>
+              <span className="text-muted-foreground">
+                {horas > 1 ? `Precio (${horas} horas × S/ ${precioRaw})` : 'Precio por hora'}
+              </span>
+              <span className="text-foreground">S/ {precioRaw * horas}</span>
             </div>
             {conBalon && (
               <div className="flex justify-between">
@@ -960,6 +953,11 @@ function PagoContent() {
               </Card>
             )}
 
+            {submitError && (
+              <div className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
+                {submitError}
+              </div>
+            )}
             <LoadingButton
               size="lg"
               className="w-full"
@@ -1348,6 +1346,11 @@ function PagoContent() {
               </Card>
             )}
 
+            {submitError && (
+              <div className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
+                {submitError}
+              </div>
+            )}
             <div className="flex gap-3">
               {yapeDisponible && plinDisponible && (
                 <Button variant="outline" size="lg" className="flex-1" onClick={() => setPaso('metodo')}>

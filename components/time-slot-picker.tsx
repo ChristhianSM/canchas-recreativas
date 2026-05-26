@@ -9,21 +9,13 @@ import { TimeSlot } from '@/lib/types';
 interface TimeSlotPickerProps {
   schedule: { [key: string]: TimeSlot[] };
   selectedDate: string;
-  selectedSlot: TimeSlot | null;
+  selectedSlots: TimeSlot[];
   onDateChange: (date: string) => void;
-  onSlotSelect: (slot: TimeSlot) => void;
+  onSlotsChange: (slots: TimeSlot[]) => void;
 }
 
 const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-
-// Convertir formato 24h a 12h (AM/PM)
-function formatTo12Hour(time24: string): string {
-  const [hours, minutes] = time24.split(':').map(Number);
-  const period = hours >= 12 ? 'PM' : 'AM';
-  const hours12 = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
-  return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`;
-}
 
 function formatDate(dateString: string): { day: string; date: number; month: string; isToday: boolean } {
   const date = new Date(dateString + 'T00:00:00');
@@ -61,14 +53,46 @@ function isSlotPasado(selectedDate: string, slotTime: string): boolean {
 export function TimeSlotPicker({
   schedule,
   selectedDate,
-  selectedSlot,
+  selectedSlots,
   onDateChange,
-  onSlotSelect,
+  onSlotsChange,
 }: TimeSlotPickerProps) {
   const dates = Object.keys(schedule).sort();
   const slots = schedule[selectedDate] || [];
   const [startIndex, setStartIndex] = useState(0);
   const daysToShow = 6;
+
+  function handleSlotClick(slot: TimeSlot) {
+    const pasado = slot.status === 'disponible' && isSlotPasado(selectedDate, slot.time);
+    if (!slot.available || pasado) return;
+
+    const isAlreadySelected = selectedSlots.some(s => s.id === slot.id);
+    if (isAlreadySelected) {
+      const first = selectedSlots[0];
+      const last  = selectedSlots[selectedSlots.length - 1];
+      if (slot.id === last.id)  { onSlotsChange(selectedSlots.slice(0, -1)); return; }
+      if (slot.id === first.id) { onSlotsChange(selectedSlots.slice(1));     return; }
+      // Slot en el medio → resetear a sólo ese
+      onSlotsChange([slot]);
+      return;
+    }
+
+    if (selectedSlots.length === 0) { onSlotsChange([slot]); return; }
+
+    const idx      = slots.findIndex(s => s.id === slot.id);
+    const indices  = selectedSlots.map(s => slots.findIndex(sl => sl.id === s.id));
+    const minIdx   = Math.min(...indices);
+    const maxIdx   = Math.max(...indices);
+
+    if (idx === maxIdx + 1) {
+      onSlotsChange([...selectedSlots, slot]);
+    } else if (idx === minIdx - 1) {
+      onSlotsChange([slot, ...selectedSlots]);
+    } else {
+      // No contiguo → reiniciar selección
+      onSlotsChange([slot]);
+    }
+  }
 
   const scrollLeft = () => {
     if (startIndex > 0) setStartIndex(startIndex - 1);
@@ -179,12 +203,12 @@ export function TimeSlotPicker({
           // Un slot es "pasado" solo si está disponible y la hora ya pasó hoy
           // Los ocupados/en_proceso se mantienen como están (fueron reservados antes)
           const pasado = slot.status === 'disponible' && isSlotPasado(selectedDate, slot.time);
-          const isSelected = selectedSlot?.id === slot.id;
+          const isSelected = selectedSlots.some(s => s.id === slot.id);
 
           return (
             <button
               key={slot.id}
-              onClick={() => !pasado && slot.available && onSlotSelect(slot)}
+              onClick={() => handleSlotClick(slot)}
               disabled={!slot.available || pasado}
               className={cn(
                 'flex flex-col items-center rounded-lg border p-2 md:p-3 transition-all',
@@ -209,7 +233,7 @@ export function TimeSlotPicker({
                 'text-sm font-semibold',
                 pasado && 'text-slate-400 dark:text-slate-500',
               )}>
-                {formatTo12Hour(slot.time)}
+                {slot.time}
               </span>
               <span className={cn(
                 'text-xs',

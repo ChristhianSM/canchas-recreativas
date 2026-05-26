@@ -151,7 +151,7 @@ function ReservaCard({
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Clock className="h-4 w-4" />
-              <span>{r.hora}</span>
+              <span>{r.hora} - {`${String((parseInt(r.hora.split(':')[0]) + 1) % 24).padStart(2, '0')}:00`}</span>
             </div>
             {direccion && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">

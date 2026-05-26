@@ -23,6 +23,7 @@ interface CanchaCardHorizontalProps {
   compact?: boolean;
   isFav?: boolean;
   onToggleFav?: (id: string) => void;
+  onCanchaOcupada?: (id: string) => void;
 }
 
 function getAvailableSlots(cancha: Cancha, selectedDate: string): TimeSlot[] {
@@ -40,7 +41,7 @@ function getAvailableSlots(cancha: Cancha, selectedDate: string): TimeSlot[] {
 }
 
 export function CanchaCardHorizontal({
-  cancha, distancia, selectedDate, preselectedHour, isHighlighted, onHover, compact = false, isFav: isFavProp, onToggleFav,
+  cancha, distancia, selectedDate, preselectedHour, isHighlighted, onHover, compact = false, isFav: isFavProp, onToggleFav, onCanchaOcupada,
 }: CanchaCardHorizontalProps) {
   const router = useRouter();
   const date = selectedDate ?? getLocalDateString();
@@ -67,15 +68,14 @@ export function CanchaCardHorizontal({
     if (idx !== -1) slotsToDisplay = availableSlots.slice(idx);
   }
 
-  const visibleSlots = slotsToDisplay.slice(0, 4);
-  const extraCount = Math.max(0, slotsToDisplay.length - visibleSlots.length);
+  const visibleSlots = slotsToDisplay.slice(0, 5);
 
-  const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(() => {
+  const [selectedSlots, setSelectedSlots] = useState<TimeSlot[]>(() => {
     if (preselectedHour) {
       const pre = availableSlots.find(s => s.time === preselectedHour);
-      if (pre) return pre;
+      if (pre) return [pre];
     }
-    return visibleSlots[0] ?? null;
+    return visibleSlots[0] ? [visibleSlots[0]] : [];
   });
   const [reservando, setReservando] = useState(false);
   const [ocupadoModal, setOcupadoModal] = useState(false);
@@ -83,6 +83,12 @@ export function CanchaCardHorizontal({
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [isFav, setIsFav] = useState<boolean>(isFavProp ?? false);
   const [togglingFav, setTogglingFav] = useState(false);
+  const [localOcupados, setLocalOcupados] = useState<Set<string>>(new Set());
+
+  // Slots filtrados excluyendo los bloqueados localmente tras un 409
+  const slotsToDisplayFiltered = slotsToDisplay.filter(s => !localOcupados.has(s.id));
+  const visibleSlotsFiltered = slotsToDisplayFiltered.slice(0, 5);
+  const extraCountFiltered = Math.max(0, slotsToDisplayFiltered.length - visibleSlotsFiltered.length);
 
   useEffect(() => {
     if (isFavProp !== undefined) setIsFav(isFavProp);
@@ -125,18 +131,84 @@ export function CanchaCardHorizontal({
     }, 1000);
   };
 
+  const handleSlotClick = (slot: TimeSlot, e: React.MouseEvent) => {
+    e.preventDefault(); e.stopPropagation();
+
+    // Descartar slots obsoletos o bloqueados localmente
+    const validSelected = selectedSlots.filter(s => slotsToDisplayFiltered.some(sl => sl.id === s.id));
+
+    const isSelected = validSelected.some(s => s.id === slot.id);
+
+    if (isSelected) {
+      const first = validSelected[0];
+      const last  = validSelected[validSelected.length - 1];
+      if (slot.id === last.id)  { setSelectedSlots(validSelected.slice(0, -1)); return; }
+      if (slot.id === first.id) { setSelectedSlots(validSelected.slice(1));     return; }
+      setSelectedSlots([slot]);
+      return;
+    }
+
+    if (validSelected.length === 0) { setSelectedSlots([slot]); return; }
+
+    const idx    = slotsToDisplayFiltered.findIndex(s => s.id === slot.id);
+    const indices = validSelected.map(s => slotsToDisplayFiltered.findIndex(sl => sl.id === s.id));
+    const minIdx = Math.min(...indices);
+    const maxIdx = Math.max(...indices);
+
+    if (idx === maxIdx + 1)      setSelectedSlots([...validSelected, slot]);
+    else if (idx === minIdx - 1) setSelectedSlots([slot, ...validSelected]);
+    else                         setSelectedSlots([slot]);
+  };
+
   const handleReservar = async (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
-    if (!selectedSlot) { router.push(`/cancha/${cancha.id}`); return; }
+
+    // Usar solo slots que existan en slotsToDisplayFiltered actual (descartar obsoletos y bloqueados)
+    const validSlots = selectedSlots.filter(s => slotsToDisplayFiltered.some(sl => sl.id === s.id));
+    if (validSlots.length === 0) { router.push(`/cancha/${cancha.id}`); return; }
     setReservando(true);
+
+    const token = typeof window !== 'undefined' ? localStorage.getItem('cp_token') : null;
+    let bloqueoRes: Response;
     try {
-      const res = await fetch(`/api/bloqueos/check?canchaId=${cancha.id}&fecha=${displayDate}&hora=${encodeURIComponent(selectedSlot.time)}`);
-      const data = await res.json();
-      if (!data?.disponible) {
-        setReservando(false); setSelectedSlot(null); setOcupadoModal(true); startCountdown(5 * 60); return;
-      }
-    } catch { setReservando(false); router.push(`/cancha/${cancha.id}`); return; }
-    router.push(`/pago?canchaId=${cancha.id}&fecha=${displayDate}&hora=${selectedSlot.time}&precio=${selectedSlot.price}&from=card`);
+      bloqueoRes = await fetch('/api/bloqueos', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          canchaId: cancha.id,
+          fecha:    displayDate,
+          hora:     validSlots[0].time,
+          horas:    validSlots.length,
+        }),
+      });
+    } catch {
+      setReservando(false);
+      router.push(`/cancha/${cancha.id}`);
+      return;
+    }
+
+    if (!bloqueoRes.ok) {
+      const horaInicio = parseInt(validSlots[0].time.split(':')[0]);
+      const nuevosOcupados = new Set(
+        Array.from({ length: validSlots.length }, (_, i) =>
+          `${displayDate}-${String((horaInicio + i) % 24).padStart(2, '0')}:00`
+        )
+      );
+      setLocalOcupados(prev => new Set([...prev, ...nuevosOcupados]));
+      setReservando(false);
+      setSelectedSlots([]);
+      setOcupadoModal(true);
+      startCountdown(5 * 60);
+      return;
+    }
+
+    const bloqueoKey = `cp_bloqueo_inicio_${cancha.id}_${displayDate}_${validSlots[0].time.replace(':', '-')}`;
+    localStorage.setItem(bloqueoKey, String(Date.now()));
+
+    router.push(`/pago?canchaId=${cancha.id}&fecha=${displayDate}&hora=${validSlots[0].time}&horas=${validSlots.length}&precio=${validSlots[0].price}&from=card`);
   };
 
   // Badge de disponibilidad
@@ -160,7 +232,7 @@ export function CanchaCardHorizontal({
 
   return (
     <>
-      <Dialog open={ocupadoModal} onOpenChange={open => { setOcupadoModal(open); if (!open && countdownRef.current) clearInterval(countdownRef.current); }}>
+      <Dialog open={ocupadoModal} onOpenChange={open => { setOcupadoModal(open); if (!open) { if (countdownRef.current) clearInterval(countdownRef.current); if (preselectedHour) onCanchaOcupada?.(cancha.id); } }}>
         <DialogContent className="max-w-sm text-center z-[200]">
           <div className="flex flex-col items-center gap-4 py-2">
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-yellow-500/10">
@@ -287,28 +359,31 @@ export function CanchaCardHorizontal({
 
           {/* Horarios + botón */}
           <div className="mt-auto">
-            {visibleSlots.length > 0 ? (
+            {visibleSlotsFiltered.length > 0 ? (
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="text-[11px] text-gray-400 shrink-0">Horarios:</span>
-                {visibleSlots.map(slot => (
-                  <button
-                    key={slot.id}
-                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSelectedSlot(prev => prev?.id === slot.id ? null : slot); }}
-                    className={`rounded-md border px-2 py-1 text-[11px] font-semibold transition-all ${
-                      selectedSlot?.id === slot.id
-                        ? 'bg-[#16a34a] border-[#16a34a] text-white'
-                        : 'border-gray-200 text-gray-700 hover:border-[#16a34a]/50 hover:text-[#16a34a]'
-                    }`}
-                  >
-                    {slot.time}
-                  </button>
-                ))}
-                {extraCount > 0 && (
+                {visibleSlotsFiltered.map(slot => {
+                  const isSelected = selectedSlots.some(s => s.id === slot.id);
+                  return (
+                    <button
+                      key={slot.id}
+                      onClick={(e) => handleSlotClick(slot, e)}
+                      className={`rounded-md border px-2 py-1 text-[11px] font-semibold transition-all ${
+                        isSelected
+                          ? 'bg-[#16a34a] border-[#16a34a] text-white'
+                          : 'border-gray-200 text-gray-700 hover:border-[#16a34a]/50 hover:text-[#16a34a]'
+                      }`}
+                    >
+                      {slot.time}
+                    </button>
+                  );
+                })}
+                {extraCountFiltered > 0 && (
                   <button
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(`/cancha/${cancha.id}`); }}
                     className="rounded-md border border-gray-200 px-2 py-1 text-[11px] font-medium text-gray-400 hover:border-gray-400 transition-all"
                   >
-                    +{extraCount}
+                    +{extraCountFiltered}
                   </button>
                 )}
                 <button
@@ -316,7 +391,13 @@ export function CanchaCardHorizontal({
                   disabled={reservando}
                   className="ml-auto shrink-0 rounded-lg bg-[#16a34a] hover:bg-[#15803d] active:scale-[0.98] disabled:opacity-60 text-white px-4 py-2 text-xs font-semibold transition-all"
                 >
-                  {reservando ? 'Verificando...' : selectedSlot ? 'Reservar' : 'Ver horarios'}
+                  {reservando
+                    ? 'Bloqueando...'
+                    : selectedSlots.length > 1
+                    ? `Reservar ${selectedSlots.length}h`
+                    : selectedSlots.length === 1
+                    ? 'Reservar'
+                    : 'Ver horarios'}
                 </button>
               </div>
             ) : (

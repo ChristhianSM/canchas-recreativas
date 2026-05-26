@@ -32,7 +32,10 @@ export async function POST(req: NextRequest) {
   const sb = createServiceClient();
 
   const body = await req.json();
-  const { canchaId, canchaNombre, fecha, hora, precio, precioOriginal, cuponId, metodoPago, comprobanteUrl, emailInvitado, telefonoInvitado, whatsappInvitado, metodoDevolucion, telefonoDevolucion, actualizarTelefono, nuevoTelefono, balonIncluido, chalecosIncluido, modo_pago, monto_adelanto, saldo_pendiente } = body;
+  const { canchaId, canchaNombre, fecha, hora, horas = 1, precio, precioOriginal, cuponId, metodoPago, comprobanteUrl, emailInvitado, telefonoInvitado, whatsappInvitado, metodoDevolucion, telefonoDevolucion, actualizarTelefono, nuevoTelefono, balonIncluido, chalecosIncluido, modo_pago, monto_adelanto, saldo_pendiente } = body;
+
+  // Precio por hora individual (para multi-hora)
+  const precioPorHora = horas > 1 ? Math.round(precio / horas) : precio;
 
   let usuarioId: string | null = null;
   let usuarioNombre = 'Invitado';
@@ -92,48 +95,71 @@ export async function POST(req: NextRequest) {
   const montoAdelantoFinal: number = modoPagoFinal === 'parcial' ? monto_adelanto : precio;
   const saldoPendienteFinal: number = modoPagoFinal === 'parcial' ? saldo_pendiente : 0;
 
-  // Verificar que el slot no esté ya reservado (protección contra doble reserva)
-  const { data: slotOcupado } = await sb
-    .from('reservas')
-    .select('id')
-    .eq('cancha_id', canchaId)
-    .eq('fecha', fecha)
-    .eq('hora', hora)
-    .in('estado', ['pendiente', 'confirmada'])
-    .maybeSingle();
+  // Generar lista de horas a reservar
+  const horaBase = parseInt(hora.split(':')[0]);
+  const slotsAReservar = Array.from({ length: horas }, (_, i) =>
+    `${String((horaBase + i) % 24).padStart(2, '0')}:00`
+  );
 
-  if (slotOcupado) {
-    return NextResponse.json({ error: 'Este horario ya fue reservado por otro usuario' }, { status: 409 });
+  // Verificar que ningún slot esté ya reservado
+  for (const slotHora of slotsAReservar) {
+    const { data: slotOcupado } = await sb
+      .from('reservas')
+      .select('id')
+      .eq('cancha_id', canchaId)
+      .eq('fecha', fecha)
+      .eq('hora', slotHora)
+      .in('estado', ['pendiente', 'confirmada'])
+      .maybeSingle();
+
+    if (slotOcupado) {
+      return NextResponse.json({ error: `El horario ${slotHora} ya fue reservado por otro usuario` }, { status: 409 });
+    }
   }
 
-  // Insertar reserva
-  const { data: reserva, error } = await sb.from('reservas').insert({
-    cancha_id:        canchaId,
-    usuario_id:       usuarioId,
-    usuario_nombre:   usuarioNombre,
-    usuario_email:    usuarioEmail,
-    usuario_telefono: usuarioTelefono,
-    cancha_nombre:    canchaNombre,
-    fecha,
-    hora,
-    precio,
-    precio_original:  precioOriginal ?? precio,
-    cupon_aplicado:   !!cuponId,
-    metodo_pago:      metodoPago,
-    comprobante_url:  comprobanteUrl,
-    estado:           'pendiente',
-    balon_incluido:    balonIncluido    ?? false,
-    chalecos_incluido: chalecosIncluido ?? false,
-    modo_pago:         modoPagoFinal,
-    monto_adelanto:    montoAdelantoFinal,
-    saldo_pendiente:   saldoPendienteFinal,
-    saldo_cobrado:     false,
-  }).select().single();
+  // Insertar una reserva por cada hora seleccionada
+  let reservaPrincipal: any = null;
 
-  if (error) {
-    console.error('Error al crear reserva:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  for (let i = 0; i < slotsAReservar.length; i++) {
+    const slotHora    = slotsAReservar[i];
+    const esPrincipal = i === 0;
+    // La reserva principal lleva el precio total y los extras; las adicionales solo el precio por hora
+    const precioSlot  = esPrincipal ? precio : precioPorHora;
+    const adelantoSlot   = esPrincipal ? montoAdelantoFinal   : (modoPagoFinal === 'parcial' ? 0 : precioPorHora);
+    const saldoSlot      = esPrincipal ? saldoPendienteFinal  : 0;
+
+    const { data: reserva, error } = await sb.from('reservas').insert({
+      cancha_id:        canchaId,
+      usuario_id:       usuarioId,
+      usuario_nombre:   usuarioNombre,
+      usuario_email:    usuarioEmail,
+      usuario_telefono: usuarioTelefono,
+      cancha_nombre:    canchaNombre,
+      fecha,
+      hora:             slotHora,
+      precio:           precioSlot,
+      precio_original:  esPrincipal ? (precioOriginal ?? precio) : precioPorHora,
+      cupon_aplicado:   esPrincipal ? !!cuponId : false,
+      metodo_pago:      metodoPago,
+      comprobante_url:  esPrincipal ? comprobanteUrl : null,
+      estado:           'pendiente',
+      balon_incluido:   esPrincipal ? (balonIncluido ?? false) : false,
+      chalecos_incluido: esPrincipal ? (chalecosIncluido ?? false) : false,
+      modo_pago:        modoPagoFinal,
+      monto_adelanto:   adelantoSlot,
+      saldo_pendiente:  saldoSlot,
+      saldo_cobrado:    false,
+    }).select().single();
+
+    if (error) {
+      console.error('Error al crear reserva:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    if (esPrincipal) reservaPrincipal = reserva;
   }
+
+  const reserva = reservaPrincipal;
 
   // Marcar cupón como usado
   if (cuponId && usuarioId) {
@@ -143,15 +169,19 @@ export async function POST(req: NextRequest) {
       .eq('usuario_id', usuarioId);
   }
 
-  // Enviar email al invitado (sin cuenta) con el link para ver/cancelar su reserva
+  // Hora de fin para notificaciones
+  const horaFin = `${String((horaBase + horas) % 24).padStart(2, '0')}:00`;
+  const horaDisplay = horas > 1 ? `${hora} - ${horaFin}` : hora;
+
+  // Enviar email al invitado (sin cuenta)
   if (!usuarioId && usuarioEmail) {
     const baseUrl = req.headers.get('origin') ?? 'http://localhost:3000';
     await sendReservaRecibidaEmail({
       toEmail:      usuarioEmail,
       toName:       usuarioNombre !== 'Invitado' ? usuarioNombre : 'Cliente',
-      canchaNombre: canchaNombre,
+      canchaNombre,
       fecha,
-      hora,
+      hora:         horaDisplay,
       precio,
       metodoPago,
       reservaId:    reserva.id,
@@ -159,20 +189,20 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // Notificar al cliente por WhatsApp (recibida) — registrado o invitado con teléfono
+  // Notificar al cliente por WhatsApp
   if (usuarioTelefono) {
     await notificarReservaRecibida({
       clientePhone: usuarioTelefono,
       canchaNombre,
       fecha,
-      hora,
+      hora:      horaDisplay,
       precio,
       metodoPago,
       reservaId: reserva.id,
     });
   }
 
-  // Notificar al dueño de la cancha por WhatsApp
+  // Notificar al dueño de la cancha
   const { data: dueno } = await sb
     .from('duenos_canchas')
     .select('usuarios(telefono)')
@@ -185,7 +215,7 @@ export async function POST(req: NextRequest) {
       adminPhone:      duenoPhone,
       canchaNombre,
       fecha,
-      hora,
+      hora:            horaDisplay,
       precio,
       metodoPago,
       clienteNombre:   usuarioNombre,
