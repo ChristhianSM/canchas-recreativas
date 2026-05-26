@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import {
   ArrowLeft, Calendar, Clock, CheckCircle2, Copy,
-  Smartphone, Shield, ChevronRight, Upload, ImageIcon, Timer, Mail, ExternalLink,
+  Smartphone, Shield, ChevronRight, Upload, ImageIcon, Timer, Mail, ExternalLink, Lock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { LoadingButton } from '@/components/loading-button';
@@ -77,6 +77,14 @@ function PagoContent() {
   const [submitError, setSubmitError]             = useState<string | null>(null);
 
   const [modoPago, setModoPago]                       = useState<'completo' | 'parcial'>('completo');
+
+  // Wizard invitado
+  const [pasoInvitado, setPasoInvitado]               = useState<'pago' | 'datos' | 'metodo' | 'confirmar'>('pago');
+  const [authChecked, setAuthChecked]                 = useState(false);
+
+  // Wizard registrado
+  const [pasoRegistrado, setPasoRegistrado]           = useState<'pago' | 'datos' | 'metodo' | 'confirmar'>('pago');
+  const [emailRegistrado, setEmailRegistrado]         = useState('');
 
   // Email y teléfono para usuarios invitados
   const [esInvitado, setEsInvitado]                   = useState(false);
@@ -214,6 +222,7 @@ function PagoContent() {
             localStorage.removeItem('cp_user');
             localStorage.removeItem('cp_token_time');
             setEsInvitado(true);
+            setAuthChecked(true);
             return Promise.reject('Token inválido');
           }
           return r.json();
@@ -224,14 +233,19 @@ function PagoContent() {
             setCupones((data.cupones ?? []).filter((c: Cupon) => !c.usado));
           });
           const tel = perfil?.telefono || '';
+          const email = perfil?.email || perfil?.correo || '';
           if (tel) setTelefonoRegistrado(tel);
+          if (email) setEmailRegistrado(email);
+          setAuthChecked(true);
         })
         .catch(err => {
           console.error('Error al obtener perfil:', err);
           setEsInvitado(true);
+          setAuthChecked(true);
         });
     } else {
       setEsInvitado(true);
+      setAuthChecked(true);
     }
   }, []);
 
@@ -266,7 +280,7 @@ function PagoContent() {
     // Ambos o ninguno: comportamiento por defecto
   }, [cancha, pasoListo, yapeDisponible, plinDisponible]);
 
-  if (canchaLoading) return (
+  if (canchaLoading || !authChecked) return (
     <div className="flex min-h-screen items-center justify-center">
       <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
     </div>
@@ -465,6 +479,885 @@ function PagoContent() {
     setEnviando(false);
     setPaso('exito');
   };
+
+  // ── Stepper labels ─────────────────────────────────────────────
+  const PASOS_INVITADO = ['Pago', 'Datos', 'Método', 'Confirmar'] as const;
+  const PASO_INDEX: Record<string, number> = { pago: 0, datos: 1, metodo: 2, confirmar: 3 };
+
+  const Stepper = ({ actual }: { actual: string }) => {
+    const idx = PASO_INDEX[actual] ?? 0;
+    return (
+      <div className="flex items-center justify-center gap-0 w-full">
+        {PASOS_INVITADO.map((label, i) => {
+          const done    = i < idx;
+          const current = i === idx;
+          return (
+            <div key={label} className="flex items-center">
+              <div className="flex flex-col items-center gap-1">
+                <div className={cn(
+                  'flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-all',
+                  done    ? 'bg-primary text-primary-foreground'
+                  : current ? 'bg-primary text-primary-foreground ring-4 ring-primary/20'
+                  : 'bg-muted text-muted-foreground',
+                )}>
+                  {done ? (
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  ) : i + 1}
+                </div>
+                <span className={cn('text-[10px] font-medium', current ? 'text-primary' : done ? 'text-primary/70' : 'text-muted-foreground')}>
+                  {label}
+                </span>
+              </div>
+              {i < PASOS_INVITADO.length - 1 && (
+                <div className={cn('h-0.5 w-8 mx-1 mb-4 transition-all', i < idx ? 'bg-primary' : 'bg-muted')} />
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  // ── Validar datos invitado (paso 2) ────────────────────────────
+  const validarDatosInvitado = () => {
+    let ok = true;
+    if (!emailInvitado.trim()) {
+      setEmailError('Ingresa tu correo'); ok = false;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInvitado)) {
+      setEmailError('Correo no válido'); ok = false;
+    } else {
+      setEmailError('');
+    }
+    if (!mismoNumero && telefonoInvitado && !/^9\d{8}$/.test(telefonoInvitado)) {
+      setTelefonoError('Número inválido (9 dígitos, empieza en 9)'); ok = false;
+    } else {
+      setTelefonoError('');
+    }
+    return ok;
+  };
+
+  // ── Validar datos registrado (paso 2) ─────────────────────────
+  const validarDatosRegistrado = () => {
+    if (!telefonoRegistrado.trim()) {
+      setOtroTelefonoError('Ingresa tu número para devoluciones'); return false;
+    }
+    if (!/^9\d{8}$/.test(telefonoRegistrado.trim())) {
+      setOtroTelefonoError('Número inválido (9 dígitos, empieza en 9)'); return false;
+    }
+    setOtroTelefonoError('');
+    return true;
+  };
+
+  // ── Wizard para usuario invitado (Yape/Plin) ───────────────────
+  if (esInvitado && !soloEfectivo) {
+    const headerTitles: Record<string, string> = {
+      pago: 'Tipo de pago', datos: 'Tus datos', metodo: 'Método de pago', confirmar: 'Confirmar pago',
+    };
+
+    return (
+      <div className="min-h-screen bg-background pb-10">
+        {/* Header */}
+        <header className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur">
+          <div className="flex h-14 items-center gap-3 px-4">
+            <Button variant="ghost" size="icon" onClick={() => {
+              if (pasoInvitado === 'pago') router.back();
+              else {
+                const orden = ['pago', 'datos', 'metodo', 'confirmar'] as Array<typeof pasoInvitado>;
+                const i = orden.indexOf(pasoInvitado);
+                if (i > 0) setPasoInvitado(orden[i - 1]);
+              }
+            }}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <h1 className="flex-1 text-sm font-semibold text-foreground">{headerTitles[pasoInvitado]}</h1>
+            <div className={cn(
+              'flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold shrink-0',
+              segundos > 60 ? 'bg-primary/10 text-primary' : 'bg-destructive/10 text-destructive animate-pulse'
+            )}>
+              <Timer className="h-4 w-4" />
+              {String(Math.floor(segundos / 60)).padStart(2, '0')}:{String(segundos % 60).padStart(2, '0')}
+            </div>
+          </div>
+          {/* Stepper */}
+          <div className="px-4 pb-3 pt-1">
+            <Stepper actual={pasoInvitado} />
+          </div>
+        </header>
+
+        <div className="container mx-auto max-w-lg px-4 py-6 space-y-5">
+
+          {/* ── PASO 1: TIPO DE PAGO ─────────────────────────── */}
+          {pasoInvitado === 'pago' && (
+            <>
+              {/* Resumen */}
+              <Card className="border-border p-4">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Resumen de reserva</p>
+                <div className="flex gap-4">
+                  <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg">
+                    <Image src={cancha.images[0]} alt={cancha.name} fill className="object-cover" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-foreground line-clamp-1">{cancha.name}</p>
+                    <div className="mt-1 space-y-0.5 text-sm text-muted-foreground">
+                      <p className="flex items-center gap-1.5 capitalize"><Calendar className="h-3.5 w-3.5" />{fechaLabel}</p>
+                      <p className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" />{hora} – {horaFin}</p>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Modo pago */}
+              <div>
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">¿Cómo quieres pagar?</p>
+                <div className="space-y-3">
+                  <button onClick={() => setModoPago('completo')} className={cn(
+                    'w-full text-left rounded-2xl border-2 p-4 transition-all',
+                    modoPago === 'completo' ? 'border-primary bg-primary/5 shadow-sm' : 'border-border hover:border-muted-foreground/40'
+                  )}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <div className={cn('flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-all', modoPago === 'completo' ? 'border-primary bg-primary' : 'border-muted-foreground/40')}>
+                          {modoPago === 'completo' && <svg className="h-3 w-3 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                        </div>
+                        <span className="font-semibold text-foreground">Pago completo (100%)</span>
+                      </div>
+                      <Badge className="shrink-0 bg-primary/10 text-primary border-primary/20 text-xs">Recomendado</Badge>
+                    </div>
+                    <p className="mt-2 ml-7 text-sm font-bold text-primary">S/ {total} ahora</p>
+                    <ul className="mt-2 ml-7 space-y-1">
+                      <li className="flex items-center gap-1.5 text-xs text-muted-foreground"><CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-500" />Cancelación con devolución hasta 85%</li>
+                      <li className="flex items-center gap-1.5 text-xs text-muted-foreground"><CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-500" />Reserva garantizada</li>
+                    </ul>
+                  </button>
+
+                  <button onClick={() => total > 0 && setModoPago('parcial')} disabled={total === 0} className={cn(
+                    'w-full text-left rounded-2xl border-2 p-4 transition-all',
+                    total === 0 && 'opacity-50 cursor-not-allowed',
+                    modoPago === 'parcial' && total > 0 ? 'border-amber-500 bg-amber-500/5 shadow-sm' : 'border-border hover:border-muted-foreground/40'
+                  )}>
+                    <div className="flex items-center gap-2">
+                      <div className={cn('flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-all', modoPago === 'parcial' && total > 0 ? 'border-amber-500 bg-amber-500' : 'border-muted-foreground/40')}>
+                        {modoPago === 'parcial' && total > 0 && <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                      </div>
+                      <span className="font-semibold text-foreground">Pago con adelanto (20%)</span>
+                    </div>
+                    <p className="mt-2 ml-7 text-sm text-muted-foreground">
+                      <span className="font-bold text-foreground">S/ {montoAdelanto}</span> ahora · <span className="font-medium">S/ {saldoPendiente}</span> en cancha
+                    </p>
+                    <div className="mt-2 ml-7"><span className="text-xs text-amber-600 font-medium">⚠ Sin devolución al cancelar</span></div>
+                  </button>
+                </div>
+              </div>
+
+              {modoPago === 'parcial' && (
+                <div className="flex items-start gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4">
+                  <span className="text-xl shrink-0 mt-0.5">⚠️</span>
+                  <div>
+                    <p className="text-sm font-bold text-amber-700">El adelanto no se devuelve si cancelas</p>
+                    <p className="text-xs text-amber-600 mt-1 leading-relaxed">
+                      Los <span className="font-bold">S/ {montoAdelanto}</span> del adelanto no son reembolsables. El saldo de <span className="font-bold">S/ {saldoPendiente}</span> lo pagas en la cancha.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <Button size="lg" className="w-full" onClick={() => { window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior }); setPasoInvitado('datos'); }}>
+                Continuar
+              </Button>
+            </>
+          )}
+
+          {/* ── PASO 2: TUS DATOS ────────────────────────────── */}
+          {pasoInvitado === 'datos' && (
+            <>
+              <p className="text-sm text-muted-foreground">Te enviaremos la confirmación a estos datos.</p>
+
+              <Card className="border-border bg-card p-5 space-y-4">
+                {/* Email */}
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-foreground">Correo electrónico</label>
+                  <Input
+                    type="email"
+                    placeholder="tu@correo.com"
+                    value={emailInvitado}
+                    onChange={e => { setEmailInvitado(e.target.value); setEmailError(''); }}
+                    className={cn('bg-background', emailError && 'border-destructive focus-visible:ring-destructive')}
+                  />
+                  {emailError && <p className="text-xs text-destructive">{emailError}</p>}
+                </div>
+
+                {/* Teléfono */}
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-foreground">Número de celular</label>
+                  <div className="flex gap-2">
+                    <div className="flex items-center gap-1.5 rounded-lg border border-border bg-muted px-3 py-2 text-sm font-medium text-muted-foreground shrink-0">
+                      +51
+                    </div>
+                    <Input
+                      type="tel"
+                      placeholder="987654321"
+                      value={telefonoInvitado}
+                      onChange={e => { setTelefonoInvitado(e.target.value); setTelefonoError(''); }}
+                      className={cn('bg-background flex-1', telefonoError && 'border-destructive')}
+                    />
+                  </div>
+                  {telefonoError
+                    ? <p className="text-xs text-destructive">{telefonoError}</p>
+                    : <p className="text-xs text-muted-foreground">Para devoluciones si cancelas (Yape/Plin)</p>
+                  }
+                </div>
+              </Card>
+
+              <div className="space-y-3 pt-1">
+                <Button size="lg" className="w-full" onClick={() => {
+                  if (!validarDatosInvitado()) return;
+                  setMismoNumero(true);
+                  window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+                  setPasoInvitado('metodo');
+                }}>
+                  Continuar
+                </Button>
+                <Button variant="outline" size="lg" className="w-full" onClick={() => setPasoInvitado('pago')}>
+                  Volver
+                </Button>
+                <p className="text-center text-sm text-muted-foreground">
+                  ¿Ya tienes cuenta?{' '}
+                  <a href={`/login?redirect=/pago?${params.toString()}`} className="text-primary font-medium hover:underline">
+                    Inicia sesión
+                  </a>
+                </p>
+              </div>
+            </>
+          )}
+
+          {/* ── PASO 3: MÉTODO DE PAGO ───────────────────────── */}
+          {pasoInvitado === 'metodo' && (
+            <>
+              <p className="text-sm text-muted-foreground">Selecciona tu método de pago.</p>
+
+              {/* Detalle del pago */}
+              <Card className="border-border p-4">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Detalle del pago</p>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">{horas > 1 ? `Precio (${horas} horas × S/ ${precioRaw})` : 'Precio por hora'}</span>
+                    <span className="text-foreground">S/ {precioRaw * horas}</span>
+                  </div>
+                  <Separator />
+                  <div className="flex justify-between text-base font-bold">
+                    <span className="text-foreground">Total a pagar</span>
+                    <span className="text-primary">S/ {total}</span>
+                  </div>
+                  {modoPago === 'parcial' && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-primary font-medium">Pagas ahora (adelanto 20%)</span>
+                      <span className="text-primary font-semibold">S/ {montoAdelanto}</span>
+                    </div>
+                  )}
+                </div>
+                {!conBalon && !conChalecos && cancha && (
+                  <div className="mt-3 flex items-start gap-2 rounded-xl border border-yellow-500/30 bg-yellow-500/5 px-3 py-2.5">
+                    <span className="text-sm mt-0.5">⚠️</span>
+                    <p className="text-xs text-yellow-700 font-medium">
+                      Esta cancha <span className="font-bold">no ofrece balón ni chalecos</span>. Recuerda traer los tuyos al partido.
+                    </p>
+                  </div>
+                )}
+              </Card>
+
+              <div className="space-y-3">
+                {(['yape', 'plin'] as MetodoPago[]).filter(m => m === 'yape' ? yapeDisponible : plinDisponible).map(m => (
+                  <button key={m} onClick={() => setMetodo(m)} className={cn(
+                    'w-full flex items-center gap-4 rounded-2xl border-2 p-4 transition-all text-left',
+                    metodo === m
+                      ? m === 'yape' ? 'border-[#6C1FC6] bg-[#6C1FC6]/5 shadow-sm' : 'border-[#00C2CB] bg-[#00C2CB]/5 shadow-sm'
+                      : 'border-border hover:border-muted-foreground/40'
+                  )}>
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl overflow-hidden bg-white border border-border">
+                      <Image src={m === 'yape' ? '/images/yape.png' : '/images/plin.png'} alt={m} width={48} height={48} className="object-contain" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-semibold text-foreground">{m === 'yape' ? 'Yape' : 'Plin'}</p>
+                      <p className="text-xs text-muted-foreground">Pago móvil instantáneo</p>
+                    </div>
+                    <div className={cn(
+                      'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-all',
+                      metodo === m
+                        ? m === 'yape' ? 'border-[#6C1FC6] bg-[#6C1FC6]' : 'border-[#00C2CB] bg-[#00C2CB]'
+                        : 'border-muted-foreground/40'
+                    )}>
+                      {metodo === m && <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              <div className="space-y-3">
+                <Button size="lg" className="w-full" onClick={() => {
+                  window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+                  setPasoInvitado('confirmar');
+                }}>
+                  Ir a pagar
+                </Button>
+                <Button variant="outline" size="lg" className="w-full" onClick={() => setPasoInvitado('datos')}>
+                  Volver
+                </Button>
+              </div>
+            </>
+          )}
+
+          {/* ── PASO 4: CONFIRMAR PAGO ───────────────────────── */}
+          {pasoInvitado === 'confirmar' && (
+            <>
+              {/* Badge método */}
+              <div className="flex justify-center">
+                <div className={cn(
+                  'inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-semibold border',
+                  metodo === 'yape' ? 'bg-[#6C1FC6]/10 text-[#6C1FC6] border-[#6C1FC6]/30' : 'bg-[#00C2CB]/10 text-[#00A0A8] border-[#00C2CB]/30'
+                )}>
+                  <Image src={metodo === 'yape' ? '/images/yape.png' : '/images/plin.png'} alt={metodo} width={16} height={16} className="object-contain rounded" />
+                  Pagando con {metodo === 'yape' ? 'Yape' : 'Plin'}
+                </div>
+              </div>
+
+              <p className="text-center text-sm text-muted-foreground">
+                Escanea el código QR desde tu app o ingresa el número.
+              </p>
+
+              {/* QR / número */}
+              <Card className="border-border overflow-hidden">
+                <div className={cn('flex items-center gap-3 px-5 py-4', metodo === 'yape' ? 'bg-[#6C1FC6]' : 'bg-[#00B4D8]')}>
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white overflow-hidden">
+                    <Image src={metodo === 'yape' ? '/images/yape.png' : '/images/plin.png'} alt={metodo} width={40} height={40} className="object-contain w-full h-full" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-white">{metodo === 'yape' ? 'Yape' : 'Plin'}</p>
+                    <p className="text-xs text-white/80">Pago móvil instantáneo</p>
+                  </div>
+                </div>
+                <div className="p-5 space-y-4">
+                  <div>
+                    <p className="mb-1 text-xs text-muted-foreground">O ingresa el número de teléfono</p>
+                    <div className="flex items-center justify-between rounded-xl bg-muted px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <Smartphone className="h-5 w-5 text-primary" />
+                        <span className="text-xl font-bold tracking-widest text-foreground">
+                          {metodo === 'yape' ? numeroYape : numeroPlin}
+                        </span>
+                      </div>
+                      <button onClick={copiarNumero} className="flex items-center gap-1 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20 transition-colors">
+                        <Copy className="h-3.5 w-3.5" />{copiado ? '¡Copiado!' : 'Copiar'}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between rounded-xl bg-primary/5 border border-primary/20 px-4 py-3">
+                    <span className="text-sm text-muted-foreground">Monto exacto</span>
+                    <span className="text-2xl font-bold text-primary">S/ {montoAdelanto}</span>
+                  </div>
+                  <a href={metodo === 'yape' ? 'yape://' : 'plin://'} className="flex items-center justify-center gap-3 w-full rounded-xl py-3.5 font-bold text-white active:scale-[0.98] transition-all" style={{ backgroundColor: metodo === 'yape' ? '#6C1FC6' : '#00B4D8' }}>
+                    <Image src={metodo === 'yape' ? '/images/yape.png' : '/images/plin.png'} alt={metodo} width={22} height={22} className="object-contain rounded" />
+                    Abrir {metodo === 'yape' ? 'Yape' : 'Plin'} · Enviar S/ {montoAdelanto}
+                    <ExternalLink className="h-4 w-4 opacity-70" />
+                  </a>
+                </div>
+              </Card>
+
+              {/* Timer */}
+              <div className={cn(
+                'flex items-center justify-center gap-2 rounded-xl border px-4 py-3',
+                segundos > 60 ? 'border-amber-500/30 bg-amber-500/5' : 'border-destructive/30 bg-destructive/5 animate-pulse'
+              )}>
+                <Timer className={cn('h-4 w-4', segundos > 60 ? 'text-amber-600' : 'text-destructive')} />
+                <span className={cn('text-sm font-medium', segundos > 60 ? 'text-amber-700' : 'text-destructive')}>
+                  Esperando confirmación...{' '}
+                  <span className="font-bold tabular-nums">
+                    {String(Math.floor(segundos / 60)).padStart(2, '0')}:{String(segundos % 60).padStart(2, '0')}
+                  </span>
+                </span>
+              </div>
+
+              {/* Subir comprobante */}
+              <Card className="border-border p-5 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Upload className="h-4 w-4 text-primary" />
+                  <p className="font-medium text-foreground">Sube tu comprobante de pago</p>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  El administrador revisará la captura y confirmará tu reserva en minutos.
+                </p>
+                <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+                {comprobante ? (
+                  <div className="space-y-3">
+                    <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-border">
+                      <Image src={comprobante} alt="Comprobante" fill className="object-contain" />
+                    </div>
+                    <Button variant="outline" size="sm" className="w-full" onClick={() => fileRef.current?.click()}>
+                      Cambiar imagen
+                    </Button>
+                  </div>
+                ) : (
+                  <button onClick={() => fileRef.current?.click()} className="flex w-full flex-col items-center gap-3 rounded-xl border-2 border-dashed border-muted-foreground/30 p-8 hover:border-primary/40 transition-colors">
+                    <Upload className="h-8 w-8 text-muted-foreground" />
+                    <div className="text-center">
+                      <p className="text-sm font-medium text-foreground">Toca para subir captura</p>
+                      <p className="text-xs text-muted-foreground">JPG, PNG hasta 10MB</p>
+                    </div>
+                  </button>
+                )}
+                <div className="flex items-start gap-2 rounded-xl bg-muted/60 p-3">
+                  <Shield className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                  <p className="text-xs text-muted-foreground">También puedes enviar sin comprobante. El admin podrá pedírtelo después.</p>
+                </div>
+              </Card>
+
+              {submitError && (
+                <div className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
+                  {submitError}
+                </div>
+              )}
+
+              <div className="space-y-3">
+                <LoadingButton size="lg" className="w-full" onClick={handleEnviar} isLoading={enviando} loadingText="Confirmando..." loadingVariant="spinner">
+                  {comprobante ? 'Confirmar pago ✓' : 'Enviar sin comprobante'}
+                </LoadingButton>
+                <Button variant="outline" size="lg" className="w-full" onClick={() => setPasoInvitado('metodo')}>
+                  Cambiar método
+                </Button>
+              </div>
+            </>
+          )}
+
+        </div>
+      </div>
+    );
+  }
+
+  // ── Wizard para usuario registrado (Yape/Plin) ────────────────
+  if (!esInvitado && !soloEfectivo) {
+    const headerTitles: Record<string, string> = {
+      pago: 'Tipo de pago', datos: 'Tus datos', metodo: 'Método de pago', confirmar: 'Confirmar pago',
+    };
+    return (
+      <div className="min-h-screen bg-background pb-10">
+        {/* Header */}
+        <header className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur">
+          <div className="flex h-14 items-center gap-3 px-4">
+            <Button variant="ghost" size="icon" onClick={() => {
+              if (pasoRegistrado === 'pago') router.back();
+              else {
+                const orden = ['pago', 'datos', 'metodo', 'confirmar'] as Array<typeof pasoRegistrado>;
+                const i = orden.indexOf(pasoRegistrado);
+                if (i > 0) setPasoRegistrado(orden[i - 1]);
+              }
+            }}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <h1 className="flex-1 text-sm font-semibold text-foreground">{headerTitles[pasoRegistrado]}</h1>
+            <div className={cn(
+              'flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold shrink-0',
+              segundos > 60 ? 'bg-primary/10 text-primary' : 'bg-destructive/10 text-destructive animate-pulse'
+            )}>
+              <Timer className="h-4 w-4" />
+              {String(Math.floor(segundos / 60)).padStart(2, '0')}:{String(segundos % 60).padStart(2, '0')}
+            </div>
+          </div>
+          <div className="px-4 pb-3 pt-1">
+            <Stepper actual={pasoRegistrado} />
+          </div>
+        </header>
+
+        <div className="container mx-auto max-w-lg px-4 py-6 space-y-5">
+
+          {/* ── PASO 1: TIPO DE PAGO ─────────────────────────── */}
+          {pasoRegistrado === 'pago' && (
+            <>
+              <Card className="border-border p-4">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Resumen de reserva</p>
+                <div className="flex gap-4">
+                  <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg">
+                    <Image src={cancha.images[0]} alt={cancha.name} fill className="object-cover" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-foreground line-clamp-1">{cancha.name}</p>
+                    <div className="mt-1 space-y-0.5 text-sm text-muted-foreground">
+                      <p className="flex items-center gap-1.5 capitalize"><Calendar className="h-3.5 w-3.5" />{fechaLabel}</p>
+                      <p className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" />{hora} – {horaFin}</p>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Extras */}
+              {fromCard && cancha && (cancha.balonPrecio != null || cancha.chalecosPrecio != null) && (
+                <Card className="border-border p-4">
+                  <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">¿Necesitas extras?</p>
+                  <div className="space-y-3">
+                    {cancha.balonPrecio != null && (
+                      <label className="flex items-center justify-between gap-3 cursor-pointer">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl">⚽</span>
+                          <div>
+                            <p className="text-sm font-medium text-foreground">Balón</p>
+                            <p className="text-xs text-muted-foreground">+ S/ {cancha.balonPrecio} por reserva</p>
+                          </div>
+                        </div>
+                        <button type="button" onClick={() => setConBalon(v => !v)} className={cn('relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors', conBalon ? 'bg-primary' : 'bg-muted-foreground/30')}>
+                          <span className={cn('inline-block h-5 w-5 rounded-full bg-white shadow transition-transform', conBalon ? 'translate-x-[22px]' : 'translate-x-[2px]')} />
+                        </button>
+                      </label>
+                    )}
+                    {cancha.chalecosPrecio != null && (
+                      <label className="flex items-center justify-between gap-3 cursor-pointer">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl">🎽</span>
+                          <div>
+                            <p className="text-sm font-medium text-foreground">Chalecos</p>
+                            <p className="text-xs text-muted-foreground">+ S/ {cancha.chalecosPrecio} por reserva</p>
+                          </div>
+                        </div>
+                        <button type="button" onClick={() => setConChalecos(v => !v)} className={cn('relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors', conChalecos ? 'bg-primary' : 'bg-muted-foreground/30')}>
+                          <span className={cn('inline-block h-5 w-5 rounded-full bg-white shadow transition-transform', conChalecos ? 'translate-x-[22px]' : 'translate-x-[2px]')} />
+                        </button>
+                      </label>
+                    )}
+                  </div>
+                </Card>
+              )}
+
+              {/* Cupones */}
+              {cupones.length > 0 && (
+                <Card className="border-border p-4">
+                  <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Cupones disponibles</p>
+                  <div className="space-y-2">
+                    {cupones.map(c => (
+                      <button key={c.id} onClick={() => setCuponSeleccionado(cuponSeleccionado === c.id ? null : c.id)} className={cn('flex w-full items-center gap-3 rounded-xl border-2 border-dashed p-3 text-left transition-all', cuponSeleccionado === c.id ? 'border-primary bg-primary/5' : 'border-muted-foreground/20 hover:border-primary/40')}>
+                        <div className={cn('flex h-10 w-10 shrink-0 flex-col items-center justify-center rounded-lg text-xs font-bold', cuponSeleccionado === c.id ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground')}>
+                          <span>S/5</span><span className="text-[10px] font-normal">OFF</span>
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-foreground">Descuento de S/ 5</p>
+                          <p className="text-xs text-muted-foreground">{cuponSeleccionado === c.id ? '✓ Aplicado' : 'Toca para aplicar'}</p>
+                        </div>
+                        <div className={cn('h-5 w-5 rounded-full border-2 transition-all', cuponSeleccionado === c.id ? 'border-primary bg-primary' : 'border-muted-foreground/40')}>
+                          {cuponSeleccionado === c.id && <svg className="h-full w-full text-primary-foreground p-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </Card>
+              )}
+
+              {/* Modo pago */}
+              <div>
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">¿Cómo quieres pagar?</p>
+                <div className="space-y-3">
+                  <button onClick={() => setModoPago('completo')} className={cn('w-full text-left rounded-2xl border-2 p-4 transition-all', modoPago === 'completo' ? 'border-primary bg-primary/5 shadow-sm' : 'border-border hover:border-muted-foreground/40')}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <div className={cn('flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-all', modoPago === 'completo' ? 'border-primary bg-primary' : 'border-muted-foreground/40')}>
+                          {modoPago === 'completo' && <svg className="h-3 w-3 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                        </div>
+                        <span className="font-semibold text-foreground">Pago completo (100%)</span>
+                      </div>
+                      <Badge className="shrink-0 bg-primary/10 text-primary border-primary/20 text-xs">Recomendado</Badge>
+                    </div>
+                    <p className="mt-2 ml-7 text-sm font-bold text-primary">S/ {total} ahora</p>
+                    <ul className="mt-2 ml-7 space-y-1">
+                      <li className="flex items-center gap-1.5 text-xs text-muted-foreground"><CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-500" />Cancelación con devolución hasta 85%</li>
+                      <li className="flex items-center gap-1.5 text-xs text-muted-foreground"><CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-500" />Reserva garantizada</li>
+                    </ul>
+                  </button>
+
+                  <button onClick={() => total > 0 && setModoPago('parcial')} disabled={total === 0} className={cn('w-full text-left rounded-2xl border-2 p-4 transition-all', total === 0 && 'opacity-50 cursor-not-allowed', modoPago === 'parcial' && total > 0 ? 'border-amber-500 bg-amber-500/5 shadow-sm' : 'border-border hover:border-muted-foreground/40')}>
+                    <div className="flex items-center gap-2">
+                      <div className={cn('flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-all', modoPago === 'parcial' && total > 0 ? 'border-amber-500 bg-amber-500' : 'border-muted-foreground/40')}>
+                        {modoPago === 'parcial' && total > 0 && <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                      </div>
+                      <span className="font-semibold text-foreground">Pago con adelanto (20%)</span>
+                    </div>
+                    <p className="mt-2 ml-7 text-sm text-muted-foreground">
+                      <span className="font-bold text-foreground">S/ {montoAdelanto}</span> ahora · <span className="font-medium">S/ {saldoPendiente}</span> en cancha
+                    </p>
+                    <div className="mt-2 ml-7"><span className="text-xs text-amber-600 font-medium">⚠ Sin devolución al cancelar</span></div>
+                  </button>
+                </div>
+              </div>
+
+              {modoPago === 'parcial' && (
+                <div className="flex items-start gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4">
+                  <span className="text-xl shrink-0 mt-0.5">⚠️</span>
+                  <div>
+                    <p className="text-sm font-bold text-amber-700">El adelanto no se devuelve si cancelas</p>
+                    <p className="text-xs text-amber-600 mt-1 leading-relaxed">
+                      Los <span className="font-bold">S/ {montoAdelanto}</span> del adelanto no son reembolsables. El saldo de <span className="font-bold">S/ {saldoPendiente}</span> lo pagas en la cancha.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <Button size="lg" className="w-full" onClick={() => { window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior }); setPasoRegistrado('datos'); }}>
+                Continuar
+              </Button>
+            </>
+          )}
+
+          {/* ── PASO 2: TUS DATOS ────────────────────────────── */}
+          {pasoRegistrado === 'datos' && (
+            <>
+              <p className="text-sm text-muted-foreground">Verifica tus datos de contacto.</p>
+
+              <Card className="border-border bg-card p-5 space-y-4">
+                {/* Email bloqueado */}
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-foreground">Correo electrónico</label>
+                  <div className="relative">
+                    <Input
+                      type="email"
+                      value={emailRegistrado}
+                      disabled
+                      className="bg-muted text-muted-foreground pr-9 cursor-not-allowed"
+                    />
+                    <Lock className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/60" />
+                  </div>
+                  <p className="text-xs text-muted-foreground">Este es el correo de tu cuenta</p>
+                </div>
+
+                {/* Teléfono editable */}
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-foreground">Número de celular</label>
+                  <div className="flex gap-2">
+                    <div className="flex items-center gap-1.5 rounded-lg border border-border bg-muted px-3 py-2 text-sm font-medium text-muted-foreground shrink-0">
+                      +51
+                    </div>
+                    <Input
+                      type="tel"
+                      placeholder="987654321"
+                      value={telefonoRegistrado}
+                      onChange={e => { setTelefonoRegistrado(e.target.value); setOtroTelefonoError(''); }}
+                      className={cn('bg-background flex-1', otroTelefonoError && 'border-destructive')}
+                    />
+                  </div>
+                  {otroTelefonoError
+                    ? <p className="text-xs text-destructive">{otroTelefonoError}</p>
+                    : <p className="text-xs text-muted-foreground">Para devoluciones si cancelas (Yape/Plin)</p>
+                  }
+                </div>
+              </Card>
+
+              <div className="space-y-3 pt-1">
+                <Button size="lg" className="w-full" onClick={() => {
+                  if (!validarDatosRegistrado()) return;
+                  window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+                  setPasoRegistrado('metodo');
+                }}>
+                  Continuar
+                </Button>
+                <Button variant="outline" size="lg" className="w-full" onClick={() => setPasoRegistrado('pago')}>
+                  Volver
+                </Button>
+              </div>
+            </>
+          )}
+
+          {/* ── PASO 3: MÉTODO DE PAGO ───────────────────────── */}
+          {pasoRegistrado === 'metodo' && (
+            <>
+              <p className="text-sm text-muted-foreground">Selecciona tu método de pago.</p>
+
+              {/* Detalle del pago */}
+              <Card className="border-border p-4">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Detalle del pago</p>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">{horas > 1 ? `Precio (${horas} horas × S/ ${precioRaw})` : 'Precio por hora'}</span>
+                    <span className="text-foreground">S/ {precioRaw * horas}</span>
+                  </div>
+                  {conBalon && cancha?.balonPrecio != null && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground flex items-center gap-1.5">⚽ Balón</span>
+                      <span className="text-foreground">{extraBalon > 0 ? `S/ ${extraBalon}` : 'Gratis'}</span>
+                    </div>
+                  )}
+                  {conChalecos && cancha?.chalecosPrecio != null && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground flex items-center gap-1.5">🎽 Chalecos</span>
+                      <span className="text-foreground">{extraChalecos > 0 ? `S/ ${extraChalecos}` : 'Gratis'}</span>
+                    </div>
+                  )}
+                  {descuento > 0 && (
+                    <div className="flex justify-between text-primary">
+                      <span>Descuento cupón</span><span>− S/ {descuento}</span>
+                    </div>
+                  )}
+                  <Separator />
+                  <div className="flex justify-between text-base font-bold">
+                    <span className="text-foreground">Total a pagar</span>
+                    <span className="text-primary">S/ {total}</span>
+                  </div>
+                  {modoPago === 'parcial' && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-primary font-medium">Pagas ahora (adelanto 20%)</span>
+                      <span className="text-primary font-semibold">S/ {montoAdelanto}</span>
+                    </div>
+                  )}
+                </div>
+                {!conBalon && !conChalecos && cancha && (
+                  <div className="mt-3 flex items-start gap-2 rounded-xl border border-yellow-500/30 bg-yellow-500/5 px-3 py-2.5">
+                    <span className="text-sm mt-0.5">⚠️</span>
+                    <p className="text-xs text-yellow-700 font-medium">Esta cancha <span className="font-bold">no ofrece balón ni chalecos</span>. Recuerda traer los tuyos.</p>
+                  </div>
+                )}
+              </Card>
+
+              <div className="space-y-3">
+                {(['yape', 'plin'] as MetodoPago[]).filter(m => m === 'yape' ? yapeDisponible : plinDisponible).map(m => (
+                  <button key={m} onClick={() => setMetodo(m)} className={cn(
+                    'w-full flex items-center gap-4 rounded-2xl border-2 p-4 transition-all text-left',
+                    metodo === m
+                      ? m === 'yape' ? 'border-[#6C1FC6] bg-[#6C1FC6]/5 shadow-sm' : 'border-[#00C2CB] bg-[#00C2CB]/5 shadow-sm'
+                      : 'border-border hover:border-muted-foreground/40'
+                  )}>
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl overflow-hidden bg-white border border-border">
+                      <Image src={m === 'yape' ? '/images/yape.png' : '/images/plin.png'} alt={m} width={48} height={48} className="object-contain" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-semibold text-foreground">{m === 'yape' ? 'Yape' : 'Plin'}</p>
+                      <p className="text-xs text-muted-foreground">Pago móvil instantáneo</p>
+                    </div>
+                    <div className={cn('flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-all', metodo === m ? m === 'yape' ? 'border-[#6C1FC6] bg-[#6C1FC6]' : 'border-[#00C2CB] bg-[#00C2CB]' : 'border-muted-foreground/40')}>
+                      {metodo === m && <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              <div className="space-y-3">
+                <Button size="lg" className="w-full" onClick={() => {
+                  window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+                  setPasoRegistrado('confirmar');
+                }}>
+                  Ir a pagar
+                </Button>
+                <Button variant="outline" size="lg" className="w-full" onClick={() => setPasoRegistrado('datos')}>
+                  Volver
+                </Button>
+              </div>
+            </>
+          )}
+
+          {/* ── PASO 4: CONFIRMAR PAGO ───────────────────────── */}
+          {pasoRegistrado === 'confirmar' && (
+            <>
+              <div className="flex justify-center">
+                <div className={cn(
+                  'inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-semibold border',
+                  metodo === 'yape' ? 'bg-[#6C1FC6]/10 text-[#6C1FC6] border-[#6C1FC6]/30' : 'bg-[#00C2CB]/10 text-[#00A0A8] border-[#00C2CB]/30'
+                )}>
+                  <Image src={metodo === 'yape' ? '/images/yape.png' : '/images/plin.png'} alt={metodo} width={16} height={16} className="object-contain rounded" />
+                  Pagando con {metodo === 'yape' ? 'Yape' : 'Plin'}
+                </div>
+              </div>
+
+              <p className="text-center text-sm text-muted-foreground">
+                Escanea el código QR desde tu app o ingresa el número.
+              </p>
+
+              <Card className="border-border overflow-hidden">
+                <div className={cn('flex items-center gap-3 px-5 py-4', metodo === 'yape' ? 'bg-[#6C1FC6]' : 'bg-[#00B4D8]')}>
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white overflow-hidden">
+                    <Image src={metodo === 'yape' ? '/images/yape.png' : '/images/plin.png'} alt={metodo} width={40} height={40} className="object-contain w-full h-full" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-white">{metodo === 'yape' ? 'Yape' : 'Plin'}</p>
+                    <p className="text-xs text-white/80">Pago móvil instantáneo</p>
+                  </div>
+                </div>
+                <div className="p-5 space-y-4">
+                  <div>
+                    <p className="mb-1 text-xs text-muted-foreground">O ingresa el número de teléfono</p>
+                    <div className="flex items-center justify-between rounded-xl bg-muted px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <Smartphone className="h-5 w-5 text-primary" />
+                        <span className="text-xl font-bold tracking-widest text-foreground">
+                          {metodo === 'yape' ? numeroYape : numeroPlin}
+                        </span>
+                      </div>
+                      <button onClick={copiarNumero} className="flex items-center gap-1 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20 transition-colors">
+                        <Copy className="h-3.5 w-3.5" />{copiado ? '¡Copiado!' : 'Copiar'}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between rounded-xl bg-primary/5 border border-primary/20 px-4 py-3">
+                    <span className="text-sm text-muted-foreground">Monto exacto</span>
+                    <span className="text-2xl font-bold text-primary">S/ {montoAdelanto}</span>
+                  </div>
+                  <a href={metodo === 'yape' ? 'yape://' : 'plin://'} className="flex items-center justify-center gap-3 w-full rounded-xl py-3.5 font-bold text-white active:scale-[0.98] transition-all" style={{ backgroundColor: metodo === 'yape' ? '#6C1FC6' : '#00B4D8' }}>
+                    <Image src={metodo === 'yape' ? '/images/yape.png' : '/images/plin.png'} alt={metodo} width={22} height={22} className="object-contain rounded" />
+                    Abrir {metodo === 'yape' ? 'Yape' : 'Plin'} · Enviar S/ {montoAdelanto}
+                    <ExternalLink className="h-4 w-4 opacity-70" />
+                  </a>
+                </div>
+              </Card>
+
+              {/* Timer */}
+              <div className={cn(
+                'flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-medium',
+                segundos > 60 ? 'border-primary/20 bg-primary/5 text-primary' : 'border-destructive/40 bg-destructive/10 text-destructive animate-pulse'
+              )}>
+                <Timer className="h-4 w-4 shrink-0" />
+                Tiempo restante: {String(Math.floor(segundos / 60)).padStart(2, '0')}:{String(segundos % 60).padStart(2, '0')}
+              </div>
+
+              {/* Comprobante */}
+              <Card className="border-border p-5 space-y-3">
+                <p className="font-medium text-foreground">Sube tu comprobante de pago</p>
+                <p className="text-sm text-muted-foreground">El administrador revisará la captura y confirmará tu reserva en minutos.</p>
+                <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+                {comprobante ? (
+                  <div className="space-y-3">
+                    <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-border">
+                      <Image src={comprobante} alt="Comprobante" fill className="object-contain" />
+                    </div>
+                    <Button variant="outline" size="sm" className="w-full" onClick={() => fileRef.current?.click()}>Cambiar imagen</Button>
+                  </div>
+                ) : (
+                  <button onClick={() => fileRef.current?.click()} className="flex w-full flex-col items-center gap-3 rounded-xl border-2 border-dashed border-muted-foreground/30 p-8 hover:border-primary/40 transition-colors">
+                    <Upload className="h-8 w-8 text-muted-foreground" />
+                    <div className="text-center">
+                      <p className="text-sm font-medium text-foreground">Toca para subir captura</p>
+                      <p className="text-xs text-muted-foreground">JPG, PNG hasta 10MB</p>
+                    </div>
+                  </button>
+                )}
+                <div className="flex items-start gap-2 rounded-xl bg-muted/60 p-3">
+                  <Shield className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                  <p className="text-xs text-muted-foreground">También puedes enviar sin comprobante. El admin podrá pedírtelo después.</p>
+                </div>
+              </Card>
+
+              {submitError && (
+                <div className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
+                  {submitError}
+                </div>
+              )}
+
+              <div className="space-y-3">
+                <LoadingButton size="lg" className="w-full" onClick={handleEnviar} isLoading={enviando} loadingText="Confirmando..." loadingVariant="spinner">
+                  {comprobante ? 'Confirmar pago ✓' : 'Enviar sin comprobante'}
+                </LoadingButton>
+                <Button variant="outline" size="lg" className="w-full" onClick={() => setPasoRegistrado('metodo')}>
+                  Cambiar método
+                </Button>
+              </div>
+            </>
+          )}
+
+        </div>
+      </div>
+    );
+  }
 
   // ── Éxito ──────────────────────────────────────────────────────
   if (paso === 'exito') {
