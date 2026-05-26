@@ -264,7 +264,7 @@ export function CanchaCardHorizontal({
       <div
         onMouseEnter={() => onHover?.(cancha.id)}
         onMouseLeave={() => onHover?.(null)}
-        className={`group flex rounded-xl border bg-white overflow-hidden transition-all duration-200 hover:shadow-md h-[190px] ${
+        className={`group flex rounded-xl border bg-white overflow-hidden transition-all duration-200 hover:shadow-md h-[210px] ${
           isHighlighted ? 'border-[#16a34a] shadow-md ring-1 ring-[#16a34a]/30' : 'border-gray-200 hover:border-gray-300'
         }`}
       >
@@ -324,31 +324,41 @@ export function CanchaCardHorizontal({
                     <Star className="h-3 w-3 fill-yellow-400 text-yellow-400 shrink-0" />
                     <span className="font-medium text-gray-800">{cancha.rating}</span>
                     {cancha.reviewCount > 0 && <span className="text-gray-400">({cancha.reviewCount})</span>}
-                    {distancia !== undefined && (
-                      <>
-                        <span className="text-gray-300">•</span>
-                        <span className="text-[11px] text-[#16a34a] font-medium">{formatearDistancia(distancia)}</span>
-                      </>
-                    )}
                   </>
                 ) : (
                   <span className="text-[11px] text-gray-400 italic">Sin reseñas aún</span>
+                )}
+                {distancia !== undefined && (
+                  <>
+                    <span className="text-gray-300">•</span>
+                    <Navigation className="h-3 w-3 fill-[#16a34a] text-[#16a34a] shrink-0" />
+                    <span className="text-[11px] text-[#16a34a] font-medium">{formatearDistancia(distancia)}</span>
+                  </>
                 )}
               </div>
               <div className="flex items-center gap-1 text-gray-400">
                 <MapPin className="h-2.5 w-2.5 shrink-0" />
                 <span className="text-[11px] line-clamp-1">{cancha.address}</span>
               </div>
-              <div className="flex items-center gap-1 flex-wrap pt-0.5">
+              <div className="pt-0.5">
                 <span className="inline-flex items-center rounded-md bg-gray-100 px-1.5 py-0.5 text-[11px] font-medium text-gray-600">
                   {sportLabels[cancha.type]}
                 </span>
-                {cancha.balonDisponible && (
-                  <span className="inline-flex items-center rounded-md bg-green-50 border border-green-200 px-1.5 py-0.5 text-[11px] font-medium text-green-700">
-                    ⚽{cancha.balonPrecio ? ` S/${cancha.balonPrecio}` : ' gratis'}
-                  </span>
-                )}
               </div>
+              {(cancha.balonDisponible || cancha.chalecoDisponible) && (
+                <div className="flex items-center gap-1 flex-wrap mt-2">
+                  {cancha.balonDisponible && (
+                    <span className="inline-flex items-center rounded-md bg-green-50 border border-green-200 px-1.5 py-0.5 text-[11px] font-medium text-green-700">
+                      ⚽{cancha.balonPrecio != null ? ` S/${cancha.balonPrecio}` : ' gratis'}
+                    </span>
+                  )}
+                  {cancha.chalecoDisponible && (
+                    <span className="inline-flex items-center rounded-md bg-green-50 border border-green-200 px-1.5 py-0.5 text-[11px] font-medium text-green-700">
+                      🎽{cancha.chalecosPrecio != null ? ` S/${cancha.chalecosPrecio}` : ' gratis'}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
             <div className="shrink-0 text-right">
               <span className="text-xl font-bold text-gray-900 leading-none">S/ {cancha.pricePerHour}</span>
@@ -389,10 +399,13 @@ export function CanchaCardHorizontal({
                 <button
                   onClick={handleReservar}
                   disabled={reservando}
-                  className="ml-auto shrink-0 rounded-lg bg-[#16a34a] hover:bg-[#15803d] active:scale-[0.98] disabled:opacity-60 text-white px-4 py-2 text-xs font-semibold transition-all"
+                  className="ml-auto shrink-0 rounded-lg bg-[#16a34a] hover:bg-[#15803d] active:scale-[0.98] disabled:opacity-60 text-white px-4 py-2 text-xs font-semibold transition-all flex items-center gap-1.5"
                 >
+                  {reservando && (
+                    <span className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent shrink-0" />
+                  )}
                   {reservando
-                    ? 'Bloqueando...'
+                    ? 'Reservando...'
                     : selectedSlots.length > 1
                     ? `Reservar ${selectedSlots.length}h`
                     : selectedSlots.length === 1

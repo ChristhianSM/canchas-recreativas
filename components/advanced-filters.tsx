@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import {
-  Sliders, MapPin
+  Sliders, MapPin, Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -52,6 +52,7 @@ export function AdvancedFiltersComponent({
   onOpenChange: controlledOnOpenChange,
 }: AdvancedFiltersProps) {
   const [internalIsOpen, setInternalIsOpen] = useState(false);
+  const [loadingUbicacion, setLoadingUbicacion] = useState(false);
   const scrollPositionRef = useRef<number>(0);
   const scrollContainerRef = useRef<HTMLElement | null>(null);
   const isUpdatingRef = useRef<boolean>(false);
@@ -247,21 +248,36 @@ export function AdvancedFiltersComponent({
       <AccordionSection id="ubicacion" icon="📍" title="Ubicación">
         {!ubicacion ? (
           <button
+            disabled={loadingUbicacion}
             onClick={() => {
               if (!navigator.geolocation) { alert('Tu navegador no soporta geolocalización'); return; }
+              setLoadingUbicacion(true);
               navigator.geolocation.getCurrentPosition(
                 (position) => {
                   const coords = { lat: position.coords.latitude, lng: position.coords.longitude };
                   localStorage.setItem('user_location', JSON.stringify(coords));
+                  setLoadingUbicacion(false);
                   if (onUbicacionObtenida) onUbicacionObtenida(coords);
                 },
-                () => alert('No se pudo obtener tu ubicación. Por favor, verifica los permisos.')
+                () => {
+                  setLoadingUbicacion(false);
+                  alert('No se pudo obtener tu ubicación. Por favor, verifica los permisos.');
+                }
               );
             }}
-            className="w-full flex items-center justify-center gap-2 px-2.5 py-2.5 bg-[#16a34a] text-white rounded-md hover:bg-[#15803d] transition-colors text-sm font-medium mt-2"
+            className="w-full flex items-center justify-center gap-2 px-2.5 py-2.5 bg-[#16a34a] text-white rounded-md hover:bg-[#15803d] disabled:opacity-70 disabled:cursor-not-allowed transition-colors text-sm font-medium mt-2"
           >
-            <MapPin className="h-4 w-4" />
-            Activar "Cerca de mí"
+            {loadingUbicacion ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Activando...
+              </>
+            ) : (
+              <>
+                <MapPin className="h-4 w-4" />
+                Activar "Cerca de mí"
+              </>
+            )}
           </button>
         ) : (
           <div className="mt-2 space-y-3">

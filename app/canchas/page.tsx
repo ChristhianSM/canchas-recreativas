@@ -13,6 +13,9 @@ import {
   RefreshCw,
   ShieldCheck,
   Navigation,
+  Map,
+  List,
+  ExternalLink,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Header } from "@/components/header";
@@ -442,6 +445,9 @@ function CanchasContent() {
   );
   // ID de cancha hovereada (para resaltar en el mapa)
   const [hoveredCanchaId, setHoveredCanchaId] = useState<string | null>(null);
+  // Modal de mapa en mobile
+  const [showMobileMap, setShowMobileMap] = useState(false);
+  const [mobileMapSelectedId, setMobileMapSelectedId] = useState<string | null>(null);
 
   // Estados para la barra desktop estilo Airbnb
   const [activeField, setActiveField] = useState<
@@ -1501,7 +1507,7 @@ function CanchasContent() {
             ) : filtered.length > 0 ? (
               <>
                 {/* < 768px: cards verticales sin mapa */}
-                <div className="md:hidden grid gap-4 grid-cols-1 sm:grid-cols-2">
+                <div className="md:hidden grid gap-4 grid-cols-1 sm:grid-cols-2 pb-24">
                   {(filtered as any[]).filter((c) => !canchasOcupadas.has(c.id)).map((c) => (
                     <CanchaCard
                       key={c.id}
@@ -1602,6 +1608,89 @@ function CanchasContent() {
               </div>
             )}
           </main>
+
+          {/* ── FAB "Ver mapa" — solo mobile ──────────────────────── */}
+          {!loading && filtered.length > 0 && (
+            <button
+              onClick={() => { setShowMobileMap(true); setMobileMapSelectedId(null); }}
+              className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-gray-900 hover:bg-gray-800 active:scale-95 text-white font-semibold px-5 py-3 rounded-full shadow-xl transition-all"
+            >
+              <Map className="h-4 w-4" />
+              Ver mapa
+            </button>
+          )}
+
+          {/* ── Modal mapa full-screen mobile ─────────────────────── */}
+          {showMobileMap && (
+            <div className="md:hidden fixed inset-0 z-[100] bg-white flex flex-col">
+              {/* Header */}
+              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-white shrink-0">
+                <button
+                  onClick={() => setShowMobileMap(false)}
+                  className="flex items-center gap-1.5 text-gray-700 font-semibold text-sm"
+                >
+                  <List className="h-4 w-4" />
+                  Ver lista
+                </button>
+                <span className="text-xs font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                  {filtered.length} {filtered.length === 1 ? "cancha" : "canchas"}
+                </span>
+              </div>
+
+              {/* Mapa */}
+              <div className="flex-1 relative">
+                <CanchasMap
+                  canchas={(filtered as any[])
+                    .filter((c) => c.coordinates?.lat && c.coordinates?.lng)
+                    .map((c) => ({
+                      id: c.id,
+                      name: c.name,
+                      lat: c.coordinates.lat,
+                      lng: c.coordinates.lng,
+                      price: c.pricePerHour,
+                      type: sportLabels[c.type as SportType] ?? c.type,
+                    }))}
+                  selectedId={mobileMapSelectedId ?? undefined}
+                  onSelectCancha={(id) => setMobileMapSelectedId(id)}
+                  centerLocation={desktopUbicacion || searchParams.get("ubicacion") || undefined}
+                />
+
+                {/* Mini-card inferior al seleccionar un pin */}
+                {mobileMapSelectedId && (() => {
+                  const c = (filtered as any[]).find((x) => x.id === mobileMapSelectedId);
+                  if (!c) return null;
+                  return (
+                    <div className="absolute bottom-4 left-4 right-4 z-[200] bg-white rounded-2xl shadow-2xl border border-gray-100 p-4 flex items-center gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-gray-900 text-sm truncate">{c.name}</p>
+                        <div className="flex items-center gap-1 text-gray-400 mt-0.5">
+                          <MapPin className="h-3 w-3 shrink-0" />
+                          <span className="text-xs truncate">{c.address}</span>
+                        </div>
+                      </div>
+                      <div className="shrink-0 text-right mr-1">
+                        <p className="text-lg font-bold text-gray-900 leading-none">S/ {c.pricePerHour}</p>
+                        <p className="text-[10px] text-gray-400">por hora</p>
+                      </div>
+                      <a
+                        href={`/cancha/${c.id}`}
+                        className="shrink-0 flex items-center gap-1 bg-[#16a34a] hover:bg-[#15803d] text-white text-xs font-semibold px-3 py-2.5 rounded-xl transition-colors"
+                      >
+                        Ver
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                      <button
+                        onClick={() => setMobileMapSelectedId(null)}
+                        className="shrink-0 flex items-center justify-center h-6 w-6 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
+                      >
+                        <X className="h-3.5 w-3.5 text-gray-500" />
+                      </button>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+          )}
 
           {/* ── COL 3: Mapa + panel (md+, ≥768px) ────────────────── */}
           <aside className="hidden md:flex flex-col w-[260px] lg:w-[300px] xl:w-[340px] shrink-0 pl-3 pt-4 gap-4">

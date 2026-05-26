@@ -431,7 +431,7 @@ export function CanchaCard({ cancha, distancia, selectedDate, availableHours, pr
   };
 
   const buttonLabel = reservando
-    ? 'Bloqueando...'
+    ? 'Reservando...'
     : selectedSlots.length > 1
     ? `Reservar ${selectedSlots.length}h`
     : selectedSlots.length === 1
