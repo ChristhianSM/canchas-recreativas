@@ -197,6 +197,33 @@ export default function HomePage() {
   const dateButtonRef = useRef<HTMLButtonElement>(null);
   const timeButtonRef = useRef<HTMLButtonElement>(null);
 
+  // Solicitar permiso de ubicación al cargar la página
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        setUserCoords({ lat: latitude, lng: longitude });
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=es`,
+          );
+          const data = await res.json();
+          const city =
+            data.address?.city ||
+            data.address?.town ||
+            data.address?.village ||
+            data.address?.state ||
+            "Ubicación actual";
+          setUbicacion(city);
+        } catch {
+          setUbicacion("Ubicación actual");
+        }
+      },
+      () => {}, // si niega, no hacemos nada
+    );
+  }, []);
+
   useEffect(() => {
     // Fecha de hoy formateada
     const hoy = new Date();
@@ -530,17 +557,17 @@ export default function HomePage() {
                 {showLocationModal && (
                   <>
                     <div
-                      className="fixed inset-0 z-40"
+                      className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
                       onClick={() => setShowLocationModal(false)}
                     />
                     <div
                       ref={locationRef}
-                      className="absolute z-50 bg-white dark:bg-card rounded-lg shadow-2xl border border-gray-200 dark:border-border p-4"
+                      className="fixed z-50 bg-white dark:bg-card rounded-lg shadow-2xl border border-gray-200 dark:border-border p-4"
                       style={{
-                        top: "calc(100% - 2px)",
-                        left: "0",
-                        minWidth: "300px",
-                        maxWidth: "90vw",
+                        top: "calc(50dvh + 32px)",
+                        left: "50%",
+                        transform: "translate(-50%, -50%)",
+                        width: "min(340px, 90vw)",
                       }}
                     >
                       <div className="flex items-center justify-between mb-3">
@@ -555,23 +582,25 @@ export default function HomePage() {
                         </button>
                       </div>
 
-                      <button
-                        onClick={handleRequestLocation}
-                        disabled={loadingLocation}
-                        className="w-full flex items-center justify-center gap-2 bg-[#16a34a] hover:bg-[#15803d] disabled:bg-gray-300 text-white font-medium px-4 py-2.5 rounded-md transition-colors text-sm"
-                      >
-                        {loadingLocation ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            Obteniendo ubicación...
-                          </>
-                        ) : (
-                          <>
-                            <MapPin className="h-4 w-4" />
-                            Usar mi ubicación actual
-                          </>
-                        )}
-                      </button>
+                      {!userCoords && (
+                        <button
+                          onClick={handleRequestLocation}
+                          disabled={loadingLocation}
+                          className="w-full flex items-center justify-center gap-2 bg-[#16a34a] hover:bg-[#15803d] disabled:bg-gray-300 text-white font-medium px-4 py-2.5 rounded-md transition-colors text-sm"
+                        >
+                          {loadingLocation ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Obteniendo ubicación...
+                            </>
+                          ) : (
+                            <>
+                              <MapPin className="h-4 w-4" />
+                              Usar mi ubicación actual
+                            </>
+                          )}
+                        </button>
+                      )}
 
                       <div className="mt-3 pt-3 border-t border-gray-100 dark:border-border max-h-64 overflow-y-auto">
                         {Object.entries(UBICACIONES_POR_CIUDAD).map(
@@ -651,18 +680,17 @@ export default function HomePage() {
                 {showDatePicker && (
                   <>
                     <div
-                      className="fixed inset-0 z-40"
+                      className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
                       onClick={() => setShowDatePicker(false)}
                     />
                     <div
                       ref={dateRef}
-                      className="absolute z-50 bg-white dark:bg-card rounded-lg shadow-2xl border border-gray-200 dark:border-border p-4"
+                      className="fixed z-50 bg-white dark:bg-card rounded-lg shadow-2xl border border-gray-200 dark:border-border p-4"
                       style={{
-                        top: "calc(100% - 2px)",
+                        top: "calc(50dvh + 32px)",
                         left: "50%",
-                        transform: "translateX(-50%)",
-                        width: "320px",
-                        maxWidth: "90vw",
+                        transform: "translate(-50%, -50%)",
+                        width: "min(320px, 90vw)",
                       }}
                     >
                       <div className="flex items-center justify-between mb-4">
@@ -783,17 +811,17 @@ export default function HomePage() {
                 {showTimePicker && (
                   <>
                     <div
-                      className="fixed inset-0 z-40"
+                      className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
                       onClick={() => setShowTimePicker(false)}
                     />
                     <div
                       ref={timeRef}
-                      className="absolute z-50 bg-white dark:bg-card rounded-lg shadow-2xl border border-gray-200 dark:border-border p-4 max-h-96 overflow-y-auto"
+                      className="fixed z-50 bg-white dark:bg-card rounded-lg shadow-2xl border border-gray-200 dark:border-border p-4 max-h-[80dvh] overflow-y-auto"
                       style={{
-                        top: "calc(100% - 2px)",
+                        top: "calc(50dvh + 32px)",
                         left: "50%",
-                        transform: "translateX(-50%)",
-                        minWidth: "320px",
+                        transform: "translate(-50%, -50%)",
+                        width: "min(340px, 90vw)",
                       }}
                     >
                       <div className="flex items-center justify-between mb-3">
