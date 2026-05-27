@@ -12,6 +12,9 @@ import {
   LogOut,
   ChevronDown,
   CalendarCheck,
+  Users,
+  Newspaper,
+  Phone,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -116,8 +119,11 @@ export function Header() {
   };
 
   const navItems = [
-    { href: "/", label: "Inicio", icon: Home },
-    { href: "/canchas", label: "Canchas", icon: Calendar },
+    { href: "/",           label: "Inicio",       icon: Home },
+    { href: "/nosotros",   label: "Nosotros",     icon: Users },
+    { href: "/canchas",    label: "Canchas",      icon: Calendar },
+    { href: "/noticias",   label: "Noticias",     icon: Newspaper },
+    { href: "/contacto",   label: "Contáctanos",  icon: Phone },
     ...(user
       ? [{ href: "/mis-reservas", label: "Mis Reservas", icon: CalendarCheck }]
       : []),
@@ -128,30 +134,29 @@ export function Header() {
       <div className="container mx-auto flex h-16 items-center justify-between px-4 md:gap-8">
         <Link href="/" className="flex items-center gap-2 shrink-0">
           <Image
-            src="/images/logo.png"
+            src="/images/logo-new.svg"
             alt="CanchaPiura"
             width={280}
             height={80}
             priority
-            className="h-14 w-auto object-contain"
+            className="h-10 w-auto object-contain"
           />
         </Link>
 
         {/* Desktop Navigation */}
-        <nav className="hidden flex-1 items-center justify-center gap-1 md:flex">
-          {navItems.map((item) => {
+        <nav className="hidden flex-1 items-center justify-center gap-0.5 md:flex">
+          {navItems.filter(i => i.href !== '/mis-reservas').map((item) => {
             const isActive = pathname === item.href;
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all border ${
+                className={`rounded-lg px-3 py-2 text-sm font-medium transition-all ${
                   isActive
-                    ? "bg-[#16a34a]/10 text-[#16a34a] border-[#16a34a]/20"
-                    : "text-foreground border-transparent hover:bg-[#16a34a]/10 hover:text-[#16a34a] hover:border-[#16a34a]/20"
+                    ? "bg-[#16a34a]/10 text-[#16a34a]"
+                    : "text-foreground hover:bg-[#16a34a]/10 hover:text-[#16a34a]"
                 }`}
               >
-                <item.icon className="h-4 w-4" />
                 {item.label}
               </Link>
             );
