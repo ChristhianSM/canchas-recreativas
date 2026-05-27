@@ -90,6 +90,27 @@ const UBICACIONES_POR_CIUDAD: Record<string, string[]> = {
   // Próximamente: Lima, Trujillo, Chiclayo, Arequipa...
 };
 
+const HERO_SLIDES = [
+  {
+    image: "/images/cancha-login.png",
+    eyebrow: "Reserva en segundos",
+    title: "Tu pichanchaga",
+    highlight: "empieza aquí",
+  },
+  {
+    image: "/images/hero-basquet.jpg",
+    eyebrow: "Sin llamadas, sin esperas",
+    title: "Encuentra la cancha",
+    highlight: "perfecta para ti",
+  },
+  {
+    image: "/images/hero-voley.jpg",
+    eyebrow: "Más de 10 canchas disponibles",
+    title: "Elige tu horario",
+    highlight: "y juega hoy",
+  },
+];
+
 function adaptCancha(c: Cancha) {
   // Construir schedule para los próximos 14 días usando horarios reales
   const schedule: Record<
@@ -189,6 +210,7 @@ export default function HomePage() {
   const [loadingHours, setLoadingHours] = useState(false);
 
   const [calendarMonth, setCalendarMonth] = useState(new Date());
+  const [slideIndex, setSlideIndex] = useState(0);
 
   const locationRef = useRef<HTMLDivElement>(null);
   const dateRef = useRef<HTMLDivElement>(null);
@@ -196,6 +218,14 @@ export default function HomePage() {
   const locationButtonRef = useRef<HTMLButtonElement>(null);
   const dateButtonRef = useRef<HTMLButtonElement>(null);
   const timeButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Auto-avance del slider
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setSlideIndex((prev) => (prev + 1) % HERO_SLIDES.length);
+    }, 7000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Solicitar permiso de ubicación al cargar la página
   useEffect(() => {
@@ -491,27 +521,38 @@ export default function HomePage() {
 
       {/* ── HERO ─────────────────────────────────────────────────── */}
       <section className="relative min-h-[calc(100dvh-4rem)] flex items-center">
-        {/* Imagen de fondo */}
+        {/* Imágenes apiladas con crossfade */}
         <div className="absolute inset-0">
-          <Image
-            src="/images/cancha-login.png"
-            alt="Cancha deportiva"
-            fill
-            className="object-cover object-center"
-            priority
-          />
-          {/* Overlay oscuro degradado */}
+          {HERO_SLIDES.map((slide, i) => (
+            <div
+              key={slide.image + i}
+              className="absolute inset-0 transition-opacity duration-1000 ease-in-out"
+              style={{ opacity: i === slideIndex ? 1 : 0 }}
+            >
+              <Image
+                src={slide.image}
+                alt="Cancha deportiva"
+                fill
+                className="object-cover object-center"
+                priority={i === 0}
+              />
+            </div>
+          ))}
           <div className="absolute inset-0 bg-black/60" />
           <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-transparent" />
         </div>
 
         <div className="relative container mx-auto px-4 py-16 md:py-24">
-          <div className="max-w-4xl">
-            <h3 className="text-[#4ade80]"> Reserva en segundos </h3>
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white leading-tight mb-3 tracking-tight">
-              Tu pichanchaga
+          <div key={slideIndex} className="max-w-4xl">
+            <h3 className="text-[#4ade80] hero-enter">
+              {HERO_SLIDES[slideIndex].eyebrow}
+            </h3>
+            <h1 className="hero-enter-d1 text-4xl md:text-5xl lg:text-6xl font-extrabold text-white leading-tight mb-3 tracking-tight">
+              {HERO_SLIDES[slideIndex].title}
               <br />
-              <span className="text-[#4ade80]">empieza aquí</span>
+              <span className="text-[#4ade80]">
+                {HERO_SLIDES[slideIndex].highlight}
+              </span>
             </h1>
 
             {/* Buscador tipo booking */}
@@ -904,7 +945,7 @@ export default function HomePage() {
             </div>
 
             {/* Badges de confianza */}
-            <div className="mt-5 flex flex-wrap gap-4">
+            <div className="hero-enter-d2 mt-5 flex flex-wrap gap-4">
               <div className="flex items-center gap-1.5 text-white/90 text-sm">
                 <CheckCircle className="h-4 w-4 text-[#4ade80]" />
                 Sin llamadas
