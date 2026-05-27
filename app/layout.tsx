@@ -55,6 +55,9 @@ export const metadata: Metadata = {
     follow: true,
   },
   generator: 'Next.js',
+  other: {
+    'facebook-domain-verification': 'sracoh5ggpqzub90n2vawj4uf29wgm',
+  },
   icons: {
     icon: [
       { url: '/icon-light-32x32.png', media: '(prefers-color-scheme: light)' },
