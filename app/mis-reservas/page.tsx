@@ -644,7 +644,7 @@ export default function MisReservasPage() {
               height={100}
               className="h-24 w-auto object-contain"
             />
-            <p className="text-sm text-muted-foreground">&copy; 2026 CanchaGo. Todos los derechos reservados.</p>
+            <p className="text-sm text-muted-foreground">&copy; 2026 Canchago | Christhian Juan Silupu Moscol</p>
           </div>
         </div>
       </footer>

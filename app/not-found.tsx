@@ -46,7 +46,7 @@ export default function NotFound() {
             className="h-10 w-auto object-contain"
           />
           <p className="text-xs text-muted-foreground">
-            &copy; 2026 CanchaGo. Todos los derechos reservados.
+            &copy; 2026 Canchago | Christhian Juan Silupu Moscol
           </p>
         </div>
       </footer>
