@@ -92,7 +92,7 @@ const UBICACIONES_POR_CIUDAD: Record<string, string[]> = {
 
 const HERO_SLIDES = [
   {
-    image: "/images/cancha-login.png",
+    image: "/images/hero-futbol.jpg",
     eyebrow: "Reserva en segundos",
     title: "Tu pichanchaga",
     highlight: "empieza aquí",
@@ -100,14 +100,20 @@ const HERO_SLIDES = [
   {
     image: "/images/hero-basquet.jpg",
     eyebrow: "Sin llamadas, sin esperas",
-    title: "Encuentra la cancha",
-    highlight: "perfecta para ti",
+    title: "Domina la cancha",
+    highlight: "mete el triple",
+  },
+  {
+    image: "/images/hero-tennis.jpg",
+    eyebrow: "Más de 10 canchas disponibles",
+    title: "Sirve, corre",
+    highlight: "y gana el set",
   },
   {
     image: "/images/hero-voley.jpg",
-    eyebrow: "Más de 10 canchas disponibles",
-    title: "Elige tu horario",
-    highlight: "y juega hoy",
+    eyebrow: "Elige horario y reserva ya",
+    title: "Arma tu equipo",
+    highlight: "y saca el match",
   },
 ];
 
@@ -533,8 +539,9 @@ export default function HomePage() {
                 src={slide.image}
                 alt="Cancha deportiva"
                 fill
+                sizes="100vw"
                 className="object-cover object-center"
-                priority={i === 0}
+                priority
               />
             </div>
           ))}
@@ -964,7 +971,7 @@ export default function HomePage() {
         <div className="container mx-auto px-4">
           {/* Sección 1: Canchas mejor calificadas (siempre visible) */}
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-foreground">
+            <h2 className="text-2xl font-bold text-brand-red md:flex-1 md:text-center">
               {userCoords
                 ? "Canchas mejor calificadas"
                 : "Canchas mejor calificadas"}
