@@ -151,9 +151,10 @@ export function Footer() {
         {/* Línea inferior */}
         <div className="border-t border-border pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
           <p>
-            &copy; {new Date().getFullYear()} 2026 Canchago | Christhian Juan Silupu Moscol
+            &copy; {new Date().getFullYear()} 2026 Canchago | Christhian Juan
+            Silupu Moscol
           </p>
-          <p>Hecho con ❤️ en Piura, Perú</p>
+          <p>Hecho por Silupú Moscol Chirshtian Juan</p>
         </div>
       </div>
     </footer>
