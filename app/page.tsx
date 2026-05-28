@@ -217,6 +217,7 @@ export default function HomePage() {
 
   const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [slideIndex, setSlideIndex] = useState(0);
+  const [loadingSearch, setLoadingSearch] = useState(false);
 
   const locationRef = useRef<HTMLDivElement>(null);
   const dateRef = useRef<HTMLDivElement>(null);
@@ -475,25 +476,11 @@ export default function HomePage() {
   };
 
   const handleBuscar = () => {
-    // Construir query params para la búsqueda
+    setLoadingSearch(true);
     const params = new URLSearchParams();
-
-    // Agregar fecha seleccionada
-    if (selectedDate) {
-      const dateStr = getLocalDateString(selectedDate);
-      params.set("fecha", dateStr);
-    }
-
-    // Agregar hora seleccionada
-    if (selectedTime) {
-      params.set("hora", selectedTime);
-    }
-
-    // Agregar ubicación si no es la predeterminada
-    if (ubicacion !== "Mi ubicación") {
-      params.set("ubicacion", ubicacion);
-    }
-
+    if (selectedDate) params.set("fecha", getLocalDateString(selectedDate));
+    if (selectedTime) params.set("hora", selectedTime);
+    if (ubicacion !== "Mi ubicación") params.set("ubicacion", ubicacion);
     router.push(`/canchas?${params.toString()}`);
   };
 
@@ -944,10 +931,14 @@ export default function HomePage() {
               {/* Botón buscar */}
               <button
                 onClick={handleBuscar}
-                className="flex items-center justify-center gap-2 bg-[#16a34a] hover:bg-[#15803d] active:scale-95 text-white font-bold sm:font-semibold py-4 sm:py-3 px-5 rounded-xl sm:rounded-md transition-all text-base sm:text-sm whitespace-nowrap w-full sm:w-auto mt-1 sm:mt-0"
+                disabled={loadingSearch}
+                className="flex items-center justify-center gap-2 bg-[#16a34a] hover:bg-[#15803d] active:scale-95 disabled:opacity-80 disabled:cursor-not-allowed text-white font-bold sm:font-semibold py-4 sm:py-3 px-5 rounded-xl sm:rounded-md transition-all text-base sm:text-sm whitespace-nowrap w-full sm:w-auto mt-1 sm:mt-0"
               >
-                <Search className="h-5 w-5 sm:h-4 sm:w-4" />
-                <span className="sm:hidden">Buscar canchas</span>
+                {loadingSearch
+                  ? <Loader2 className="h-5 w-5 sm:h-4 sm:w-4 animate-spin" />
+                  : <Search className="h-5 w-5 sm:h-4 sm:w-4" />
+                }
+                <span className="sm:hidden">{loadingSearch ? "Buscando..." : "Buscar canchas"}</span>
               </button>
             </div>
 
@@ -966,31 +957,33 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── CANCHAS MEJOR CALIFICADAS / CERCA DE TI ──────────────── */}
+      {/* ── CANCHAS: cerca de ti (con ubicación) o mejor calificadas (sin ubicación) ── */}
       <section className="py-12 bg-white dark:bg-background">
         <div className="container mx-auto px-4">
-          {/* Sección 1: Canchas mejor calificadas (siempre visible) */}
+
+          {/* Cabecera */}
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-brand-red md:flex-1 md:text-center">
-              {userCoords
-                ? "Canchas mejor calificadas"
-                : "Canchas mejor calificadas"}
-            </h2>
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-foreground">
+                {userCoords ? "Canchas cerca de ti" : "Canchas mejor calificadas"}
+              </h2>
+              {userCoords && (
+                <p className="text-sm text-gray-500 mt-0.5">Basado en tu ubicación actual</p>
+              )}
+            </div>
             <Link
-              href="/canchas"
-              className="text-[#16a34a] text-sm font-medium hover:underline flex items-center gap-1"
+              href={userCoords ? `/canchas?ubicacion=${encodeURIComponent(ubicacion)}` : "/canchas"}
+              className="text-[#16a34a] text-sm font-medium hover:underline flex items-center gap-1 shrink-0"
             >
               Ver todas <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </div>
 
+          {/* Skeleton mientras carga */}
           {loading ? (
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {[1, 2, 3, 4].map((i) => (
-                <div
-                  key={i}
-                  className="rounded-xl overflow-hidden border border-border animate-pulse"
-                >
+                <div key={i} className="rounded-xl overflow-hidden border border-border animate-pulse">
                   <div className="aspect-[2/1] bg-muted" />
                   <div className="p-4 space-y-3">
                     <div className="h-4 bg-muted rounded-full w-3/4" />
@@ -998,10 +991,7 @@ export default function HomePage() {
                     <div className="h-3 bg-muted rounded-full w-1/2" />
                     <div className="flex gap-1.5 pt-1">
                       {[1, 2, 3, 4].map((j) => (
-                        <div
-                          key={j}
-                          className="h-9 flex-1 bg-muted rounded-lg"
-                        />
+                        <div key={j} className="h-9 flex-1 bg-muted rounded-lg" />
                       ))}
                     </div>
                     <div className="h-10 bg-muted rounded-lg" />
@@ -1009,7 +999,59 @@ export default function HomePage() {
                 </div>
               ))}
             </div>
-          ) : canchas.length > 0 ? (
+
+          ) : canchas.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <p>No hay canchas disponibles por el momento.</p>
+              <Link href="/canchas" className="mt-3 inline-block text-primary font-medium hover:underline">
+                Ver todas las canchas
+              </Link>
+            </div>
+
+          ) : userCoords ? (
+            /* ── Con ubicación: ordenar por distancia ── */
+            (() => {
+              const conDistancia = canchas
+                .filter((c) => c.lat && c.lng)
+                .map((c) => {
+                  const dLat = c.lat - userCoords.lat;
+                  const dLng = c.lng - userCoords.lng;
+                  const distKm = Math.sqrt(dLat * dLat + dLng * dLng) * 111;
+                  return { ...c, distKm };
+                })
+                .sort((a, b) => a.distKm - b.distKm)
+                .slice(0, 4);
+
+              if (conDistancia.length === 0) return (
+                <div className="text-center py-12 text-muted-foreground">
+                  <p>No encontramos canchas con coordenadas cerca tuyo.</p>
+                </div>
+              );
+
+              return (
+                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {conDistancia.map((c) => (
+                    <CanchaCard
+                      key={c.id}
+                      cancha={adaptCancha(c)}
+                      selectedDate={getLocalDateString()}
+                      distancia={c.distKm}
+                      isFav={favIds.has(c.id)}
+                      onToggleFav={(id) =>
+                        setFavIds((prev) => {
+                          const n = new Set(prev);
+                          n.has(id) ? n.delete(id) : n.add(id);
+                          return n;
+                        })
+                      }
+                    />
+                  ))}
+                </div>
+              );
+            })()
+
+          ) : (
+            /* ── Sin ubicación: ordenar por rating ── */
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {[...canchas]
                 .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
@@ -1030,75 +1072,8 @@ export default function HomePage() {
                   />
                 ))}
             </div>
-          ) : (
-            <div className="text-center py-12 text-muted-foreground">
-              <p>No hay canchas disponibles por el momento.</p>
-              <Link
-                href="/canchas"
-                className="mt-3 inline-block text-primary font-medium hover:underline"
-              >
-                Ver todas las canchas
-              </Link>
-            </div>
           )}
 
-          {/* Sección 2: Canchas cerca de ti (solo si el usuario dio permiso de ubicación) */}
-          {userCoords &&
-            canchas.length > 0 &&
-            (() => {
-              // Calcular distancia y ordenar por cercanía
-              const conDistancia = canchas
-                .filter((c) => c.lat && c.lng)
-                .map((c) => {
-                  const dLat = c.lat - userCoords.lat;
-                  const dLng = c.lng - userCoords.lng;
-                  const distKm = Math.sqrt(dLat * dLat + dLng * dLng) * 111;
-                  return { ...c, distKm };
-                })
-                .sort((a, b) => a.distKm - b.distKm)
-                .slice(0, 4);
-
-              if (conDistancia.length === 0) return null;
-
-              return (
-                <div className="mt-12">
-                  <div className="flex items-center justify-between mb-6">
-                    <div>
-                      <h2 className="text-xl font-bold text-gray-900 dark:text-foreground">
-                        Canchas cerca de ti
-                      </h2>
-                      <p className="text-sm text-gray-500 mt-0.5">
-                        Basado en tu ubicación actual
-                      </p>
-                    </div>
-                    <Link
-                      href={`/canchas?ubicacion=${encodeURIComponent(ubicacion)}`}
-                      className="text-[#16a34a] text-sm font-medium hover:underline flex items-center gap-1"
-                    >
-                      Ver todas <ArrowRight className="h-3.5 w-3.5" />
-                    </Link>
-                  </div>
-                  <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {conDistancia.map((c) => (
-                      <CanchaCard
-                        key={c.id}
-                        cancha={adaptCancha(c)}
-                        selectedDate={getLocalDateString()}
-                        distancia={c.distKm}
-                        isFav={favIds.has(c.id)}
-                        onToggleFav={(id) =>
-                          setFavIds((prev) => {
-                            const n = new Set(prev);
-                            n.has(id) ? n.delete(id) : n.add(id);
-                            return n;
-                          })
-                        }
-                      />
-                    ))}
-                  </div>
-                </div>
-              );
-            })()}
         </div>
       </section>
 
@@ -1114,10 +1089,9 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-20">
             {[
               {
-                num: "1",
                 icon: Search,
                 title: "Busca en tu zona",
                 desc: "Filtra por deporte, fecha y hora. Ve disponibilidad en tiempo real, sin llamar a nadie.",
@@ -1125,7 +1099,6 @@ export default function HomePage() {
                 highlight: false,
               },
               {
-                num: "2",
                 icon: Calendar,
                 title: "Elige tu horario",
                 desc: "Selecciona el día y la hora exacta. Los slots disponibles se actualizan al instante.",
@@ -1133,7 +1106,6 @@ export default function HomePage() {
                 highlight: false,
               },
               {
-                num: "3",
                 icon: CreditCard,
                 title: "Paga con Yape o Plin",
                 desc: "Confirma con un adelanto desde la app. Recibes tu reserva al momento, sin llamadas.",
@@ -1143,37 +1115,33 @@ export default function HomePage() {
             ].map((item, idx) => (
               <div key={idx} className="relative">
                 <div
-                  className={`h-full rounded-2xl p-6 border ${item.highlight ? "bg-[#16a34a] border-[#16a34a]" : "bg-white dark:bg-card border-gray-100 dark:border-border shadow-sm"}`}
+                  className={`h-full rounded-2xl p-8 border ${item.highlight ? "bg-primary border-primary" : "bg-white dark:bg-card border-gray-100 dark:border-border shadow-sm"}`}
                 >
-                  {/* Número */}
-                  <div
-                    className={`inline-flex items-center justify-center h-8 w-8 rounded-full text-sm font-bold mb-4 ${item.highlight ? "bg-white/20 text-white" : "bg-[#16a34a]/10 text-[#16a34a]"}`}
-                  >
-                    {item.num}
+                  <div className="flex items-center gap-3 mb-3">
+                    <item.icon
+                      className={`h-6 w-6 shrink-0 ${item.highlight ? "text-primary-foreground" : "text-primary"}`}
+                    />
+                    <h3
+                      className={`font-bold text-base ${item.highlight ? "text-primary-foreground" : "text-gray-900 dark:text-foreground"}`}
+                    >
+                      {item.title}
+                    </h3>
                   </div>
-                  <item.icon
-                    className={`h-6 w-6 mb-3 ${item.highlight ? "text-white" : "text-[#16a34a]"}`}
-                  />
-                  <h3
-                    className={`font-bold text-base mb-2 ${item.highlight ? "text-white" : "text-gray-900 dark:text-foreground"}`}
-                  >
-                    {item.title}
-                  </h3>
                   <p
-                    className={`text-sm leading-relaxed mb-4 ${item.highlight ? "text-white/80" : "text-gray-500 dark:text-muted-foreground"}`}
+                    className={`text-sm leading-relaxed mb-4 ${item.highlight ? "text-primary-foreground/80" : "text-gray-500 dark:text-muted-foreground"}`}
                   >
                     {item.desc}
                   </p>
                   <span
-                    className={`inline-block text-xs font-medium px-2.5 py-1 rounded-full ${item.highlight ? "bg-white/20 text-white" : "bg-[#16a34a]/10 text-[#16a34a]"}`}
+                    className={`inline-block text-xs font-medium px-2.5 py-1 rounded-full ${item.highlight ? "bg-white/20 text-primary-foreground" : "bg-primary/10 text-primary"}`}
                   >
                     {item.tag}
                   </span>
                 </div>
                 {/* Flecha entre cards — solo desktop */}
                 {idx < 2 && (
-                  <div className="hidden md:flex absolute -right-5 top-1/2 -translate-y-1/2 z-10 h-8 w-8 items-center justify-center rounded-full bg-white dark:bg-card border border-gray-100 dark:border-border shadow-sm">
-                    <ArrowRight className="h-4 w-4 text-gray-400" />
+                  <div className="hidden md:flex absolute -right-[3.875rem] top-1/2 -translate-y-1/2 z-10 h-11 w-11 items-center justify-center rounded-full bg-white dark:bg-card border border-gray-100 dark:border-border shadow-md">
+                    <ArrowRight className="h-5 w-5 text-gray-400" />
                   </div>
                 )}
               </div>
