@@ -219,16 +219,15 @@ export function CanchaCard({
 
   // Hook para detectar el ancho de la pantalla - inicializar con el valor correcto
   const [slotsToShow, setSlotsToShow] = useState(() => {
-    // En el servidor o primera carga, usar 4 como default (desktop)
     if (typeof window === "undefined") return 4;
-    return window.innerWidth >= 375 ? 4 : 3;
+    const w = window.innerWidth;
+    return w < 375 ? 2 : w < 425 ? 3 : w < 640 ? 4 : w < 720 ? 3 : 4;
   });
 
   useEffect(() => {
     const updateSlotsToShow = () => {
-      const width = window.innerWidth;
-      // 3 slots para pantallas < 375px, 4 slots para >= 375px
-      setSlotsToShow(width >= 375 ? 4 : 3);
+      const w = window.innerWidth;
+      setSlotsToShow(w < 375 ? 2 : w < 425 ? 3 : w < 640 ? 4 : w < 720 ? 3 : 4);
     };
 
     updateSlotsToShow();
@@ -661,7 +660,7 @@ export function CanchaCard({
         <div className="p-4">
           {/* Nombre — ancho completo */}
           <Link href={`/cancha/${cancha.id}`}>
-            <h3 className="text-base font-boldline-clamp-1 group-hover:text-primary transition-colors mb-2 text-brand-green">
+            <h3 className="text-base font-bold group-hover:text-primary transition-colors mb-2 text-brand-green line-clamp-2 sm:min-h-[3rem] leading-6">
               {cancha.name}
             </h3>
           </Link>
@@ -670,9 +669,9 @@ export function CanchaCard({
           <div className="flex gap-3 mb-3">
             <div className="flex-1 min-w-0">
               {/* Dirección */}
-              <div className="mb-2 flex items-center gap-1 text-muted-foreground">
+              <div className="flex items-center gap-1 text-muted-foreground">
                 <MapPin className="h-3.5 w-3.5 shrink-0" />
-                <span className="text-xs line-clamp-1">{cancha.address}</span>
+                <span className="text-xs">{cancha.address}</span>
               </div>
             </div>
 

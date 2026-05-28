@@ -131,7 +131,7 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-card/95 backdrop-blur supports-backdrop-filter:bg-card/80">
-      <div className="container mx-auto flex h-16 items-center justify-between px-4 md:gap-8">
+      <div className="container mx-auto flex h-16 items-center justify-between px-8 lg:px-12 md:gap-8">
         <Link href="/" className="flex items-center gap-2 shrink-0">
           <Image
             src="/images/logo-new.svg"

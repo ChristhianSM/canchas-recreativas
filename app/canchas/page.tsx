@@ -1610,7 +1610,7 @@ function CanchasContent() {
           </main>
 
           {/* ── FAB "Ver mapa" — solo mobile ──────────────────────── */}
-          {!loading && filtered.length > 0 && (
+          {!loading && filtered.length > 0 && !showSearchModal && (
             <button
               onClick={() => { setShowMobileMap(true); setMobileMapSelectedId(null); }}
               className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-gray-900 hover:bg-gray-800 active:scale-95 text-white font-semibold px-5 py-3 rounded-full shadow-xl transition-all"

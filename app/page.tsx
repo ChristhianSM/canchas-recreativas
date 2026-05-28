@@ -536,7 +536,7 @@ export default function HomePage() {
           <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-transparent" />
         </div>
 
-        <div className="relative container mx-auto px-4 py-16 md:py-24">
+        <div className="relative container mx-auto px-8 lg:px-12 py-16 md:py-24">
           <div key={slideIndex} className="max-w-4xl">
             <h3 className="text-[#4ade80] hero-enter">
               {HERO_SLIDES[slideIndex].eyebrow}
@@ -959,7 +959,7 @@ export default function HomePage() {
 
       {/* ── CANCHAS: cerca de ti (con ubicación) o mejor calificadas (sin ubicación) ── */}
       <section className="py-12 bg-white dark:bg-background">
-        <div className="container mx-auto px-4">
+        <div className="container mx-auto px-8 lg:px-12">
 
           {/* Cabecera */}
           <div className="flex items-center justify-between mb-6">
@@ -1079,7 +1079,7 @@ export default function HomePage() {
 
       {/* ── CÓMO FUNCIONA ─────────────────────────────────────────── */}
       <section className="py-14 bg-gray-50 dark:bg-muted/20">
-        <div className="container mx-auto px-4">
+        <div className="container mx-auto px-8 lg:px-12">
           <div className="text-center mb-10">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-foreground">
               ¿Cómo funciona?
@@ -1089,7 +1089,7 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-20">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-20">
             {[
               {
                 icon: Search,
@@ -1155,8 +1155,16 @@ export default function HomePage() {
         className="py-8 dark:bg-muted/10"
         style={{ backgroundColor: "#eef2ee" }}
       >
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col gap-4 max-w-lg mx-auto lg:max-w-6xl lg:grid lg:grid-cols-4">
+        <div className="container mx-auto px-8 lg:px-12">
+          <div className="text-center mb-10">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-foreground">
+              ¿Por qué CanchaGo?
+            </h2>
+            <p className="text-sm text-gray-500 dark:text-muted-foreground mt-2">
+              Todo lo que necesitas para reservar tu cancha sin complicaciones
+            </p>
+          </div>
+          <div className="flex flex-col gap-4 lg:grid lg:grid-cols-3 lg:gap-20">
             {[
               {
                 icon: Zap,
@@ -1173,24 +1181,21 @@ export default function HomePage() {
                 title: "Pagos fáciles",
                 desc: "Paga con tarjeta, transferencia o saldo en la app de forma segura.",
               },
-              {
-                icon: ShieldCheck,
-                title: "Canchas verificadas",
-                desc: "Trabajamos solo con centros deportivos de alta calidad y confianza.",
-              },
             ].map((b) => (
               <div
                 key={b.title}
                 className="bg-white dark:bg-card rounded-2xl p-6 dark:border-border"
                 style={{ border: "1.5px solid #d4e6d4" }}
               >
-                <b.icon
-                  className="h-8 w-8 text-[#16a34a] mb-4"
-                  strokeWidth={1.75}
-                />
-                <h3 className="font-bold text-gray-900 dark:text-foreground text-lg mb-1.5">
-                  {b.title}
-                </h3>
+                <div className="flex items-center gap-3 mb-4">
+                  <b.icon
+                    className="h-7 w-7 text-primary shrink-0"
+                    strokeWidth={1.75}
+                  />
+                  <h3 className="font-bold text-gray-900 dark:text-foreground text-lg">
+                    {b.title}
+                  </h3>
+                </div>
                 <p className="text-sm text-gray-500 dark:text-muted-foreground leading-relaxed">
                   {b.desc}
                 </p>
@@ -1202,8 +1207,8 @@ export default function HomePage() {
 
       {/* ── ¿TIENES UNA CANCHA? ───────────────────────────────────── */}
       <section className="py-14 bg-gray-50 dark:bg-muted/20">
-        <div className="container mx-auto px-4">
-          <div className="max-w-5xl mx-auto rounded-2xl overflow-hidden bg-white dark:bg-card border border-gray-100 dark:border-border shadow-sm flex flex-col md:flex-row">
+        <div className="container mx-auto px-8 lg:px-12">
+          <div className="rounded-2xl overflow-hidden bg-white dark:bg-card border border-gray-100 dark:border-border shadow-sm flex flex-col md:flex-row">
             {/* Texto */}
             <div className="flex-1 p-8 md:p-10 flex flex-col justify-center">
               {/* Badge */}
@@ -1314,7 +1319,7 @@ export default function HomePage() {
         </div>
         <div className="absolute -left-12 top-1/2 -translate-y-1/2 w-64 h-64 rounded-full bg-[#16a34a]/20 blur-3xl pointer-events-none" />
 
-        <div className="container mx-auto px-4 relative">
+        <div className="container mx-auto px-8 lg:px-12 relative">
           <div className="max-w-2xl">
             {/* Badges de confianza */}
             <div className="flex flex-wrap gap-2 mb-6">
