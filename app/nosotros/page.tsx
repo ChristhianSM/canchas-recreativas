@@ -99,7 +99,7 @@ export default function NosotrosPage() {
       {/* ── HISTORIA ──────────────────────────────────────── */}
       <section className="bg-white dark:bg-background">
         <div className="container mx-auto px-8 lg:px-12 py-16">
-          <div className="grid md:grid-cols-2 gap-14 items-center max-w-5xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-14 items-center">
             {/* Texto */}
             <div>
               <span className="text-xs font-bold uppercase tracking-widest text-primary">
@@ -195,7 +195,7 @@ export default function NosotrosPage() {
             </h2>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-6">
             {/* Misión */}
             <div className="bg-white dark:bg-card rounded-2xl border border-gray-100 dark:border-border p-8 shadow-sm">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 mb-6">
@@ -238,7 +238,7 @@ export default function NosotrosPage() {
             </h2>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 max-w-5xl mx-auto">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {VALORES.map((v) => (
               <div
                 key={v.title}
@@ -276,7 +276,7 @@ export default function NosotrosPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {STATS.map((s) => (
               <div key={s.label} className="text-center">
                 <div className="flex justify-center mb-3">
