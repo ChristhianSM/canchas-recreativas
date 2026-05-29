@@ -15,6 +15,7 @@ import {
   Users,
   Newspaper,
   Phone,
+  CircleUser,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -119,11 +120,11 @@ export function Header() {
   };
 
   const navItems = [
-    { href: "/",           label: "Inicio",       icon: Home },
-    { href: "/nosotros",   label: "Nosotros",     icon: Users },
-    { href: "/canchas",    label: "Canchas",      icon: Calendar },
-    { href: "/noticias",   label: "Noticias",     icon: Newspaper },
-    { href: "/contacto",   label: "Contáctanos",  icon: Phone },
+    { href: "/", label: "Inicio", icon: Home },
+    { href: "/nosotros", label: "Nosotros", icon: Users },
+    { href: "/canchas", label: "Canchas", icon: Calendar },
+    { href: "/noticias", label: "Noticias", icon: Newspaper },
+    { href: "/contacto", label: "Contáctanos", icon: Phone },
     ...(user
       ? [{ href: "/mis-reservas", label: "Mis Reservas", icon: CalendarCheck }]
       : []),
@@ -145,26 +146,93 @@ export function Header() {
 
         {/* Desktop Navigation */}
         <nav className="hidden flex-1 items-center justify-center gap-0.5 md:flex">
-          {navItems.filter(i => i.href !== '/mis-reservas').map((item) => {
-            const isActive = pathname === item.href;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`rounded-lg px-3 py-2 text-sm font-medium transition-all ${
-                  isActive
-                    ? "bg-[#16a34a]/10 text-[#16a34a]"
-                    : "text-foreground hover:bg-[#16a34a]/10 hover:text-[#16a34a]"
-                }`}
-              >
-                {item.label}
-              </Link>
-            );
-          })}
+          {navItems
+            .filter((i) => i.href !== "/mis-reservas")
+            .map((item) => {
+              const isActive = pathname === item.href;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`rounded-lg px-3 py-2 text-sm font-medium transition-all ${
+                    isActive
+                      ? "bg-primary/10 text-primary"
+                      : "text-foreground hover:bg-primary/10 hover:text-primary"
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
         </nav>
 
-        {/* Desktop Auth */}
-        <div className="hidden items-center gap-3 md:flex shrink-0">
+        {/* Tablet Auth (768–1023px) — solo ícono circular */}
+        <div className="hidden md:flex lg:hidden items-center shrink-0">
+          {!hydrated ? (
+            <div className="h-8 w-8 animate-pulse rounded-full bg-muted" />
+          ) : user?.name ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
+                  {user.name.charAt(0).toUpperCase()}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem asChild>
+                  <Link
+                    href="/mis-reservas"
+                    className="flex items-center gap-2 cursor-pointer"
+                  >
+                    <Calendar className="h-4 w-4" />
+                    Mis Reservas
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link
+                    href="/perfil"
+                    className="flex items-center gap-2 cursor-pointer"
+                  >
+                    <User className="h-4 w-4" />
+                    Mi Perfil
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={handleLogout}
+                  className="cursor-pointer text-destructive focus:text-destructive"
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Cerrar Sesión
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex h-9 w-9 items-center justify-center rounded-full text-primary hover:bg-primary/10 transition-colors">
+                  <CircleUser className="h-6 w-6" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuItem asChild>
+                  <Link href="/login" className="flex items-center gap-2 cursor-pointer">
+                    <User className="h-4 w-4" />
+                    Iniciar Sesión
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/registro" className="flex items-center gap-2 cursor-pointer">
+                    <CircleUser className="h-4 w-4" />
+                    Registrarse
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
+
+        {/* Desktop Auth (≥1024px) — botones de texto */}
+        <div className="hidden items-center gap-3 lg:flex shrink-0">
           {!hydrated ? (
             /* Skeleton mientras se lee localStorage */
             <div className="h-8 w-32 animate-pulse rounded-lg bg-muted" />
@@ -212,7 +280,7 @@ export function Header() {
             <>
               <Link
                 href="/login"
-                className="text-sm font-medium text-foreground hover:text-[#16a34a] transition-colors"
+                className="text-sm font-medium text-foreground hover:text-primary transition-colors"
               >
                 Iniciar Sesión
               </Link>
@@ -224,101 +292,107 @@ export function Header() {
         </div>
 
         {/* Mobile Navigation */}
-        <Sheet open={open} onOpenChange={setOpen}>
-          <SheetTrigger asChild className="md:hidden">
-            <Button variant="ghost" size="icon">
-              <Menu className="h-5 w-5" />
-              <span className="sr-only">Abrir menú</span>
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="right" className="w-[280px] bg-card p-0">
-            {/* Título oculto para accesibilidad */}
-            <SheetTitle className="sr-only">Menú de navegación</SheetTitle>
-            <div className="h-16 border-b border-border" />
-            <nav className="flex flex-col gap-1 p-4 pt-0">
-              {navItems.map((item) => {
-                const isActive = pathname === item.href;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setOpen(false)}
-                    className={`flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium transition-colors ${
-                      isActive
-                        ? "bg-[#16a34a]/10 text-[#16a34a]"
-                        : "text-foreground hover:bg-secondary"
-                    }`}
-                  >
-                    <item.icon
-                      className={`h-5 w-5 ${isActive ? "text-[#16a34a]" : "text-primary"}`}
-                    />
-                    {item.label}
-                  </Link>
-                );
-              })}
-              <div className="mt-4 flex flex-col gap-2 border-t border-border pt-4">
-                {!hydrated ? (
-                  /* Skeleton mobile */
-                  <div className="space-y-2 px-1">
-                    <div className="h-10 w-full animate-pulse rounded-lg bg-muted" />
-                    <div className="h-10 w-full animate-pulse rounded-lg bg-muted" />
-                  </div>
-                ) : user?.name ? (
-                  <>
-                    <div className="flex items-center gap-3 px-4 py-2">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
-                        {user.name.charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-foreground">
-                          {user.name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {user.email}
-                        </p>
-                      </div>
+        <div className="flex items-center gap-1 md:hidden">
+          {/* Icono circular login/usuario */}
+          {hydrated &&
+            (user?.name ? (
+              <Link
+                href="/perfil"
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground"
+              >
+                {user.name.charAt(0).toUpperCase()}
+              </Link>
+            ) : (
+              <Link
+                href="/login"
+                className="flex items-center justify-center text-primary hover:bg-primary/10 transition-colors"
+              >
+                <CircleUser className="h-6 w-6" />
+              </Link>
+            ))}
+          <Sheet open={open} onOpenChange={setOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <Menu className="h-5 w-5" />
+                <span className="sr-only">Abrir menú</span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-[280px] bg-card p-0">
+              {/* Título oculto para accesibilidad */}
+              <SheetTitle className="sr-only">Menú de navegación</SheetTitle>
+              <div className="h-16 border-b border-border" />
+              <nav className="flex flex-col gap-1 p-4 pt-0">
+                {navItems.map((item) => {
+                  const isActive = pathname === item.href;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setOpen(false)}
+                      className={`flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium transition-colors ${
+                        isActive
+                          ? "bg-primary/10 text-primary"
+                          : "text-foreground hover:bg-secondary"
+                      }`}
+                    >
+                      <item.icon className="h-5 w-5 text-primary" />
+                      {item.label}
+                    </Link>
+                  );
+                })}
+                <div className="mt-4 flex flex-col gap-2 border-t border-border pt-4">
+                  {!hydrated ? (
+                    /* Skeleton mobile */
+                    <div className="space-y-2 px-1">
+                      <div className="h-10 w-full animate-pulse rounded-lg bg-muted" />
+                      <div className="h-10 w-full animate-pulse rounded-lg bg-muted" />
                     </div>
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start"
-                      asChild
-                    >
-                      <Link href="/perfil" onClick={() => setOpen(false)}>
-                        <User className="mr-2 h-4 w-4" />
-                        Mi Perfil
-                      </Link>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start text-destructive hover:text-destructive"
-                      onClick={handleLogout}
-                    >
-                      <LogOut className="mr-2 h-4 w-4" />
-                      Cerrar Sesión
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <Button
-                      variant="outline"
-                      className="w-full justify-center"
-                      asChild
-                    >
-                      <Link href="/login" onClick={() => setOpen(false)}>
-                        Iniciar Sesión
-                      </Link>
-                    </Button>
+                  ) : user?.name ? (
+                    <>
+                      <div className="flex items-center gap-3 px-4 py-2">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
+                          {user.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-foreground">
+                            {user.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {user.email}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start"
+                        asChild
+                      >
+                        <Link href="/perfil" onClick={() => setOpen(false)}>
+                          <User className="mr-2 h-4 w-4" />
+                          Mi Perfil
+                        </Link>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start text-destructive hover:text-destructive"
+                        onClick={handleLogout}
+                      >
+                        <LogOut className="mr-2 h-4 w-4" />
+                        Cerrar Sesión
+                      </Button>
+                    </>
+                  ) : (
                     <Button className="w-full justify-center" asChild>
                       <Link href="/registro" onClick={() => setOpen(false)}>
                         Registrarse
                       </Link>
                     </Button>
-                  </>
-                )}
-              </div>
-            </nav>
-          </SheetContent>
-        </Sheet>
+                  )}
+                </div>
+              </nav>
+            </SheetContent>
+          </Sheet>
+        </div>
       </div>
     </header>
   );

@@ -59,24 +59,20 @@ export default function RecuperarContrasenaPage() {
     }
   };
 
-  const Background = () => (
-    <div className="fixed inset-0 -z-10">
-      <Image
-        src="/images/cancha-login.png"
-        alt="Cancha deportiva"
-        fill
-        className="object-cover object-center"
-        priority
-      />
-      <div className="absolute inset-0 bg-black/60" />
-    </div>
-  );
-
   if (enviado) {
     return (
-      <div className="relative min-h-screen flex items-center justify-center px-4">
-        <Background />
-        <div className="w-full max-w-md bg-white dark:bg-card rounded-2xl shadow-2xl p-8 text-center space-y-6">
+      <div className="relative min-h-screen flex items-center justify-center px-4 overflow-hidden">
+        <div className="absolute inset-0">
+          <Image
+            src="/images/hero-futbol.jpg"
+            alt="Cancha deportiva"
+            fill
+            className="object-cover object-center scale-105 blur-sm"
+            priority
+          />
+          <div className="absolute inset-0 bg-black/55" />
+        </div>
+        <div className="relative z-10 w-full max-w-md bg-white dark:bg-card rounded-2xl shadow-2xl p-8 text-center space-y-6">
           <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
             <CheckCircle2 className="h-10 w-10 text-primary" />
           </div>
@@ -101,25 +97,34 @@ export default function RecuperarContrasenaPage() {
   }
 
   return (
-    <div className="relative min-h-screen flex flex-col">
-      <Background />
+    <div className="relative min-h-screen flex flex-col overflow-hidden">
+      <div className="absolute inset-0">
+        <Image
+          src="/images/login.jpg"
+          alt="Cancha deportiva"
+          fill
+          className="object-cover object-center scale-105 blur-sm"
+          priority
+        />
+        <div className="absolute inset-0 bg-black/55" />
+      </div>
 
       {/* Header transparente */}
-      <header className="border-b border-gray-200 bg-white backdrop-blur-sm sticky top-0">
-        <div className="container mx-auto flex items-center gap-4 px-4 py-4  ">
+      <header className="sticky top-0 z-10 ">
+        <div className="container mx-auto flex items-center gap-4 px-4 py-4">
           <Link
             href="/login"
-            className="flex cursor-pointer items-center text-black/80 hover:text-white transition-colors"
+            className="flex cursor-pointer items-center text-white/80 hover:text-white transition-colors"
           >
             <ArrowLeft className="h-5 w-5" />
           </Link>
-          <h1 className="text-lg font-semibold text-black">
+          <h1 className="text-lg font-semibold text-white">
             Recuperar contraseña
           </h1>
         </div>
       </header>
 
-      <main className="flex-1 flex items-center justify-center px-4 py-12">
+      <main className="relative z-10 flex-1 flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-md bg-white dark:bg-card rounded-2xl shadow-2xl p-8">
           {/* Logo */}
           <div className="mb-8 text-center">
@@ -139,19 +144,13 @@ export default function RecuperarContrasenaPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="space-y-2">
-              <label
-                htmlFor="email"
-                className="text-sm font-medium text-foreground"
-              >
-                Correo electrónico
-              </label>
+            <div className="space-y-1.5">
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   id="email"
                   type="email"
-                  placeholder="tu@correo.com"
+                  placeholder="Correo electrónico"
                   className={`pl-9 ${error ? "border-destructive" : ""}`}
                   value={email}
                   onChange={(e) => {

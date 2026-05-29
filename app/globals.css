@@ -57,6 +57,7 @@
   /* ── Colores de marca ── */
   --brand-yellow: #fabc09;
   --brand-green: #028414;
+  --brand-green-light: #d1fae5;
   --brand-red: #f23030;
   --brand-black: #0d0d0d;
 }
@@ -155,6 +156,7 @@
   /* Colores de marca */
   --color-brand-yellow: var(--brand-yellow);
   --color-brand-green: var(--brand-green);
+  --color-brand-green-light: var(--brand-green-light);
   --color-brand-red: var(--brand-red);
   --color-brand-black: var(--brand-black);
 }
@@ -340,5 +342,8 @@ h1, h2, h3, h4, h5, h6 {
   .container {
     max-width: 1440px;
     margin-inline: auto;
+  }
+  .bg-brand-green-light {
+    background-color: var(--brand-green-light);
   }
 }
