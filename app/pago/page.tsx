@@ -102,9 +102,6 @@ function PagoContent() {
   const [telefonoRegistrado, setTelefonoRegistrado] = useState("");
   const [telefonoError, setTelefonoError] = useState("");
 
-  const [telefonoWa, setTelefonoWa] = useState("");
-  const [telefonoWaError, setTelefonoWaError] = useState("");
-
   // Cargar cancha
   useEffect(() => {
     if (!canchaId) return;
@@ -299,6 +296,9 @@ function PagoContent() {
   const montoAdelanto =
     modoPago === "parcial" ? Math.round(total * 0.2) : total;
   const saldoPendiente = modoPago === "parcial" ? total - montoAdelanto : 0;
+  // Valores fijos del 20%/80% para mostrar en el botón (independiente del modo seleccionado)
+  const previewAdelanto = Math.round(total * 0.2);
+  const previewSaldo = total - previewAdelanto;
 
   const fechaLabel = new Date(fecha + "T00:00:00").toLocaleDateString("es-PE", {
     weekday: "long",
@@ -357,17 +357,14 @@ function PagoContent() {
       } else {
         setEmailError("");
       }
-      if (telefonoInvitado && !/^9\d{8}$/.test(telefonoInvitado)) {
+      if (!telefonoInvitado.trim()) {
+        setTelefonoError("Ingresa tu número de WhatsApp");
+        ok = false;
+      } else if (!/^9\d{8}$/.test(telefonoInvitado)) {
         setTelefonoError("Número inválido (9 dígitos, empieza en 9)");
         ok = false;
       } else {
         setTelefonoError("");
-      }
-      if (telefonoWa && !/^9\d{8}$/.test(telefonoWa)) {
-        setTelefonoWaError("Número inválido (9 dígitos, empieza en 9)");
-        ok = false;
-      } else {
-        setTelefonoWaError("");
       }
       return ok;
     } else {
@@ -398,11 +395,6 @@ function PagoContent() {
           return;
         }
         setEmailError("");
-        if (telefonoWa && !/^9\d{8}$/.test(telefonoWa)) {
-          setTelefonoWaError("Número inválido (9 dígitos, empieza con 9)");
-          return;
-        }
-        setTelefonoWaError("");
       }
       setEnviando(true);
       const res = await apiCrearReserva({
@@ -425,7 +417,6 @@ function PagoContent() {
               emailInvitado,
               telefonoInvitado: telefonoInvitado || "",
               metodoDevolucion: "yape",
-              ...(telefonoWa ? { whatsappInvitado: telefonoWa } : {}),
             }
           : {}),
       });
@@ -469,9 +460,8 @@ function PagoContent() {
       ...(esInvitado && emailInvitado
         ? {
             emailInvitado,
-            telefonoInvitado: telefonoInvitado || "MISMO_NUMERO_PAGO",
+            telefonoInvitado: telefonoInvitado,
             metodoDevolucion: metodo,
-            ...(telefonoWa ? { whatsappInvitado: telefonoWa } : {}),
           }
         : {}),
       ...(!esInvitado
@@ -493,7 +483,6 @@ function PagoContent() {
       );
       return;
     }
-    await new Promise((r) => setTimeout(r, 800));
     limpiarInicioBloqueo(canchaId, fecha, hora);
     fetch("/api/bloqueos", {
       method: "DELETE",
@@ -514,16 +503,6 @@ function PagoContent() {
     if (i > 0) setPaso(orden[i - 1]);
   };
 
-  // Solo desktop: salta directo a confirmar desde el form unificado
-  const handleFormSubmit = () => {
-    if (!validarDatos()) return;
-    if (soloEfectivo) {
-      handleEnviar();
-      return;
-    }
-    setPaso("confirmar");
-  };
-
   const PASOS_LABELS = soloEfectivo
     ? (["Pago", "Datos", "Resumen"] as const)
     : (["Pago", "Datos", "Método", "Confirmar"] as const);
@@ -532,71 +511,69 @@ function PagoContent() {
     ? { pago: 0, datos: 1, metodo: 2 }
     : { pago: 0, datos: 1, metodo: 2, confirmar: 3 };
 
-  const Stepper = ({ actual }: { actual: string }) => {
-    const idx = PASO_INDEX[actual] ?? 0;
-    return (
-      <div className="flex items-center justify-center gap-0 w-full">
-        {PASOS_LABELS.map((label, i) => {
-          const done = i < idx;
-          const current = i === idx;
-          return (
-            <div key={label} className="flex items-center">
-              <div className="flex flex-col items-center gap-1">
-                <div
-                  className={cn(
-                    "flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-all",
-                    done
-                      ? "bg-primary text-primary-foreground"
-                      : current
-                        ? "bg-primary text-primary-foreground ring-4 ring-primary/20"
-                        : "bg-muted text-muted-foreground",
-                  )}
-                >
-                  {done ? (
-                    <svg
-                      className="h-3.5 w-3.5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={3}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                  ) : (
-                    i + 1
-                  )}
-                </div>
-                <span
-                  className={cn(
-                    "text-[10px] font-medium",
-                    current
-                      ? "text-primary"
-                      : done
-                        ? "text-primary/70"
-                        : "text-muted-foreground",
-                  )}
-                >
-                  {label}
-                </span>
+  const idx = PASO_INDEX[paso] ?? 0;
+  const stepperJSX = (
+    <div className="flex items-center justify-center gap-0 w-full">
+      {PASOS_LABELS.map((label, i) => {
+        const done = i < idx;
+        const current = i === idx;
+        return (
+          <div key={label} className="flex items-center">
+            <div className="flex flex-col items-center gap-1">
+              <div
+                className={cn(
+                  "flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-all",
+                  done
+                    ? "bg-primary text-primary-foreground"
+                    : current
+                      ? "bg-primary text-primary-foreground ring-4 ring-primary/20"
+                      : "bg-muted text-muted-foreground",
+                )}
+              >
+                {done ? (
+                  <svg
+                    className="h-3.5 w-3.5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={3}
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                ) : (
+                  i + 1
+                )}
               </div>
-              {i < PASOS_LABELS.length - 1 && (
-                <div
-                  className={cn(
-                    "h-0.5 w-8 mx-1 mb-4 transition-all",
-                    i < idx ? "bg-primary" : "bg-muted",
-                  )}
-                />
-              )}
+              <span
+                className={cn(
+                  "text-[10px] font-medium",
+                  current
+                    ? "text-primary"
+                    : done
+                      ? "text-primary/70"
+                      : "text-muted-foreground",
+                )}
+              >
+                {label}
+              </span>
             </div>
-          );
-        })}
-      </div>
-    );
-  };
+            {i < PASOS_LABELS.length - 1 && (
+              <div
+                className={cn(
+                  "h-0.5 w-8 mx-1 mb-4 transition-all",
+                  i < idx ? "bg-primary" : "bg-muted",
+                )}
+              />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
 
   const headerTitles: Record<string, string> = {
     pago: "Tipo de pago",
@@ -711,8 +688,103 @@ function PagoContent() {
     );
   }
 
+  // ── Opciones de modo de pago (compartido mobile/desktop) ──
+  const modoPagoOpcionesJSX = (
+    <div className="space-y-3">
+      <button
+        onClick={() => setModoPago("completo")}
+        className={cn(
+          "w-full text-left rounded-2xl border-2 p-4 transition-all",
+          modoPago === "completo"
+            ? "border-primary bg-primary/5 shadow-sm"
+            : "border-border hover:border-muted-foreground/40",
+        )}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <div
+              className={cn(
+                "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2",
+                modoPago === "completo"
+                  ? "border-primary bg-primary"
+                  : "border-muted-foreground/40",
+              )}
+            >
+              {modoPago === "completo" && (
+                <svg className="h-3 w-3 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+            </div>
+            <span className="font-semibold text-foreground">
+              Pago completo (100%)
+            </span>
+          </div>
+          <Badge className="shrink-0 bg-primary/10 text-primary border-primary/20 text-xs">
+            Recomendado
+          </Badge>
+        </div>
+        <p className="mt-2 ml-7 text-sm font-bold text-primary">
+          S/ {total} ahora
+        </p>
+        <ul className="mt-2 ml-7 space-y-1">
+          <li className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-500" />
+            Cancelación con devolución hasta 85%
+          </li>
+          <li className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-500" />
+            Reserva garantizada
+          </li>
+        </ul>
+      </button>
+      <button
+        onClick={() => total > 0 && setModoPago("parcial")}
+        disabled={total === 0}
+        className={cn(
+          "w-full text-left rounded-2xl border-2 p-4 transition-all",
+          total === 0 && "opacity-50 cursor-not-allowed",
+          modoPago === "parcial" && total > 0
+            ? "border-amber-500 bg-amber-500/5 shadow-sm"
+            : "border-border hover:border-muted-foreground/40",
+        )}
+      >
+        <div className="flex items-center gap-2">
+          <div
+            className={cn(
+              "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2",
+              modoPago === "parcial" && total > 0
+                ? "border-amber-500 bg-amber-500"
+                : "border-muted-foreground/40",
+            )}
+          >
+            {modoPago === "parcial" && total > 0 && (
+              <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+              </svg>
+            )}
+          </div>
+          <span className="font-semibold text-foreground">
+            Pago con adelanto (20%)
+          </span>
+        </div>
+        <p className="mt-2 ml-7 text-sm text-muted-foreground">
+          <span className="font-bold text-foreground">S/ {previewAdelanto}</span>{" "}
+          ahora ·{" "}
+          <span className="font-medium">S/ {previewSaldo}</span>{" "}
+          en cancha
+        </p>
+        <div className="mt-2 ml-7">
+          <span className="text-xs text-amber-600 font-medium">
+            ⚠ Sin devolución al cancelar
+          </span>
+        </div>
+      </button>
+    </div>
+  );
+
   // ── Columna derecha: resumen de reserva (reutilizado en ambos pasos) ──
-  const ResumenReserva = () => (
+  const resumenReserva = (
     <div className="bg-white dark:bg-card rounded-2xl border border-border overflow-hidden shadow-sm">
       <div className="relative aspect-video w-full">
         <Image
@@ -779,12 +851,13 @@ function PagoContent() {
                 <span className="text-foreground">S/ {extraChalecos}</span>
               </div>
             )}
-          {descuento > 0 && (
-            <div className="flex justify-between text-primary">
-              <span>Descuento cupón</span>
-              <span>− S/ {descuento}</span>
-            </div>
-          )}
+          <div className={cn(
+            "flex justify-between text-primary overflow-hidden transition-all duration-300",
+            descuento > 0 ? "max-h-8 opacity-100" : "max-h-0 opacity-0"
+          )}>
+            <span>🎟 Descuento cupón</span>
+            <span>− S/ {descuento}</span>
+          </div>
           <Separator />
           <div className="flex justify-between font-bold text-base">
             <span className="text-foreground">Total</span>
@@ -799,7 +872,9 @@ function PagoContent() {
         </div>
         <div className="rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 px-3 py-2.5">
           <p className="text-xs text-amber-700 dark:text-amber-400">
-            Cancela hasta 2 h antes sin costo. Después, se cobra el 50%.
+            {modoPago === "parcial"
+              ? "El adelanto (S/ " + previewAdelanto + ") no se devuelve si cancelas."
+              : "Cancela hasta 2 h antes sin costo. Después, se cobra el 50%."}
           </p>
         </div>
       </div>
@@ -807,7 +882,7 @@ function PagoContent() {
   );
 
   // JSX reutilizable: QR + comprobante (compartido mobile/desktop)
-  const ConfirmarPagoJSX = () => (
+  const confirmarPagoJSX = (
     <>
       <div className="flex justify-center">
         <div
@@ -1043,14 +1118,14 @@ function PagoContent() {
         </div>
         {/* Stepper solo mobile */}
         <div className="lg:hidden px-4 pb-3 pt-1">
-          <Stepper actual={paso} />
+          {stepperJSX}
         </div>
       </header>
 
       {/* ══════════════════════════════════════════════════════════
           MOBILE: wizard original con pasos
       ══════════════════════════════════════════════════════════ */}
-      <div className="lg:hidden container mx-auto max-w-lg px-4 py-6 space-y-5">
+      <div key={paso} className="lg:hidden container mx-auto max-w-lg px-4 py-6 space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
         {/* PASO 1: TIPO DE PAGO */}
         {paso === "pago" && (
           <>
@@ -1251,119 +1326,7 @@ function PagoContent() {
                   <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     ¿Cómo quieres pagar?
                   </p>
-                  <div className="space-y-3">
-                    <button
-                      onClick={() => setModoPago("completo")}
-                      className={cn(
-                        "w-full text-left rounded-2xl border-2 p-4 transition-all",
-                        modoPago === "completo"
-                          ? "border-primary bg-primary/5 shadow-sm"
-                          : "border-border hover:border-muted-foreground/40",
-                      )}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-center gap-2">
-                          <div
-                            className={cn(
-                              "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2",
-                              modoPago === "completo"
-                                ? "border-primary bg-primary"
-                                : "border-muted-foreground/40",
-                            )}
-                          >
-                            {modoPago === "completo" && (
-                              <svg
-                                className="h-3 w-3 text-primary-foreground"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={3}
-                                  d="M5 13l4 4L19 7"
-                                />
-                              </svg>
-                            )}
-                          </div>
-                          <span className="font-semibold text-foreground">
-                            Pago completo (100%)
-                          </span>
-                        </div>
-                        <Badge className="shrink-0 bg-primary/10 text-primary border-primary/20 text-xs">
-                          Recomendado
-                        </Badge>
-                      </div>
-                      <p className="mt-2 ml-7 text-sm font-bold text-primary">
-                        S/ {total} ahora
-                      </p>
-                      <ul className="mt-2 ml-7 space-y-1">
-                        <li className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-500" />
-                          Cancelación con devolución hasta 85%
-                        </li>
-                        <li className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-500" />
-                          Reserva garantizada
-                        </li>
-                      </ul>
-                    </button>
-                    <button
-                      onClick={() => total > 0 && setModoPago("parcial")}
-                      disabled={total === 0}
-                      className={cn(
-                        "w-full text-left rounded-2xl border-2 p-4 transition-all",
-                        total === 0 && "opacity-50 cursor-not-allowed",
-                        modoPago === "parcial" && total > 0
-                          ? "border-amber-500 bg-amber-500/5 shadow-sm"
-                          : "border-border hover:border-muted-foreground/40",
-                      )}
-                    >
-                      <div className="flex items-center gap-2">
-                        <div
-                          className={cn(
-                            "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2",
-                            modoPago === "parcial" && total > 0
-                              ? "border-amber-500 bg-amber-500"
-                              : "border-muted-foreground/40",
-                          )}
-                        >
-                          {modoPago === "parcial" && total > 0 && (
-                            <svg
-                              className="h-3 w-3 text-white"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={3}
-                                d="M5 13l4 4L19 7"
-                              />
-                            </svg>
-                          )}
-                        </div>
-                        <span className="font-semibold text-foreground">
-                          Pago con adelanto (20%)
-                        </span>
-                      </div>
-                      <p className="mt-2 ml-7 text-sm text-muted-foreground">
-                        <span className="font-bold text-foreground">
-                          S/ {montoAdelanto}
-                        </span>{" "}
-                        ahora ·{" "}
-                        <span className="font-medium">S/ {saldoPendiente}</span>{" "}
-                        en cancha
-                      </p>
-                      <div className="mt-2 ml-7">
-                        <span className="text-xs text-amber-600 font-medium">
-                          ⚠ Sin devolución al cancelar
-                        </span>
-                      </div>
-                    </button>
-                  </div>
+                  {modoPagoOpcionesJSX}
                 </div>
                 {modoPago === "parcial" && (
                   <div className="flex items-start gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4">
@@ -1446,7 +1409,7 @@ function PagoContent() {
               </div>
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-foreground">
-                  Número de celular
+                  {esInvitado ? "WhatsApp *" : "Número de celular"}
                 </label>
                 <div className="flex gap-2">
                   <div className="flex items-center gap-1.5 rounded-lg border border-border bg-muted px-3 py-2 text-sm font-medium text-muted-foreground shrink-0">
@@ -1785,7 +1748,7 @@ function PagoContent() {
         )}
 
         {/* PASO 4: CONFIRMAR PAGO */}
-        {paso === "confirmar" && !soloEfectivo && <ConfirmarPagoJSX />}
+        {paso === "confirmar" && !soloEfectivo && confirmarPagoJSX}
       </div>
 
       {/* ══════════════════════════════════════════════════════════
@@ -1795,163 +1758,144 @@ function PagoContent() {
         <div className="container mx-auto px-8 lg:px-12 py-10 space-y-8">
           {/* Stepper */}
           <div className="bg-white dark:bg-card rounded-2xl border border-border px-10 py-5">
-            <Stepper actual={paso} />
+            {stepperJSX}
           </div>
 
-          {/* Grid: 1 col izquierda cuando hay pasos completados */}
-          <div
-            className={cn(
-              "grid gap-8 items-start",
-              paso === "pago"
-                ? "grid-cols-[1fr_360px]"
-                : "grid-cols-[380px_1fr_360px]",
-            )}
-          >
-            {/* ── Columna izquierda: resumen progresivo de pasos completados ── */}
-            {paso !== "pago" && (
-              <div className="space-y-4">
-                {/* Tipo de pago — visible desde paso 2 en adelante */}
-                <div className="bg-white dark:bg-card rounded-2xl border border-border p-5">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary">
-                        <svg
-                          className="h-3.5 w-3.5 text-primary-foreground"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={3}
-                            d="M5 13l4 4L19 7"
-                          />
-                        </svg>
-                      </div>
-                      <span className="text-sm font-semibold text-foreground">
-                        Tipo de pago
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => setPaso("pago")}
-                      className="text-xs font-medium text-primary hover:underline"
-                    >
-                      Editar
-                    </button>
-                  </div>
-                  <p className="text-sm font-medium text-foreground">
-                    {modoPago === "completo" ? "Pago completo" : "Adelanto 20%"}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    S/ {montoAdelanto} a pagar ahora
-                  </p>
-                </div>
-
-                {/* Identificación — visible desde paso 3 en adelante */}
-                {(paso === "metodo" || paso === "confirmar") && (
-                  <div className="bg-white dark:bg-card rounded-2xl border border-border p-5">
-                    <div className="flex items-center justify-between mb-3">
+          {/* Grid: siempre 3 columnas en desktop */}
+          <div className="grid grid-cols-[240px_1fr_300px] xl:grid-cols-[340px_1fr_360px] gap-6 xl:gap-8 items-start">
+            {/* ── Columna izquierda: todos los pasos siempre visibles ── */}
+            <div className="space-y-3 sticky top-20">
+              {/* Card 1: Tipo de pago */}
+              {(() => {
+                const done = paso !== "pago";
+                return (
+                  <div className={cn(
+                    "rounded-2xl border p-5 transition-all",
+                    done ? "bg-white dark:bg-card border-border" : "bg-white dark:bg-card border-primary shadow-sm ring-1 ring-primary/20"
+                  )}>
+                    <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary">
-                          <svg
-                            className="h-3.5 w-3.5 text-primary-foreground"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={3}
-                              d="M5 13l4 4L19 7"
-                            />
-                          </svg>
+                        <div className={cn(
+                          "flex h-6 w-6 shrink-0 items-center justify-center rounded-full",
+                          done ? "bg-primary" : "bg-primary ring-4 ring-primary/20"
+                        )}>
+                          {done ? (
+                            <svg className="h-3.5 w-3.5 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                          ) : <span className="text-xs font-bold text-primary-foreground">1</span>}
                         </div>
-                        <span className="text-sm font-semibold text-foreground">
+                        <span className="text-sm font-semibold text-foreground">Tipo de pago</span>
+                      </div>
+                      {done && (
+                        <button onClick={() => setPaso("pago")} className="text-xs font-medium text-primary hover:underline">Editar</button>
+                      )}
+                    </div>
+                    {done ? (
+                      <>
+                        <p className="text-sm font-medium text-foreground ml-8">{modoPago === "completo" ? "Pago completo" : "Adelanto 20%"}</p>
+                        <p className="text-xs text-muted-foreground ml-8 mt-0.5">S/ {montoAdelanto} a pagar ahora</p>
+                      </>
+                    ) : (
+                      <p className="text-xs text-muted-foreground ml-8">Elige completo o adelanto</p>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* Card 2: Identificación */}
+              {(() => {
+                const done = paso === "metodo" || paso === "confirmar";
+                const pending = paso === "pago" || paso === "datos";
+                return (
+                  <div className={cn(
+                    "rounded-2xl border p-5 transition-all",
+                    done ? "bg-white dark:bg-card border-border"
+                         : paso === "datos" ? "bg-white dark:bg-card border-primary shadow-sm ring-1 ring-primary/20"
+                         : "bg-muted/30 dark:bg-muted/10 border-border opacity-60"
+                  )}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <div className={cn(
+                          "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold",
+                          done ? "bg-primary"
+                               : paso === "datos" ? "bg-primary ring-4 ring-primary/20"
+                               : "bg-muted text-muted-foreground"
+                        )}>
+                          {done ? (
+                            <svg className="h-3.5 w-3.5 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                          ) : <span className={paso === "datos" ? "text-primary-foreground" : ""}>2</span>}
+                        </div>
+                        <span className={cn("text-sm font-semibold", pending && paso !== "datos" ? "text-muted-foreground" : "text-foreground")}>
                           Identificación
                         </span>
                       </div>
-                      <button
-                        onClick={() => setPaso("datos")}
-                        className="text-xs font-medium text-primary hover:underline"
-                      >
-                        Editar
-                      </button>
+                      {done && (
+                        <button onClick={() => setPaso("datos")} className="text-xs font-medium text-primary hover:underline">Editar</button>
+                      )}
                     </div>
-                    <div className="space-y-0.5 text-sm text-muted-foreground">
-                      <p className="truncate">
-                        {esInvitado
-                          ? emailInvitado || "—"
-                          : emailRegistrado || "—"}
-                      </p>
-                      <p>
-                        +51{" "}
-                        {esInvitado
-                          ? telefonoInvitado || "—"
-                          : telefonoRegistrado || "—"}
-                      </p>
-                    </div>
+                    {done ? (
+                      <div className="space-y-0.5 text-sm text-muted-foreground ml-8">
+                        <p className="truncate">{esInvitado ? emailInvitado || "—" : emailRegistrado || "—"}</p>
+                        <p>+51 {esInvitado ? telefonoInvitado || "—" : telefonoRegistrado || "—"}</p>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground ml-8">{paso === "datos" ? "Ingresa tu correo y teléfono" : "Pendiente"}</p>
+                    )}
                   </div>
-                )}
+                );
+              })()}
 
-                {/* Método de pago — visible solo en paso 4 */}
-                {paso === "confirmar" && !soloEfectivo && (
-                  <div className="bg-white dark:bg-card rounded-2xl border border-border p-5">
-                    <div className="flex items-center justify-between mb-3">
+              {/* Card 3: Método de pago (solo si no es soloEfectivo) */}
+              {!soloEfectivo && (() => {
+                const done = paso === "confirmar";
+                return (
+                  <div className={cn(
+                    "rounded-2xl border p-5 transition-all",
+                    done ? "bg-white dark:bg-card border-border"
+                         : paso === "metodo" ? "bg-white dark:bg-card border-primary shadow-sm ring-1 ring-primary/20"
+                         : "bg-muted/30 dark:bg-muted/10 border-border opacity-60"
+                  )}>
+                    <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary">
-                          <svg
-                            className="h-3.5 w-3.5 text-primary-foreground"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={3}
-                              d="M5 13l4 4L19 7"
-                            />
-                          </svg>
+                        <div className={cn(
+                          "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold",
+                          done ? "bg-primary"
+                               : paso === "metodo" ? "bg-primary ring-4 ring-primary/20"
+                               : "bg-muted text-muted-foreground"
+                        )}>
+                          {done ? (
+                            <svg className="h-3.5 w-3.5 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                          ) : <span className={paso === "metodo" ? "text-primary-foreground" : ""}>3</span>}
                         </div>
-                        <span className="text-sm font-semibold text-foreground">
+                        <span className={cn("text-sm font-semibold", paso !== "metodo" && !done ? "text-muted-foreground" : "text-foreground")}>
                           Método de pago
                         </span>
                       </div>
-                      <button
-                        onClick={() => setPaso("metodo")}
-                        className="text-xs font-medium text-primary hover:underline"
-                      >
-                        Editar
-                      </button>
+                      {done && (
+                        <button onClick={() => setPaso("metodo")} className="text-xs font-medium text-primary hover:underline">Editar</button>
+                      )}
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Image
-                        src={
-                          metodo === "yape"
-                            ? "/images/yape.png"
-                            : "/images/plin.png"
-                        }
-                        alt={metodo}
-                        width={20}
-                        height={20}
-                        className="rounded object-contain shrink-0"
-                      />
-                      <span className="text-sm font-medium text-foreground capitalize">
-                        {metodo}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        · S/ {montoAdelanto}
-                      </span>
-                    </div>
+                    {done ? (
+                      <div className="flex items-center gap-2 ml-8">
+                        <Image src={metodo === "yape" ? "/images/yape.png" : "/images/plin.png"} alt={metodo} width={18} height={18} className="rounded object-contain shrink-0" />
+                        <span className="text-sm font-medium text-foreground capitalize">{metodo}</span>
+                        <span className="text-xs text-muted-foreground">· S/ {montoAdelanto}</span>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground ml-8">{paso === "metodo" ? "Elige Yape o Plin" : "Pendiente"}</p>
+                    )}
                   </div>
-                )}
-              </div>
-            )}
+                );
+              })()}
+            </div>
 
             {/* ── Columna central: paso activo ── */}
-            <div className="space-y-5">
+            <div key={paso} className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
               {/* PASO 1: Tipo de pago */}
               {paso === "pago" && (
                 <>
@@ -2053,121 +1997,7 @@ function PagoContent() {
                         </div>
                       </div>
                     ) : (
-                      <div className="space-y-3">
-                        <button
-                          onClick={() => setModoPago("completo")}
-                          className={cn(
-                            "w-full text-left rounded-2xl border-2 p-4 transition-all",
-                            modoPago === "completo"
-                              ? "border-primary bg-primary/5 shadow-sm"
-                              : "border-border hover:border-muted-foreground/40",
-                          )}
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="flex items-center gap-2">
-                              <div
-                                className={cn(
-                                  "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2",
-                                  modoPago === "completo"
-                                    ? "border-primary bg-primary"
-                                    : "border-muted-foreground/40",
-                                )}
-                              >
-                                {modoPago === "completo" && (
-                                  <svg
-                                    className="h-3 w-3 text-primary-foreground"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={3}
-                                      d="M5 13l4 4L19 7"
-                                    />
-                                  </svg>
-                                )}
-                              </div>
-                              <span className="font-semibold text-foreground">
-                                Pago completo (100%)
-                              </span>
-                            </div>
-                            <Badge className="shrink-0 bg-primary/10 text-primary border-primary/20 text-xs">
-                              Recomendado
-                            </Badge>
-                          </div>
-                          <p className="mt-2 ml-7 text-sm font-bold text-primary">
-                            S/ {total} ahora
-                          </p>
-                          <ul className="mt-2 ml-7 space-y-1">
-                            <li className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                              <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-500" />
-                              Cancelación con devolución hasta 85%
-                            </li>
-                            <li className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                              <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-500" />
-                              Reserva garantizada
-                            </li>
-                          </ul>
-                        </button>
-                        <button
-                          onClick={() => total > 0 && setModoPago("parcial")}
-                          disabled={total === 0}
-                          className={cn(
-                            "w-full text-left rounded-2xl border-2 p-4 transition-all",
-                            total === 0 && "opacity-50 cursor-not-allowed",
-                            modoPago === "parcial" && total > 0
-                              ? "border-amber-500 bg-amber-500/5 shadow-sm"
-                              : "border-border hover:border-muted-foreground/40",
-                          )}
-                        >
-                          <div className="flex items-center gap-2">
-                            <div
-                              className={cn(
-                                "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2",
-                                modoPago === "parcial" && total > 0
-                                  ? "border-amber-500 bg-amber-500"
-                                  : "border-muted-foreground/40",
-                              )}
-                            >
-                              {modoPago === "parcial" && total > 0 && (
-                                <svg
-                                  className="h-3 w-3 text-white"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                  stroke="currentColor"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={3}
-                                    d="M5 13l4 4L19 7"
-                                  />
-                                </svg>
-                              )}
-                            </div>
-                            <span className="font-semibold text-foreground">
-                              Pago con adelanto (20%)
-                            </span>
-                          </div>
-                          <p className="mt-2 ml-7 text-sm text-muted-foreground">
-                            <span className="font-bold text-foreground">
-                              S/ {montoAdelanto}
-                            </span>{" "}
-                            ahora ·{" "}
-                            <span className="font-medium">
-                              S/ {saldoPendiente}
-                            </span>{" "}
-                            en cancha
-                          </p>
-                          <div className="mt-2 ml-7">
-                            <span className="text-xs text-amber-600 font-medium">
-                              ⚠ Sin devolución al cancelar
-                            </span>
-                          </div>
-                        </button>
-                      </div>
+                      modoPagoOpcionesJSX
                     )}
                   </div>
                   {!esInvitado && cupones.length > 0 && (
@@ -2305,7 +2135,7 @@ function PagoContent() {
                       </div>
                       <div className="space-y-1.5">
                         <label className="text-sm font-medium text-foreground">
-                          Número de celular
+                          {esInvitado ? "WhatsApp *" : "Número de celular"}
                         </label>
                         <div className="flex gap-2">
                           <div className="flex items-center gap-1.5 rounded-lg border border-border bg-muted px-3 py-2 text-sm font-medium text-muted-foreground shrink-0">
@@ -2509,12 +2339,12 @@ function PagoContent() {
               )}
 
               {/* PASO 4: Confirmar pago (QR + comprobante) */}
-              {paso === "confirmar" && !soloEfectivo && <ConfirmarPagoJSX />}
+              {paso === "confirmar" && !soloEfectivo && confirmarPagoJSX}
             </div>
 
             {/* ── Columna derecha: resumen sticky ── */}
             <div className="sticky top-20">
-              <ResumenReserva />
+              {resumenReserva}
             </div>
           </div>
         </div>
