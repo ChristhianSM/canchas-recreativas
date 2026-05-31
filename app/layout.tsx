@@ -84,7 +84,7 @@ export default function RootLayout({
   const organizationSchema = generateOrganizationSchema();
   
   return (
-    <html lang="es" className="bg-background h-full">
+    <html lang="es" className="bg-background h-full" style={{ overflowX: 'clip' }}>
       <head>
         {/* JSON-LD Schema para la organización */}
         <script

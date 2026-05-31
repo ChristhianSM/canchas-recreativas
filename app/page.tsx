@@ -555,7 +555,7 @@ export default function HomePage() {
           <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-transparent" />
         </div>
 
-        <div className="relative container mx-auto px-8 lg:px-12 py-16 md:py-24">
+        <div className="relative container mx-auto px-4 sm:px-8 lg:px-12 py-16 md:py-24">
           <div className="max-w-4xl">
             <div key={slideIndex}>
               <h3 className="text-[#4ade80] hero-enter">
@@ -608,89 +608,6 @@ export default function HomePage() {
                     />
                   </svg>
                 </button>
-
-                {/* Modal de ubicación */}
-                {showLocationModal && (
-                  <>
-                    <div
-                      className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
-                      onClick={() => setShowLocationModal(false)}
-                    />
-                    <div
-                      ref={locationRef}
-                      className="fixed z-50 bg-white dark:bg-card rounded-lg shadow-2xl border border-gray-200 dark:border-border p-4"
-                      style={{
-                        top: "calc(50dvh + 32px)",
-                        left: "50%",
-                        transform: "translate(-50%, -50%)",
-                        width: "min(340px, 90vw)",
-                      }}
-                    >
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="font-semibold text-sm">
-                          Seleccionar ubicación
-                        </h3>
-                        <button
-                          onClick={() => setShowLocationModal(false)}
-                          className="text-gray-400 hover:text-gray-600"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-
-                      {!userCoords && (
-                        <button
-                          onClick={handleRequestLocation}
-                          disabled={loadingLocation}
-                          className="w-full flex items-center justify-center gap-2 bg-[#16a34a] hover:bg-[#15803d] disabled:bg-gray-300 text-white font-medium px-4 py-2.5 rounded-md transition-colors text-sm"
-                        >
-                          {loadingLocation ? (
-                            <>
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                              Obteniendo ubicación...
-                            </>
-                          ) : (
-                            <>
-                              <MapPin className="h-4 w-4" />
-                              Usar mi ubicación actual
-                            </>
-                          )}
-                        </button>
-                      )}
-
-                      <div className="mt-3 pt-3 border-t border-gray-100 dark:border-border max-h-64 overflow-y-auto">
-                        {Object.entries(UBICACIONES_POR_CIUDAD).map(
-                          ([ciudad, distritos]) => (
-                            <div key={ciudad} className="mb-2">
-                              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1 px-1">
-                                {ciudad}
-                              </p>
-                              <div className="space-y-0.5">
-                                {distritos.map((distrito) => (
-                                  <button
-                                    key={distrito}
-                                    onClick={() => {
-                                      setUbicacion(distrito);
-                                      setShowLocationModal(false);
-                                    }}
-                                    className={`flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm transition-colors text-left ${
-                                      ubicacion === distrito
-                                        ? "bg-[#16a34a]/10 text-[#16a34a] font-medium"
-                                        : "text-gray-700 dark:text-foreground hover:bg-gray-50 dark:hover:bg-muted"
-                                    }`}
-                                  >
-                                    <MapPin className="h-3.5 w-3.5 shrink-0 text-gray-400" />
-                                    {distrito}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          ),
-                        )}
-                      </div>
-                    </div>
-                  </>
-                )}
               </div>
 
               {/* Fecha */}
@@ -731,99 +648,6 @@ export default function HomePage() {
                     />
                   </svg>
                 </button>
-
-                {/* Calendario */}
-                {showDatePicker && (
-                  <>
-                    <div
-                      className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
-                      onClick={() => setShowDatePicker(false)}
-                    />
-                    <div
-                      ref={dateRef}
-                      className="fixed z-50 bg-white dark:bg-card rounded-lg shadow-2xl border border-gray-200 dark:border-border p-4"
-                      style={{
-                        top: "calc(50dvh + 32px)",
-                        left: "50%",
-                        transform: "translate(-50%, -50%)",
-                        width: "min(320px, 90vw)",
-                      }}
-                    >
-                      <div className="flex items-center justify-between mb-4">
-                        <button
-                          onClick={handlePrevMonth}
-                          disabled={
-                            calendarMonth.getFullYear() ===
-                              new Date().getFullYear() &&
-                            calendarMonth.getMonth() <= new Date().getMonth()
-                          }
-                          className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                        >
-                          <ChevronLeft className="h-4 w-4 text-gray-600 dark:text-foreground" />
-                        </button>
-                        <h3 className="font-semibold text-sm capitalize">
-                          {calendarMonth.toLocaleDateString("es-PE", {
-                            month: "long",
-                            year: "numeric",
-                          })}
-                        </h3>
-                        <button
-                          onClick={handleNextMonth}
-                          className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-muted transition-colors"
-                        >
-                          <ChevronRight className="h-4 w-4 text-gray-600 dark:text-foreground" />
-                        </button>
-                      </div>
-
-                      {/* Días de la semana */}
-                      <div className="grid grid-cols-7 gap-1 mb-2">
-                        {["D", "L", "M", "M", "J", "V", "S"].map((day, i) => (
-                          <div
-                            key={i}
-                            className="text-center text-xs font-medium text-gray-500 py-1"
-                          >
-                            {day}
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Días del mes */}
-                      <div className="grid grid-cols-7 gap-1">
-                        {generateCalendar().map((day, index) => {
-                          if (!day) {
-                            return <div key={`empty-${index}`} />;
-                          }
-
-                          const today = new Date();
-                          today.setHours(0, 0, 0, 0);
-                          const dayDate = new Date(day);
-                          dayDate.setHours(0, 0, 0, 0);
-                          const isToday = dayDate.getTime() === today.getTime();
-                          const isSelected =
-                            dayDate.getTime() ===
-                            new Date(selectedDate).setHours(0, 0, 0, 0);
-                          const isPast = dayDate < today;
-
-                          return (
-                            <button
-                              key={index}
-                              onClick={() => !isPast && handleDateSelect(day)}
-                              disabled={isPast}
-                              className={`
-                                aspect-square flex items-center justify-center text-sm rounded-md transition-colors
-                                ${isPast ? "text-gray-300 cursor-not-allowed" : "hover:bg-gray-100 dark:hover:bg-muted"}
-                                ${isSelected ? "bg-[#16a34a] text-white hover:bg-[#15803d]" : ""}
-                                ${isToday && !isSelected ? "border-2 border-[#16a34a] text-[#16a34a] font-semibold" : ""}
-                              `}
-                            >
-                              {day.getDate()}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </>
-                )}
               </div>
 
               {/* Hora */}
@@ -862,91 +686,6 @@ export default function HomePage() {
                     />
                   </svg>
                 </button>
-
-                {/* Selector de hora */}
-                {showTimePicker && (
-                  <>
-                    <div
-                      className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
-                      onClick={() => setShowTimePicker(false)}
-                    />
-                    <div
-                      ref={timeRef}
-                      className="fixed z-50 bg-white dark:bg-card rounded-lg shadow-2xl border border-gray-200 dark:border-border p-4 max-h-[80dvh] overflow-y-auto"
-                      style={{
-                        top: "calc(50dvh + 32px)",
-                        left: "50%",
-                        transform: "translate(-50%, -50%)",
-                        width: "min(340px, 90vw)",
-                      }}
-                    >
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="font-semibold text-sm">
-                          Horarios disponibles
-                        </h3>
-                        <button
-                          onClick={() => setShowTimePicker(false)}
-                          className="text-gray-400 hover:text-gray-600"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-
-                      {loadingHours ? (
-                        <div className="flex items-center justify-center py-8">
-                          <Loader2 className="h-6 w-6 animate-spin text-[#16a34a]" />
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-3 gap-2">
-                          {HORAS.map((time) => {
-                            const ahora = new Date();
-                            const esHoy = selectedDate
-                              ? getLocalDateString(selectedDate) ===
-                                getLocalDateString(ahora)
-                              : true;
-                            const [h] = time.split(":").map(Number);
-                            const esPasada =
-                              esHoy &&
-                              h * 60 <=
-                                ahora.getHours() * 60 + ahora.getMinutes();
-                            const estaDisponible =
-                              availableHours.includes(time);
-                            const deshabilitada = esPasada || !estaDisponible;
-
-                            return (
-                              <button
-                                key={time}
-                                onClick={() =>
-                                  !deshabilitada && handleTimeSelect(time)
-                                }
-                                disabled={deshabilitada}
-                                className={`
-                                  px-3 py-2 text-sm rounded-md transition-colors
-                                  ${
-                                    selectedTime === time
-                                      ? "bg-[#16a34a] text-white"
-                                      : esPasada
-                                        ? "bg-gray-100 dark:bg-muted text-gray-300 dark:text-gray-600 cursor-not-allowed line-through"
-                                        : !estaDisponible
-                                          ? "bg-gray-100 dark:bg-muted text-gray-300 dark:text-gray-600 cursor-not-allowed"
-                                          : "bg-gray-50 dark:bg-muted hover:bg-gray-100 dark:hover:bg-muted/80"
-                                  }
-                                `}
-                              >
-                                {time}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-                      {availableHours.length === 0 && (
-                        <div className="text-center py-8 text-sm text-gray-500">
-                          No hay horarios disponibles para esta fecha
-                        </div>
-                      )}
-                    </div>
-                  </>
-                )}
               </div>
 
               {/* Botón buscar */}
@@ -966,6 +705,277 @@ export default function HomePage() {
               </button>
             </div>
 
+            {/* Modales fuera del contenedor animado para evitar stacking context */}
+            {showLocationModal && (
+              <>
+                <div
+                  className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+                  onClick={() => setShowLocationModal(false)}
+                />
+                <div
+                  ref={locationRef}
+                  className="fixed z-50 bg-white dark:bg-card rounded-lg shadow-2xl border border-gray-200 dark:border-border p-4"
+                  style={{
+                    top: "calc(50dvh + 32px)",
+                    left: "50%",
+                    transform: "translate(-50%, -50%)",
+                    width: "min(340px, 90vw)",
+                  }}
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-semibold text-sm">
+                      Seleccionar ubicación
+                    </h3>
+                    <button
+                      onClick={() => setShowLocationModal(false)}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+
+                  {!userCoords && (
+                    <button
+                      onClick={handleRequestLocation}
+                      disabled={loadingLocation}
+                      className="w-full flex items-center justify-center gap-2 bg-[#16a34a] hover:bg-[#15803d] disabled:bg-gray-300 text-white font-medium px-4 py-2.5 rounded-md transition-colors text-sm"
+                    >
+                      {loadingLocation ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Obteniendo ubicación...
+                        </>
+                      ) : (
+                        <>
+                          <MapPin className="h-4 w-4" />
+                          Usar mi ubicación actual
+                        </>
+                      )}
+                    </button>
+                  )}
+
+                  <div className="mt-3 pt-3 border-t border-gray-100 dark:border-border max-h-64 overflow-y-auto">
+                    {Object.entries(UBICACIONES_POR_CIUDAD).map(
+                      ([ciudad, distritos]) => (
+                        <div key={ciudad} className="mb-2">
+                          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1 px-1">
+                            {ciudad}
+                          </p>
+                          <div className="space-y-0.5">
+                            {distritos.map((distrito) => (
+                              <button
+                                key={distrito}
+                                onClick={() => {
+                                  setUbicacion(distrito);
+                                  setShowLocationModal(false);
+                                }}
+                                className={`flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm transition-colors text-left ${
+                                  ubicacion === distrito
+                                    ? "bg-[#16a34a]/10 text-[#16a34a] font-medium"
+                                    : "text-gray-700 dark:text-foreground hover:bg-gray-50 dark:hover:bg-muted"
+                                }`}
+                              >
+                                <MapPin className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+                                {distrito}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ),
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {showDatePicker && (
+              <>
+                <div
+                  className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+                  onClick={() => setShowDatePicker(false)}
+                />
+                <div
+                  ref={dateRef}
+                  className="fixed z-50 bg-white dark:bg-card rounded-lg shadow-2xl border border-gray-200 dark:border-border p-4"
+                  style={{
+                    top: "calc(50dvh + 32px)",
+                    left: "50%",
+                    transform: "translate(-50%, -50%)",
+                    width: "min(320px, 90vw)",
+                  }}
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-semibold text-sm">
+                      Seleccionar fecha
+                    </h3>
+                    <button
+                      onClick={() => setShowDatePicker(false)}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between mb-4">
+                    <button
+                      onClick={handlePrevMonth}
+                      disabled={
+                        calendarMonth.getFullYear() ===
+                          new Date().getFullYear() &&
+                        calendarMonth.getMonth() <= new Date().getMonth()
+                      }
+                      className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ChevronLeft className="h-4 w-4 text-gray-600 dark:text-foreground" />
+                    </button>
+                    <h3 className="font-semibold text-sm capitalize">
+                      {calendarMonth.toLocaleDateString("es-PE", {
+                        month: "long",
+                        year: "numeric",
+                      })}
+                    </h3>
+                    <button
+                      onClick={handleNextMonth}
+                      className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-muted transition-colors"
+                    >
+                      <ChevronRight className="h-4 w-4 text-gray-600 dark:text-foreground" />
+                    </button>
+                  </div>
+
+                  {/* Días de la semana */}
+                  <div className="grid grid-cols-7 gap-1 mb-2">
+                    {["D", "L", "M", "M", "J", "V", "S"].map((day, i) => (
+                      <div
+                        key={i}
+                        className="text-center text-xs font-medium text-gray-500 py-1"
+                      >
+                        {day}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Días del mes */}
+                  <div className="grid grid-cols-7 gap-1">
+                    {generateCalendar().map((day, index) => {
+                      if (!day) {
+                        return <div key={`empty-${index}`} />;
+                      }
+
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      const dayDate = new Date(day);
+                      dayDate.setHours(0, 0, 0, 0);
+                      const isToday = dayDate.getTime() === today.getTime();
+                      const isSelected =
+                        dayDate.getTime() ===
+                        new Date(selectedDate).setHours(0, 0, 0, 0);
+                      const isPast = dayDate < today;
+
+                      return (
+                        <button
+                          key={index}
+                          onClick={() => !isPast && handleDateSelect(day)}
+                          disabled={isPast}
+                          className={`
+                            aspect-square flex items-center justify-center text-sm rounded-md transition-colors
+                            ${isPast ? "text-gray-300 cursor-not-allowed" : "hover:bg-gray-100 dark:hover:bg-muted"}
+                            ${isSelected ? "bg-[#16a34a] text-white hover:bg-[#15803d]" : ""}
+                            ${isToday && !isSelected ? "border-2 border-[#16a34a] text-[#16a34a] font-semibold" : ""}
+                          `}
+                        >
+                          {day.getDate()}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {showTimePicker && (
+              <>
+                <div
+                  className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+                  onClick={() => setShowTimePicker(false)}
+                />
+                <div
+                  ref={timeRef}
+                  className="fixed z-50 bg-white dark:bg-card rounded-lg shadow-2xl border border-gray-200 dark:border-border p-4 max-h-[80dvh] overflow-y-auto"
+                  style={{
+                    top: "calc(50dvh + 32px)",
+                    left: "50%",
+                    transform: "translate(-50%, -50%)",
+                    width: "min(340px, 90vw)",
+                  }}
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-semibold text-sm">
+                      Horarios disponibles
+                    </h3>
+                    <button
+                      onClick={() => setShowTimePicker(false)}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+
+                  {loadingHours ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin text-[#16a34a]" />
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-3 gap-2">
+                      {HORAS.map((time) => {
+                        const ahora = new Date();
+                        const esHoy = selectedDate
+                          ? getLocalDateString(selectedDate) ===
+                            getLocalDateString(ahora)
+                          : true;
+                        const [h] = time.split(":").map(Number);
+                        const esPasada =
+                          esHoy &&
+                          h * 60 <=
+                            ahora.getHours() * 60 + ahora.getMinutes();
+                        const estaDisponible =
+                          availableHours.includes(time);
+                        const deshabilitada = esPasada || !estaDisponible;
+
+                        return (
+                          <button
+                            key={time}
+                            onClick={() =>
+                              !deshabilitada && handleTimeSelect(time)
+                            }
+                            disabled={deshabilitada}
+                            className={`
+                              px-3 py-2 text-sm rounded-md transition-colors
+                              ${
+                                selectedTime === time
+                                  ? "bg-[#16a34a] text-white"
+                                  : esPasada
+                                    ? "bg-gray-100 dark:bg-muted text-gray-300 dark:text-gray-600 cursor-not-allowed line-through"
+                                    : !estaDisponible
+                                      ? "bg-gray-100 dark:bg-muted text-gray-300 dark:text-gray-600 cursor-not-allowed"
+                                      : "bg-gray-50 dark:bg-muted hover:bg-gray-100 dark:hover:bg-muted/80"
+                              }
+                            `}
+                          >
+                            {time}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {availableHours.length === 0 && (
+                    <div className="text-center py-8 text-sm text-gray-500">
+                      No hay horarios disponibles para esta fecha
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
             {/* Badges de confianza */}
             <TrustBadges badges={HERO_SLIDES[slideIndex].badges} />
           </div>
@@ -974,7 +984,7 @@ export default function HomePage() {
 
       {/* ── CANCHAS: cerca de ti (con ubicación) o mejor calificadas (sin ubicación) ── */}
       <section className="py-12 bg-white dark:bg-background">
-        <div className="container mx-auto px-8 lg:px-12">
+        <div className="container mx-auto px-4 sm:px-8 lg:px-12">
           {/* Cabecera */}
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -1107,7 +1117,7 @@ export default function HomePage() {
 
       {/* ── CÓMO FUNCIONA ─────────────────────────────────────────── */}
       <section className="py-14 bg-brand-green-light dark:bg-muted/20">
-        <div className="container mx-auto px-8 lg:px-12">
+        <div className="container mx-auto px-4 sm:px-8 lg:px-12">
           <div className="text-center mb-10">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-foreground">
               ¿Cómo funciona?
@@ -1170,7 +1180,7 @@ export default function HomePage() {
 
       {/* ── ¿TIENES UNA CANCHA? ───────────────────────────────────── */}
       <section className="py-14 bg-gray-50 dark:bg-muted/20">
-        <div className="container mx-auto px-8 lg:px-12">
+        <div className="container mx-auto px-4 sm:px-8 lg:px-12">
           <div className="rounded-2xl overflow-hidden bg-white dark:bg-card border border-gray-100 dark:border-border shadow-sm flex flex-col md:flex-row">
             {/* Texto */}
             <div className="flex-1 p-8 md:p-10 flex flex-col justify-center">
@@ -1276,7 +1286,7 @@ export default function HomePage() {
 
       {/* ── BENEFICIOS ────────────────────────────────────────────── */}
       <section className="py-14 bg-brand-green-light dark:bg-muted/200">
-        <div className="container mx-auto px-8 lg:px-12">
+        <div className="container mx-auto px-4 sm:px-8 lg:px-12">
           <div className="text-center mb-10">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-foreground">
               ¿Por qué CanchaGo?
@@ -1331,7 +1341,7 @@ export default function HomePage() {
         <div className="absolute -left-16 top-1/2 -translate-y-1/2 w-72 h-72 rounded-full bg-white/10 blur-3xl pointer-events-none" />
         <div className="absolute -right-16 top-1/2 -translate-y-1/2 w-72 h-72 rounded-full bg-white/10 blur-3xl pointer-events-none" />
 
-        <div className="container mx-auto px-8 lg:px-12 relative">
+        <div className="container mx-auto px-4 sm:px-8 lg:px-12 relative">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
             {/* Columna izquierda — texto */}
             <div>
