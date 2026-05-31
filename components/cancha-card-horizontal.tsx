@@ -3,8 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { MapPin, Star, Heart, Navigation, CalendarDays, AlertTriangle, Timer } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { MapPin, Star, Heart, Navigation, CalendarDays, AlertTriangle, Timer, Zap } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ImageSlider } from '@/components/image-slider';
@@ -264,12 +263,12 @@ export function CanchaCardHorizontal({
       <div
         onMouseEnter={() => onHover?.(cancha.id)}
         onMouseLeave={() => onHover?.(null)}
-        className={`group flex rounded-xl border bg-white overflow-hidden transition-all duration-200 hover:shadow-md h-[210px] ${
+        className={`group flex rounded-xl border bg-white overflow-hidden transition-all duration-200 hover:shadow-md h-[210px] md:h-[270px] ${
           isHighlighted ? 'border-[#16a34a] shadow-md ring-1 ring-[#16a34a]/30' : 'border-gray-200 hover:border-gray-300'
         }`}
       >
         {/* Imagen izquierda — ancho según modo */}
-        <div className={`relative shrink-0 h-full ${compact ? 'w-[140px]' : 'w-[280px]'}`}>
+        <div className={`relative shrink-0 h-full ${compact ? 'w-35' : 'w-35 md:w-50'}`}>
           <Link href={`/cancha/${cancha.id}`} className="block h-full">
             <ImageSlider images={cancha.images} alt={cancha.name} aspectRatio="fill" className="h-full" />
           </Link>
@@ -283,8 +282,8 @@ export function CanchaCardHorizontal({
           )}
         </div>
 
-        {/* Contenido derecho */}
-        <div className="flex flex-1 flex-col p-3 min-w-0">
+        {/* Contenido mobile */}
+        <div className="flex md:hidden flex-1 flex-col p-3 min-w-0">
           {/* Fila superior: nombre + precio + corazón */}
           <div className="flex justify-between items-center gap-2 mb-2">
             <Link href={`/cancha/${cancha.id}`} className="flex-1 min-w-0">
@@ -422,6 +421,149 @@ export function CanchaCardHorizontal({
                 </Link>
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Contenido desktop (md+) */}
+        <div className="hidden md:flex flex-1 flex-col justify-between p-4 min-w-0">
+
+          {/* Bloque superior: info + horarios */}
+          <div>
+
+          {/* Fila 1: Rating izquierda | Deporte + Corazón derecha */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5">
+              {cancha.rating > 0 ? (
+                <>
+                  <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                  <span className="text-sm font-bold text-foreground">{cancha.rating}</span>
+                  {cancha.reviewCount > 0 && (
+                    <span className="text-xs text-muted-foreground">({cancha.reviewCount})</span>
+                  )}
+                </>
+              ) : (
+                <span className="text-xs text-muted-foreground italic">Sin reseñas</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+                {sportLabels[cancha.type]}{cancha.maxJugadores ? ` ${cancha.maxJugadores}` : ''}
+              </span>
+              <button
+                onClick={handleToggleFav}
+                disabled={togglingFav}
+                className={`relative flex h-8 w-8 items-center justify-center rounded-full border border-border transition-all duration-300 ${
+                  isFav ? 'bg-destructive/10 border-destructive/30' : 'bg-background hover:bg-muted'
+                }`}
+                aria-label={isFav ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+              >
+                <Heart className={`h-4 w-4 transition-all duration-300 ${
+                  isFav ? 'fill-destructive text-destructive scale-110' : 'text-muted-foreground scale-100'
+                }`} />
+                {togglingFav && (
+                  <span className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-full">
+                    <span className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  </span>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Nombre */}
+          <Link href={`/cancha/${cancha.id}`}>
+            <h3 className="font-bold text-foreground text-lg leading-tight line-clamp-1 hover:text-primary transition-colors mt-1">
+              {cancha.name}
+            </h3>
+          </Link>
+
+          {/* Dirección + distancia */}
+          <div className="flex items-center gap-1 mt-0.5">
+            <MapPin className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground line-clamp-1">{cancha.address}</span>
+            {distancia !== undefined && (
+              <>
+                <span className="text-muted-foreground/40 text-xs">·</span>
+                <Navigation className="h-3 w-3 text-primary" />
+                <span className="text-xs text-primary font-semibold">{formatearDistancia(distancia)}</span>
+              </>
+            )}
+          </div>
+
+          {/* Amenidades */}
+          {cancha.amenities?.length > 0 && (
+            <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+              {cancha.amenities.slice(0, 3).map((amenidad) => (
+                <span key={amenidad} className="inline-flex items-center rounded-md border border-border px-2 py-0.5 text-xs text-muted-foreground">
+                  {amenidad}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Horarios */}
+          <div className="mt-3">
+            {visibleSlotsFiltered.length > 0 ? (
+              <>
+                <p className="text-xs font-medium text-foreground mb-1.5">Horarios libres hoy</p>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {visibleSlotsFiltered.map((slot) => {
+                    const isSelected = selectedSlots.some((s) => s.id === slot.id);
+                    return (
+                      <button
+                        key={slot.id}
+                        onClick={(e) => handleSlotClick(slot, e)}
+                        className={`rounded-lg border px-3 py-1 text-sm font-semibold transition-all ${
+                          isSelected
+                            ? 'bg-primary border-primary text-primary-foreground'
+                            : 'border-border text-foreground hover:border-primary hover:text-primary'
+                        }`}
+                      >
+                        {slot.time}
+                      </button>
+                    );
+                  })}
+                  {extraCountFiltered > 0 && (
+                    <button
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(`/cancha/${cancha.id}`); }}
+                      className="rounded-lg border border-border px-3 py-1 text-sm font-medium text-muted-foreground hover:border-muted-foreground/60 transition-all"
+                    >
+                      +{extraCountFiltered}
+                    </button>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <CalendarDays className="h-3.5 w-3.5" />
+                <span>Sin disponibilidad próxima</span>
+              </div>
+            )}
+          </div>
+
+          </div>{/* fin bloque superior */}
+
+          {/* Precio + botón Reservar */}
+          <div className="flex items-center justify-between pt-3 border-t border-border">
+            <div className="flex items-baseline gap-1">
+              <span className="text-2xl font-bold text-foreground leading-none">S/ {cancha.pricePerHour}</span>
+              <span className="text-xs text-muted-foreground">/hora</span>
+            </div>
+            <button
+              onClick={handleReservar}
+              disabled={reservando}
+              className="flex items-center gap-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground px-5 py-2.5 text-sm font-bold transition-all active:scale-[0.98] disabled:opacity-60"
+            >
+              {reservando ? (
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              ) : (
+                <Zap className="h-4 w-4" />
+              )}
+              {reservando
+                ? 'Reservando...'
+                : selectedSlots.length > 1
+                  ? `Reservar ${selectedSlots.length}h`
+                  : 'Reservar'}
+            </button>
           </div>
         </div>
       </div>

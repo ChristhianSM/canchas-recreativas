@@ -55,10 +55,10 @@ const VALORES = [
 ];
 
 const STATS = [
-  { num: "+10",  label: "Canchas registradas",      icon: MapPin      },
-  { num: "+500", label: "Reservas realizadas",       icon: CheckCircle },
-  { num: "1",    label: "Ciudad (y expandiéndonos)", icon: Star        },
-  { num: "0",    label: "Llamadas necesarias",       icon: Heart       },
+  { num: "+10", label: "Canchas registradas", icon: MapPin },
+  { num: "+500", label: "Reservas realizadas", icon: CheckCircle },
+  { num: "1", label: "Ciudad (y expandiéndonos)", icon: Star },
+  { num: "0", label: "Llamadas necesarias", icon: Heart },
 ];
 
 const PROMESAS = [
@@ -75,13 +75,18 @@ export default function NosotrosPage() {
 
       {/* ── HERO ──────────────────────────────────────────── */}
       <section className="relative min-h-[52vh] flex items-center overflow-hidden bg-primary">
-        <div className="absolute right-0 top-0 h-full flex items-center pr-10 opacity-[0.06] pointer-events-none select-none">
-          <span className="text-[280px] leading-none">⚽</span>
-        </div>
+        <Image
+          src="/images/nosotros_hero.jpg.jpeg"
+          alt="Cancha deportiva en Piura"
+          fill
+          className="object-cover object-center"
+          priority
+        />
+        <div className="absolute inset-0 bg-primary/70" />
         <div className="absolute -left-24 bottom-0 w-96 h-96 rounded-full bg-accent/15 blur-3xl pointer-events-none" />
         <div className="absolute top-0 right-1/3 w-64 h-64 rounded-full bg-white/5 blur-2xl pointer-events-none" />
 
-        <div className="relative container mx-auto px-8 lg:px-12 py-24">
+        <div className="relative container mx-auto px-8 lg:px-12 py-14">
           <span className="inline-block bg-white/15 text-white text-xs font-semibold px-3 py-1.5 rounded-full mb-6 tracking-wide">
             Sobre nosotros
           </span>
@@ -91,7 +96,8 @@ export default function NosotrosPage() {
             <span className="text-accent">más accesible</span>
           </h1>
           <p className="text-white/70 text-base md:text-lg max-w-xl leading-relaxed">
-            Nacimos en Piura con una sola misión: que reservar una cancha sea tan fácil como enviar un mensaje.
+            Nacimos en Piura con una sola misión: que reservar una cancha sea
+            tan fácil como enviar un mensaje.
           </p>
         </div>
       </section>
@@ -110,19 +116,27 @@ export default function NosotrosPage() {
                 <br />y no obtener respuesta
               </h2>
               <p className="mt-5 text-gray-500 dark:text-muted-foreground leading-relaxed">
-                Todo empezó con una frustración simple: llamar a una cancha, nadie contesta y perder el partido del fin de semana. Nos preguntamos: ¿por qué en pleno 2026 seguimos reservando canchas por llamada?
+                Todo empezó con una frustración simple: llamar a una cancha,
+                nadie contesta y perder el partido del fin de semana. Nos
+                preguntamos: ¿por qué en pleno 2026 seguimos reservando canchas
+                por llamada?
               </p>
               <p className="mt-3 text-gray-500 dark:text-muted-foreground leading-relaxed">
                 Así nació{" "}
                 <strong className="text-gray-900 dark:text-foreground font-bold">
                   CanchaGo
                 </strong>
-                : una plataforma 100% digital que conecta a jugadores con las mejores canchas de su ciudad en segundos, sin llamadas, sin esperas y con pago inmediato.
+                : una plataforma 100% digital que conecta a jugadores con las
+                mejores canchas de su ciudad en segundos, sin llamadas, sin
+                esperas y con pago inmediato.
               </p>
 
               <ul className="mt-6 space-y-2.5">
                 {PROMESAS.map((p) => (
-                  <li key={p} className="flex items-start gap-2.5 text-sm text-gray-700 dark:text-foreground">
+                  <li
+                    key={p}
+                    className="flex items-start gap-2.5 text-sm text-gray-700 dark:text-foreground"
+                  >
                     <CheckCircle className="h-4 w-4 text-primary shrink-0 mt-0.5" />
                     {p}
                   </li>
@@ -158,22 +172,31 @@ export default function NosotrosPage() {
                 <div className="space-y-2">
                   <div className="flex justify-between text-xs">
                     <span className="text-gray-500">Reservas</span>
-                    <span className="font-bold text-gray-900 dark:text-foreground">+500</span>
+                    <span className="font-bold text-gray-900 dark:text-foreground">
+                      +500
+                    </span>
                   </div>
                   <div className="flex justify-between text-xs">
                     <span className="text-gray-500">Canchas activas</span>
-                    <span className="font-bold text-gray-900 dark:text-foreground">+10</span>
+                    <span className="font-bold text-gray-900 dark:text-foreground">
+                      +10
+                    </span>
                   </div>
                   <div className="flex justify-between text-xs">
                     <span className="text-gray-500">Llamadas necesarias</span>
-                    <span className="font-bold text-destructive line-through">∞</span>
+                    <span className="font-bold text-destructive line-through">
+                      ∞
+                    </span>
                   </div>
                 </div>
                 <div className="mt-3 pt-2.5 border-t border-gray-100 dark:border-border">
                   <p className="text-[10px] text-gray-400">Satisfacción</p>
                   <div className="flex gap-0.5 mt-1">
                     {[1, 2, 3, 4, 5].map((s) => (
-                      <Star key={s} className="h-3.5 w-3.5 fill-accent text-accent" />
+                      <Star
+                        key={s}
+                        className="h-3.5 w-3.5 fill-accent text-accent"
+                      />
                     ))}
                   </div>
                 </div>
@@ -184,7 +207,7 @@ export default function NosotrosPage() {
       </section>
 
       {/* ── MISIÓN Y VISIÓN ───────────────────────────────── */}
-      <section className="py-16 bg-gray-50 dark:bg-muted/20">
+      <section className="py-16 bg-brand-green-light dark:bg-muted/20">
         <div className="container mx-auto px-8 lg:px-12">
           <div className="text-center mb-12">
             <span className="text-xs font-bold uppercase tracking-widest text-primary">
@@ -205,21 +228,25 @@ export default function NosotrosPage() {
                 Misión
               </h3>
               <p className="text-gray-500 dark:text-muted-foreground leading-relaxed text-sm">
-                Facilitar el acceso a canchas deportivas en Piura mediante una plataforma simple, rápida y confiable, donde los jugadores puedan reservar sin complicaciones y los dueños puedan gestionar mejor sus horarios.
+                Facilitar el acceso a canchas deportivas en Piura mediante una
+                plataforma simple, rápida y confiable, donde los jugadores
+                puedan reservar sin complicaciones y los dueños puedan gestionar
+                mejor sus horarios.
               </p>
             </div>
 
             {/* Visión */}
-            <div className="bg-primary rounded-2xl p-8 shadow-sm relative overflow-hidden">
-              <div className="absolute -right-6 -bottom-6 opacity-10 pointer-events-none">
-                <span className="text-[120px] leading-none">🏆</span>
+            <div className="bg-white dark:bg-card rounded-2xl border border-gray-100 dark:border-border p-8 shadow-sm relative overflow-hidden">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 mb-6">
+                <Eye className="h-6 w-6 text-primary" />
               </div>
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/15 mb-6">
-                <Eye className="h-6 w-6 text-primary-foreground" />
-              </div>
-              <h3 className="text-xl font-bold text-primary-foreground mb-3">Visión</h3>
-              <p className="text-primary-foreground/80 leading-relaxed text-sm">
-                Ser la plataforma líder de reservas deportivas en Piura y expandirnos a más ciudades del Perú, impulsando una comunidad deportiva más conectada, ordenada y digital.
+              <h3 className="text-xl font-bold text-gray-900 dark:text-foreground mb-3">
+                Visión
+              </h3>
+              <p className="text-gray-500 dark:text-muted-foreground leading-relaxed text-sm">
+                Ser la plataforma líder de reservas deportivas en Piura y
+                expandirnos a más ciudades del Perú, impulsando una comunidad
+                deportiva más conectada, ordenada y digital.
               </p>
             </div>
           </div>
@@ -244,7 +271,9 @@ export default function NosotrosPage() {
                 key={v.title}
                 className="bg-gray-50 dark:bg-muted/30 rounded-2xl p-6 border border-gray-100 dark:border-border hover:shadow-md transition-shadow"
               >
-                <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${v.bg} mb-5`}>
+                <div
+                  className={`flex h-11 w-11 items-center justify-center rounded-xl ${v.bg} mb-5`}
+                >
                   <v.icon className={`h-5 w-5 ${v.color}`} />
                 </div>
                 <h3 className="font-bold text-gray-900 dark:text-foreground mb-2">
@@ -308,7 +337,9 @@ export default function NosotrosPage() {
               ¿Tienes una cancha deportiva?
             </h2>
             <p className="text-gray-500 dark:text-muted-foreground mb-8 text-sm leading-relaxed max-w-md mx-auto">
-              Publica tu cancha y llega a cientos de jugadores en Piura. Te ayudamos a configurar todo desde cero, sin costo inicial y sin complicaciones.
+              Publica tu cancha y llega a cientos de jugadores en Piura. Te
+              ayudamos a configurar todo desde cero, sin costo inicial y sin
+              complicaciones.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <a
