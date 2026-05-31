@@ -106,7 +106,7 @@ export function Header() {
 
     // Solo redirigir si está en páginas protegidas
     const currentPath = window.location.pathname;
-    const protectedRoutes = ["/perfil", "/mis-reservas"];
+    const protectedRoutes = ["/mi-cuenta"];
     const isProtectedRoute = protectedRoutes.some((route) =>
       currentPath.startsWith(route),
     );
@@ -126,7 +126,7 @@ export function Header() {
     { href: "/noticias", label: "Noticias", icon: Newspaper },
     { href: "/contacto", label: "Contáctanos", icon: Phone },
     ...(user
-      ? [{ href: "/mis-reservas", label: "Mis Reservas", icon: CalendarCheck }]
+      ? [{ href: "/mi-cuenta", label: "Mi Cuenta", icon: CalendarCheck }]
       : []),
   ];
 
@@ -147,7 +147,7 @@ export function Header() {
         {/* Desktop Navigation */}
         <nav className="hidden flex-1 items-center justify-center gap-0.5 md:flex">
           {navItems
-            .filter((i) => i.href !== "/mis-reservas")
+            .filter((i) => i.href !== "/mi-cuenta")
             .map((item) => {
               const isActive = pathname === item.href;
               return (
@@ -180,20 +180,11 @@ export function Header() {
               <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem asChild>
                   <Link
-                    href="/mis-reservas"
-                    className="flex items-center gap-2 cursor-pointer"
-                  >
-                    <Calendar className="h-4 w-4" />
-                    Mis Reservas
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link
-                    href="/perfil"
+                    href="/mi-cuenta"
                     className="flex items-center gap-2 cursor-pointer"
                   >
                     <User className="h-4 w-4" />
-                    Mi Perfil
+                    Mi Cuenta
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
@@ -215,13 +206,19 @@ export function Header() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-44">
                 <DropdownMenuItem asChild>
-                  <Link href="/login" className="flex items-center gap-2 cursor-pointer">
+                  <Link
+                    href="/login"
+                    className="flex items-center gap-2 cursor-pointer"
+                  >
                     <User className="h-4 w-4" />
                     Iniciar Sesión
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href="/registro" className="flex items-center gap-2 cursor-pointer">
+                  <Link
+                    href="/registro"
+                    className="flex items-center gap-2 cursor-pointer"
+                  >
                     <CircleUser className="h-4 w-4" />
                     Registrarse
                   </Link>
@@ -250,20 +247,11 @@ export function Header() {
               <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem asChild>
                   <Link
-                    href="/mis-reservas"
-                    className="flex items-center gap-2 cursor-pointer"
-                  >
-                    <Calendar className="h-4 w-4" />
-                    Mis Reservas
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link
-                    href="/perfil"
+                    href="/mi-cuenta"
                     className="flex items-center gap-2 cursor-pointer"
                   >
                     <User className="h-4 w-4" />
-                    Mi Perfil
+                    Mi Cuenta
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
@@ -297,7 +285,7 @@ export function Header() {
           {hydrated &&
             (user?.name ? (
               <Link
-                href="/perfil"
+                href="/mi-cuenta"
                 className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground"
               >
                 {user.name.charAt(0).toUpperCase()}
@@ -322,24 +310,26 @@ export function Header() {
               <SheetTitle className="sr-only">Menú de navegación</SheetTitle>
               <div className="h-16 border-b border-border" />
               <nav className="flex flex-col gap-1 p-4 pt-0">
-                {navItems.map((item) => {
-                  const isActive = pathname === item.href;
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={() => setOpen(false)}
-                      className={`flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium transition-colors ${
-                        isActive
-                          ? "bg-primary/10 text-primary"
-                          : "text-foreground hover:bg-secondary"
-                      }`}
-                    >
-                      <item.icon className="h-5 w-5 text-primary" />
-                      {item.label}
-                    </Link>
-                  );
-                })}
+                {navItems
+                  .filter((i) => i.href !== "/mi-cuenta")
+                  .map((item) => {
+                    const isActive = pathname === item.href;
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setOpen(false)}
+                        className={`flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium transition-colors ${
+                          isActive
+                            ? "bg-primary/10 text-primary"
+                            : "text-foreground hover:bg-secondary"
+                        }`}
+                      >
+                        <item.icon className="h-5 w-5 text-primary" />
+                        {item.label}
+                      </Link>
+                    );
+                  })}
                 <div className="mt-4 flex flex-col gap-2 border-t border-border pt-4">
                   {!hydrated ? (
                     /* Skeleton mobile */
@@ -367,9 +357,9 @@ export function Header() {
                         className="w-full justify-start"
                         asChild
                       >
-                        <Link href="/perfil" onClick={() => setOpen(false)}>
+                        <Link href="/mi-cuenta" onClick={() => setOpen(false)}>
                           <User className="mr-2 h-4 w-4" />
-                          Mi Perfil
+                          Mi Cuenta
                         </Link>
                       </Button>
                       <Button

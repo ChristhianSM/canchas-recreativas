@@ -710,7 +710,7 @@ function PagoContent() {
             Compartir con tu equipo
           </a>
           {!esInvitado && (
-            <Button size="lg" onClick={() => router.push("/mis-reservas")}>
+            <Button size="lg" onClick={() => router.push("/mi-cuenta")}>
               Ver mis reservas
             </Button>
           )}
