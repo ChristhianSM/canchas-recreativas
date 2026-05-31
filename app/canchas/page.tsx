@@ -195,7 +195,9 @@ function CanchasContent() {
   const [ubicacion, setUbicacion] = useState<Coordenadas | null>(null);
   // Una sola llamada a favoritos para toda la página
   const [favIds, setFavIds] = useState<Set<string>>(new Set());
-  const [canchasOcupadas, setCanchasOcupadas] = useState<Set<string>>(new Set());
+  const [canchasOcupadas, setCanchasOcupadas] = useState<Set<string>>(
+    new Set(),
+  );
 
   // Estados para modales editables
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -447,7 +449,9 @@ function CanchasContent() {
   const [hoveredCanchaId, setHoveredCanchaId] = useState<string | null>(null);
   // Modal de mapa en mobile
   const [showMobileMap, setShowMobileMap] = useState(false);
-  const [mobileMapSelectedId, setMobileMapSelectedId] = useState<string | null>(null);
+  const [mobileMapSelectedId, setMobileMapSelectedId] = useState<string | null>(
+    null,
+  );
 
   // Estados para la barra desktop estilo Airbnb
   const [activeField, setActiveField] = useState<
@@ -1384,11 +1388,14 @@ function CanchasContent() {
         </SheetContent>
       </Sheet>
 
-      <div className="flex flex-1 bg-white mb-6">
-        <div className="container mx-auto px-4 flex bg-white">
+      <div className="flex flex-1 bg-[#eef3ee] mb-6">
+        <div className="container mx-auto px-4 flex bg-[#eef3ee]">
           {/* ── COL 1: Filtros (lg+, ≥1024px) ────────────────────── */}
           <aside className="hidden lg:block w-[280px] xl:w-[300px] shrink-0 pr-3 pt-4">
-            <div className="sticky top-20 py-4 px-3 space-y-4 bg-white rounded-xl border border-gray-100 shadow-sm max-h-[calc(100vh-100px)] overflow-y-auto">
+            <div
+              className="sticky top-40 py-4 px-3 space-y-4 rounded-xl max-h-[calc(100vh-100px)] overflow-y-auto scrollbar-thin"
+              style={{ scrollbarGutter: "stable" }}
+            >
               <div className="flex items-center justify-between">
                 <h2 className="text-base font-bold text-gray-900">Filtros</h2>
                 <button
@@ -1425,15 +1432,26 @@ function CanchasContent() {
                   : `${filtered.length} ${filtered.length === 1 ? "cancha encontrada" : "canchas encontradas"}`}
               </p>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-400 hidden md:inline">
-                  Ordenar:
-                </span>
+                {/* Ver mapa — solo visible debajo de lg donde el sidebar no existe */}
+                {!loading && filtered.length > 0 && (
+                  <button
+                    onClick={() => {
+                      setShowMobileMap(true);
+                      setMobileMapSelectedId(null);
+                    }}
+                    className="xl:hidden flex items-center gap-1.5 rounded-md border border-[#16a34a] text-[#16a34a] text-sm font-semibold px-2 sm:px-4 py-1.5 hover:bg-green-50 transition-colors"
+                  >
+                    <Map className="h-5 w-5" />
+                    <span className="hidden sm:inline">Ver mapa</span>
+                  </button>
+                )}
                 <Select
                   value={sortBy}
                   onValueChange={(v) => setSortBy(v as SortOption)}
                 >
-                  <SelectTrigger className="w-auto border-0 bg-transparent p-0 h-auto hover:bg-transparent focus:ring-0">
-                    <ArrowUpDown className="h-4 w-4 text-gray-600" />
+                  <SelectTrigger className="w-auto rounded-md border border-gray-300 bg-white px-2 sm:px-4 py-1.5 h-auto text-sm font-semibold text-gray-700 hover:border-gray-400 focus:ring-0 gap-1.5">
+                    <SlidersHorizontal className="h-4 w-4 text-gray-500" />
+                    <span className="hidden sm:inline">Ordenar</span>
                   </SelectTrigger>
                   <SelectContent align="end">
                     <SelectItem value="relevancia">
@@ -1451,7 +1469,7 @@ function CanchasContent() {
             {loading ? (
               <>
                 {/* Mobile skeleton — tarjetas verticales */}
-                <div className="md:hidden grid gap-4 grid-cols-1 sm:grid-cols-2">
+                <div className="lg:hidden grid gap-4 grid-cols-1 sm:grid-cols-2">
                   {[1, 2, 3, 4].map((i) => (
                     <div
                       key={i}
@@ -1476,7 +1494,7 @@ function CanchasContent() {
                   ))}
                 </div>
                 {/* Desktop skeleton — tarjetas horizontales */}
-                <div className="hidden md:block space-y-3">
+                <div className="hidden lg:block space-y-3">
                   {[1, 2, 3, 4].map((i) => (
                     <div
                       key={i}
@@ -1506,77 +1524,85 @@ function CanchasContent() {
               </>
             ) : filtered.length > 0 ? (
               <>
-                {/* < 768px: cards verticales sin mapa */}
-                <div className="md:hidden grid gap-4 grid-cols-1 sm:grid-cols-2 pb-24">
-                  {(filtered as any[]).filter((c) => !canchasOcupadas.has(c.id)).map((c) => (
-                    <CanchaCard
-                      key={c.id}
-                      cancha={c}
-                      distancia={c.distancia}
-                      selectedDate={filters.selectedDate}
-                      preselectedHour={filters.availableHours[0]}
-                      isFav={favIds.has(c.id)}
-                      onToggleFav={handleToggleFav}
-                      onCanchaOcupada={handleCanchaOcupada}
-                    />
-                  ))}
+                {/* < 1440px: cards verticales 2 columnas */}
+                <div className="xl:hidden grid gap-4 grid-cols-1 sm:grid-cols-2 pb-8">
+                  {(filtered as any[])
+                    .filter((c) => !canchasOcupadas.has(c.id))
+                    .map((c) => (
+                      <CanchaCard
+                        key={c.id}
+                        cancha={c}
+                        distancia={c.distancia}
+                        selectedDate={filters.selectedDate}
+                        preselectedHour={filters.availableHours[0]}
+                        isFav={favIds.has(c.id)}
+                        onToggleFav={handleToggleFav}
+                        onCanchaOcupada={handleCanchaOcupada}
+                      />
+                    ))}
                 </div>
 
-                {/* 768–1023px: cards horizontales compactas + mapa derecha */}
-                <div className="hidden md:flex lg:hidden flex-col gap-3">
-                  {(filtered as any[]).filter((c) => !canchasOcupadas.has(c.id)).map((c) => (
-                    <CanchaCardHorizontal
-                      key={c.id}
-                      cancha={c}
-                      distancia={c.distancia}
-                      selectedDate={filters.selectedDate}
-                      preselectedHour={filters.availableHours[0]}
-                      isHighlighted={hoveredCanchaId === c.id}
-                      onHover={setHoveredCanchaId}
-                      compact={true}
-                      isFav={favIds.has(c.id)}
-                      onToggleFav={handleToggleFav}
-                      onCanchaOcupada={handleCanchaOcupada}
-                    />
-                  ))}
+                {/* 768–1023px: oculto (cubierto por grid vertical lg:hidden) */}
+                <div className="hidden">
+                  {(filtered as any[])
+                    .filter((c) => !canchasOcupadas.has(c.id))
+                    .map((c) => (
+                      <CanchaCardHorizontal
+                        key={c.id}
+                        cancha={c}
+                        distancia={c.distancia}
+                        selectedDate={filters.selectedDate}
+                        preselectedHour={filters.availableHours[0]}
+                        isHighlighted={hoveredCanchaId === c.id}
+                        onHover={setHoveredCanchaId}
+                        compact={true}
+                        isFav={favIds.has(c.id)}
+                        onToggleFav={handleToggleFav}
+                        onCanchaOcupada={handleCanchaOcupada}
+                      />
+                    ))}
                 </div>
 
-                {/* 1024–1439px: filtros + cards horizontales compactas + mapa */}
-                <div className="hidden lg:flex xl:hidden flex-col gap-3">
-                  {(filtered as any[]).filter((c) => !canchasOcupadas.has(c.id)).map((c) => (
-                    <CanchaCardHorizontal
-                      key={c.id}
-                      cancha={c}
-                      distancia={c.distancia}
-                      selectedDate={filters.selectedDate}
-                      preselectedHour={filters.availableHours[0]}
-                      isHighlighted={hoveredCanchaId === c.id}
-                      onHover={setHoveredCanchaId}
-                      compact={true}
-                      isFav={favIds.has(c.id)}
-                      onToggleFav={handleToggleFav}
-                      onCanchaOcupada={handleCanchaOcupada}
-                    />
-                  ))}
+                {/* 1024–1439px: cubierto por grid xl:hidden arriba */}
+                <div className="hidden">
+                  {(filtered as any[])
+                    .filter((c) => !canchasOcupadas.has(c.id))
+                    .map((c) => (
+                      <CanchaCardHorizontal
+                        key={c.id}
+                        cancha={c}
+                        distancia={c.distancia}
+                        selectedDate={filters.selectedDate}
+                        preselectedHour={filters.availableHours[0]}
+                        isHighlighted={hoveredCanchaId === c.id}
+                        onHover={setHoveredCanchaId}
+                        compact={true}
+                        isFav={favIds.has(c.id)}
+                        onToggleFav={handleToggleFav}
+                        onCanchaOcupada={handleCanchaOcupada}
+                      />
+                    ))}
                 </div>
 
                 {/* 1440px+: cards horizontales normales */}
                 <div className="hidden xl:flex flex-col gap-3">
-                  {(filtered as any[]).filter((c) => !canchasOcupadas.has(c.id)).map((c) => (
-                    <CanchaCardHorizontal
-                      key={c.id}
-                      cancha={c}
-                      distancia={c.distancia}
-                      selectedDate={filters.selectedDate}
-                      preselectedHour={filters.availableHours[0]}
-                      isHighlighted={hoveredCanchaId === c.id}
-                      onHover={setHoveredCanchaId}
-                      compact={false}
-                      isFav={favIds.has(c.id)}
-                      onToggleFav={handleToggleFav}
-                      onCanchaOcupada={handleCanchaOcupada}
-                    />
-                  ))}
+                  {(filtered as any[])
+                    .filter((c) => !canchasOcupadas.has(c.id))
+                    .map((c) => (
+                      <CanchaCardHorizontal
+                        key={c.id}
+                        cancha={c}
+                        distancia={c.distancia}
+                        selectedDate={filters.selectedDate}
+                        preselectedHour={filters.availableHours[0]}
+                        isHighlighted={hoveredCanchaId === c.id}
+                        onHover={setHoveredCanchaId}
+                        compact={false}
+                        isFav={favIds.has(c.id)}
+                        onToggleFav={handleToggleFav}
+                        onCanchaOcupada={handleCanchaOcupada}
+                      />
+                    ))}
                 </div>
               </>
             ) : (
@@ -1609,20 +1635,9 @@ function CanchasContent() {
             )}
           </main>
 
-          {/* ── FAB "Ver mapa" — solo mobile ──────────────────────── */}
-          {!loading && filtered.length > 0 && !showSearchModal && (
-            <button
-              onClick={() => { setShowMobileMap(true); setMobileMapSelectedId(null); }}
-              className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-gray-900 hover:bg-gray-800 active:scale-95 text-white font-semibold px-5 py-3 rounded-full shadow-xl transition-all"
-            >
-              <Map className="h-4 w-4" />
-              Ver mapa
-            </button>
-          )}
-
           {/* ── Modal mapa full-screen mobile ─────────────────────── */}
           {showMobileMap && (
-            <div className="md:hidden fixed inset-0 z-[100] bg-white flex flex-col">
+            <div className="xl:hidden fixed inset-0 z-[100] bg-white flex flex-col">
               {/* Header */}
               <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-white shrink-0">
                 <button
@@ -1633,7 +1648,8 @@ function CanchasContent() {
                   Ver lista
                 </button>
                 <span className="text-xs font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                  {filtered.length} {filtered.length === 1 ? "cancha" : "canchas"}
+                  {filtered.length}{" "}
+                  {filtered.length === 1 ? "cancha" : "canchas"}
                 </span>
               </div>
 
@@ -1652,48 +1668,61 @@ function CanchasContent() {
                     }))}
                   selectedId={mobileMapSelectedId ?? undefined}
                   onSelectCancha={(id) => setMobileMapSelectedId(id)}
-                  centerLocation={desktopUbicacion || searchParams.get("ubicacion") || undefined}
+                  centerLocation={
+                    desktopUbicacion ||
+                    searchParams.get("ubicacion") ||
+                    undefined
+                  }
                 />
 
                 {/* Mini-card inferior al seleccionar un pin */}
-                {mobileMapSelectedId && (() => {
-                  const c = (filtered as any[]).find((x) => x.id === mobileMapSelectedId);
-                  if (!c) return null;
-                  return (
-                    <div className="absolute bottom-4 left-4 right-4 z-[200] bg-white rounded-2xl shadow-2xl border border-gray-100 p-4 flex items-center gap-3">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-bold text-gray-900 text-sm truncate">{c.name}</p>
-                        <div className="flex items-center gap-1 text-gray-400 mt-0.5">
-                          <MapPin className="h-3 w-3 shrink-0" />
-                          <span className="text-xs truncate">{c.address}</span>
+                {mobileMapSelectedId &&
+                  (() => {
+                    const c = (filtered as any[]).find(
+                      (x) => x.id === mobileMapSelectedId,
+                    );
+                    if (!c) return null;
+                    return (
+                      <div className="absolute bottom-4 left-4 right-4 z-[200] bg-white rounded-2xl shadow-2xl border border-gray-100 p-4 flex items-center gap-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-gray-900 text-sm truncate">
+                            {c.name}
+                          </p>
+                          <div className="flex items-center gap-1 text-gray-400 mt-0.5">
+                            <MapPin className="h-3 w-3 shrink-0" />
+                            <span className="text-xs truncate">
+                              {c.address}
+                            </span>
+                          </div>
                         </div>
+                        <div className="shrink-0 text-right mr-1">
+                          <p className="text-lg font-bold text-gray-900 leading-none">
+                            S/ {c.pricePerHour}
+                          </p>
+                          <p className="text-[10px] text-gray-400">por hora</p>
+                        </div>
+                        <a
+                          href={`/cancha/${c.id}`}
+                          className="shrink-0 flex items-center gap-1 bg-[#16a34a] hover:bg-[#15803d] text-white text-xs font-semibold px-3 py-2.5 rounded-xl transition-colors"
+                        >
+                          Ver
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                        <button
+                          onClick={() => setMobileMapSelectedId(null)}
+                          className="shrink-0 flex items-center justify-center h-6 w-6 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
+                        >
+                          <X className="h-3.5 w-3.5 text-gray-500" />
+                        </button>
                       </div>
-                      <div className="shrink-0 text-right mr-1">
-                        <p className="text-lg font-bold text-gray-900 leading-none">S/ {c.pricePerHour}</p>
-                        <p className="text-[10px] text-gray-400">por hora</p>
-                      </div>
-                      <a
-                        href={`/cancha/${c.id}`}
-                        className="shrink-0 flex items-center gap-1 bg-[#16a34a] hover:bg-[#15803d] text-white text-xs font-semibold px-3 py-2.5 rounded-xl transition-colors"
-                      >
-                        Ver
-                        <ExternalLink className="h-3 w-3" />
-                      </a>
-                      <button
-                        onClick={() => setMobileMapSelectedId(null)}
-                        className="shrink-0 flex items-center justify-center h-6 w-6 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
-                      >
-                        <X className="h-3.5 w-3.5 text-gray-500" />
-                      </button>
-                    </div>
-                  );
-                })()}
+                    );
+                  })()}
               </div>
             </div>
           )}
 
           {/* ── COL 3: Mapa + panel (md+, ≥768px) ────────────────── */}
-          <aside className="hidden md:flex flex-col w-[260px] lg:w-[300px] xl:w-[340px] shrink-0 pl-3 pt-4 gap-4">
+          <aside className="hidden xl:flex flex-col w-[340px] shrink-0 pl-3 pt-4 gap-4">
             {/* Mapa sticky */}
             <div className="sticky top-40 flex flex-col gap-4">
               {/* Mapa */}

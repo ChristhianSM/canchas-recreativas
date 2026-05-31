@@ -206,6 +206,25 @@
   display: none;
 }
 
+/* Scrollbar delgado */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: #d1d5db transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: #d1d5db;
+  border-radius: 9999px;
+}
+
 
 /* ── Animaciones personalizadas para LoadingButton ── */
 @keyframes progress {
@@ -304,6 +323,12 @@
 .hero-enter-d2 {
   opacity: 0;
   animation: hero-blur-in 0.7s ease 0.3s forwards;
+}
+
+/* Buscador — aparece solo al primer montaje, mismo efecto que textos */
+.search-enter {
+  opacity: 0;
+  animation: hero-blur-in 0.7s ease 0.45s forwards;
 }
 
 /* Tipografía personalizada */

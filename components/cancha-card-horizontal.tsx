@@ -83,15 +83,27 @@ export function CanchaCardHorizontal({
   const [isFav, setIsFav] = useState<boolean>(isFavProp ?? false);
   const [togglingFav, setTogglingFav] = useState(false);
   const [localOcupados, setLocalOcupados] = useState<Set<string>>(new Set());
+  const [windowWidth, setWindowWidth] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth : 1440
+  );
+
+  // A 1280-1339px (xl sin 2xl) hay menos espacio: mostrar 4 slots
+  const maxVisibleSlots = windowWidth >= 1280 && windowWidth < 1340 ? 4 : 5;
 
   // Slots filtrados excluyendo los bloqueados localmente tras un 409
   const slotsToDisplayFiltered = slotsToDisplay.filter(s => !localOcupados.has(s.id));
-  const visibleSlotsFiltered = slotsToDisplayFiltered.slice(0, 5);
+  const visibleSlotsFiltered = slotsToDisplayFiltered.slice(0, maxVisibleSlots);
   const extraCountFiltered = Math.max(0, slotsToDisplayFiltered.length - visibleSlotsFiltered.length);
 
   useEffect(() => {
     if (isFavProp !== undefined) setIsFav(isFavProp);
   }, [isFavProp]);
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Solo cargar desde API si no se pasó prop (uso standalone)
   useEffect(() => {
@@ -514,7 +526,7 @@ export function CanchaCardHorizontal({
                         onClick={(e) => handleSlotClick(slot, e)}
                         className={`rounded-lg border px-3 py-1 text-sm font-semibold transition-all ${
                           isSelected
-                            ? 'bg-primary border-primary text-primary-foreground'
+                            ? 'bg-brand-black border-brand-black text-primary-foreground'
                             : 'border-border text-foreground hover:border-primary hover:text-primary'
                         }`}
                       >

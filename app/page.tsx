@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, memo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -98,24 +98,28 @@ const HERO_SLIDES = [
     eyebrow: "Reserva en segundos",
     title: "Tu pichanchaga",
     highlight: "empieza aquí",
+    badges: ["Sin llamadas", "Reserva 100% online"],
   },
   {
     image: "/images/hero-basquet.jpg",
     eyebrow: "Sin llamadas, sin esperas",
     title: "Domina la cancha",
     highlight: "mete el triple",
+    badges: ["Sin esperas", "Elige tu hora"],
   },
   {
     image: "/images/hero-tennis.jpg",
-    eyebrow: "Más de 10 canchas disponibles",
+    eyebrow: "Más de 10 canchas",
     title: "Sirve, corre",
     highlight: "y gana el set",
+    badges: ["Canchas verificadas", "+10 disponibles"],
   },
   {
     image: "/images/hero-voley.jpg",
     eyebrow: "Elige horario y reserva ya",
     title: "Arma tu equipo",
     highlight: "y saca el match",
+    badges: ["Para tu equipo", "Pago 100% seguro"],
   },
 ];
 
@@ -190,6 +194,19 @@ function adaptCancha(c: Cancha) {
     chalecosPrecio: c.chalecos_precio ?? null,
   };
 }
+
+const TrustBadges = memo(function TrustBadges({ badges }: { badges: string[] }) {
+  return (
+    <div className="hero-enter-d2 mt-5 flex flex-wrap gap-4">
+      {badges.map((badge) => (
+        <div key={badge} className="flex items-center gap-1.5 text-white/90 text-sm">
+          <CheckCircle className="h-4 w-4 text-[#4ade80]" />
+          {badge}
+        </div>
+      ))}
+    </div>
+  );
+});
 
 export default function HomePage() {
   const router = useRouter();
@@ -539,20 +556,22 @@ export default function HomePage() {
         </div>
 
         <div className="relative container mx-auto px-8 lg:px-12 py-16 md:py-24">
-          <div key={slideIndex} className="max-w-4xl">
-            <h3 className="text-[#4ade80] hero-enter">
-              {HERO_SLIDES[slideIndex].eyebrow}
-            </h3>
-            <h1 className="hero-enter-d1 text-4xl md:text-5xl lg:text-6xl font-extrabold text-white leading-tight mb-3 tracking-tight">
-              {HERO_SLIDES[slideIndex].title}
-              <br />
-              <span className="text-[#4ade80]">
-                {HERO_SLIDES[slideIndex].highlight}
-              </span>
-            </h1>
+          <div className="max-w-4xl">
+            <div key={slideIndex}>
+              <h3 className="text-[#4ade80] hero-enter">
+                {HERO_SLIDES[slideIndex].eyebrow}
+              </h3>
+              <h1 className="hero-enter-d1 text-4xl md:text-5xl lg:text-6xl font-extrabold text-white leading-tight mb-3 tracking-tight">
+                {HERO_SLIDES[slideIndex].title}
+                <br />
+                <span className="text-[#4ade80]">
+                  {HERO_SLIDES[slideIndex].highlight}
+                </span>
+              </h1>
+            </div>
 
             {/* Buscador tipo booking */}
-            <div className="bg-white dark:bg-card rounded-lg shadow-2xl p-2 flex flex-col sm:flex-row gap-0 sm:gap-0 max-w-3xl">
+            <div className="search-enter bg-white dark:bg-card rounded-lg shadow-2xl p-2 flex flex-col sm:flex-row gap-0 sm:gap-0 max-w-3xl">
               {/* Ubicación */}
               <div className="relative flex-1">
                 <button
@@ -693,7 +712,7 @@ export default function HomePage() {
                       <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">
                         Fecha
                       </p>
-                      <p className="text-sm font-semibold text-gray-800 dark:text-foreground group-hover:text-[#16a34a] transition-colors">
+                      <p className="min-h-5 text-sm font-semibold text-gray-800 dark:text-foreground group-hover:text-[#16a34a] transition-colors">
                         {fecha}
                       </p>
                     </div>
@@ -824,7 +843,7 @@ export default function HomePage() {
                       <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">
                         Hora
                       </p>
-                      <p className="text-sm font-semibold text-gray-800 dark:text-foreground group-hover:text-[#16a34a] transition-colors">
+                      <p className="min-h-5 text-sm font-semibold text-gray-800 dark:text-foreground group-hover:text-[#16a34a] transition-colors">
                         {hora}
                       </p>
                     </div>
@@ -948,16 +967,7 @@ export default function HomePage() {
             </div>
 
             {/* Badges de confianza */}
-            <div className="hero-enter-d2 mt-5 flex flex-wrap gap-4">
-              <div className="flex items-center gap-1.5 text-white/90 text-sm">
-                <CheckCircle className="h-4 w-4 text-[#4ade80]" />
-                Sin llamadas
-              </div>
-              <div className="flex items-center gap-1.5 text-white/90 text-sm">
-                <CheckCircle className="h-4 w-4 text-[#4ade80]" />
-                Reserva 100% online
-              </div>
-            </div>
+            <TrustBadges badges={HERO_SLIDES[slideIndex].badges} />
           </div>
         </div>
       </section>
