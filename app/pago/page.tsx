@@ -25,6 +25,7 @@ import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { type Cupon } from "@/lib/auth";
 import { apiCrearReserva, apiGetLoyalty, getToken } from "@/lib/api";
@@ -79,7 +80,7 @@ function PagoContent() {
   const [canchaLoading, setCanchaLoading] = useState(true);
 
   const [metodo, setMetodo] = useState<MetodoPago>("yape");
-  const [paso, setPaso] = useState<Paso>("pago");
+  const [paso, setPaso] = useState<Paso>("datos");
   const [copiado, setCopiado] = useState(false);
   const [cupones, setCupones] = useState<Cupon[]>([]);
   const [cuponSeleccionado, setCuponSeleccionado] = useState<string | null>(
@@ -101,6 +102,12 @@ function PagoContent() {
   const [telefonoInvitado, setTelefonoInvitado] = useState("");
   const [telefonoRegistrado, setTelefonoRegistrado] = useState("");
   const [telefonoError, setTelefonoError] = useState("");
+
+  const [loginModalOpen, setLoginModalOpen] = useState(false);
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [loginError, setLoginError] = useState("");
+  const [loginLoading, setLoginLoading] = useState(false);
 
   // Cargar cancha
   useEffect(() => {
@@ -494,22 +501,53 @@ function PagoContent() {
   };
 
   const handleBack = () => {
-    if (paso === "pago") {
+    if (paso === "datos") {
       router.back();
       return;
     }
-    const orden: Paso[] = ["pago", "datos", "metodo", "confirmar"];
+    const orden: Paso[] = ["datos", "pago", "metodo", "confirmar"];
     const i = orden.indexOf(paso);
     if (i > 0) setPaso(orden[i - 1]);
   };
 
+  const handleLoginModal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError("");
+    setLoginLoading(true);
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: loginEmail, password: loginPassword }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setLoginError(data.error || "Correo o contraseña incorrectos");
+        return;
+      }
+      localStorage.setItem("cp_token", data.token);
+      localStorage.setItem("cp_user", JSON.stringify(data.user));
+      setEsInvitado(false);
+      setEmailRegistrado(data.user.email || "");
+      setTelefonoRegistrado(data.user.phone || "");
+      apiGetLoyalty().then((loyaltyData) => {
+        setCupones((loyaltyData.cupones ?? []).filter((c: Cupon) => !c.usado));
+      });
+      setLoginModalOpen(false);
+      setLoginEmail("");
+      setLoginPassword("");
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
   const PASOS_LABELS = soloEfectivo
-    ? (["Pago", "Datos", "Resumen"] as const)
-    : (["Pago", "Datos", "Método", "Confirmar"] as const);
+    ? (["Datos", "Pago", "Resumen"] as const)
+    : (["Datos", "Pago", "Método", "Confirmar"] as const);
 
   const PASO_INDEX: Record<string, number> = soloEfectivo
-    ? { pago: 0, datos: 1, metodo: 2 }
-    : { pago: 0, datos: 1, metodo: 2, confirmar: 3 };
+    ? { datos: 0, pago: 1, metodo: 2 }
+    : { datos: 0, pago: 1, metodo: 2, confirmar: 3 };
 
   const idx = PASO_INDEX[paso] ?? 0;
   const stepperJSX = (
@@ -1347,13 +1385,23 @@ function PagoContent() {
                 )}
               </>
             )}
-            <Button
-              size="lg"
-              className="w-full"
-              onClick={() => setPaso("datos")}
-            >
-              Continuar
-            </Button>
+            <div className="space-y-3">
+              <Button
+                size="lg"
+                className="w-full"
+                onClick={() => setPaso("metodo")}
+              >
+                Continuar
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
+                className="w-full"
+                onClick={() => setPaso("datos")}
+              >
+                Volver
+              </Button>
+            </div>
           </>
         )}
 
@@ -1449,28 +1497,21 @@ function PagoContent() {
                 className="w-full"
                 onClick={() => {
                   if (!validarDatos()) return;
-                  setPaso("metodo");
+                  setPaso("pago");
                 }}
               >
                 Continuar
               </Button>
-              <Button
-                variant="outline"
-                size="lg"
-                className="w-full"
-                onClick={() => setPaso("pago")}
-              >
-                Volver
-              </Button>
               {esInvitado && (
                 <p className="text-center text-sm text-muted-foreground">
                   ¿Ya tienes cuenta?{" "}
-                  <a
-                    href={`/login?redirect=/pago?${params.toString()}`}
+                  <button
+                    type="button"
+                    onClick={() => setLoginModalOpen(true)}
                     className="text-primary font-medium hover:underline"
                   >
                     Inicia sesión
-                  </a>
+                  </button>
                 </p>
               )}
             </div>
@@ -1590,7 +1631,7 @@ function PagoContent() {
                     variant="outline"
                     size="lg"
                     className="w-full"
-                    onClick={() => setPaso("datos")}
+                    onClick={() => setPaso("pago")}
                   >
                     Volver
                   </Button>
@@ -1737,7 +1778,7 @@ function PagoContent() {
                     variant="outline"
                     size="lg"
                     className="w-full"
-                    onClick={() => setPaso("datos")}
+                    onClick={() => setPaso("pago")}
                   >
                     Volver
                   </Button>
@@ -1765,9 +1806,9 @@ function PagoContent() {
           <div className="grid grid-cols-[240px_1fr_300px] xl:grid-cols-[340px_1fr_360px] gap-6 xl:gap-8 items-start">
             {/* ── Columna izquierda: todos los pasos siempre visibles ── */}
             <div className="space-y-3 sticky top-20">
-              {/* Card 1: Tipo de pago */}
+              {/* Card 1: Identificación */}
               {(() => {
-                const done = paso !== "pago";
+                const done = paso !== "datos";
                 return (
                   <div className={cn(
                     "rounded-2xl border p-5 transition-all",
@@ -1785,52 +1826,7 @@ function PagoContent() {
                             </svg>
                           ) : <span className="text-xs font-bold text-primary-foreground">1</span>}
                         </div>
-                        <span className="text-sm font-semibold text-foreground">Tipo de pago</span>
-                      </div>
-                      {done && (
-                        <button onClick={() => setPaso("pago")} className="text-xs font-medium text-primary hover:underline">Editar</button>
-                      )}
-                    </div>
-                    {done ? (
-                      <>
-                        <p className="text-sm font-medium text-foreground ml-8">{modoPago === "completo" ? "Pago completo" : "Adelanto 20%"}</p>
-                        <p className="text-xs text-muted-foreground ml-8 mt-0.5">S/ {montoAdelanto} a pagar ahora</p>
-                      </>
-                    ) : (
-                      <p className="text-xs text-muted-foreground ml-8">Elige completo o adelanto</p>
-                    )}
-                  </div>
-                );
-              })()}
-
-              {/* Card 2: Identificación */}
-              {(() => {
-                const done = paso === "metodo" || paso === "confirmar";
-                const pending = paso === "pago" || paso === "datos";
-                return (
-                  <div className={cn(
-                    "rounded-2xl border p-5 transition-all",
-                    done ? "bg-white dark:bg-card border-border"
-                         : paso === "datos" ? "bg-white dark:bg-card border-primary shadow-sm ring-1 ring-primary/20"
-                         : "bg-muted/30 dark:bg-muted/10 border-border opacity-60"
-                  )}>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <div className={cn(
-                          "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold",
-                          done ? "bg-primary"
-                               : paso === "datos" ? "bg-primary ring-4 ring-primary/20"
-                               : "bg-muted text-muted-foreground"
-                        )}>
-                          {done ? (
-                            <svg className="h-3.5 w-3.5 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                            </svg>
-                          ) : <span className={paso === "datos" ? "text-primary-foreground" : ""}>2</span>}
-                        </div>
-                        <span className={cn("text-sm font-semibold", pending && paso !== "datos" ? "text-muted-foreground" : "text-foreground")}>
-                          Identificación
-                        </span>
+                        <span className="text-sm font-semibold text-foreground">Identificación</span>
                       </div>
                       {done && (
                         <button onClick={() => setPaso("datos")} className="text-xs font-medium text-primary hover:underline">Editar</button>
@@ -1842,7 +1838,52 @@ function PagoContent() {
                         <p>+51 {esInvitado ? telefonoInvitado || "—" : telefonoRegistrado || "—"}</p>
                       </div>
                     ) : (
-                      <p className="text-xs text-muted-foreground ml-8">{paso === "datos" ? "Ingresa tu correo y teléfono" : "Pendiente"}</p>
+                      <p className="text-xs text-muted-foreground ml-8">Ingresa tu correo y teléfono</p>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* Card 2: Tipo de pago */}
+              {(() => {
+                const done = paso === "metodo" || paso === "confirmar";
+                const pending = paso === "datos";
+                return (
+                  <div className={cn(
+                    "rounded-2xl border p-5 transition-all",
+                    done ? "bg-white dark:bg-card border-border"
+                         : paso === "pago" ? "bg-white dark:bg-card border-primary shadow-sm ring-1 ring-primary/20"
+                         : "bg-muted/30 dark:bg-muted/10 border-border opacity-60"
+                  )}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <div className={cn(
+                          "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold",
+                          done ? "bg-primary"
+                               : paso === "pago" ? "bg-primary ring-4 ring-primary/20"
+                               : "bg-muted text-muted-foreground"
+                        )}>
+                          {done ? (
+                            <svg className="h-3.5 w-3.5 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                          ) : <span className={paso === "pago" ? "text-primary-foreground" : ""}>2</span>}
+                        </div>
+                        <span className={cn("text-sm font-semibold", pending ? "text-muted-foreground" : "text-foreground")}>
+                          Tipo de pago
+                        </span>
+                      </div>
+                      {done && (
+                        <button onClick={() => setPaso("pago")} className="text-xs font-medium text-primary hover:underline">Editar</button>
+                      )}
+                    </div>
+                    {done ? (
+                      <>
+                        <p className="text-sm font-medium text-foreground ml-8">{modoPago === "completo" ? "Pago completo" : "Adelanto 20%"}</p>
+                        <p className="text-xs text-muted-foreground ml-8 mt-0.5">S/ {montoAdelanto} a pagar ahora</p>
+                      </>
+                    ) : (
+                      <p className="text-xs text-muted-foreground ml-8">{paso === "pago" ? "Elige completo o adelanto" : "Pendiente"}</p>
                     )}
                   </div>
                 );
@@ -2073,13 +2114,23 @@ function PagoContent() {
                       </div>
                     </div>
                   )}
-                  <Button
-                    size="lg"
-                    className="w-full"
-                    onClick={() => setPaso("datos")}
-                  >
-                    Continuar
-                  </Button>
+                  <div className="space-y-3">
+                    <Button
+                      size="lg"
+                      className="w-full"
+                      onClick={() => setPaso("metodo")}
+                    >
+                      Continuar
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      className="w-full"
+                      onClick={() => setPaso("datos")}
+                    >
+                      Volver
+                    </Button>
+                  </div>
                 </>
               )}
 
@@ -2177,35 +2228,26 @@ function PagoContent() {
                     {esInvitado && (
                       <p className="mt-4 text-center text-sm text-muted-foreground">
                         ¿Ya tienes cuenta?{" "}
-                        <a
-                          href={`/login?redirect=/pago?${params.toString()}`}
+                        <button
+                          type="button"
+                          onClick={() => setLoginModalOpen(true)}
                           className="text-primary font-medium hover:underline"
                         >
                           Inicia sesión
-                        </a>
+                        </button>
                       </p>
                     )}
                   </div>
-                  <div className="space-y-3">
-                    <Button
-                      size="lg"
-                      className="w-full"
-                      onClick={() => {
-                        if (!validarDatos()) return;
-                        setPaso("metodo");
-                      }}
-                    >
-                      Continuar
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="lg"
-                      className="w-full"
-                      onClick={() => setPaso("pago")}
-                    >
-                      Volver
-                    </Button>
-                  </div>
+                  <Button
+                    size="lg"
+                    className="w-full"
+                    onClick={() => {
+                      if (!validarDatos()) return;
+                      setPaso("pago");
+                    }}
+                  >
+                    Continuar
+                  </Button>
                 </>
               )}
 
@@ -2330,7 +2372,7 @@ function PagoContent() {
                       variant="outline"
                       size="lg"
                       className="w-full"
-                      onClick={() => setPaso("datos")}
+                      onClick={() => setPaso("pago")}
                     >
                       Volver
                     </Button>
@@ -2349,6 +2391,59 @@ function PagoContent() {
           </div>
         </div>
       </div>
+
+      {/* ── Modal de inicio de sesión ── */}
+      <Dialog open={loginModalOpen} onOpenChange={setLoginModalOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Iniciar sesión</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground -mt-1">
+            Al iniciar sesión tus datos se completarán automáticamente.
+          </p>
+          <form onSubmit={handleLoginModal} className="space-y-4 mt-1">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">
+                Correo electrónico
+              </label>
+              <Input
+                type="email"
+                placeholder="tu@correo.com"
+                value={loginEmail}
+                onChange={(e) => { setLoginEmail(e.target.value); setLoginError(""); }}
+                required
+                autoComplete="email"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">
+                Contraseña
+              </label>
+              <Input
+                type="password"
+                placeholder="••••••••"
+                value={loginPassword}
+                onChange={(e) => { setLoginPassword(e.target.value); setLoginError(""); }}
+                required
+                autoComplete="current-password"
+              />
+            </div>
+            {loginError && (
+              <p className="text-sm text-destructive">{loginError}</p>
+            )}
+            <LoadingButton
+              type="submit"
+              size="lg"
+              className="w-full"
+              isLoading={loginLoading}
+              loadingText="Iniciando sesión..."
+              loadingVariant="spinner"
+            >
+              Iniciar sesión
+            </LoadingButton>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

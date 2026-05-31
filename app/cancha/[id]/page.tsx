@@ -1310,41 +1310,43 @@ export default function CanchaDetailPage() {
       <div className="lg:hidden">
         <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-card px-4 py-3 shadow-xl">
           <div className="container mx-auto flex items-center gap-3">
-            <div className="flex-1">
-              {selectedSlots.length > 0 ? (
-                <>
-                  <p className="text-xs text-muted-foreground capitalize">
-                    {selectedDateLabel} · {selectedSlots[0].time} -{" "}
-                    {addOneHour24(selectedSlots[selectedSlots.length - 1].time)}
-                    {selectedSlots.length > 1
-                      ? ` (${selectedSlots.length}h)`
-                      : ""}
-                  </p>
-                  <p className="text-xl font-bold text-foreground">
+            <div className="flex-1 min-w-0">
+              {/* Fila 1: fecha — invisible si no hay selección para mantener altura */}
+              <p className={cn("text-xs text-muted-foreground capitalize leading-tight", selectedSlots.length === 0 && "invisible")}>
+                {selectedSlots.length > 0 ? selectedDateLabel : "·"}
+              </p>
+              {/* Fila 2: rango horario */}
+              <p className="text-xs text-muted-foreground leading-tight mt-0.5">
+                {selectedSlots.length > 0
+                  ? `${selectedSlots[0].time} – ${addOneHour24(selectedSlots[selectedSlots.length - 1].time)}${selectedSlots.length > 1 ? ` · ${selectedSlots.length}h` : ""}`
+                  : "Selecciona un horario"}
+              </p>
+              {/* Fila 3: precio */}
+              <p className="text-xl font-bold text-foreground leading-tight mt-0.5">
+                {selectedSlots.length > 0 ? (
+                  <>
                     S/ {precioConExtras}
                     {hayExtras && (
                       <span className="text-xs font-normal text-muted-foreground ml-1">
                         c/extras
                       </span>
                     )}
-                  </p>
-                </>
-              ) : (
-                <>
-                  <p className="text-xs text-muted-foreground">Desde</p>
-                  <p className="text-xl font-bold text-foreground">
+                  </>
+                ) : (
+                  <>
                     S/ {cancha.precio_por_hora}
                     <span className="text-sm font-normal text-muted-foreground">
                       /hora
                     </span>
-                  </p>
-                </>
-              )}
+                  </>
+                )}
+              </p>
             </div>
             <StepButton
               size="lg"
-              className="gap-2 px-6 shrink-0"
+              className="gap-2 px-6 shrink-0 w-43.75 h-14 justify-center"
               isLoading={reservando}
+              stackedLoading
               steps={["Verificando disponibilidad", "Redirigiendo al pago"]}
               currentStep={reservaStep - 1}
               onClick={handleReservar}
