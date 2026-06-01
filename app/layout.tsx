@@ -55,6 +55,9 @@ export const metadata: Metadata = {
     follow: true,
   },
   generator: 'Next.js',
+  other: {
+    'facebook-domain-verification': 'sracoh5ggpqzub90n2vawj4uf29wgm',
+  },
   icons: {
     icon: [
       { url: '/icon-light-32x32.png', media: '(prefers-color-scheme: light)' },
@@ -81,7 +84,7 @@ export default function RootLayout({
   const organizationSchema = generateOrganizationSchema();
   
   return (
-    <html lang="es" className="bg-background h-full">
+    <html lang="es" className="bg-background h-full" style={{ overflowX: 'clip' }}>
       <head>
         {/* JSON-LD Schema para la organización */}
         <script

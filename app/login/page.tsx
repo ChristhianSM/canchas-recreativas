@@ -62,34 +62,34 @@ function LoginContent() {
   };
 
   return (
-    <div className="relative min-h-screen flex flex-col">
-      {/* Fondo: imagen de cancha */}
-      <div className="fixed inset-0 -z-10">
+    <div className="relative min-h-screen flex flex-col overflow-hidden">
+      {/* Fondo: imagen de cancha difuminada */}
+      <div className="absolute inset-0">
         <Image
-          src="/images/cancha-login.png"
+          src="/images/login.jpg"
           alt="Cancha deportiva"
           fill
-          className="object-cover object-center"
+          className="object-cover object-center scale-105 blur-sm"
           priority
         />
-        <div className="absolute inset-0 bg-black/60" />
+        <div className="absolute inset-0 bg-black/55" />
       </div>
 
       {/* Header transparente */}
-      <header className="border-b border-gray-200 bg-white backdrop-blur-sm sticky top-0 z-10">
+      <header className="sticky top-0 z-10">
         <div className="container  mx-auto flex items-center gap-4 px-4 py-4">
           <button
             onClick={() => router.back()}
-            className="flex cursor-pointer items-center text-black/80 hover:text-white transition-colors"
+            className="flex cursor-pointer items-center text-white/80 hover:text-white transition-colors"
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
-          <h1 className="text-lg font-semibold text-black">Iniciar Sesión</h1>
+          <h1 className="text-lg font-semibold text-white">Volver a inicio</h1>
         </div>
       </header>
 
-      <main className="flex-1 flex items-center justify-center px-4 py-10">
-        <div className="w-full max-w-md bg-white dark:bg-card rounded-2xl shadow-2xl p-8">
+      <main className="relative z-10 flex-1 flex items-center justify-center px-4 py-10">
+        <div className="w-full max-w-md bg-white dark:bg-card rounded-xl shadow-2xl p-8">
           {/* Logo */}
           <div className="mb-8 text-center">
             <Image
@@ -110,19 +110,13 @@ function LoginContent() {
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Email */}
-            <div className="space-y-2">
-              <label
-                htmlFor="email"
-                className="text-sm font-medium text-foreground"
-              >
-                Correo electrónico
-              </label>
+            <div className="space-y-1.5">
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   id="email"
                   type="email"
-                  placeholder="tu@correo.com"
+                  placeholder="Correo electrónico"
                   className={`pl-10 ${errors.email ? "border-destructive" : ""}`}
                   value={formData.email}
                   onChange={(e) =>
@@ -136,19 +130,13 @@ function LoginContent() {
             </div>
 
             {/* Password */}
-            <div className="space-y-2">
-              <label
-                htmlFor="password"
-                className="text-sm font-medium text-foreground"
-              >
-                Contraseña
-              </label>
+            <div className="space-y-1.5">
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="Tu contraseña"
+                  placeholder="Contraseña"
                   className={`pl-10 pr-10 ${errors.password ? "border-destructive" : ""}`}
                   value={formData.password}
                   onChange={(e) =>

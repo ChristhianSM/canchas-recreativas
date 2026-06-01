@@ -138,10 +138,11 @@ export async function apiGetReservas() {
 }
 
 export async function apiCrearReserva(data: {
-  canchaId: string; canchaNombre: string; fecha: string; hora: string;
+  canchaId: string; canchaNombre: string; fecha: string; hora: string; horas?: number;
   precio: number; precioOriginal?: number; cuponId?: string | null;
   metodoPago: string; comprobanteUrl?: string | null;
   emailInvitado?: string; telefonoInvitado?: string;
+  whatsappInvitado?: string;
   metodoDevolucion?: string;
   telefonoDevolucion?: string;
   actualizarTelefono?: boolean;

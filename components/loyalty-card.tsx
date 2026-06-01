@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { type LoyaltyData, type Cupon } from '@/lib/auth';
 
-const TOTAL_SELLOS = 6;
+const TOTAL_SELLOS = 8;
 
 interface LoyaltyCardProps {
   loyalty: LoyaltyData;
@@ -47,7 +47,7 @@ export function LoyaltyCard({ loyalty, onUpdate }: LoyaltyCardProps) {
           </div>
 
           {/* Sellos */}
-          <div className="grid grid-cols-6 gap-2 mb-4">
+          <div className="grid grid-cols-8 gap-2 mb-4">
             {Array.from({ length: TOTAL_SELLOS }).map((_, i) => (
               <div
                 key={i}

@@ -142,13 +142,14 @@ export function StepButton({
   isLoading = false,
   steps = ['Validando', 'Procesando', 'Finalizando'],
   currentStep = 0,
+  stackedLoading = false,
   children,
   className,
   disabled,
   variant = 'default',
   size = 'default',
   ...props
-}: LoadingButtonProps & { steps?: string[]; currentStep?: number }) {
+}: LoadingButtonProps & { steps?: string[]; currentStep?: number; stackedLoading?: boolean }) {
   return (
     <Button
       variant={variant}
@@ -158,10 +159,17 @@ export function StepButton({
       {...props}
     >
       {isLoading ? (
-        <span className="flex items-center gap-2 animate-in fade-in slide-in-from-top-1 duration-300">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          {steps[currentStep] || steps[0]}
-        </span>
+        stackedLoading ? (
+          <span className="flex flex-col items-center gap-0.5 animate-in fade-in slide-in-from-top-1 duration-300">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span className="text-xs leading-tight text-center">{steps[currentStep] || steps[0]}</span>
+          </span>
+        ) : (
+          <span className="flex items-center gap-2 animate-in fade-in slide-in-from-top-1 duration-300">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            {steps[currentStep] || steps[0]}
+          </span>
+        )
       ) : (
         children
       )}

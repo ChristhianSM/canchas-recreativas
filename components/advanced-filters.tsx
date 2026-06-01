@@ -1,19 +1,39 @@
-'use client';
+"use client";
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from "react";
 import {
-  Sliders, MapPin
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Slider } from '@/components/ui/slider';
+  Sliders,
+  MapPin,
+  Loader2,
+  Zap,
+  ShieldCheck,
+  Users,
+  DollarSign,
+  Star,
+  Package,
+  ChevronDown,
+  LocateFixed,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Slider } from "@/components/ui/slider";
 import {
-  Sheet, SheetContent, SheetTitle, SheetTrigger,
-} from '@/components/ui/sheet';
-import { AdvancedFilters, sportLabels, SportType, superficieLabels, SuperficieType } from '@/lib/types';
-import { cn } from '@/lib/utils';
-import type { Coordenadas } from '@/lib/geolocation-utils';
+  Sheet,
+  SheetContent,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import {
+  AdvancedFilters,
+  sportLabels,
+  SportType,
+  superficieLabels,
+  SuperficieType,
+} from "@/lib/types";
+import { cn } from "@/lib/utils";
+import { guardarUbicacion, limpiarUbicacion } from "@/lib/geolocation-utils";
+import type { Coordenadas } from "@/lib/geolocation-utils";
 
 interface AdvancedFiltersProps {
   filters: AdvancedFilters;
@@ -52,20 +72,25 @@ export function AdvancedFiltersComponent({
   onOpenChange: controlledOnOpenChange,
 }: AdvancedFiltersProps) {
   const [internalIsOpen, setInternalIsOpen] = useState(false);
+  const [loadingUbicacion, setLoadingUbicacion] = useState(false);
   const scrollPositionRef = useRef<number>(0);
   const scrollContainerRef = useRef<HTMLElement | null>(null);
   const isUpdatingRef = useRef<boolean>(false);
-  
+
   // Usar estado controlado si se proporciona, sino usar estado interno
-  const isOpen = controlledIsOpen !== undefined ? controlledIsOpen : internalIsOpen;
-  const setIsOpen = controlledOnOpenChange !== undefined ? controlledOnOpenChange : setInternalIsOpen;
+  const isOpen =
+    controlledIsOpen !== undefined ? controlledIsOpen : internalIsOpen;
+  const setIsOpen =
+    controlledOnOpenChange !== undefined
+      ? controlledOnOpenChange
+      : setInternalIsOpen;
 
   // Guardar referencia al contenedor de scroll y bloquear scroll automático
   useEffect(() => {
-    const container = document.querySelector('.overflow-y-auto') as HTMLElement;
+    const container = document.querySelector(".overflow-y-auto") as HTMLElement;
     if (container) {
       scrollContainerRef.current = container;
-      
+
       // Interceptar y bloquear scroll automático
       const handleScroll = (e: Event) => {
         if (isUpdatingRef.current) {
@@ -76,11 +101,16 @@ export function AdvancedFiltersComponent({
           }
         }
       };
-      
-      container.addEventListener('scroll', handleScroll, { passive: false, capture: true });
-      
+
+      container.addEventListener("scroll", handleScroll, {
+        passive: false,
+        capture: true,
+      });
+
       return () => {
-        container.removeEventListener('scroll', handleScroll, { capture: true });
+        container.removeEventListener("scroll", handleScroll, {
+          capture: true,
+        });
       };
     }
   }, [isOpen]);
@@ -96,10 +126,12 @@ export function AdvancedFiltersComponent({
   }, [filters]);
 
   // Estados para controlar qué secciones están expandidas
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    ubicacion: true,  // Expandido por defecto
-    deportes: true,   // Expandido por defecto
-    extras: true,     // Expandido por defecto
+  const [expandedSections, setExpandedSections] = useState<
+    Record<string, boolean>
+  >({
+    ubicacion: true, // Expandido por defecto
+    deportes: true, // Expandido por defecto
+    extras: true, // Expandido por defecto
     superficie: false,
     jugadores: false,
     precio: false,
@@ -109,9 +141,9 @@ export function AdvancedFiltersComponent({
   });
 
   const toggleSection = (section: string) => {
-    setExpandedSections(prev => ({
+    setExpandedSections((prev) => ({
       ...prev,
-      [section]: !prev[section]
+      [section]: !prev[section],
     }));
   };
 
@@ -120,17 +152,17 @@ export function AdvancedFiltersComponent({
     return (e?: any) => {
       // Activar flag de actualización
       isUpdatingRef.current = true;
-      
+
       // Guardar posición actual del scroll
       if (scrollContainerRef.current) {
         scrollPositionRef.current = scrollContainerRef.current.scrollTop;
       }
-      
+
       // Quitar focus del elemento que disparó el evento
       if (e?.target) {
         e.target.blur();
       }
-      
+
       // Ejecutar el callback original
       callback();
     };
@@ -138,21 +170,21 @@ export function AdvancedFiltersComponent({
 
   const handleSportToggle = (sport: SportType) => {
     const newSports = filters.sports.includes(sport)
-      ? filters.sports.filter(s => s !== sport)
+      ? filters.sports.filter((s) => s !== sport)
       : [...filters.sports, sport];
     onFiltersChange({ ...filters, sports: newSports });
   };
 
   const handleAmenityToggle = (amenity: string) => {
     const newAmenities = filters.amenities.includes(amenity)
-      ? filters.amenities.filter(a => a !== amenity)
+      ? filters.amenities.filter((a) => a !== amenity)
       : [...filters.amenities, amenity];
     onFiltersChange({ ...filters, amenities: newAmenities });
   };
 
   const handleDistrictToggle = (district: string) => {
     const newDistricts = filters.districts.includes(district)
-      ? filters.districts.filter(d => d !== district)
+      ? filters.districts.filter((d) => d !== district)
       : [...filters.districts, district];
     onFiltersChange({ ...filters, districts: newDistricts });
   };
@@ -175,7 +207,7 @@ export function AdvancedFiltersComponent({
       selectedDate: filters.selectedDate, // Mantener la fecha del home
       availableHours: filters.availableHours, // Mantener las horas del home
       onlyFeatured: false,
-      searchQuery: '',
+      searchQuery: "",
       conBalon: false,
       conChalecos: false,
       superficies: [],
@@ -187,81 +219,147 @@ export function AdvancedFiltersComponent({
   const AccordionSection = ({
     id,
     icon,
+    iconBg,
     title,
     badge,
     children,
   }: {
     id: string;
-    icon: string;
+    icon: React.ReactNode;
+    iconBg?: string;
     title: string;
     badge?: number;
     children: React.ReactNode;
-  }) => (
-    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-      <button
-        type="button"
-        tabIndex={-1}
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          const target = e.currentTarget;
-          target.blur(); // Quitar el focus inmediatamente
-          toggleSection(id);
-        }}
-        className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-gray-50 transition-colors focus:outline-none"
-      >
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          <span className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <span>{icon}</span>
-            <span>{title}</span>
-          </span>
-          {badge !== undefined && badge > 0 && (
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#16a34a] text-[10px] font-bold text-white shrink-0">
-              {badge}
-            </span>
-          )}
-        </div>
-        <svg
-          className={`h-4 w-4 text-gray-400 transition-transform duration-200 shrink-0 ml-2 ${expandedSections[id] ? 'rotate-180' : ''}`}
-          fill="none" stroke="currentColor" viewBox="0 0 24 24"
+  }) =>
+    isSidebar ? (
+      // Sidebar: tarjeta individual por sección con ícono circular
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm mb-2">
+        <button
+          type="button"
+          tabIndex={-1}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            e.currentTarget.blur();
+            toggleSection(id);
+          }}
+          className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-gray-50 transition-colors focus:outline-none"
         >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
-      <div 
-        className={`transition-all duration-300 ease-in-out overflow-hidden ${
-          expandedSections[id] ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
-        }`}
-      >
-        <div className="px-4 pb-4 pt-1 border-t border-gray-100">
-          {children}
+          <div className="flex items-center gap-3">
+            {iconBg && (
+              <div
+                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${iconBg}`}
+              >
+                {icon}
+              </div>
+            )}
+            <span className="text-sm font-semibold text-gray-800">{title}</span>
+            {badge !== undefined && badge > 0 && (
+              <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#16a34a] text-[9px] font-bold text-white">
+                {badge}
+              </span>
+            )}
+          </div>
+          <ChevronDown
+            className={`h-4 w-4 text-gray-400 transition-transform duration-200 shrink-0 ${expandedSections[id] ? "rotate-180" : ""}`}
+          />
+        </button>
+        <div
+          className={`transition-all duration-300 ease-in-out overflow-hidden ${expandedSections[id] ? "max-h-500 opacity-100" : "max-h-0 opacity-0"}`}
+        >
+          <div className="px-4 pb-4 pt-1 border-t border-gray-100">
+            {children}
+          </div>
         </div>
       </div>
-    </div>
-  );
+    ) : (
+      // Sheet: misma tarjeta con emoji
+      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <button
+          type="button"
+          tabIndex={-1}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            e.currentTarget.blur();
+            toggleSection(id);
+          }}
+          className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-gray-50 transition-colors focus:outline-none"
+        >
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <span className="text-sm font-semibold text-foreground flex items-center gap-2">
+              {icon}
+              <span>{title}</span>
+            </span>
+            {badge !== undefined && badge > 0 && (
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#16a34a] text-[10px] font-bold text-white shrink-0">
+                {badge}
+              </span>
+            )}
+          </div>
+          <ChevronDown
+            className={`h-4 w-4 text-gray-400 transition-transform duration-200 shrink-0 ml-2 ${expandedSections[id] ? "rotate-180" : ""}`}
+          />
+        </button>
+        <div
+          className={`transition-all duration-300 ease-in-out overflow-hidden ${expandedSections[id] ? "max-h-500 opacity-100" : "max-h-0 opacity-0"}`}
+        >
+          <div className="px-4 pb-4 pt-1 border-t border-gray-100">
+            {children}
+          </div>
+        </div>
+      </div>
+    );
 
   const filterContent = (
-    <div className={cn("space-y-2", isSidebar && "space-y-3")}>
-
+    <div className={cn("space-y-2", isSidebar && "space-y-0")}>
       {/* Ubicación */}
-      <AccordionSection id="ubicacion" icon="📍" title="Ubicación">
+      <AccordionSection
+        id="ubicacion"
+        icon={<MapPin className="h-3.5 w-3.5" />}
+        iconBg="bg-green-100 text-green-600"
+        title="Ubicación"
+      >
         {!ubicacion ? (
           <button
+            disabled={loadingUbicacion}
             onClick={() => {
-              if (!navigator.geolocation) { alert('Tu navegador no soporta geolocalización'); return; }
+              if (!navigator.geolocation) {
+                alert("Tu navegador no soporta geolocalización");
+                return;
+              }
+              setLoadingUbicacion(true);
               navigator.geolocation.getCurrentPosition(
                 (position) => {
-                  const coords = { lat: position.coords.latitude, lng: position.coords.longitude };
-                  localStorage.setItem('user_location', JSON.stringify(coords));
+                  const coords = {
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude,
+                  };
+                  guardarUbicacion(coords);
+                  setLoadingUbicacion(false);
                   if (onUbicacionObtenida) onUbicacionObtenida(coords);
                 },
-                () => alert('No se pudo obtener tu ubicación. Por favor, verifica los permisos.')
+                () => {
+                  setLoadingUbicacion(false);
+                  alert(
+                    "No se pudo obtener tu ubicación. Por favor, verifica los permisos.",
+                  );
+                },
               );
             }}
-            className="w-full flex items-center justify-center gap-2 px-2.5 py-2.5 bg-[#16a34a] text-white rounded-md hover:bg-[#15803d] transition-colors text-sm font-medium mt-2"
+            className="w-full flex items-center justify-center gap-2 px-2.5 py-2.5 bg-[#16a34a] text-white rounded-md hover:bg-[#15803d] disabled:opacity-70 disabled:cursor-not-allowed transition-colors text-sm font-medium mt-2"
           >
-            <MapPin className="h-4 w-4" />
-            Activar "Cerca de mí"
+            {loadingUbicacion ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Activando...
+              </>
+            ) : (
+              <>
+                <MapPin className="h-4 w-4" />
+                Activar "Cerca de mí"
+              </>
+            )}
           </button>
         ) : (
           <div className="mt-2 space-y-3">
@@ -271,7 +369,10 @@ export function AdvancedFiltersComponent({
                 Ubicación activada
               </span>
               <button
-                onClick={() => { localStorage.removeItem('user_location'); if (onUbicacionLimpiada) onUbicacionLimpiada(); }}
+                onClick={() => {
+                  limpiarUbicacion();
+                  if (onUbicacionLimpiada) onUbicacionLimpiada();
+                }}
                 className="text-xs text-gray-500 hover:text-gray-700 underline"
               >
                 Desactivar
@@ -281,12 +382,22 @@ export function AdvancedFiltersComponent({
             <div>
               <p className="text-xs text-gray-500 mb-2">Radio de búsqueda</p>
               <div className="grid grid-cols-4 gap-1.5">
-                {[{ value: undefined, label: 'Todas' }, { value: 1, label: '1 km' }, { value: 3, label: '3 km' }, { value: 5, label: '5 km' }].map((opt) => (
+                {[
+                  { value: undefined, label: "Todas" },
+                  { value: 1, label: "1 km" },
+                  { value: 3, label: "3 km" },
+                  { value: 5, label: "5 km" },
+                ].map((opt) => (
                   <button
                     key={opt.label}
-                    onClick={() => onFiltersChange({ ...filters, radioKm: opt.value })}
-                    className={cn('px-2 py-1.5 text-xs font-medium rounded-md transition-colors border',
-                      filters.radioKm === opt.value ? 'bg-[#16a34a] text-white border-[#16a34a]' : 'bg-white text-foreground border-gray-200 hover:border-[#16a34a]'
+                    onClick={() =>
+                      onFiltersChange({ ...filters, radioKm: opt.value })
+                    }
+                    className={cn(
+                      "px-2 py-1.5 text-xs font-medium rounded-md transition-colors border",
+                      filters.radioKm === opt.value
+                        ? "bg-[#16a34a] text-white border-[#16a34a]"
+                        : "bg-white text-foreground border-gray-200 hover:border-[#16a34a]",
                     )}
                   >
                     {opt.label}
@@ -299,17 +410,25 @@ export function AdvancedFiltersComponent({
       </AccordionSection>
 
       {/* Deportes */}
-      <AccordionSection id="deportes" icon="⚽" title="Deportes" badge={filters.sports.length}>
+      <AccordionSection
+        id="deportes"
+        icon={<Zap className="h-3.5 w-3.5" />}
+        iconBg="bg-yellow-100 text-yellow-600"
+        title="Deportes"
+        badge={filters.sports.length}
+      >
         <div className="mt-2 space-y-2">
-          {sports.map(sport => (
+          {sports.map((sport) => (
             <div key={sport} className="flex items-center gap-2">
               <Checkbox
                 id={`sport-${sport}`}
                 checked={filters.sports.includes(sport)}
-                onCheckedChange={preventScrollOnClick(() => handleSportToggle(sport))}
+                onCheckedChange={preventScrollOnClick(() =>
+                  handleSportToggle(sport),
+                )}
                 className="h-4 w-4"
               />
-              <label 
+              <label
                 onClick={preventScrollOnClick(() => handleSportToggle(sport))}
                 className="text-sm cursor-pointer"
               >
@@ -321,31 +440,51 @@ export function AdvancedFiltersComponent({
       </AccordionSection>
 
       {/* Extras disponibles */}
-      <AccordionSection id="extras" icon="🎽" title="Ext. disponibles" badge={(filters.conBalon ? 1 : 0) + (filters.conChalecos ? 1 : 0)}>
+      <AccordionSection
+        id="extras"
+        icon={<Package className="h-3.5 w-3.5" />}
+        iconBg="bg-blue-100 text-blue-600"
+        title="Ext. disponibles"
+        badge={(filters.conBalon ? 1 : 0) + (filters.conChalecos ? 1 : 0)}
+      >
         <div className="mt-2 space-y-2">
           <div className="flex items-center gap-2">
-            <Checkbox 
-              id="con-balon" 
-              checked={filters.conBalon} 
-              onCheckedChange={preventScrollOnClick(() => onFiltersChange({ ...filters, conBalon: !filters.conBalon }))} 
-              className="h-4 w-4" 
+            <Checkbox
+              id="con-balon"
+              checked={filters.conBalon}
+              onCheckedChange={preventScrollOnClick(() =>
+                onFiltersChange({ ...filters, conBalon: !filters.conBalon }),
+              )}
+              className="h-4 w-4"
             />
-            <label 
-              onClick={preventScrollOnClick(() => onFiltersChange({ ...filters, conBalon: !filters.conBalon }))}
+            <label
+              onClick={preventScrollOnClick(() =>
+                onFiltersChange({ ...filters, conBalon: !filters.conBalon }),
+              )}
               className="text-sm cursor-pointer"
             >
               ⚽ Con balón
             </label>
           </div>
           <div className="flex items-center gap-2">
-            <Checkbox 
-              id="con-chalecos" 
-              checked={filters.conChalecos} 
-              onCheckedChange={preventScrollOnClick(() => onFiltersChange({ ...filters, conChalecos: !filters.conChalecos }))} 
-              className="h-4 w-4" 
+            <Checkbox
+              id="con-chalecos"
+              checked={filters.conChalecos}
+              onCheckedChange={preventScrollOnClick(() =>
+                onFiltersChange({
+                  ...filters,
+                  conChalecos: !filters.conChalecos,
+                }),
+              )}
+              className="h-4 w-4"
             />
-            <label 
-              onClick={preventScrollOnClick(() => onFiltersChange({ ...filters, conChalecos: !filters.conChalecos }))}
+            <label
+              onClick={preventScrollOnClick(() =>
+                onFiltersChange({
+                  ...filters,
+                  conChalecos: !filters.conChalecos,
+                }),
+              )}
               className="text-sm cursor-pointer"
             >
               🎽 Con chalecos
@@ -355,25 +494,31 @@ export function AdvancedFiltersComponent({
       </AccordionSection>
 
       {/* Superficie */}
-      <AccordionSection id="superficie" icon="🏟️" title="Superficie" badge={filters.superficies.length}>
+      <AccordionSection
+        id="superficie"
+        icon={<ShieldCheck className="h-3.5 w-3.5" />}
+        iconBg="bg-green-100 text-green-600"
+        title="Superficie"
+        badge={filters.superficies.length}
+      >
         <div className="mt-2 space-y-2">
-          {(Object.keys(superficieLabels) as SuperficieType[]).map(sup => (
+          {(Object.keys(superficieLabels) as SuperficieType[]).map((sup) => (
             <div key={sup} className="flex items-center gap-2">
               <Checkbox
                 id={`sup-${sup}`}
                 checked={filters.superficies.includes(sup)}
                 onCheckedChange={preventScrollOnClick(() => {
-                  const next = filters.superficies.includes(sup) 
-                    ? filters.superficies.filter(s => s !== sup) 
+                  const next = filters.superficies.includes(sup)
+                    ? filters.superficies.filter((s) => s !== sup)
                     : [...filters.superficies, sup];
                   onFiltersChange({ ...filters, superficies: next });
                 })}
                 className="h-4 w-4"
               />
-              <label 
+              <label
                 onClick={preventScrollOnClick(() => {
-                  const next = filters.superficies.includes(sup) 
-                    ? filters.superficies.filter(s => s !== sup) 
+                  const next = filters.superficies.includes(sup)
+                    ? filters.superficies.filter((s) => s !== sup)
                     : [...filters.superficies, sup];
                   onFiltersChange({ ...filters, superficies: next });
                 })}
@@ -387,9 +532,15 @@ export function AdvancedFiltersComponent({
       </AccordionSection>
 
       {/* Mínimo de jugadores */}
-      <AccordionSection id="jugadores" icon="👥" title="Min de jugadores" badge={filters.minJugadores > 0 ? 1 : 0}>
+      <AccordionSection
+        id="jugadores"
+        icon={<Users className="h-3.5 w-3.5" />}
+        iconBg="bg-purple-100 text-purple-600"
+        title="Min de jugadores"
+        badge={filters.minJugadores > 0 ? 1 : 0}
+      >
         <div className="mt-2 grid grid-cols-4 gap-1.5">
-          {[0, 8, 10, 12, 14, 16, 20, 22].map(n => (
+          {[0, 8, 10, 12, 14, 16, 20, 22].map((n) => (
             <button
               key={n}
               type="button"
@@ -398,20 +549,30 @@ export function AdvancedFiltersComponent({
                 e.preventDefault();
                 e.stopPropagation();
                 e.currentTarget.blur();
-                preventScrollOnClick(() => onFiltersChange({ ...filters, minJugadores: n }))();
+                preventScrollOnClick(() =>
+                  onFiltersChange({ ...filters, minJugadores: n }),
+                )();
               }}
-              className={cn('rounded-lg border px-2 py-2 text-xs font-medium transition-all focus:outline-none',
-                filters.minJugadores === n ? 'border-[#16a34a] bg-[#16a34a] text-white' : 'border-gray-200 bg-white text-foreground hover:border-[#16a34a]'
+              className={cn(
+                "rounded-lg border px-2 py-2 text-xs font-medium transition-all focus:outline-none",
+                filters.minJugadores === n
+                  ? "border-[#16a34a] bg-[#16a34a] text-white"
+                  : "border-gray-200 bg-white text-foreground hover:border-[#16a34a]",
               )}
             >
-              {n === 0 ? 'Todos' : `${n}+`}
+              {n === 0 ? "Todos" : `${n}+`}
             </button>
           ))}
         </div>
       </AccordionSection>
 
       {/* Precio */}
-      <AccordionSection id="precio" icon="💰" title="Precio por hora">
+      <AccordionSection
+        id="precio"
+        icon={<DollarSign className="h-3.5 w-3.5" />}
+        iconBg="bg-orange-100 text-orange-600"
+        title="Precio por hora"
+      >
         <div className="mt-3">
           <div className="flex justify-between text-xs text-gray-500 mb-3">
             <span>S/ {filters.priceRange[0]}</span>
@@ -425,12 +586,14 @@ export function AdvancedFiltersComponent({
             onValueChange={(value) => {
               // Guardar posición y aplicar cambio sin scroll
               if (scrollContainerRef.current) {
-                scrollPositionRef.current = scrollContainerRef.current.scrollTop;
+                scrollPositionRef.current =
+                  scrollContainerRef.current.scrollTop;
               }
               handlePriceChange(value);
               requestAnimationFrame(() => {
                 if (scrollContainerRef.current) {
-                  scrollContainerRef.current.scrollTop = scrollPositionRef.current;
+                  scrollContainerRef.current.scrollTop =
+                    scrollPositionRef.current;
                 }
               });
             }}
@@ -440,9 +603,20 @@ export function AdvancedFiltersComponent({
       </AccordionSection>
 
       {/* Rating */}
-      <AccordionSection id="rating" icon="⭐" title="Calificación" badge={filters.minRating > 0 ? 1 : 0}>
+      <AccordionSection
+        id="rating"
+        icon={<Star className="h-3.5 w-3.5" />}
+        iconBg="bg-yellow-100 text-yellow-600"
+        title="Calificación"
+        badge={filters.minRating > 0 ? 1 : 0}
+      >
         <div className="mt-2 grid grid-cols-4 gap-1.5">
-          {[{ value: 0, label: 'Todas' }, { value: 3, label: '3+⭐' }, { value: 4, label: '4+⭐' }, { value: 4.5, label: '4.5+⭐' }].map(opt => (
+          {[
+            { value: 0, label: "Todas" },
+            { value: 3, label: "3+⭐" },
+            { value: 4, label: "4+⭐" },
+            { value: 4.5, label: "4.5+⭐" },
+          ].map((opt) => (
             <button
               key={opt.value}
               type="button"
@@ -451,10 +625,15 @@ export function AdvancedFiltersComponent({
                 e.preventDefault();
                 e.stopPropagation();
                 e.currentTarget.blur();
-                preventScrollOnClick(() => onFiltersChange({ ...filters, minRating: opt.value }))();
+                preventScrollOnClick(() =>
+                  onFiltersChange({ ...filters, minRating: opt.value }),
+                )();
               }}
-              className={cn('rounded-lg border px-2 py-2 text-xs font-medium transition-all text-center focus:outline-none',
-                filters.minRating === opt.value ? 'border-[#16a34a] bg-[#16a34a] text-white' : 'border-gray-200 bg-white text-foreground hover:border-[#16a34a]'
+              className={cn(
+                "rounded-lg border px-2 py-2 text-xs font-medium transition-all text-center focus:outline-none",
+                filters.minRating === opt.value
+                  ? "border-[#16a34a] bg-[#16a34a] text-white"
+                  : "border-gray-200 bg-white text-foreground hover:border-[#16a34a]",
               )}
             >
               {opt.label}
@@ -465,18 +644,28 @@ export function AdvancedFiltersComponent({
 
       {/* Servicios */}
       {allAmenities.length > 0 && (
-        <AccordionSection id="servicios" icon="⚡" title="Servicios" badge={filters.amenities.length}>
+        <AccordionSection
+          id="servicios"
+          icon={<Zap className="h-3.5 w-3.5" />}
+          iconBg="bg-green-100 text-green-600"
+          title="Servicios"
+          badge={filters.amenities.length}
+        >
           <div className="mt-2 space-y-2 max-h-40 overflow-y-auto">
-            {allAmenities.map(amenity => (
+            {allAmenities.map((amenity) => (
               <div key={amenity} className="flex items-center gap-2">
                 <Checkbox
                   id={`amenity-${amenity}`}
                   checked={filters.amenities.includes(amenity)}
-                  onCheckedChange={preventScrollOnClick(() => handleAmenityToggle(amenity))}
+                  onCheckedChange={preventScrollOnClick(() =>
+                    handleAmenityToggle(amenity),
+                  )}
                   className="h-4 w-4"
                 />
-                <label 
-                  onClick={preventScrollOnClick(() => handleAmenityToggle(amenity))}
+                <label
+                  onClick={preventScrollOnClick(() =>
+                    handleAmenityToggle(amenity),
+                  )}
                   className="text-sm cursor-pointer"
                 >
                   {amenity}
@@ -486,7 +675,6 @@ export function AdvancedFiltersComponent({
           </div>
         </AccordionSection>
       )}
-
     </div>
   );
 
@@ -502,7 +690,12 @@ export function AdvancedFiltersComponent({
       <div className="flex items-center gap-2">
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
           <SheetTrigger asChild>
-            <Button ref={triggerRef} variant="outline" size="sm" className="gap-2 w-full justify-center">
+            <Button
+              ref={triggerRef}
+              variant="outline"
+              size="sm"
+              className="gap-2 w-full justify-center"
+            >
               <Sliders className="h-4 w-4" />
               Filtros
               {activeFilterCount > 0 && (
@@ -512,26 +705,39 @@ export function AdvancedFiltersComponent({
               )}
             </Button>
           </SheetTrigger>
-          <SheetContent side="right" className="p-0 flex flex-col sm:max-w-md w-full">
+          <SheetContent
+            side="right"
+            className="p-0 flex flex-col sm:max-w-md w-full"
+          >
             {/* Header fijo con título y botón de cerrar */}
             <div className="sticky top-0 z-10 bg-white border-b border-border px-6 py-4 flex items-center justify-between">
               <SheetTitle className="text-lg font-semibold">Filtros</SheetTitle>
               {/* El botón de cerrar ya viene por defecto en SheetContent */}
             </div>
-            
+
             {/* Botón Limpiar todo */}
             <div className="px-6 pb-3 border-b border-border flex justify-end">
               <button
                 onClick={handleClearFilters}
                 className="flex items-center gap-2 text-[#16a34a] hover:text-[#15803d] text-sm font-medium transition-colors"
               >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
                 </svg>
                 Limpiar todo
               </button>
             </div>
-            
+
             {/* Contenido scrolleable con filtros */}
             <div className="flex-1 overflow-y-auto px-6 py-4">
               {filterContent}
@@ -544,7 +750,7 @@ export function AdvancedFiltersComponent({
                   onClick={() => setIsOpen(false)}
                   className="w-full bg-[#16a34a] hover:bg-[#15803d] text-white font-semibold py-3 rounded-lg transition-colors"
                 >
-                  Ver {resultCount} {resultCount === 1 ? 'cancha' : 'canchas'}
+                  Ver {resultCount} {resultCount === 1 ? "cancha" : "canchas"}
                 </button>
               </div>
             )}

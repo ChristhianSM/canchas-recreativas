@@ -65,7 +65,7 @@ export default function AdminLoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <Card className="w-full max-w-sm border-border p-8">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-primary">
             <ShieldCheck className="h-7 w-7 text-primary-foreground" />
           </div>
           <h1 className="text-xl font-bold text-foreground">Panel Administrador</h1>

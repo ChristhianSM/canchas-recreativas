@@ -192,7 +192,7 @@ function ResetPasswordContent() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="mx-auto w-full max-w-md space-y-6">
         <div className="text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-xl bg-primary">
             <span className="text-2xl font-bold text-primary-foreground">CP</span>
           </div>
           <h1 className="text-2xl font-bold text-foreground">Nueva contraseña</h1>

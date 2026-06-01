@@ -5,6 +5,7 @@ import { Footer } from '@/components/footer';
 
 export function ConditionalFooter() {
   const pathname = usePathname();
-  if (pathname.startsWith('/admin')) return null;
+  const noFooter = ['/admin', '/login', '/registro', '/recuperar-contrasena', '/pago'];
+  if (noFooter.some((p) => pathname.startsWith(p))) return null;
   return <Footer />;
 }

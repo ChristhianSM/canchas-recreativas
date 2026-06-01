@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
 import { sendReservaEmail } from '@/lib/email';
+import { notificarEstadoReserva } from '@/lib/whatsapp';
 
 // PATCH /api/reservas/update?id=xxx — actualizar estado de reserva
 export async function PATCH(req: NextRequest) {
@@ -103,6 +104,19 @@ export async function PATCH(req: NextRequest) {
         estado,
         reservaId:    reserva.id,
         baseUrl,
+      });
+    }
+
+    // WhatsApp al cliente si tiene teléfono
+    if (reserva.usuario_telefono) {
+      await notificarEstadoReserva({
+        clientePhone: reserva.usuario_telefono,
+        canchaNombre: reserva.cancha_nombre,
+        fecha:        reserva.fecha,
+        hora:         reserva.hora,
+        precio:       reserva.precio,
+        estado,
+        reservaId:    reserva.id,
       });
     }
 

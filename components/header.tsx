@@ -12,6 +12,11 @@ import {
   LogOut,
   ChevronDown,
   CalendarCheck,
+  Users,
+  Newspaper,
+  Phone,
+  CircleUser,
+  Swords,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -102,7 +107,7 @@ export function Header() {
 
     // Solo redirigir si está en páginas protegidas
     const currentPath = window.location.pathname;
-    const protectedRoutes = ["/perfil", "/mis-reservas"];
+    const protectedRoutes = ["/mi-cuenta"];
     const isProtectedRoute = protectedRoutes.some((route) =>
       currentPath.startsWith(route),
     );
@@ -117,80 +122,75 @@ export function Header() {
 
   const navItems = [
     { href: "/", label: "Inicio", icon: Home },
+    { href: "/nosotros", label: "Nosotros", icon: Users },
     { href: "/canchas", label: "Canchas", icon: Calendar },
+    { href: "/partidos", label: "Partidos", icon: Swords },
+    { href: "/noticias", label: "Noticias", icon: Newspaper },
+    { href: "/contacto", label: "Contáctanos", icon: Phone },
     ...(user
-      ? [{ href: "/mis-reservas", label: "Mis Reservas", icon: CalendarCheck }]
+      ? [{ href: "/mi-cuenta", label: "Mi Cuenta", icon: CalendarCheck }]
       : []),
   ];
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-card/95 backdrop-blur supports-backdrop-filter:bg-card/80">
-      <div className="container mx-auto flex h-16 items-center justify-between px-4 md:gap-8">
+      <div className="container mx-auto flex h-16 items-center justify-between px-8 lg:px-12 md:gap-8">
         <Link href="/" className="flex items-center gap-2 shrink-0">
           <Image
-            src="/images/logo.png"
+            src="/images/logo-new.svg"
             alt="CanchaPiura"
             width={280}
             height={80}
             priority
-            className="h-14 w-auto object-contain"
+            className="h-10 w-auto object-contain"
           />
         </Link>
 
         {/* Desktop Navigation */}
-        <nav className="hidden flex-1 items-center justify-center gap-1 md:flex">
-          {navItems.map((item) => {
-            const isActive = pathname === item.href;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all border ${
-                  isActive
-                    ? "bg-[#16a34a]/10 text-[#16a34a] border-[#16a34a]/20"
-                    : "text-foreground border-transparent hover:bg-[#16a34a]/10 hover:text-[#16a34a] hover:border-[#16a34a]/20"
-                }`}
-              >
-                <item.icon className="h-4 w-4" />
-                {item.label}
-              </Link>
-            );
-          })}
+        <nav className="hidden flex-1 items-center justify-center gap-0.5 md:flex">
+          {navItems
+            .filter((i) => i.href !== "/mi-cuenta")
+            .map((item) => {
+              const isActive = pathname === item.href;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`rounded-lg px-3 py-2 text-sm font-medium transition-all ${
+                    isActive
+                      ? "bg-primary/10 text-primary"
+                      : "text-foreground hover:bg-primary/10 hover:text-primary"
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
         </nav>
 
-        {/* Desktop Auth */}
-        <div className="hidden items-center gap-3 md:flex shrink-0">
+        {/* Auth (tablet + desktop) — un solo DropdownMenu desde md+ */}
+        <div className="hidden md:flex items-center gap-3 shrink-0">
           {!hydrated ? (
-            /* Skeleton mientras se lee localStorage */
-            <div className="h-8 w-32 animate-pulse rounded-lg bg-muted" />
+            <div className="h-8 w-8 animate-pulse rounded-full bg-muted lg:w-32 lg:rounded-lg" />
           ) : user?.name ? (
-            <DropdownMenu>
+            <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="gap-2">
                   <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
                     {user.name.charAt(0).toUpperCase()}
                   </div>
-                  <span className="max-w-30 truncate">{user.name}</span>
-                  <ChevronDown className="h-4 w-4" />
+                  <span className="hidden lg:inline max-w-30 truncate">{user.name}</span>
+                  <ChevronDown className="hidden lg:inline h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem asChild>
                   <Link
-                    href="/mis-reservas"
-                    className="flex items-center gap-2 cursor-pointer"
-                  >
-                    <Calendar className="h-4 w-4" />
-                    Mis Reservas
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link
-                    href="/perfil"
+                    href="/mi-cuenta"
                     className="flex items-center gap-2 cursor-pointer"
                   >
                     <User className="h-4 w-4" />
-                    Mi Perfil
+                    Mi Cuenta
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
@@ -207,7 +207,7 @@ export function Header() {
             <>
               <Link
                 href="/login"
-                className="text-sm font-medium text-foreground hover:text-[#16a34a] transition-colors"
+                className="hidden lg:block text-sm font-medium text-foreground hover:text-primary transition-colors"
               >
                 Iniciar Sesión
               </Link>
@@ -219,101 +219,109 @@ export function Header() {
         </div>
 
         {/* Mobile Navigation */}
-        <Sheet open={open} onOpenChange={setOpen}>
-          <SheetTrigger asChild className="md:hidden">
-            <Button variant="ghost" size="icon">
-              <Menu className="h-5 w-5" />
-              <span className="sr-only">Abrir menú</span>
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="right" className="w-[280px] bg-card p-0">
-            {/* Título oculto para accesibilidad */}
-            <SheetTitle className="sr-only">Menú de navegación</SheetTitle>
-            <div className="h-16 border-b border-border" />
-            <nav className="flex flex-col gap-1 p-4 pt-0">
-              {navItems.map((item) => {
-                const isActive = pathname === item.href;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setOpen(false)}
-                    className={`flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium transition-colors ${
-                      isActive
-                        ? "bg-[#16a34a]/10 text-[#16a34a]"
-                        : "text-foreground hover:bg-secondary"
-                    }`}
-                  >
-                    <item.icon
-                      className={`h-5 w-5 ${isActive ? "text-[#16a34a]" : "text-primary"}`}
-                    />
-                    {item.label}
-                  </Link>
-                );
-              })}
-              <div className="mt-4 flex flex-col gap-2 border-t border-border pt-4">
-                {!hydrated ? (
-                  /* Skeleton mobile */
-                  <div className="space-y-2 px-1">
-                    <div className="h-10 w-full animate-pulse rounded-lg bg-muted" />
-                    <div className="h-10 w-full animate-pulse rounded-lg bg-muted" />
-                  </div>
-                ) : user?.name ? (
-                  <>
-                    <div className="flex items-center gap-3 px-4 py-2">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
-                        {user.name.charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-foreground">
-                          {user.name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {user.email}
-                        </p>
-                      </div>
+        <div className="flex items-center gap-1 md:hidden">
+          {/* Icono circular login/usuario */}
+          {hydrated &&
+            (user?.name ? (
+              <Link
+                href="/mi-cuenta"
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground"
+              >
+                {user.name.charAt(0).toUpperCase()}
+              </Link>
+            ) : (
+              <Link
+                href="/login"
+                className="flex items-center justify-center text-primary hover:bg-primary/10 transition-colors"
+              >
+                <CircleUser className="h-6 w-6" />
+              </Link>
+            ))}
+          <Sheet open={open} onOpenChange={setOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <Menu className="h-5 w-5" />
+                <span className="sr-only">Abrir menú</span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-70 bg-card p-0">
+              {/* Título oculto para accesibilidad */}
+              <SheetTitle className="sr-only">Menú de navegación</SheetTitle>
+              <div className="h-16 border-b border-border" />
+              <nav className="flex flex-col gap-1 p-4 pt-0">
+                {navItems
+                  .filter((i) => i.href !== "/mi-cuenta")
+                  .map((item) => {
+                    const isActive = pathname === item.href;
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setOpen(false)}
+                        className={`flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium transition-colors ${
+                          isActive
+                            ? "bg-primary/10 text-primary"
+                            : "text-foreground hover:bg-secondary"
+                        }`}
+                      >
+                        <item.icon className="h-5 w-5 text-primary" />
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+                <div className="mt-4 flex flex-col gap-2 border-t border-border pt-4">
+                  {!hydrated ? (
+                    /* Skeleton mobile */
+                    <div className="space-y-2 px-1">
+                      <div className="h-10 w-full animate-pulse rounded-lg bg-muted" />
+                      <div className="h-10 w-full animate-pulse rounded-lg bg-muted" />
                     </div>
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start"
-                      asChild
-                    >
-                      <Link href="/perfil" onClick={() => setOpen(false)}>
-                        <User className="mr-2 h-4 w-4" />
-                        Mi Perfil
-                      </Link>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start text-destructive hover:text-destructive"
-                      onClick={handleLogout}
-                    >
-                      <LogOut className="mr-2 h-4 w-4" />
-                      Cerrar Sesión
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <Button
-                      variant="outline"
-                      className="w-full justify-center"
-                      asChild
-                    >
-                      <Link href="/login" onClick={() => setOpen(false)}>
-                        Iniciar Sesión
-                      </Link>
-                    </Button>
+                  ) : user?.name ? (
+                    <>
+                      <div className="flex items-center gap-3 px-4 py-2">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
+                          {user.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-foreground">
+                            {user.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {user.email}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start"
+                        asChild
+                      >
+                        <Link href="/mi-cuenta" onClick={() => setOpen(false)}>
+                          <User className="mr-2 h-4 w-4" />
+                          Mi Cuenta
+                        </Link>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start text-destructive hover:text-destructive"
+                        onClick={handleLogout}
+                      >
+                        <LogOut className="mr-2 h-4 w-4" />
+                        Cerrar Sesión
+                      </Button>
+                    </>
+                  ) : (
                     <Button className="w-full justify-center" asChild>
                       <Link href="/registro" onClick={() => setOpen(false)}>
                         Registrarse
                       </Link>
                     </Button>
-                  </>
-                )}
-              </div>
-            </nav>
-          </SheetContent>
-        </Sheet>
+                  )}
+                </div>
+              </nav>
+            </SheetContent>
+          </Sheet>
+        </div>
       </div>
     </header>
   );
