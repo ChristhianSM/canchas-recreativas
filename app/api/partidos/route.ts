@@ -35,6 +35,11 @@ export async function GET(req: NextRequest) {
 
   const partidos = (data ?? []).map((p) => ({
     ...p,
+    // precio_por_persona se recalcula usando jugadores_equipo (total del partido)
+    // para que el precio sea correcto aunque solo se abran pocos cupos
+    precio_por_persona: Math.ceil(
+      p.precio_total / (p.jugadores_equipo ?? p.jugadores_max)
+    ),
     ya_unido: userId
       ? Array.isArray(p.jugadores) && p.jugadores.some((j: any) => j.usuario_id === userId)
       : false,
@@ -58,15 +63,19 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const {
     cancha_id, cancha_nombre, deporte, fecha, hora,
-    nivel, jugadores_max, precio_total, descripcion,
+    nivel, jugadores_max, jugadores_equipo, precio_total, descripcion,
     metodo_pago, comprobante_url,
   } = body;
 
   if (!cancha_id || !cancha_nombre || !deporte || !fecha || !hora || !jugadores_max || !precio_total || !metodo_pago) {
     return NextResponse.json({ error: 'Faltan campos requeridos' }, { status: 400 });
   }
-  if (Number(jugadores_max) < 2) {
-    return NextResponse.json({ error: 'Se necesitan al menos 2 jugadores' }, { status: 400 });
+  if (Number(jugadores_max) < 1) {
+    return NextResponse.json({ error: 'Debes abrir al menos 1 cupo' }, { status: 400 });
+  }
+  const equipoTotal = Number(jugadores_equipo ?? jugadores_max);
+  if (equipoTotal < Number(jugadores_max)) {
+    return NextResponse.json({ error: 'El total del partido no puede ser menor que los cupos disponibles' }, { status: 400 });
   }
 
   // Verificar que el slot no esté ya reservado
@@ -135,8 +144,9 @@ export async function POST(req: NextRequest) {
       fecha,
       hora,
       nivel:         nivel ?? 'libre',
-      jugadores_max: Number(jugadores_max),
-      precio_total:  Number(precio_total),
+      jugadores_max:    Number(jugadores_max),
+      jugadores_equipo: equipoTotal,
+      precio_total:     Number(precio_total),
       descripcion:   descripcion || null,
       organizador_id: user.id,
     })

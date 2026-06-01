@@ -18,10 +18,23 @@ import {
   Upload,
   ImageIcon,
   Smartphone,
+  MapPin,
+  Map,
 } from "lucide-react";
 import { getToken } from "@/lib/api";
 import { getLocalDateString } from "@/lib/date-utils";
 import { useRouter } from "next/navigation";
+import { MapaPartidoModal } from "@/components/mapa-partido-modal";
+import {
+  calcularDistancia,
+  formatearDistancia,
+  obtenerUbicacionActual,
+  guardarUbicacion,
+  limpiarUbicacion,
+  obtenerUbicacionGuardada,
+  soportaGeolocalizacion,
+  type Coordenadas,
+} from "@/lib/geolocation-utils";
 
 // ── Tipos ─────────────────────────────────────────────────────
 
@@ -56,6 +69,9 @@ interface PartidoAPI {
   jugadores: JugadorPreview[] | null;
   ya_unido: boolean;
   ya_organizador: boolean;
+  cancha_lat: number | null;
+  cancha_lng: number | null;
+  jugadores_equipo: number;
 }
 
 interface CanchaSimple {
@@ -115,6 +131,8 @@ const HORAS = [
   "20:00","21:00","22:00","23:00",
 ];
 
+type PartidoConDistancia = PartidoAPI & { distancia?: number };
+
 // ── Helpers ───────────────────────────────────────────────────
 
 function formatFechaDisplay(fecha: string): string {
@@ -138,14 +156,18 @@ function PartidoCard({
   partido,
   loadingId,
   onUnirse,
-  onSalir,
-  onCancelar,
+  onSolicitarSalir,
+  onSolicitarCancelar,
+  onAbrirMapa,
+  distancia,
 }: {
   partido: PartidoAPI;
   loadingId: string | null;
   onUnirse: (id: string) => void;
-  onSalir: (id: string) => void;
-  onCancelar: (id: string) => void;
+  onSolicitarSalir: (id: string) => void;
+  onSolicitarCancelar: (id: string) => void;
+  onAbrirMapa: (partido: PartidoAPI) => void;
+  distancia?: number;
 }) {
   const { label: nivelLabel, cls: nivelCls } = NIVEL_CONFIG[partido.nivel];
   const pct = Math.round(
@@ -154,6 +176,9 @@ function PartidoCard({
   const lleno = partido.estado === "completo" || partido.jugadores_actuales >= partido.jugadores_max;
   const isLoading = loadingId === partido.id;
   const jugadores = partido.jugadores ?? [];
+  const cuposRestantes = partido.jugadores_max - partido.jugadores_actuales;
+  const casiLleno = !lleno && cuposRestantes <= 2 && partido.jugadores_actuales > 0;
+
 
   return (
     <div
@@ -176,12 +201,33 @@ function PartidoCard({
               {formatFechaDisplay(partido.fecha)} · {partido.hora}
             </span>
           </div>
+          <div className="flex items-center gap-1 mt-0.5">
+            <MapPin className="h-3 w-3 text-muted-foreground shrink-0" />
+            <span className="text-xs text-muted-foreground truncate">
+              {partido.cancha_distrito}
+            </span>
+            {distancia != null && (
+              <span className="text-xs text-muted-foreground shrink-0">
+                · {formatearDistancia(distancia)}
+              </span>
+            )}
+          </div>
         </div>
-        <span
-          className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full ${nivelCls}`}
-        >
-          {nivelLabel}
-        </span>
+        <div className="flex flex-col items-end gap-1.5 shrink-0">
+          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${nivelCls}`}>
+            {nivelLabel}
+          </span>
+          {partido.cancha_lat != null && (
+            <button
+              onClick={() => onAbrirMapa(partido)}
+              title="Ver cómo llegar"
+              className="flex items-center gap-1 text-xs font-semibold text-primary hover:text-primary/70 transition-colors"
+            >
+              <Map className="h-3.5 w-3.5" />
+              Mapa
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Avatares + contador */}
@@ -207,9 +253,19 @@ function PartidoCard({
             <span className="text-xs text-muted-foreground">Sin jugadores aún</span>
           )}
         </div>
-        <span className="text-xs font-semibold text-muted-foreground">
-          {partido.jugadores_actuales}/{partido.jugadores_max} jugadores
-        </span>
+        <div className="flex flex-col items-end gap-0.5">
+          {casiLleno && (
+            <span className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+              {cuposRestantes === 1 ? "¡Último cupo!" : `¡Solo ${cuposRestantes} cupos!`}
+            </span>
+          )}
+          <span className="text-xs font-semibold text-muted-foreground">
+            {partido.jugadores_actuales}/{partido.jugadores_max} cupos
+            {partido.jugadores_equipo > partido.jugadores_max && (
+              <span className="font-normal"> · {partido.jugadores_equipo} en total</span>
+            )}
+          </span>
+        </div>
       </div>
 
       {/* Barra de progreso */}
@@ -232,13 +288,17 @@ function PartidoCard({
           <p className="text-xl font-bold text-foreground leading-none">
             S/ {partido.precio_por_persona}
           </p>
-          <p className="text-[10px] text-muted-foreground">por persona</p>
+          <p className="text-[10px] text-muted-foreground">
+            {partido.jugadores_equipo > partido.jugadores_max
+              ? `por persona (÷${partido.jugadores_equipo})`
+              : "por persona"}
+          </p>
         </div>
 
         {partido.ya_organizador ? (
           <button
             disabled={isLoading}
-            onClick={() => onCancelar(partido.id)}
+            onClick={() => onSolicitarCancelar(partido.id)}
             className="flex-1 flex items-center justify-center gap-1.5 font-bold py-3 rounded-xl text-sm transition-all bg-destructive/10 text-destructive hover:bg-destructive/20 active:scale-[0.98] disabled:opacity-50"
           >
             {isLoading ? (
@@ -253,7 +313,7 @@ function PartidoCard({
         ) : partido.ya_unido ? (
           <button
             disabled={isLoading}
-            onClick={() => onSalir(partido.id)}
+            onClick={() => onSolicitarSalir(partido.id)}
             className="flex-1 flex items-center justify-center gap-1.5 font-bold py-3 rounded-xl text-sm transition-all border-2 border-primary text-primary hover:bg-primary/5 active:scale-[0.98] disabled:opacity-50"
           >
             {isLoading ? (
@@ -353,6 +413,7 @@ function CrearPartidoSheet({
     fecha: getLocalDateString(),
     hora: "",
     nivel: "libre" as Nivel,
+    jugadores_equipo: 10,
     jugadores_max: 10,
     descripcion: "",
   });
@@ -393,7 +454,7 @@ function CrearPartidoSheet({
     : 0;
   const maxJugadores = canchaSeleccionada?.max_jugadores ?? 22;
   const precioPorPersona =
-    form.jugadores_max > 0 ? Math.ceil(precioTotal / form.jugadores_max) : 0;
+    form.jugadores_equipo > 0 ? Math.ceil(precioTotal / form.jugadores_equipo) : 0;
 
   const horasDisponibles = useMemo(() => {
     if (!canchaSeleccionada || !form.fecha) return [];
@@ -422,11 +483,13 @@ function CrearPartidoSheet({
 
   const handleCanchaChange = (id: string) => {
     const c = canchas.find((x) => x.id === id);
+    const maxCancha = c?.max_jugadores ?? 22;
     setForm((prev) => ({
       ...prev,
       cancha_id: id,
       hora: "",
-      jugadores_max: Math.min(prev.jugadores_max, c?.max_jugadores ?? 22),
+      jugadores_equipo: Math.min(prev.jugadores_equipo, maxCancha),
+      jugadores_max: Math.min(prev.jugadores_max, maxCancha),
     }));
   };
 
@@ -462,6 +525,7 @@ function CrearPartidoSheet({
           hora: form.hora,
           nivel: form.nivel,
           jugadores_max: form.jugadores_max,
+          jugadores_equipo: form.jugadores_equipo,
           precio_total: precioTotal,
           descripcion: form.descripcion || null,
           metodo_pago: metodo,
@@ -527,7 +591,7 @@ function CrearPartidoSheet({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="p-0 max-h-[92dvh] flex flex-col gap-0 sm:max-w-lg w-full overflow-hidden">
+      <DialogContent className="p-0 h-[92dvh] max-h-[92dvh] flex flex-col gap-0 sm:max-w-lg w-full overflow-hidden">
 
         {/* Header */}
         <div className="flex items-center gap-3 px-5 py-4 border-b border-border shrink-0">
@@ -553,7 +617,7 @@ function CrearPartidoSheet({
 
         {/* ── PASO 1: Formulario ── */}
         <div className="w-1/2 flex flex-col min-h-0">
-            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto overscroll-contain px-5 py-4 space-y-4">
               {error && (
                 <div className="flex items-center gap-2 rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive">
                   <AlertCircle className="h-4 w-4 shrink-0" />
@@ -662,44 +726,79 @@ function CrearPartidoSheet({
                 </div>
               </div>
 
-              {/* Nivel + Jugadores */}
-              <div className="grid grid-cols-2 gap-3">
+              {/* Nivel */}
+              <div>
+                <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">
+                  Nivel
+                </label>
+                <select
+                  value={form.nivel}
+                  onChange={(e) => setForm((p) => ({ ...p, nivel: e.target.value as Nivel }))}
+                  className="w-full h-11 px-3 rounded-xl border border-border bg-background text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30"
+                >
+                  <option value="libre">Libre (cualquier nivel)</option>
+                  <option value="principiante">Principiante</option>
+                  <option value="intermedio">Intermedio</option>
+                  <option value="avanzado">Avanzado</option>
+                </select>
+              </div>
+
+              {/* Jugadores */}
+              <div className="rounded-xl border border-border bg-secondary/30 p-3 space-y-3">
+                <p className="text-xs font-semibold text-foreground uppercase tracking-wide">
+                  Jugadores
+                </p>
+
+                {/* Total del partido */}
                 <div>
-                  <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">
-                    Nivel
-                  </label>
-                  <select
-                    value={form.nivel}
-                    onChange={(e) => setForm((p) => ({ ...p, nivel: e.target.value as Nivel }))}
-                    className="w-full h-11 px-3 rounded-xl border border-border bg-background text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  >
-                    <option value="libre">Libre (cualquier nivel)</option>
-                    <option value="principiante">Principiante</option>
-                    <option value="intermedio">Intermedio</option>
-                    <option value="avanzado">Avanzado</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">
-                    Jugadores
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">
+                    Total del partido (para dividir el precio)
                   </label>
                   <input
                     type="number"
                     required
                     min={2}
                     max={maxJugadores}
+                    value={form.jugadores_equipo}
+                    onChange={(e) => {
+                      const equipo = Math.min(Number(e.target.value), maxJugadores);
+                      setForm((p) => ({
+                        ...p,
+                        jugadores_equipo: equipo,
+                        jugadores_max: Math.min(p.jugadores_max, equipo),
+                      }));
+                    }}
+                    className="w-full h-11 px-3 rounded-xl border border-border bg-background text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    {canchaSeleccionada?.max_jugadores ? `Máx. ${maxJugadores} según la cancha` : "Ej: 10 para una pichanga de 5 vs 5"}
+                  </p>
+                </div>
+
+                {/* Cupos disponibles */}
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">
+                    Cupos que abres (jugadores que buscas)
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min={1}
+                    max={form.jugadores_equipo}
                     value={form.jugadores_max}
                     onChange={(e) =>
                       setForm((p) => ({
                         ...p,
-                        jugadores_max: Math.min(Number(e.target.value), maxJugadores),
+                        jugadores_max: Math.min(Number(e.target.value), p.jugadores_equipo),
                       }))
                     }
                     className="w-full h-11 px-3 rounded-xl border border-border bg-background text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30"
                   />
-                  <p className="text-[10px] text-muted-foreground mt-1 h-3.5">
-                    {canchaSeleccionada?.max_jugadores ? `Máx. ${maxJugadores} según la cancha` : ""}
-                  </p>
+                  {form.jugadores_max < form.jugadores_equipo && (
+                    <p className="text-[10px] text-primary font-semibold mt-1">
+                      Tu grupo: {form.jugadores_equipo - form.jugadores_max} · Buscas: {form.jugadores_max} más
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -725,7 +824,7 @@ function CrearPartidoSheet({
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">
-                    {precioTotal > 0 ? `Entre ${form.jugadores_max} jugadores` : "Selecciona una cancha"}
+                    {precioTotal > 0 ? `Entre ${form.jugadores_equipo} jugadores` : "Selecciona una cancha"}
                   </span>
                   <span className={`text-xl font-bold ${precioTotal > 0 ? "text-primary" : "text-muted-foreground"}`}>
                     {precioTotal > 0 ? `S/ ${precioPorPersona} c/u` : "—"}
@@ -764,7 +863,7 @@ function CrearPartidoSheet({
 
         {/* ── PASO 2: Pago ── */}
         <div className="w-1/2 flex flex-col min-h-0">
-            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+            <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-4 space-y-4">
               {error && (
                 <div className="flex items-center gap-2 rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive">
                   <AlertCircle className="h-4 w-4 shrink-0" />
@@ -788,8 +887,12 @@ function CrearPartidoSheet({
                   <span className="font-semibold">{formatFechaDisplay(form.fecha)} · {form.hora}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Jugadores máx.</span>
-                  <span className="font-semibold">{form.jugadores_max}</span>
+                  <span className="text-muted-foreground">Total del partido</span>
+                  <span className="font-semibold">{form.jugadores_equipo} jugadores</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Cupos que abres</span>
+                  <span className="font-semibold">{form.jugadores_max} cupos</span>
                 </div>
                 <div className="h-px bg-border" />
                 <div className="flex items-center justify-between">
@@ -951,6 +1054,10 @@ export default function PartidosPage() {
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [showCrear, setShowCrear] = useState(false);
   const [alertMsg, setAlertMsg] = useState("");
+  const [ubicacion, setUbicacion] = useState<Coordenadas | null>(null);
+  const [loadingUbicacion, setLoadingUbicacion] = useState(false);
+  const [confirmacion, setConfirmacion] = useState<{ id: string; tipo: "salir" | "cancelar" } | null>(null);
+  const [partidoMapa, setPartidoMapa] = useState<PartidoAPI | null>(null);
 
   const fetchPartidos = useCallback(async () => {
     setLoading(true);
@@ -977,6 +1084,41 @@ export default function PartidosPage() {
   useEffect(() => {
     fetchPartidos();
   }, [fetchPartidos]);
+
+  useEffect(() => {
+    const guardada = obtenerUbicacionGuardada();
+    if (guardada) setUbicacion(guardada);
+  }, []);
+
+  const handleObtenerUbicacion = async () => {
+    if (!soportaGeolocalizacion()) return;
+    setLoadingUbicacion(true);
+    try {
+      const coords = await obtenerUbicacionActual();
+      guardarUbicacion(coords);
+      setUbicacion(coords);
+    } catch {
+      // el usuario denegó o falló
+    } finally {
+      setLoadingUbicacion(false);
+    }
+  };
+
+  const limpiarUbicacionActiva = () => {
+    limpiarUbicacion();
+    setUbicacion(null);
+  };
+
+  const solicitarSalir = (id: string) => setConfirmacion({ id, tipo: "salir" });
+  const solicitarCancelar = (id: string) => setConfirmacion({ id, tipo: "cancelar" });
+
+  const confirmarAccion = async () => {
+    if (!confirmacion) return;
+    const { id, tipo } = confirmacion;
+    setConfirmacion(null);
+    if (tipo === "salir") await handleSalir(id);
+    else await handleCancelar(id);
+  };
 
   const handleUnirse = async (id: string) => {
     const token = getToken();
@@ -1030,7 +1172,6 @@ export default function PartidosPage() {
   const handleCancelar = async (id: string) => {
     const token = getToken();
     if (!token) return;
-    if (!confirm("¿Seguro que quieres cancelar este partido? Los jugadores serán notificados.")) return;
     setLoadingId(id);
     setAlertMsg("");
     try {
@@ -1055,6 +1196,19 @@ export default function PartidosPage() {
     () => partidos.filter((p) => p.estado === "abierto").length,
     [partidos],
   );
+
+  const partidosFiltrados = useMemo((): PartidoConDistancia[] => {
+    if (!ubicacion) return partidos;
+    return [...partidos]
+      .map((p) => ({
+        ...p,
+        distancia:
+          p.cancha_lat != null && p.cancha_lng != null
+            ? calcularDistancia(ubicacion, { lat: p.cancha_lat, lng: p.cancha_lng })
+            : undefined,
+      }))
+      .sort((a, b) => (a.distancia ?? Infinity) - (b.distancia ?? Infinity));
+  }, [partidos, ubicacion]);
 
   return (
     <div className="flex flex-col flex-1 bg-background">
@@ -1104,6 +1258,30 @@ export default function PartidosPage() {
             >
               Hoy
             </button>
+
+            {ubicacion ? (
+              <button
+                onClick={limpiarUbicacionActiva}
+                className="shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold border transition-all bg-primary border-primary text-primary-foreground shadow-sm"
+              >
+                <MapPin className="h-3.5 w-3.5" />
+                Cerca de mí
+                <X className="h-3 w-3" />
+              </button>
+            ) : (
+              <button
+                onClick={handleObtenerUbicacion}
+                disabled={loadingUbicacion}
+                className="shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold border transition-all bg-background border-border text-foreground hover:border-primary/40 hover:bg-primary/5 disabled:opacity-50"
+              >
+                {loadingUbicacion ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <MapPin className="h-3.5 w-3.5" />
+                )}
+                Cerca de mí
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -1196,20 +1374,65 @@ export default function PartidosPage() {
             </div>
           ) : (
             <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
-              {partidos.map((p) => (
+              {partidosFiltrados.map((p) => (
                 <PartidoCard
                   key={p.id}
                   partido={p}
                   loadingId={loadingId}
                   onUnirse={handleUnirse}
-                  onSalir={handleSalir}
-                  onCancelar={handleCancelar}
+                  onSolicitarSalir={solicitarSalir}
+                  onSolicitarCancelar={solicitarCancelar}
+                  onAbrirMapa={setPartidoMapa}
+                  distancia={p.distancia}
                 />
               ))}
             </div>
           )}
         </div>
       </div>
+
+      {/* Modal de mapa */}
+      {partidoMapa?.cancha_lat != null && partidoMapa.cancha_lng != null && (
+        <MapaPartidoModal
+          open={!!partidoMapa}
+          onClose={() => setPartidoMapa(null)}
+          canchaLat={partidoMapa.cancha_lat}
+          canchaLng={partidoMapa.cancha_lng}
+          canchaNombre={partidoMapa.cancha_nombre}
+          canchaDistrito={partidoMapa.cancha_distrito}
+          ubicacion={ubicacion}
+        />
+      )}
+
+      {/* Dialog de confirmación para salir/cancelar */}
+      {confirmacion && (
+        <Dialog open onOpenChange={(v) => !v && setConfirmacion(null)}>
+          <DialogContent className="sm:max-w-sm">
+            <DialogTitle>
+              {confirmacion.tipo === "cancelar" ? "Cancelar partido" : "Salir del partido"}
+            </DialogTitle>
+            <p className="text-sm text-muted-foreground mt-1">
+              {confirmacion.tipo === "cancelar"
+                ? "¿Seguro que quieres cancelar este partido? Los jugadores serán notificados."
+                : "¿Seguro que quieres salir de este partido?"}
+            </p>
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={() => setConfirmacion(null)}
+                className="flex-1 py-2.5 rounded-xl border border-border text-sm font-semibold text-foreground hover:bg-muted/40 transition-colors"
+              >
+                Volver
+              </button>
+              <button
+                onClick={confirmarAccion}
+                className="flex-1 py-2.5 rounded-xl bg-destructive text-destructive-foreground text-sm font-bold hover:bg-destructive/90 transition-colors"
+              >
+                {confirmacion.tipo === "cancelar" ? "Sí, cancelar" : "Sí, salir"}
+              </button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Sheet para crear partido */}
       <CrearPartidoSheet
