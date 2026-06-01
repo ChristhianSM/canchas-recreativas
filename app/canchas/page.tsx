@@ -966,7 +966,7 @@ function CanchasContent() {
                       className="fixed inset-0 z-40"
                       onClick={() => setActiveField(null)}
                     />
-                    <div className="absolute top-full left-0 mt-2 w-72 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden">
+                    <div className="absolute top-full left-0 mt-2 w-72 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 overflow-hidden">
                       {/* Opción: Cerca de mí */}
                       <button
                         onClick={() => {
@@ -1078,7 +1078,7 @@ function CanchasContent() {
                       className="fixed inset-0 z-40"
                       onClick={() => setActiveField(null)}
                     />
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 p-4">
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 p-4">
                       <div className="flex items-center justify-between mb-4">
                         <button
                           onClick={() => {
@@ -1206,7 +1206,7 @@ function CanchasContent() {
                       className="fixed inset-0 z-40"
                       onClick={() => setActiveField(null)}
                     />
-                    <div className="absolute top-full right-0 mt-2 w-72 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 p-4">
+                    <div className="absolute top-full right-0 mt-2 w-72 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 p-4">
                       <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-3">
                         Horarios disponibles
                       </p>
@@ -1388,7 +1388,7 @@ function CanchasContent() {
         </SheetContent>
       </Sheet>
 
-      <div className="flex flex-1 bg-[#eef3ee] mb-6">
+      <div className="flex flex-1 bg-[#eef3ee] pb-6">
         <div className="container mx-auto px-4 flex bg-[#eef3ee]">
           {/* ── COL 1: Filtros (lg+, ≥1024px) ────────────────────── */}
           <aside className="hidden lg:block w-[280px] xl:w-[300px] shrink-0 pr-3 pt-4">
@@ -1715,7 +1715,7 @@ function CanchasContent() {
                     );
                     if (!c) return null;
                     return (
-                      <div className="absolute bottom-4 left-4 right-4 z-[200] bg-white rounded-2xl shadow-2xl border border-gray-100 p-4 flex items-center gap-3">
+                      <div className="absolute bottom-4 left-4 right-4 z-[200] bg-white rounded-xl shadow-2xl border border-gray-100 p-4 flex items-center gap-3">
                         <div className="flex-1 min-w-0">
                           <p className="font-bold text-gray-900 text-sm truncate">
                             {c.name}

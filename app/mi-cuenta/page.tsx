@@ -679,7 +679,7 @@ export default function MisReservasPage() {
         <div className="hidden lg:grid grid-cols-[2fr_6fr] flex-1 container mx-auto px-8 lg:px-12">
           {/* Sidebar */}
           <aside className="flex flex-col gap-3 p-4 pl-0 pt-6">
-            <div className="bg-white rounded-2xl p-4 flex flex-col items-center animate-pulse">
+            <div className="bg-white rounded-xl p-4 flex flex-col items-center animate-pulse">
               <div className="h-16 w-16 rounded-full bg-muted mb-3" />
               <div className="h-4 w-28 bg-muted rounded-full mb-1.5" />
               <div className="h-3 w-20 bg-muted rounded-full mb-3" />
@@ -689,7 +689,7 @@ export default function MisReservasPage() {
                 ))}
               </div>
             </div>
-            <div className="bg-white rounded-2xl p-2 animate-pulse space-y-1">
+            <div className="bg-white rounded-xl p-2 animate-pulse space-y-1">
               {[1, 2, 3, 4, 5, 6].map((i) => (
                 <div key={i} className="h-10 bg-muted rounded-xl" />
               ))}
@@ -709,7 +709,7 @@ export default function MisReservasPage() {
             {/* Próxima reserva */}
             <div>
               <div className="h-5 w-36 bg-muted rounded mb-3" />
-              <div className="bg-white rounded-2xl overflow-hidden flex h-44">
+              <div className="bg-white rounded-xl overflow-hidden flex h-44">
                 <div className="w-44 shrink-0 bg-muted" />
                 <div className="flex-1 p-5 space-y-3">
                   <div className="h-5 w-48 bg-muted rounded" />
@@ -725,7 +725,7 @@ export default function MisReservasPage() {
             {/* Stats */}
             <div className="grid grid-cols-4 gap-3">
               {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="bg-white rounded-2xl p-4 space-y-3">
+                <div key={i} className="bg-white rounded-xl p-4 space-y-3">
                   <div className="h-10 w-10 bg-muted rounded-xl" />
                   <div className="h-6 w-16 bg-muted rounded" />
                   <div className="h-3 w-24 bg-muted rounded" />
@@ -734,7 +734,7 @@ export default function MisReservasPage() {
             </div>
             {/* Dos columnas */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-white rounded-2xl p-5 space-y-4">
+              <div className="bg-white rounded-xl p-5 space-y-4">
                 <div className="h-5 w-36 bg-muted rounded" />
                 {[1, 2, 3].map((i) => (
                   <div key={i} className="flex items-center gap-3">
@@ -746,7 +746,7 @@ export default function MisReservasPage() {
                   </div>
                 ))}
               </div>
-              <div className="bg-white rounded-2xl p-5 space-y-4">
+              <div className="bg-white rounded-xl p-5 space-y-4">
                 <div className="h-5 w-28 bg-muted rounded" />
                 {[1, 2, 3].map((i) => (
                   <div key={i} className="flex items-center gap-3 p-3">
@@ -825,7 +825,7 @@ export default function MisReservasPage() {
     sub: string;
     iconBg: string;
   }) => (
-    <div className="bg-white rounded-2xl p-4 flex flex-col gap-3">
+    <div className="bg-white rounded-xl p-4 flex flex-col gap-3">
       <span
         className={cn(
           "flex h-10 w-10 items-center justify-center rounded-xl",
@@ -853,7 +853,7 @@ export default function MisReservasPage() {
           {/* ── Sidebar ────────────────────────────────────────── */}
           <aside className="flex flex-col gap-3 p-4 pl-0 sticky top-0 self-start overflow-y-auto max-h-[calc(100vh-4rem)]">
             {/* Perfil */}
-            <div className="bg-white rounded-2xl p-4 flex flex-col items-center text-center">
+            <div className="bg-white rounded-xl p-4 flex flex-col items-center text-center">
               <div className="relative mb-3">
                 <div className="h-16 w-16 rounded-full bg-green-600 flex items-center justify-center text-white text-2xl font-bold shadow">
                   {user?.name?.charAt(0).toUpperCase() ?? "U"}
@@ -914,7 +914,7 @@ export default function MisReservasPage() {
             </div>
 
             {/* Navegación */}
-            <div className="bg-white rounded-2xl p-2 flex-1">
+            <div className="bg-white rounded-xl p-2 flex-1">
               <NavItem
                 icon={<User className="h-4 w-4" />}
                 label="Mi perfil"
@@ -1042,7 +1042,7 @@ export default function MisReservasPage() {
                             Ver todas <ChevronRight className="h-3.5 w-3.5" />
                           </button>
                         </div>
-                        <div className="bg-white rounded-2xl overflow-hidden flex gap-0">
+                        <div className="bg-white rounded-xl overflow-hidden flex gap-0">
                           <div className="relative w-44 shrink-0">
                             <Image
                               src={img}
@@ -1133,7 +1133,7 @@ export default function MisReservasPage() {
                         Tu próxima reserva
                       </h2>
                     </div>
-                    <div className="bg-white rounded-2xl p-8 text-center border border-dashed border-green-200">
+                    <div className="bg-white rounded-xl p-8 text-center border border-dashed border-green-200">
                       <CalendarPlus className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
                       <p className="text-sm text-muted-foreground">
                         No tienes reservas próximas
@@ -1184,7 +1184,7 @@ export default function MisReservasPage() {
                 {/* Reservas recientes + Configuración */}
                 <div className="grid grid-cols-2 gap-4">
                   {/* Reservas recientes */}
-                  <div className="bg-white rounded-2xl p-5">
+                  <div className="bg-white rounded-xl p-5">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="font-semibold text-gray-900">
                         Reservas recientes
@@ -1245,7 +1245,7 @@ export default function MisReservasPage() {
                   </div>
 
                   {/* Configuración */}
-                  <div className="bg-white rounded-2xl p-5">
+                  <div className="bg-white rounded-xl p-5">
                     <h3 className="font-semibold text-gray-900 mb-4">
                       Configuración
                     </h3>
@@ -1372,7 +1372,7 @@ export default function MisReservasPage() {
                     </p>
 
                     {/* Banner verde */}
-                    <div className="rounded-2xl bg-green-600 p-6 mb-6 overflow-hidden relative">
+                    <div className="rounded-xl bg-green-600 p-6 mb-6 overflow-hidden relative">
                       <div className="flex items-start justify-between mb-5">
                         <div>
                           <p className="text-xs font-semibold text-green-200 uppercase tracking-widest mb-1">
@@ -1436,7 +1436,7 @@ export default function MisReservasPage() {
                     <div className="grid grid-cols-2 gap-4">
                       {/* Columna izquierda: Cómo ganar + Historial */}
                       <div className="flex flex-col gap-4">
-                        <div className="bg-white rounded-2xl p-5">
+                        <div className="bg-white rounded-xl p-5">
                           <h3 className="font-semibold text-gray-900 mb-4">
                             Cómo ganar sellos
                           </h3>
@@ -1478,7 +1478,7 @@ export default function MisReservasPage() {
                           </div>
                         </div>
 
-                        <div className="bg-white rounded-2xl p-5">
+                        <div className="bg-white rounded-xl p-5">
                           <h3 className="font-semibold text-gray-900 mb-4">
                             Historial
                           </h3>
@@ -1530,7 +1530,7 @@ export default function MisReservasPage() {
                       </div>
 
                       {/* Columna derecha: Tus cupones con pestañas */}
-                      <div className="bg-white rounded-2xl p-5 flex flex-col">
+                      <div className="bg-white rounded-xl p-5 flex flex-col">
                         <div className="flex items-center justify-between mb-4">
                           <h3 className="font-semibold text-gray-900">
                             Tus cupones
@@ -1715,13 +1715,13 @@ export default function MisReservasPage() {
 
                 {perfilLoading ? (
                   <div className="space-y-4">
-                    <div className="h-24 animate-pulse rounded-2xl bg-muted" />
-                    <div className="h-64 animate-pulse rounded-2xl bg-muted" />
+                    <div className="h-24 animate-pulse rounded-xl bg-muted" />
+                    <div className="h-64 animate-pulse rounded-xl bg-muted" />
                   </div>
                 ) : (
                   <div className="space-y-4">
                     {/* Avatar */}
-                    <div className="bg-white rounded-2xl p-5 flex items-center gap-4">
+                    <div className="bg-white rounded-xl p-5 flex items-center gap-4">
                       <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-600 text-2xl font-bold text-white shrink-0">
                         {perfilNombre.charAt(0).toUpperCase() || "?"}
                       </div>
@@ -1743,7 +1743,7 @@ export default function MisReservasPage() {
                     </div>
 
                     {/* Formulario */}
-                    <div className="bg-white rounded-2xl p-5 space-y-4">
+                    <div className="bg-white rounded-xl p-5 space-y-4">
                       <h2 className="font-semibold text-gray-900">
                         Información personal
                       </h2>
@@ -2011,7 +2011,7 @@ export default function MisReservasPage() {
                   <h2 className="text-xl font-bold text-gray-900">Mis sellos</h2>
 
                   {/* Banner verde con grid 4×2 */}
-                  <div className="rounded-2xl bg-green-600 p-5">
+                  <div className="rounded-xl bg-green-600 p-5">
                     <div className="flex items-start justify-between mb-4">
                       <div>
                         <p className="text-xs font-semibold text-green-200 uppercase tracking-widest mb-0.5">Recompensa</p>
@@ -2043,7 +2043,7 @@ export default function MisReservasPage() {
                   </div>
 
                   {/* Cómo ganar sellos */}
-                  <div className="bg-white rounded-2xl p-4">
+                  <div className="bg-white rounded-xl p-4">
                     <h3 className="font-semibold text-gray-900 mb-3">Cómo ganar sellos</h3>
                     <div className="space-y-2">
                       {[
@@ -2063,7 +2063,7 @@ export default function MisReservasPage() {
                   </div>
 
                   {/* Historial de sellos ganados */}
-                  <div className="bg-white rounded-2xl p-4">
+                  <div className="bg-white rounded-xl p-4">
                     <h3 className="font-semibold text-gray-900 mb-3">Historial de sellos</h3>
                     {recentesAll.length > 0 ? (
                       <div className="space-y-3">
@@ -2088,7 +2088,7 @@ export default function MisReservasPage() {
                   </div>
 
                   {/* Cupones con pestañas */}
-                  <div className="bg-white rounded-2xl p-4">
+                  <div className="bg-white rounded-xl p-4">
                     <div className="flex items-center justify-between mb-3">
                       <h3 className="font-semibold text-gray-900">Tus cupones</h3>
                       {activos.length > 0 && (
@@ -2187,12 +2187,12 @@ export default function MisReservasPage() {
                 <h2 className="text-xl font-bold text-gray-900">Mi perfil</h2>
                 {perfilLoading ? (
                   <div className="space-y-3">
-                    <div className="h-20 animate-pulse rounded-2xl bg-muted" />
-                    <div className="h-56 animate-pulse rounded-2xl bg-muted" />
+                    <div className="h-20 animate-pulse rounded-xl bg-muted" />
+                    <div className="h-56 animate-pulse rounded-xl bg-muted" />
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <div className="bg-white rounded-2xl p-4 flex items-center gap-3">
+                    <div className="bg-white rounded-xl p-4 flex items-center gap-3">
                       <div className="flex h-14 w-14 items-center justify-center rounded-full bg-green-600 text-xl font-bold text-white shrink-0">
                         {perfilNombre.charAt(0).toUpperCase() || '?'}
                       </div>
@@ -2201,7 +2201,7 @@ export default function MisReservasPage() {
                         <p className="text-sm text-muted-foreground">{perfil?.email}</p>
                       </div>
                     </div>
-                    <div className="bg-white rounded-2xl p-4 space-y-4">
+                    <div className="bg-white rounded-xl p-4 space-y-4">
                       <h3 className="font-semibold text-gray-900">Información personal</h3>
                       <div className="space-y-1.5">
                         <label className="text-sm font-medium text-gray-700">Nombre completo</label>
@@ -2275,7 +2275,7 @@ export default function MisReservasPage() {
             )}
 
             {/* Saludo + avatar */}
-            <div className="bg-white rounded-2xl p-4 flex items-center gap-3">
+            <div className="bg-white rounded-xl p-4 flex items-center gap-3">
               <div className="relative shrink-0">
                 <div className="h-14 w-14 rounded-full bg-green-600 flex items-center justify-center text-white text-xl font-bold shadow">
                   {user.name?.charAt(0).toUpperCase() ?? 'U'}
@@ -2306,7 +2306,7 @@ export default function MisReservasPage() {
                 const codigo = `CG-${proximaReserva.id.slice(0, 4).toUpperCase()}`;
                 return (
                   <button onClick={() => setActiveSection('reservas')}
-                    className="w-full bg-white rounded-2xl p-4 flex items-center gap-3 active:opacity-80 transition-opacity text-left">
+                    className="w-full bg-white rounded-xl p-4 flex items-center gap-3 active:opacity-80 transition-opacity text-left">
                     <div className="relative h-14 w-14 shrink-0 rounded-xl overflow-hidden bg-green-800">
                       <Image src={img} alt={proximaReserva.canchaName} fill className="object-cover opacity-90" />
                     </div>
@@ -2322,7 +2322,7 @@ export default function MisReservasPage() {
                 );
               })() : (
                 <button onClick={() => setActiveSection('reservas')}
-                  className="w-full bg-white rounded-2xl p-4 flex items-center justify-between active:opacity-80 transition-opacity">
+                  className="w-full bg-white rounded-xl p-4 flex items-center justify-between active:opacity-80 transition-opacity">
                   <p className="text-sm text-muted-foreground">No tienes reservas próximas</p>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </button>
@@ -2338,7 +2338,7 @@ export default function MisReservasPage() {
                 { icon: <Users className="h-5 w-5 text-green-600" />, label: 'Mis partidos', value: `${partidosEstaSemana} esta sem.`, section: 'reservas' as Section },
               ].map(({ icon, label, value, section }) => (
                 <button key={label} onClick={() => setActiveSection(section)}
-                  className="bg-white rounded-2xl p-4 text-left active:opacity-80 transition-opacity">
+                  className="bg-white rounded-xl p-4 text-left active:opacity-80 transition-opacity">
                   <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-green-50 mb-3">
                     {icon}
                   </span>

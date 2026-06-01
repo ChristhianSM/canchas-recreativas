@@ -72,7 +72,7 @@ export default function RecuperarContrasenaPage() {
           />
           <div className="absolute inset-0 bg-black/55" />
         </div>
-        <div className="relative z-10 w-full max-w-md bg-white dark:bg-card rounded-2xl shadow-2xl p-8 text-center space-y-6">
+        <div className="relative z-10 w-full max-w-md bg-white dark:bg-card rounded-xl shadow-2xl p-8 text-center space-y-6">
           <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
             <CheckCircle2 className="h-10 w-10 text-primary" />
           </div>
@@ -125,7 +125,7 @@ export default function RecuperarContrasenaPage() {
       </header>
 
       <main className="relative z-10 flex-1 flex items-center justify-center px-4 py-12">
-        <div className="w-full max-w-md bg-white dark:bg-card rounded-2xl shadow-2xl p-8">
+        <div className="w-full max-w-md bg-white dark:bg-card rounded-xl shadow-2xl p-8">
           {/* Logo */}
           <div className="mb-8 text-center">
             <Image

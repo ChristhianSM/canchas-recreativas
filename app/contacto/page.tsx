@@ -125,7 +125,7 @@ export default function ContactoPage() {
         <div className="container mx-auto px-8 lg:px-12">
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-10">
             {/* Formulario */}
-            <div className="bg-card rounded-2xl border border-border p-8 shadow-sm">
+            <div className="bg-card rounded-xl border border-border p-8 shadow-sm">
               <h2 className="text-xl font-bold text-foreground mb-1">
                 Envíanos un mensaje
               </h2>
@@ -280,7 +280,7 @@ export default function ContactoPage() {
               ))}
 
               {/* CTA WhatsApp */}
-              <div className="mt-2 rounded-2xl bg-brand-black text-white p-6">
+              <div className="mt-2 rounded-xl bg-brand-black text-white p-6">
                 <h3 className="font-bold text-base mb-1">
                   ¿Necesitas respuesta inmediata?
                 </h3>

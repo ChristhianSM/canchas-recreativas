@@ -155,7 +155,7 @@ export default function NosotrosPage() {
             </div>
 
             {/* Imagen + badge */}
-            <div className="relative rounded-2xl overflow-hidden aspect-[4/3] shadow-xl">
+            <div className="relative rounded-xl overflow-hidden aspect-[4/3] shadow-xl">
               <Image
                 src="/images/hero-futbol.jpg"
                 alt="Jugadores en cancha deportiva"
@@ -220,7 +220,7 @@ export default function NosotrosPage() {
 
           <div className="grid md:grid-cols-2 gap-6">
             {/* Misión */}
-            <div className="bg-white dark:bg-card rounded-2xl border border-gray-100 dark:border-border p-8 shadow-sm">
+            <div className="bg-white dark:bg-card rounded-xl border border-gray-100 dark:border-border p-8 shadow-sm">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 mb-6">
                 <Target className="h-6 w-6 text-primary" />
               </div>
@@ -236,7 +236,7 @@ export default function NosotrosPage() {
             </div>
 
             {/* Visión */}
-            <div className="bg-white dark:bg-card rounded-2xl border border-gray-100 dark:border-border p-8 shadow-sm relative overflow-hidden">
+            <div className="bg-white dark:bg-card rounded-xl border border-gray-100 dark:border-border p-8 shadow-sm relative overflow-hidden">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 mb-6">
                 <Eye className="h-6 w-6 text-primary" />
               </div>
@@ -269,7 +269,7 @@ export default function NosotrosPage() {
             {VALORES.map((v) => (
               <div
                 key={v.title}
-                className="bg-gray-50 dark:bg-muted/30 rounded-2xl p-6 border border-gray-100 dark:border-border hover:shadow-md transition-shadow"
+                className="bg-gray-50 dark:bg-muted/30 rounded-xl p-6 border border-gray-100 dark:border-border hover:shadow-md transition-shadow"
               >
                 <div
                   className={`flex h-11 w-11 items-center justify-center rounded-xl ${v.bg} mb-5`}

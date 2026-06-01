@@ -27,6 +27,7 @@ import { Header } from "@/components/header";
 import { CanchaCard } from "@/components/cancha-card";
 import { SportType } from "@/lib/types";
 import { getLocalDateString } from "@/lib/date-utils";
+import { guardarUbicacion } from "@/lib/geolocation-utils";
 
 type Cancha = {
   id: string;
@@ -259,7 +260,9 @@ export default function HomePage() {
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
-        setUserCoords({ lat: latitude, lng: longitude });
+        const coords = { lat: latitude, lng: longitude };
+        setUserCoords(coords);
+        guardarUbicacion(coords);
         try {
           const res = await fetch(
             `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=es`,
@@ -420,8 +423,9 @@ export default function HomePage() {
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
-        // Guardar coordenadas para mostrar canchas cercanas
-        setUserCoords({ lat: latitude, lng: longitude });
+        const coords = { lat: latitude, lng: longitude };
+        setUserCoords(coords);
+        guardarUbicacion(coords);
 
         try {
           const response = await fetch(
@@ -1152,7 +1156,7 @@ export default function HomePage() {
               },
             ].map((item, idx) => (
               <div key={idx} className="relative">
-                <div className="h-full rounded-2xl p-8 bg-white dark:bg-card shadow-sm">
+                <div className="h-full rounded-xl p-8 bg-white dark:bg-card shadow-sm">
                   <div className="flex items-center gap-3 mb-3">
                     <item.icon className="h-6 w-6 shrink-0 text-primary" />
                     <h3 className="font-bold text-base text-gray-900 dark:text-foreground">
@@ -1181,7 +1185,7 @@ export default function HomePage() {
       {/* ── ¿TIENES UNA CANCHA? ───────────────────────────────────── */}
       <section className="py-14 bg-gray-50 dark:bg-muted/20">
         <div className="container mx-auto px-4 sm:px-8 lg:px-12">
-          <div className="rounded-2xl overflow-hidden bg-white dark:bg-card border border-gray-100 dark:border-border shadow-sm flex flex-col md:flex-row">
+          <div className="rounded-xl overflow-hidden bg-white dark:bg-card border border-gray-100 dark:border-border shadow-sm flex flex-col md:flex-row">
             {/* Texto */}
             <div className="flex-1 p-8 md:p-10 flex flex-col justify-center">
               {/* Badge */}
@@ -1315,7 +1319,7 @@ export default function HomePage() {
             ].map((b) => (
               <div
                 key={b.title}
-                className="bg-white dark:bg-card rounded-2xl p-6 dark:border-border"
+                className="bg-white dark:bg-card rounded-xl p-6 dark:border-border"
                 style={{ border: "1.5px solid #d4e6d4" }}
               >
                 <div className="flex items-center gap-3 mb-4">

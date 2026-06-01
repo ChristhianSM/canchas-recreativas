@@ -89,7 +89,7 @@ function LoginContent() {
       </header>
 
       <main className="relative z-10 flex-1 flex items-center justify-center px-4 py-10">
-        <div className="w-full max-w-md bg-white dark:bg-card rounded-2xl shadow-2xl p-8">
+        <div className="w-full max-w-md bg-white dark:bg-card rounded-xl shadow-2xl p-8">
           {/* Logo */}
           <div className="mb-8 text-center">
             <Image

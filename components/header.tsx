@@ -16,6 +16,7 @@ import {
   Newspaper,
   Phone,
   CircleUser,
+  Swords,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -123,6 +124,7 @@ export function Header() {
     { href: "/", label: "Inicio", icon: Home },
     { href: "/nosotros", label: "Nosotros", icon: Users },
     { href: "/canchas", label: "Canchas", icon: Calendar },
+    { href: "/partidos", label: "Partidos", icon: Swords },
     { href: "/noticias", label: "Noticias", icon: Newspaper },
     { href: "/contacto", label: "Contáctanos", icon: Phone },
     ...(user

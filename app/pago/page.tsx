@@ -732,7 +732,7 @@ function PagoContent() {
       <button
         onClick={() => setModoPago("completo")}
         className={cn(
-          "w-full text-left rounded-2xl border-2 p-4 transition-all",
+          "w-full text-left rounded-xl border-2 p-4 transition-all",
           modoPago === "completo"
             ? "border-primary bg-primary/5 shadow-sm"
             : "border-border hover:border-muted-foreground/40",
@@ -780,7 +780,7 @@ function PagoContent() {
         onClick={() => total > 0 && setModoPago("parcial")}
         disabled={total === 0}
         className={cn(
-          "w-full text-left rounded-2xl border-2 p-4 transition-all",
+          "w-full text-left rounded-xl border-2 p-4 transition-all",
           total === 0 && "opacity-50 cursor-not-allowed",
           modoPago === "parcial" && total > 0
             ? "border-amber-500 bg-amber-500/5 shadow-sm"
@@ -823,7 +823,7 @@ function PagoContent() {
 
   // ── Columna derecha: resumen de reserva (reutilizado en ambos pasos) ──
   const resumenReserva = (
-    <div className="bg-white dark:bg-card rounded-2xl border border-border overflow-hidden shadow-sm">
+    <div className="bg-white dark:bg-card rounded-xl border border-border overflow-hidden shadow-sm">
       <div className="relative aspect-video w-full">
         <Image
           src={cancha.images[0]}
@@ -1708,7 +1708,7 @@ function PagoContent() {
                         key={m}
                         onClick={() => setMetodo(m)}
                         className={cn(
-                          "w-full flex items-center gap-4 rounded-2xl border-2 p-4 transition-all text-left",
+                          "w-full flex items-center gap-4 rounded-xl border-2 p-4 transition-all text-left",
                           metodo === m
                             ? m === "yape"
                               ? "border-[#6C1FC6] bg-[#6C1FC6]/5 shadow-sm"
@@ -1798,7 +1798,7 @@ function PagoContent() {
       <div className="hidden lg:block bg-gray-50 dark:bg-background">
         <div className="container mx-auto px-8 lg:px-12 py-10 space-y-8">
           {/* Stepper */}
-          <div className="bg-white dark:bg-card rounded-2xl border border-border px-10 py-5">
+          <div className="bg-white dark:bg-card rounded-xl border border-border px-10 py-5">
             {stepperJSX}
           </div>
 
@@ -1811,7 +1811,7 @@ function PagoContent() {
                 const done = paso !== "datos";
                 return (
                   <div className={cn(
-                    "rounded-2xl border p-5 transition-all",
+                    "rounded-xl border p-5 transition-all",
                     done ? "bg-white dark:bg-card border-border" : "bg-white dark:bg-card border-primary shadow-sm ring-1 ring-primary/20"
                   )}>
                     <div className="flex items-center justify-between mb-2">
@@ -1850,7 +1850,7 @@ function PagoContent() {
                 const pending = paso === "datos";
                 return (
                   <div className={cn(
-                    "rounded-2xl border p-5 transition-all",
+                    "rounded-xl border p-5 transition-all",
                     done ? "bg-white dark:bg-card border-border"
                          : paso === "pago" ? "bg-white dark:bg-card border-primary shadow-sm ring-1 ring-primary/20"
                          : "bg-muted/30 dark:bg-muted/10 border-border opacity-60"
@@ -1894,7 +1894,7 @@ function PagoContent() {
                 const done = paso === "confirmar";
                 return (
                   <div className={cn(
-                    "rounded-2xl border p-5 transition-all",
+                    "rounded-xl border p-5 transition-all",
                     done ? "bg-white dark:bg-card border-border"
                          : paso === "metodo" ? "bg-white dark:bg-card border-primary shadow-sm ring-1 ring-primary/20"
                          : "bg-muted/30 dark:bg-muted/10 border-border opacity-60"
@@ -1944,7 +1944,7 @@ function PagoContent() {
                     cancha &&
                     (cancha.balonPrecio != null ||
                       cancha.chalecosPrecio != null) && (
-                      <div className="bg-white dark:bg-card rounded-2xl border border-border p-6">
+                      <div className="bg-white dark:bg-card rounded-xl border border-border p-6">
                         <h2 className="text-base font-semibold text-foreground mb-4">
                           ¿Necesitas extras?
                         </h2>
@@ -2020,7 +2020,7 @@ function PagoContent() {
                         </div>
                       </div>
                     )}
-                  <div className="bg-white dark:bg-card rounded-2xl border border-border p-6">
+                  <div className="bg-white dark:bg-card rounded-xl border border-border p-6">
                     <h2 className="text-base font-semibold text-foreground mb-4">
                       ¿Cómo quieres pagar?
                     </h2>
@@ -2042,7 +2042,7 @@ function PagoContent() {
                     )}
                   </div>
                   {!esInvitado && cupones.length > 0 && (
-                    <div className="bg-white dark:bg-card rounded-2xl border border-border p-6">
+                    <div className="bg-white dark:bg-card rounded-xl border border-border p-6">
                       <h2 className="text-base font-semibold text-foreground mb-4">
                         Cupones disponibles
                       </h2>
@@ -2137,7 +2137,7 @@ function PagoContent() {
               {/* PASO 2: Identificación */}
               {paso === "datos" && (
                 <>
-                  <div className="bg-white dark:bg-card rounded-2xl border border-border p-6">
+                  <div className="bg-white dark:bg-card rounded-xl border border-border p-6">
                     <h2 className="text-base font-semibold text-foreground mb-4">
                       Identificación
                     </h2>
@@ -2254,7 +2254,7 @@ function PagoContent() {
               {/* PASO 3: Método de pago */}
               {paso === "metodo" && (
                 <>
-                  <div className="bg-white dark:bg-card rounded-2xl border border-border p-6">
+                  <div className="bg-white dark:bg-card rounded-xl border border-border p-6">
                     <h2 className="text-base font-semibold text-foreground mb-4">
                       Método de pago
                     </h2>
@@ -2282,7 +2282,7 @@ function PagoContent() {
                               key={m}
                               onClick={() => setMetodo(m)}
                               className={cn(
-                                "w-full flex items-center gap-4 rounded-2xl border-2 p-4 transition-all text-left",
+                                "w-full flex items-center gap-4 rounded-xl border-2 p-4 transition-all text-left",
                                 metodo === m
                                   ? m === "yape"
                                     ? "border-[#6C1FC6] bg-[#6C1FC6]/5"

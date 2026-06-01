@@ -32,6 +32,7 @@ import {
   SuperficieType,
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { guardarUbicacion, limpiarUbicacion } from "@/lib/geolocation-utils";
 import type { Coordenadas } from "@/lib/geolocation-utils";
 
 interface AdvancedFiltersProps {
@@ -334,7 +335,7 @@ export function AdvancedFiltersComponent({
                     lat: position.coords.latitude,
                     lng: position.coords.longitude,
                   };
-                  localStorage.setItem("user_location", JSON.stringify(coords));
+                  guardarUbicacion(coords);
                   setLoadingUbicacion(false);
                   if (onUbicacionObtenida) onUbicacionObtenida(coords);
                 },
@@ -369,7 +370,7 @@ export function AdvancedFiltersComponent({
               </span>
               <button
                 onClick={() => {
-                  localStorage.removeItem("user_location");
+                  limpiarUbicacion();
                   if (onUbicacionLimpiada) onUbicacionLimpiada();
                 }}
                 className="text-xs text-gray-500 hover:text-gray-700 underline"

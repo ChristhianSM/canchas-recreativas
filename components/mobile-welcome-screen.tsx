@@ -101,7 +101,7 @@ export function MobileWelcomeScreen({ onDismiss }: MobileWelcomeScreenProps) {
       >
         <button
           onClick={handleLogin}
-          className="w-full py-4 rounded-2xl text-white font-semibold text-base transition-opacity active:opacity-80"
+          className="w-full py-4 rounded-xl text-white font-semibold text-base transition-opacity active:opacity-80"
           style={{ background: "#2d7a2d" }}
         >
           Iniciar sesión
@@ -109,7 +109,7 @@ export function MobileWelcomeScreen({ onDismiss }: MobileWelcomeScreenProps) {
 
         <button
           onClick={handleRegister}
-          className="w-full py-4 rounded-2xl font-semibold text-base border-2 transition-opacity active:opacity-80"
+          className="w-full py-4 rounded-xl font-semibold text-base border-2 transition-opacity active:opacity-80"
           style={{
             borderColor: "#e0e0e0",
             color: "#1a3d1a",

@@ -169,7 +169,7 @@ export default function RegistroPage() {
           />
           <div className="absolute inset-0 bg-black/55" />
         </div>
-        <div className="relative z-10 mx-auto max-w-md text-center space-y-6 bg-white dark:bg-card rounded-2xl p-8 shadow-2xl w-full">
+        <div className="relative z-10 mx-auto max-w-md text-center space-y-6 bg-white dark:bg-card rounded-xl p-8 shadow-2xl w-full">
           <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
             <Mail className="h-10 w-10 text-primary" />
           </div>
@@ -227,7 +227,7 @@ export default function RegistroPage() {
       </header>
 
       <main className="relative z-10 flex-1 flex items-center justify-center px-4 py-8">
-        <div className="w-full max-w-md bg-white dark:bg-card rounded-2xl shadow-2xl p-8">
+        <div className="w-full max-w-md bg-white dark:bg-card rounded-xl shadow-2xl p-8">
           {/* Logo */}
           <div className="mb-6 text-center">
             <Image
