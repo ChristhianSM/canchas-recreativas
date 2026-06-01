@@ -166,82 +166,19 @@ export function Header() {
             })}
         </nav>
 
-        {/* Tablet Auth (768–1023px) — solo ícono circular */}
-        <div className="hidden md:flex lg:hidden items-center shrink-0">
+        {/* Auth (tablet + desktop) — un solo DropdownMenu desde md+ */}
+        <div className="hidden md:flex items-center gap-3 shrink-0">
           {!hydrated ? (
-            <div className="h-8 w-8 animate-pulse rounded-full bg-muted" />
+            <div className="h-8 w-8 animate-pulse rounded-full bg-muted lg:w-32 lg:rounded-lg" />
           ) : user?.name ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
-                  {user.name.charAt(0).toUpperCase()}
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem asChild>
-                  <Link
-                    href="/mi-cuenta"
-                    className="flex items-center gap-2 cursor-pointer"
-                  >
-                    <User className="h-4 w-4" />
-                    Mi Cuenta
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={handleLogout}
-                  className="cursor-pointer text-destructive focus:text-destructive"
-                >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Cerrar Sesión
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="flex h-9 w-9 items-center justify-center rounded-full text-primary hover:bg-primary/10 transition-colors">
-                  <CircleUser className="h-6 w-6" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-44">
-                <DropdownMenuItem asChild>
-                  <Link
-                    href="/login"
-                    className="flex items-center gap-2 cursor-pointer"
-                  >
-                    <User className="h-4 w-4" />
-                    Iniciar Sesión
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link
-                    href="/registro"
-                    className="flex items-center gap-2 cursor-pointer"
-                  >
-                    <CircleUser className="h-4 w-4" />
-                    Registrarse
-                  </Link>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-        </div>
-
-        {/* Desktop Auth (≥1024px) — botones de texto */}
-        <div className="hidden items-center gap-3 lg:flex shrink-0">
-          {!hydrated ? (
-            /* Skeleton mientras se lee localStorage */
-            <div className="h-8 w-32 animate-pulse rounded-lg bg-muted" />
-          ) : user?.name ? (
-            <DropdownMenu>
+            <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="gap-2">
                   <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
                     {user.name.charAt(0).toUpperCase()}
                   </div>
-                  <span className="max-w-30 truncate">{user.name}</span>
-                  <ChevronDown className="h-4 w-4" />
+                  <span className="hidden lg:inline max-w-30 truncate">{user.name}</span>
+                  <ChevronDown className="hidden lg:inline h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
@@ -268,7 +205,7 @@ export function Header() {
             <>
               <Link
                 href="/login"
-                className="text-sm font-medium text-foreground hover:text-primary transition-colors"
+                className="hidden lg:block text-sm font-medium text-foreground hover:text-primary transition-colors"
               >
                 Iniciar Sesión
               </Link>
@@ -305,7 +242,7 @@ export function Header() {
                 <span className="sr-only">Abrir menú</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-[280px] bg-card p-0">
+            <SheetContent side="right" className="w-70 bg-card p-0">
               {/* Título oculto para accesibilidad */}
               <SheetTitle className="sr-only">Menú de navegación</SheetTitle>
               <div className="h-16 border-b border-border" />

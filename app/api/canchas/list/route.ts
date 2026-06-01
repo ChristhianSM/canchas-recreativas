@@ -15,9 +15,9 @@ export async function GET(req: NextRequest) {
   const { data, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // Obtener horarios ocupados para los próximos 14 días
+  // Obtener horarios ocupados para los próximos 30 días
   const hoy = getLocalDateString();
-  const en14 = addDaysToDateString(hoy, 14);
+  const en14 = addDaysToDateString(hoy, 30);
 
   const { data: reservas } = await sb
     .from('reservas')

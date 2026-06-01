@@ -264,7 +264,7 @@ export function TimeSlotPicker({
                 slot.status === "disponible" &&
                   !pasado &&
                   isSelected &&
-                  "border-primary bg-primary text-primary-foreground",
+                  "border-brand-black bg-brand-black text-primary-foreground",
                 // Reservado — bloqueado
                 slot.status === "reservado" &&
                   "cursor-not-allowed border-transparent bg-muted opacity-50",

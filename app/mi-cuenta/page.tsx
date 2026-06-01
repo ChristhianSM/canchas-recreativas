@@ -646,39 +646,121 @@ export default function MisReservasPage() {
   // Skeleton
   if (!hydrated || loading) {
     return (
-      <div className="flex flex-col flex-1 bg-background">
-        <div className="lg:hidden">
-          <Header />
-        </div>
-        <main className="flex-1 container mx-auto px-4 py-8">
-          <div className="mb-6 space-y-2">
-            <div className="h-8 w-48 animate-pulse rounded-lg bg-muted" />
-            <div className="h-4 w-64 animate-pulse rounded-lg bg-muted" />
+      <div className="flex flex-col flex-1 bg-background lg:bg-green-50/60">
+        <Header />
+
+        {/* Mobile skeleton */}
+        <div className="lg:hidden container mx-auto px-4 py-6 space-y-4">
+          <div className="space-y-1.5">
+            <div className="h-7 w-48 animate-pulse rounded-lg bg-muted" />
+            <div className="h-4 w-36 animate-pulse rounded-lg bg-muted" />
           </div>
-          <div className="mb-6 flex gap-2">
+          <div className="flex gap-2 overflow-x-auto pb-1">
             {[1, 2, 3, 4].map((i) => (
-              <div
-                key={i}
-                className="h-9 w-28 animate-pulse rounded-lg bg-muted"
-              />
+              <div key={i} className="h-9 w-28 shrink-0 animate-pulse rounded-lg bg-muted" />
             ))}
           </div>
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="flex overflow-hidden rounded-xl border border-border"
-              >
-                <div className="h-36 w-40 shrink-0 animate-pulse bg-muted" />
+              <div key={i} className="flex overflow-hidden rounded-xl border border-border bg-card">
+                <div className="h-36 w-36 shrink-0 animate-pulse bg-muted" />
                 <div className="flex flex-1 flex-col gap-3 p-4">
                   <div className="h-4 w-20 animate-pulse rounded bg-muted" />
-                  <div className="h-5 w-48 animate-pulse rounded bg-muted" />
-                  <div className="h-4 w-36 animate-pulse rounded bg-muted" />
+                  <div className="h-5 w-40 animate-pulse rounded bg-muted" />
+                  <div className="h-3 w-32 animate-pulse rounded bg-muted" />
+                  <div className="h-3 w-24 animate-pulse rounded bg-muted" />
                 </div>
               </div>
             ))}
           </div>
-        </main>
+        </div>
+
+        {/* Desktop skeleton */}
+        <div className="hidden lg:grid grid-cols-[2fr_6fr] flex-1 container mx-auto px-8 lg:px-12">
+          {/* Sidebar */}
+          <aside className="flex flex-col gap-3 p-4 pl-0 pt-6">
+            <div className="bg-white rounded-2xl p-4 flex flex-col items-center animate-pulse">
+              <div className="h-16 w-16 rounded-full bg-muted mb-3" />
+              <div className="h-4 w-28 bg-muted rounded-full mb-1.5" />
+              <div className="h-3 w-20 bg-muted rounded-full mb-3" />
+              <div className="grid grid-cols-3 gap-1.5 w-full">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-12 bg-muted rounded-xl" />
+                ))}
+              </div>
+            </div>
+            <div className="bg-white rounded-2xl p-2 animate-pulse space-y-1">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="h-10 bg-muted rounded-xl" />
+              ))}
+            </div>
+          </aside>
+
+          {/* Main */}
+          <main className="flex-1 p-6 space-y-6 animate-pulse">
+            {/* Saludo + botón */}
+            <div className="flex items-start justify-between">
+              <div className="space-y-2">
+                <div className="h-8 w-56 bg-muted rounded-lg" />
+                <div className="h-4 w-40 bg-muted rounded-lg" />
+              </div>
+              <div className="h-9 w-36 bg-muted rounded-full" />
+            </div>
+            {/* Próxima reserva */}
+            <div>
+              <div className="h-5 w-36 bg-muted rounded mb-3" />
+              <div className="bg-white rounded-2xl overflow-hidden flex h-44">
+                <div className="w-44 shrink-0 bg-muted" />
+                <div className="flex-1 p-5 space-y-3">
+                  <div className="h-5 w-48 bg-muted rounded" />
+                  <div className="h-7 w-64 bg-muted rounded" />
+                  <div className="flex gap-4">
+                    <div className="h-4 w-24 bg-muted rounded" />
+                    <div className="h-4 w-24 bg-muted rounded" />
+                  </div>
+                  <div className="h-6 w-20 bg-muted rounded-full" />
+                </div>
+              </div>
+            </div>
+            {/* Stats */}
+            <div className="grid grid-cols-4 gap-3">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="bg-white rounded-2xl p-4 space-y-3">
+                  <div className="h-10 w-10 bg-muted rounded-xl" />
+                  <div className="h-6 w-16 bg-muted rounded" />
+                  <div className="h-3 w-24 bg-muted rounded" />
+                </div>
+              ))}
+            </div>
+            {/* Dos columnas */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-white rounded-2xl p-5 space-y-4">
+                <div className="h-5 w-36 bg-muted rounded" />
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <div className="h-11 w-11 bg-muted rounded-xl shrink-0" />
+                    <div className="flex-1 space-y-1.5">
+                      <div className="h-4 w-32 bg-muted rounded" />
+                      <div className="h-3 w-20 bg-muted rounded" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="bg-white rounded-2xl p-5 space-y-4">
+                <div className="h-5 w-28 bg-muted rounded" />
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex items-center gap-3 p-3">
+                    <div className="h-9 w-9 bg-muted rounded-xl shrink-0" />
+                    <div className="flex-1 space-y-1">
+                      <div className="h-4 w-32 bg-muted rounded" />
+                      <div className="h-3 w-20 bg-muted rounded" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </main>
+        </div>
       </div>
     );
   }

@@ -129,8 +129,8 @@ function adaptCancha(c: Cancha) {
     }>
   > = {};
 
-  // Generar próximos 14 días usando fecha local
-  for (let i = 0; i < 14; i++) {
+  // Generar próximos 30 días usando fecha local
+  for (let i = 0; i < 30; i++) {
     const date = new Date();
     date.setDate(date.getDate() + i);
     const dateStr = getLocalDateString(date); // ✅ Usar función local en lugar de toISOString
@@ -1262,7 +1262,7 @@ function CanchasContent() {
             {/* Botón filtros — solo en md-lg (768-1023px) */}
             <button
               onClick={() => setShowFiltersSheet(true)}
-              className="lg:hidden relative flex items-center gap-1.5 px-3 py-2.5 rounded-full transition-all bg-white border border-gray-200 shrink-0"
+              className="lg:hidden relative flex items-center gap-1.5 px-3 py-2.5 rounded-md transition-all bg-white border border-gray-200 shrink-0"
             >
               <SlidersHorizontal className="h-5 w-5 text-gray-600" />
               {activeFilterCount > 0 && (
@@ -1277,7 +1277,7 @@ function CanchasContent() {
           <div className="md:hidden flex items-center gap-2">
             <button
               onClick={() => openSearchModal("fecha")}
-              className="flex-1 flex items-center gap-3 bg-white border border-gray-200 hover:border-gray-400 rounded-full px-4 py-2.5 shadow-sm hover:shadow-md transition-all text-left"
+              className="flex-1 flex items-center gap-3 bg-white border border-gray-200 hover:border-gray-400 rounded-md px-4 py-2.5 shadow-sm hover:shadow-md transition-all text-left"
             >
               <Search className="h-4 w-4 text-gray-400 shrink-0" />
               <div className="flex-1 min-w-0">
@@ -1310,7 +1310,7 @@ function CanchasContent() {
             </button>
             <button
               onClick={() => setShowFiltersSheet(true)}
-              className="relative flex items-center gap-1.5 px-3 py-2.5 rounded-full transition-all bg-white border border-gray-200 shrink-0"
+              className="relative flex items-center gap-1.5 px-3 py-2.5 rounded-md transition-all bg-white border border-gray-200 shrink-0"
             >
               <SlidersHorizontal className="h-5 w-5 text-gray-600" />
               {activeFilterCount > 0 && (
@@ -1469,54 +1469,86 @@ function CanchasContent() {
             {loading ? (
               <>
                 {/* Mobile skeleton — tarjetas verticales */}
-                <div className="lg:hidden grid gap-4 grid-cols-1 sm:grid-cols-2">
+                <div className="xl:hidden grid gap-4 grid-cols-1 sm:grid-cols-2">
                   {[1, 2, 3, 4].map((i) => (
                     <div
                       key={i}
-                      className="rounded-xl border border-gray-100 overflow-hidden animate-pulse"
+                      className="rounded-xl border border-border overflow-hidden animate-pulse bg-card"
                     >
-                      <div className="aspect-[2/1] bg-gray-200" />
+                      <div className="aspect-[2/1] bg-muted" />
                       <div className="p-4 space-y-3">
-                        <div className="h-4 bg-gray-200 rounded-full w-3/4" />
-                        <div className="h-3 bg-gray-200 rounded-full w-1/3" />
-                        <div className="h-3 bg-gray-200 rounded-full w-1/2" />
-                        <div className="flex gap-1.5 pt-1">
+                        {/* Nombre — 2 líneas */}
+                        <div className="space-y-1.5 sm:min-h-[3rem]">
+                          <div className="h-4 bg-muted rounded-full w-4/5" />
+                          <div className="h-4 bg-muted rounded-full w-3/5" />
+                        </div>
+                        {/* Dirección + precio */}
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1 h-3 bg-muted rounded-full" />
+                          <div className="flex flex-col items-end gap-1 shrink-0">
+                            <div className="h-6 w-14 bg-muted rounded" />
+                            <div className="h-2.5 w-10 bg-muted rounded-full" />
+                          </div>
+                        </div>
+                        {/* Horarios label */}
+                        <div className="h-3 bg-muted rounded-full w-2/5" />
+                        {/* Time slots */}
+                        <div className="flex gap-1.5">
                           {[1, 2, 3, 4].map((j) => (
                             <div
                               key={j}
-                              className="h-9 flex-1 bg-gray-200 rounded-lg"
+                              className="h-9 flex-1 bg-muted rounded-lg"
                             />
                           ))}
                         </div>
-                        <div className="h-10 bg-gray-200 rounded-lg" />
+                        {/* Extras badges */}
+                        <div className="flex gap-2">
+                          <div className="h-6 w-20 bg-muted rounded-md" />
+                          <div className="h-6 w-24 bg-muted rounded-md" />
+                        </div>
+                        {/* Botón + favorito */}
+                        <div className="flex gap-2">
+                          <div className="h-11 flex-1 bg-muted rounded-lg" />
+                          <div className="h-11 w-11 bg-muted rounded-lg shrink-0" />
+                        </div>
                       </div>
                     </div>
                   ))}
                 </div>
                 {/* Desktop skeleton — tarjetas horizontales */}
-                <div className="hidden lg:block space-y-3">
+                <div className="hidden xl:flex flex-col gap-3">
                   {[1, 2, 3, 4].map((i) => (
                     <div
                       key={i}
-                      className="flex rounded-xl border border-gray-100 overflow-hidden animate-pulse"
+                      className="flex rounded-xl border border-border overflow-hidden animate-pulse bg-card h-[210px] md:h-[270px]"
                     >
-                      <div className="w-[160px] h-[160px] bg-gray-200 shrink-0" />
-                      <div className="flex-1 p-4 space-y-2.5">
-                        <div className="h-4 bg-gray-200 rounded-full w-3/4" />
-                        <div className="h-3 bg-gray-200 rounded-full w-1/3" />
-                        <div className="h-3 bg-gray-200 rounded-full w-1/2" />
-                        <div className="flex gap-1.5 pt-2">
-                          {[1, 2, 3, 4].map((j) => (
+                      {/* Imagen izquierda */}
+                      <div className="w-35 md:w-50 shrink-0 bg-muted" />
+                      {/* Contenido */}
+                      <div className="flex-1 p-4 flex flex-col gap-2.5 min-w-0">
+                        {/* Nombre + precio + corazón */}
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-5 bg-muted rounded-full" />
+                          <div className="h-5 w-16 bg-muted rounded-full shrink-0" />
+                          <div className="h-7 w-7 bg-muted rounded-full shrink-0" />
+                        </div>
+                        {/* Dirección */}
+                        <div className="h-3 bg-muted rounded-full w-2/3" />
+                        {/* Rating */}
+                        <div className="h-3 bg-muted rounded-full w-1/4" />
+                        {/* Horarios label */}
+                        <div className="h-3 bg-muted rounded-full w-2/5" />
+                        {/* Time slots */}
+                        <div className="flex gap-1.5">
+                          {[1, 2, 3, 4, 5].map((j) => (
                             <div
                               key={j}
-                              className="h-8 w-16 bg-gray-200 rounded-lg"
+                              className="h-9 w-16 bg-muted rounded-lg"
                             />
                           ))}
                         </div>
-                      </div>
-                      <div className="w-[120px] p-4 flex flex-col gap-3 justify-end">
-                        <div className="h-6 bg-gray-200 rounded-full w-full" />
-                        <div className="h-10 bg-gray-200 rounded-xl w-full" />
+                        {/* Botón reservar */}
+                        <div className="mt-auto h-10 w-32 bg-muted rounded-lg" />
                       </div>
                     </div>
                   ))}

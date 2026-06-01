@@ -897,7 +897,7 @@ export default function CanchaDetailPage() {
                         slot.status === "disponible" &&
                           !pasado &&
                           sel &&
-                          "border-primary bg-primary text-primary-foreground",
+                          "border-brand-black bg-brand-black text-primary-foreground",
                         slot.status === "reservado" &&
                           "cursor-not-allowed border-transparent bg-muted opacity-50",
                         slot.status === "en_proceso" &&
