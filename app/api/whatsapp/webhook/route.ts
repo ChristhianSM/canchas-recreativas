@@ -128,26 +128,6 @@ async function procesarReserva(sb: any, reserva: any, accion: 'confirmar' | 'rec
       tipo:       estado,
     });
 
-    // Sello de loyalty si fue confirmada
-    if (estado === 'confirmada') {
-      const { data: loyalty } = await sb
-        .from('loyalty')
-        .select('*')
-        .eq('usuario_id', reserva.usuario_id)
-        .single();
-
-      if (loyalty) {
-        const nuevosSellos = loyalty.sellos + 1;
-        const generaCupon  = nuevosSellos >= 6;
-        await sb.from('loyalty').update({
-          sellos:         generaCupon ? 0 : nuevosSellos,
-          total_reservas: loyalty.total_reservas + 1,
-        }).eq('usuario_id', reserva.usuario_id);
-        if (generaCupon) {
-          await sb.from('cupones').insert({ usuario_id: reserva.usuario_id, descuento: 5 });
-        }
-      }
-    }
   }
 
   // WhatsApp al cliente si tiene teléfono

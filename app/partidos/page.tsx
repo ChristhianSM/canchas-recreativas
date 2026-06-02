@@ -25,6 +25,7 @@ import { getToken } from "@/lib/api";
 import { getLocalDateString } from "@/lib/date-utils";
 import { useRouter } from "next/navigation";
 import { MapaPartidoModal } from "@/components/mapa-partido-modal";
+import { PartidoDetalleModal } from "@/components/partido-detalle-modal";
 import {
   calcularDistancia,
   formatearDistancia,
@@ -47,6 +48,7 @@ interface JugadorPreview {
   inicial: string;
   es_organizador: boolean;
   estado_pago: string;
+  telefono: string | null;
 }
 
 interface PartidoAPI {
@@ -159,6 +161,7 @@ function PartidoCard({
   onSolicitarSalir,
   onSolicitarCancelar,
   onAbrirMapa,
+  onVerDetalle,
   distancia,
 }: {
   partido: PartidoAPI;
@@ -167,6 +170,7 @@ function PartidoCard({
   onSolicitarSalir: (id: string) => void;
   onSolicitarCancelar: (id: string) => void;
   onAbrirMapa: (partido: PartidoAPI) => void;
+  onVerDetalle: (partido: PartidoAPI) => void;
   distancia?: number;
 }) {
   const { label: nivelLabel, cls: nivelCls } = NIVEL_CONFIG[partido.nivel];
@@ -349,6 +353,14 @@ function PartidoCard({
           </button>
         )}
       </div>
+
+      {/* Ver detalles */}
+      <button
+        onClick={() => onVerDetalle(partido)}
+        className="w-full text-center text-xs font-semibold text-primary hover:text-primary/70 py-1 transition-colors"
+      >
+        Ver detalles y jugadores
+      </button>
     </div>
   );
 }
@@ -414,9 +426,13 @@ function CrearPartidoSheet({
     hora: "",
     nivel: "libre" as Nivel,
     jugadores_equipo: 10,
-    jugadores_max: 10,
+    jugadores_max: 9,
     descripcion: "",
   });
+
+  // Estados string para permitir borrar y escribir libremente en los inputs numéricos
+  const [equipoInput, setEquipoInput] = useState("10");
+  const [maxInput, setMaxInput] = useState("9");
 
   // Resetear y cargar canchas al abrir
   useEffect(() => {
@@ -484,13 +500,13 @@ function CrearPartidoSheet({
   const handleCanchaChange = (id: string) => {
     const c = canchas.find((x) => x.id === id);
     const maxCancha = c?.max_jugadores ?? 22;
-    setForm((prev) => ({
-      ...prev,
-      cancha_id: id,
-      hora: "",
-      jugadores_equipo: Math.min(prev.jugadores_equipo, maxCancha),
-      jugadores_max: Math.min(prev.jugadores_max, maxCancha),
-    }));
+    setForm((prev) => {
+      const equipo = Math.min(prev.jugadores_equipo, maxCancha);
+      const max = Math.min(prev.jugadores_max, maxCancha - 1);
+      setEquipoInput(String(equipo));
+      setMaxInput(String(max));
+      return { ...prev, cancha_id: id, hora: "", jugadores_equipo: equipo, jugadores_max: max };
+    });
   };
 
   // Paso 1: solo valida y avanza al paso de pago
@@ -524,7 +540,7 @@ function CrearPartidoSheet({
           fecha: form.fecha,
           hora: form.hora,
           nivel: form.nivel,
-          jugadores_max: form.jugadores_max,
+          jugadores_max: form.jugadores_max + 1,  // +1 para reservar el cupo del organizador
           jugadores_equipo: form.jugadores_equipo,
           precio_total: precioTotal,
           descripcion: form.descripcion || null,
@@ -759,14 +775,14 @@ function CrearPartidoSheet({
                     required
                     min={2}
                     max={maxJugadores}
-                    value={form.jugadores_equipo}
-                    onChange={(e) => {
-                      const equipo = Math.min(Number(e.target.value), maxJugadores);
-                      setForm((p) => ({
-                        ...p,
-                        jugadores_equipo: equipo,
-                        jugadores_max: Math.min(p.jugadores_max, equipo),
-                      }));
+                    value={equipoInput}
+                    onChange={(e) => setEquipoInput(e.target.value)}
+                    onBlur={() => {
+                      const equipo = Math.min(Math.max(parseInt(equipoInput, 10) || 2, 2), maxJugadores);
+                      const max = Math.max(1, Math.min(form.jugadores_max, equipo - 1));
+                      setEquipoInput(String(equipo));
+                      setMaxInput(String(max));
+                      setForm((p) => ({ ...p, jugadores_equipo: equipo, jugadores_max: max }));
                     }}
                     className="w-full h-11 px-3 rounded-xl border border-border bg-background text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30"
                   />
@@ -784,17 +800,17 @@ function CrearPartidoSheet({
                     type="number"
                     required
                     min={1}
-                    max={form.jugadores_equipo}
-                    value={form.jugadores_max}
-                    onChange={(e) =>
-                      setForm((p) => ({
-                        ...p,
-                        jugadores_max: Math.min(Number(e.target.value), p.jugadores_equipo),
-                      }))
-                    }
+                    max={form.jugadores_equipo - 1}
+                    value={maxInput}
+                    onChange={(e) => setMaxInput(e.target.value)}
+                    onBlur={() => {
+                      const max = Math.min(Math.max(parseInt(maxInput, 10) || 1, 1), form.jugadores_equipo - 1);
+                      setMaxInput(String(max));
+                      setForm((p) => ({ ...p, jugadores_max: max }));
+                    }}
                     className="w-full h-11 px-3 rounded-xl border border-border bg-background text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30"
                   />
-                  {form.jugadores_max < form.jugadores_equipo && (
+                  {form.jugadores_max >= 1 && form.jugadores_max < form.jugadores_equipo && (
                     <p className="text-[10px] text-primary font-semibold mt-1">
                       Tu grupo: {form.jugadores_equipo - form.jugadores_max} · Buscas: {form.jugadores_max} más
                     </p>
@@ -1058,6 +1074,7 @@ export default function PartidosPage() {
   const [loadingUbicacion, setLoadingUbicacion] = useState(false);
   const [confirmacion, setConfirmacion] = useState<{ id: string; tipo: "salir" | "cancelar" } | null>(null);
   const [partidoMapa, setPartidoMapa] = useState<PartidoAPI | null>(null);
+  const [partidoDetalle, setPartidoDetalle] = useState<PartidoAPI | null>(null);
 
   const fetchPartidos = useCallback(async () => {
     setLoading(true);
@@ -1123,7 +1140,7 @@ export default function PartidosPage() {
   const handleUnirse = async (id: string) => {
     const token = getToken();
     if (!token) {
-      router.push("/login");
+      router.push("/login?redirect=/partidos");
       return;
     }
     setLoadingId(id);
@@ -1314,7 +1331,7 @@ export default function PartidosPage() {
             <button
               onClick={() => {
                 if (!getToken()) {
-                  router.push("/login");
+                  router.push("/login?redirect=/partidos");
                   return;
                 }
                 setShowCrear(true);
@@ -1361,7 +1378,7 @@ export default function PartidosPage() {
               <button
                 onClick={() => {
                   if (!getToken()) {
-                    router.push("/login");
+                    router.push("/login?redirect=/partidos");
                     return;
                   }
                   setShowCrear(true);
@@ -1383,6 +1400,7 @@ export default function PartidosPage() {
                   onSolicitarSalir={solicitarSalir}
                   onSolicitarCancelar={solicitarCancelar}
                   onAbrirMapa={setPartidoMapa}
+                  onVerDetalle={setPartidoDetalle}
                   distancia={p.distancia}
                 />
               ))}
@@ -1390,6 +1408,18 @@ export default function PartidosPage() {
           )}
         </div>
       </div>
+
+      {/* Modal de detalle del partido */}
+      <PartidoDetalleModal
+        partido={partidoDetalle}
+        open={!!partidoDetalle}
+        onClose={() => setPartidoDetalle(null)}
+        loadingId={loadingId}
+        onUnirse={handleUnirse}
+        onSolicitarSalir={solicitarSalir}
+        onSolicitarCancelar={solicitarCancelar}
+        ubicacion={ubicacion}
+      />
 
       {/* Modal de mapa */}
       {partidoMapa?.cancha_lat != null && partidoMapa.cancha_lng != null && (

@@ -34,6 +34,7 @@ type MetodoPago = "yape" | "plin" | "efectivo";
 type Paso = "pago" | "datos" | "metodo" | "confirmar" | "exito";
 const TIEMPO_LIMITE = 5 * 60;
 
+
 function bloqueoKey(canchaId: string, fecha: string, hora: string) {
   return `cp_bloqueo_inicio_${canchaId}_${fecha}_${hora.replace(":", "-")}`;
 }
@@ -2071,9 +2072,7 @@ function PagoContent() {
                               )}
                             >
                               <span>S/5</span>
-                              <span className="text-[10px] font-normal">
-                                OFF
-                              </span>
+                              <span className="text-[10px] font-normal">OFF</span>
                             </div>
                             <div className="flex-1">
                               <p className="text-sm font-medium text-foreground">

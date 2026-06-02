@@ -26,6 +26,18 @@ export async function GET(req: NextRequest) {
   const { data, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  // Hora actual en Lima para descartar partidos de hoy que ya pasaron
+  const horaActual = new Date().toLocaleTimeString('es-PE', {
+    timeZone: 'America/Lima',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+
+  const dataSinPasados = (data ?? []).filter(
+    (p) => p.fecha > hoy || (p.fecha === hoy && p.hora >= horaActual),
+  );
+
   // Marcar qué partidos ya unió el usuario autenticado
   let userId: string | null = null;
   if (token) {
@@ -33,20 +45,38 @@ export async function GET(req: NextRequest) {
     userId = user?.id ?? null;
   }
 
-  const partidos = (data ?? []).map((p) => ({
-    ...p,
-    // precio_por_persona se recalcula usando jugadores_equipo (total del partido)
-    // para que el precio sea correcto aunque solo se abran pocos cupos
-    precio_por_persona: Math.ceil(
-      p.precio_total / (p.jugadores_equipo ?? p.jugadores_max)
-    ),
-    ya_unido: userId
+  const partidos = dataSinPasados.map((p) => {
+    const esMiembro = userId
       ? Array.isArray(p.jugadores) && p.jugadores.some((j: any) => j.usuario_id === userId)
-      : false,
-    ya_organizador: userId
+      : false;
+
+    const esOrganizador = userId
       ? Array.isArray(p.jugadores) && p.jugadores.some((j: any) => j.usuario_id === userId && j.es_organizador)
-      : false,
-  }));
+      : false;
+
+    const jugadores = Array.isArray(p.jugadores)
+      ? p.jugadores.map((j: any) => ({
+          ...j,
+          // Solo el organizador ve nombre y teléfono de los jugadores
+          nombre:   esOrganizador ? j.nombre : null,
+          inicial:  esOrganizador ? j.inicial : null,
+          telefono: esOrganizador ? (j.telefono ?? null) : null,
+        }))
+      : p.jugadores;
+
+    return {
+      ...p,
+      jugadores,
+      // precio_por_persona se recalcula usando jugadores_equipo (total del partido)
+      precio_por_persona: Math.ceil(
+        p.precio_total / (p.jugadores_equipo ?? p.jugadores_max)
+      ),
+      ya_unido: esMiembro,
+      ya_organizador: userId
+        ? Array.isArray(p.jugadores) && p.jugadores.some((j: any) => j.usuario_id === userId && j.es_organizador)
+        : false,
+    };
+  });
 
   return NextResponse.json(partidos);
 }

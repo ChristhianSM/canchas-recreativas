@@ -48,7 +48,6 @@ import { canchas } from "@/lib/data";
 import { sportLabels } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { getUser, logout, type LoyaltyData } from "@/lib/auth";
-import { LoyaltyCard } from "@/components/loyalty-card";
 import { type Notificacion, type Reserva } from "@/lib/store";
 import {
   apiGetReservas,
@@ -370,6 +369,7 @@ export default function MisReservasPage() {
     sellos: 0,
     totalReservas: 0,
     cupones: [],
+    historial: [],
   });
   const [user, setUser] = useState<ReturnType<typeof getUser>>(null);
   const [notifs, setNotifs] = useState<Notificacion[]>([]);
@@ -446,6 +446,12 @@ export default function MisReservasPage() {
             usado: c.usado,
             usadoEn: c.usado_en,
           })),
+          historial: (data.historial ?? []).map((h: any) => ({
+            id: h.id,
+            cantidad: h.cantidad,
+            motivo: h.motivo,
+            creado_en: h.creado_en,
+          })),
         }),
       );
       apiGetNotificaciones().then((data) =>
@@ -464,21 +470,6 @@ export default function MisReservasPage() {
       );
     }
   }, []);
-
-  const refreshLoyalty = async () => {
-    const data = await apiGetLoyalty();
-    setLoyalty({
-      sellos: data.sellos ?? 0,
-      totalReservas: data.total_reservas ?? 0,
-      cupones: (data.cupones ?? []).map((c: any) => ({
-        id: c.id,
-        descuento: c.descuento,
-        generadoEn: c.generado_en,
-        usado: c.usado,
-        usadoEn: c.usado_en,
-      })),
-    });
-  };
 
   const handleLeerNotif = async (id: string) => {
     await apiMarcarNotifLeida(id);
@@ -1482,42 +1473,22 @@ export default function MisReservasPage() {
                           <h3 className="font-semibold text-gray-900 mb-4">
                             Historial
                           </h3>
-                          {recentesAll.length > 0 ? (
+                          {loyalty.historial.length > 0 ? (
                             <div className="space-y-3">
-                              {recentesAll.map((r) => (
-                                <div
-                                  key={r.id}
-                                  className="flex items-center gap-3"
-                                >
-                                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-green-100 text-green-600">
-                                    <svg
-                                      viewBox="0 0 24 24"
-                                      fill="none"
-                                      stroke="currentColor"
-                                      strokeWidth={2.5}
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      className="h-4 w-4"
-                                    >
-                                      <polyline points="20 6 9 17 4 12" />
-                                    </svg>
+                              {loyalty.historial.map((h) => (
+                                <div key={h.id} className="flex items-center gap-3">
+                                  <span className="text-lg">
+                                    {h.motivo === 'reserva' ? '✅' : h.motivo === 'partido' ? '🏟️' : '⭐'}
                                   </span>
                                   <div className="flex-1 min-w-0">
                                     <p className="text-sm font-medium text-gray-900 truncate">
-                                      {r.canchaName}
+                                      {h.motivo === 'reserva' ? 'Reserva confirmada' : h.motivo === 'partido' ? 'Partido creado' : 'Reseña enviada'}
                                     </p>
                                     <p className="text-xs text-muted-foreground">
-                                      {new Date(
-                                        r.fecha + "T00:00:00",
-                                      ).toLocaleDateString("es-PE", {
-                                        day: "numeric",
-                                        month: "short",
-                                      })}
+                                      {new Date(h.creado_en).toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: 'numeric' })}
                                     </p>
                                   </div>
-                                  <span className="text-xs font-semibold text-amber-600 shrink-0">
-                                    +1 sello
-                                  </span>
+                                  <span className="text-xs font-semibold text-amber-600 shrink-0">+{h.cantidad}</span>
                                 </div>
                               ))}
                             </div>
@@ -2065,20 +2036,22 @@ export default function MisReservasPage() {
                   {/* Historial de sellos ganados */}
                   <div className="bg-white rounded-xl p-4">
                     <h3 className="font-semibold text-gray-900 mb-3">Historial de sellos</h3>
-                    {recentesAll.length > 0 ? (
+                    {loyalty.historial.length > 0 ? (
                       <div className="space-y-3">
-                        {recentesAll.map(r => (
-                          <div key={r.id} className="flex items-center gap-3">
-                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-green-100 text-green-600">
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><polyline points="20 6 9 17 4 12" /></svg>
+                        {loyalty.historial.map(h => (
+                          <div key={h.id} className="flex items-center gap-3">
+                            <span className="text-lg">
+                              {h.motivo === 'reserva' ? '✅' : h.motivo === 'partido' ? '🏟️' : '⭐'}
                             </span>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-gray-900 truncate">{r.canchaName}</p>
+                              <p className="text-sm font-medium text-gray-900 truncate">
+                                {h.motivo === 'reserva' ? 'Reserva confirmada' : h.motivo === 'partido' ? 'Partido creado' : 'Reseña enviada'}
+                              </p>
                               <p className="text-xs text-muted-foreground">
-                                {new Date(r.fecha + 'T00:00:00').toLocaleDateString('es-PE', { day: 'numeric', month: 'short' })}
+                                {new Date(h.creado_en).toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: 'numeric' })}
                               </p>
                             </div>
-                            <span className="text-xs font-semibold text-amber-600 shrink-0">+1 sello</span>
+                            <span className="text-xs font-semibold text-amber-600 shrink-0">+{h.cantidad}</span>
                           </div>
                         ))}
                       </div>

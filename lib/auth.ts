@@ -10,10 +10,18 @@ export interface User {
   phone: string;
 }
 
+export interface HistorialItem {
+  id: string;
+  cantidad: number;
+  motivo: 'reserva' | 'partido' | 'resena';
+  creado_en: string;
+}
+
 export interface LoyaltyData {
   sellos: number;
   totalReservas: number;
   cupones: Cupon[];
+  historial: HistorialItem[];
 }
 
 export interface Cupon {

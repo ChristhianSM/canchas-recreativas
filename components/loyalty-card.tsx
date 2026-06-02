@@ -1,21 +1,18 @@
 'use client';
 
-import { useState } from 'react';
-import { Stamp, Gift, Ticket, CheckCircle2, Info } from 'lucide-react';
+import { Stamp, Gift, Ticket, CheckCircle2, Info, History } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { type LoyaltyData, type Cupon } from '@/lib/auth';
+import { type LoyaltyData, type Cupon, type HistorialItem } from '@/lib/auth';
 
 const TOTAL_SELLOS = 8;
 
 interface LoyaltyCardProps {
   loyalty: LoyaltyData;
-  onUpdate: () => void;
 }
 
-export function LoyaltyCard({ loyalty, onUpdate }: LoyaltyCardProps) {
-  const [showCuponInfo, setShowCuponInfo] = useState<string | null>(null);
+export function LoyaltyCard({ loyalty }: LoyaltyCardProps) {
   const cuponesDisponibles = loyalty.cupones.filter(c => !c.usado);
   const cuponesUsados = loyalty.cupones.filter(c => c.usado);
 
@@ -39,7 +36,7 @@ export function LoyaltyCard({ loyalty, onUpdate }: LoyaltyCardProps) {
         <div className="p-6">
           <div className="mb-4 flex items-center justify-between text-sm">
             <span className="text-muted-foreground">
-              {loyalty.sellos} de {TOTAL_SELLOS} reservas
+              {loyalty.sellos} de {TOTAL_SELLOS} sellos
             </span>
             <span className="font-medium text-foreground">
               {TOTAL_SELLOS - loyalty.sellos} para tu próximo cupón
@@ -78,7 +75,7 @@ export function LoyaltyCard({ loyalty, onUpdate }: LoyaltyCardProps) {
           <div className="flex items-start gap-2 rounded-lg bg-muted/50 p-3">
             <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
             <p className="text-xs text-muted-foreground">
-              Cada reserva completada suma un sello. Al completar {TOTAL_SELLOS} sellos recibes un cupón de <span className="font-semibold text-foreground">S/ 5 de descuento</span> en tu próxima reserva.
+              Gana sellos por reservas, partidos creados y reseñas. Al completar {TOTAL_SELLOS} sellos recibes un cupón de <span className="font-semibold text-foreground">S/ 5 de descuento</span> en tu próxima reserva.
             </p>
           </div>
         </div>
@@ -126,6 +123,47 @@ export function LoyaltyCard({ loyalty, onUpdate }: LoyaltyCardProps) {
           </div>
         </div>
       )}
+
+      {/* Historial de sellos */}
+      {loyalty.historial.length > 0 && (
+        <div>
+          <h3 className="mb-3 flex items-center gap-2 font-semibold text-foreground">
+            <History className="h-5 w-5 text-primary" />
+            Historial de sellos
+          </h3>
+          <Card className="divide-y divide-border border-border overflow-hidden">
+            {loyalty.historial.map(item => (
+              <HistorialRow key={item.id} item={item} />
+            ))}
+          </Card>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const MOTIVO_CONFIG: Record<HistorialItem['motivo'], { emoji: string; label: string }> = {
+  reserva: { emoji: '✅', label: 'Reserva confirmada' },
+  partido: { emoji: '🏟️', label: 'Partido creado' },
+  resena:  { emoji: '⭐', label: 'Reseña enviada' },
+};
+
+function HistorialRow({ item }: { item: HistorialItem }) {
+  const config = MOTIVO_CONFIG[item.motivo];
+  const fecha = new Date(item.creado_en).toLocaleDateString('es-PE', {
+    day: 'numeric', month: 'short', year: 'numeric',
+  });
+
+  return (
+    <div className="flex items-center justify-between px-4 py-3">
+      <div className="flex items-center gap-3">
+        <span className="text-lg">{config.emoji}</span>
+        <div>
+          <p className="text-sm font-medium text-foreground">{config.label}</p>
+          <p className="text-xs text-muted-foreground">{fecha}</p>
+        </div>
+      </div>
+      <span className="text-sm font-bold text-primary">+{item.cantidad}</span>
     </div>
   );
 }

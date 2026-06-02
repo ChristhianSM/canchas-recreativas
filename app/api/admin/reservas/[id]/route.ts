@@ -85,26 +85,5 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     });
   }
 
-  if (estado === 'confirmada' && reserva.usuario_id) {
-    const { data: loyalty } = await sb
-      .from('loyalty')
-      .select('*')
-      .eq('usuario_id', reserva.usuario_id)
-      .single();
-
-    if (loyalty) {
-      const nuevosSellos = loyalty.sellos + 1;
-      const generaCupon  = nuevosSellos >= 6;
-      await sb.from('loyalty').update({
-        sellos:         generaCupon ? 0 : nuevosSellos,
-        total_reservas: loyalty.total_reservas + 1,
-      }).eq('usuario_id', reserva.usuario_id);
-
-      if (generaCupon) {
-        await sb.from('cupones').insert({ usuario_id: reserva.usuario_id, descuento: 5 });
-      }
-    }
-  }
-
   return NextResponse.json(reserva);
 }
