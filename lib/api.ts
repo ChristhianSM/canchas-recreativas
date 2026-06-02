@@ -214,6 +214,14 @@ export async function apiToggleFavorito(canchaId: string) {
   return res.json();
 }
 
+// ── Partidos ───────────────────────────────────────────────────
+
+export async function apiGetMisPartidos() {
+  const res = await fetch('/api/partidos/mis-partidos', { headers: authHeaders() });
+  if (!res.ok) return [];
+  return res.json();
+}
+
 // ── Admin cancha ───────────────────────────────────────────────
 
 export async function apiOwnerGetReservas() {

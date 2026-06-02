@@ -56,6 +56,7 @@ import {
   apiGetFavoritos,
   apiToggleFavorito,
   apiGetLoyalty,
+  apiGetMisPartidos,
   getToken,
   getStoredUser,
 } from "@/lib/api";
@@ -302,14 +303,16 @@ function ReservaCard({
 function EmptyState({
   type,
 }: {
-  type: "proximas" | "historial" | "favorites";
+  type: "proximas" | "historial" | "favorites" | "partidos_activos" | "partidos_cancelados" | "partidos_historial";
 }) {
   const cfg = {
     proximas: {
       icon: <CalendarPlus className="h-10 w-10 text-muted-foreground" />,
       title: "No tienes reservas próximas",
       desc: "Explora nuestras canchas y haz tu primera reserva",
-      action: true,
+      actionHref: "/canchas",
+      actionLabel: "Explorar canchas",
+      actionIcon: <CalendarPlus className="mr-2 h-4 w-4" />,
       bgColor: "bg-primary/5",
       iconBg: "bg-primary/10",
     },
@@ -317,7 +320,9 @@ function EmptyState({
       icon: <Clock className="h-10 w-10 text-muted-foreground" />,
       title: "No tienes reservas en historial",
       desc: "Aquí aparecerán tus reservas pasadas y canceladas",
-      action: false,
+      actionHref: null,
+      actionLabel: null,
+      actionIcon: null,
       bgColor: "bg-muted/30",
       iconBg: "bg-muted",
     },
@@ -325,9 +330,41 @@ function EmptyState({
       icon: <Heart className="h-10 w-10 text-muted-foreground" />,
       title: "No tienes canchas favoritas",
       desc: "Toca el corazón ❤️ en cualquier cancha para guardarla aquí",
-      action: true,
+      actionHref: "/canchas",
+      actionLabel: "Explorar canchas",
+      actionIcon: <CalendarPlus className="mr-2 h-4 w-4" />,
       bgColor: "bg-destructive/5",
       iconBg: "bg-destructive/10",
+    },
+    partidos_activos: {
+      icon: <Users className="h-10 w-10 text-muted-foreground" />,
+      title: "No tienes partidos activos",
+      desc: "Crea un partido desde la sección de partidos y organiza tu próximo juego",
+      actionHref: "/partidos",
+      actionLabel: "Ir a partidos",
+      actionIcon: <Users className="mr-2 h-4 w-4" />,
+      bgColor: "bg-primary/5",
+      iconBg: "bg-primary/10",
+    },
+    partidos_cancelados: {
+      icon: <XCircle className="h-10 w-10 text-muted-foreground" />,
+      title: "No tienes partidos cancelados",
+      desc: "Aquí aparecerán los partidos que hayas cancelado",
+      actionHref: null,
+      actionLabel: null,
+      actionIcon: null,
+      bgColor: "bg-muted/30",
+      iconBg: "bg-muted",
+    },
+    partidos_historial: {
+      icon: <Clock className="h-10 w-10 text-muted-foreground" />,
+      title: "No tienes partidos en el historial",
+      desc: "Aquí aparecerán tus partidos pasados y finalizados",
+      actionHref: null,
+      actionLabel: null,
+      actionIcon: null,
+      bgColor: "bg-muted/30",
+      iconBg: "bg-muted",
     },
   }[type];
   return (
@@ -344,11 +381,11 @@ function EmptyState({
         <p className="mb-6 text-sm text-muted-foreground max-w-md mx-auto">
           {cfg.desc}
         </p>
-        {cfg.action && (
+        {cfg.actionHref && (
           <Button asChild size="lg">
-            <Link href="/canchas">
-              <CalendarPlus className="mr-2 h-4 w-4" />
-              Explorar canchas
+            <Link href={cfg.actionHref}>
+              {cfg.actionIcon}
+              {cfg.actionLabel}
             </Link>
           </Button>
         )}
@@ -358,12 +395,34 @@ function EmptyState({
 }
 
 // ── Tipos ──────────────────────────────────────────────────────────
-type Section = "cuenta" | "reservas" | "sellos" | "favoritos" | "perfil";
+type Section = "cuenta" | "reservas" | "sellos" | "favoritos" | "perfil" | "partidos";
+
+interface PartidoItem {
+  id: string;
+  cancha_id: string;
+  cancha_nombre: string;
+  cancha_distrito: string;
+  deporte: string;
+  fecha: string;
+  hora: string;
+  nivel: string;
+  jugadores_max: number;
+  jugadores_actuales: number;
+  jugadores_equipo: number;
+  precio_total: number;
+  precio_por_persona: number;
+  estado: "abierto" | "completo" | "cancelado" | "finalizado";
+  descripcion: string | null;
+  reserva_id: string;
+  cancha_lat: number | null;
+  cancha_lng: number | null;
+}
 
 // ── Página principal ───────────────────────────────────────────────
 export default function MisReservasPage() {
   const router = useRouter();
   const [reservas, setReservas] = useState<Reserva[]>([]);
+  const [misPartidos, setMisPartidos] = useState<PartidoItem[]>([]);
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [loyalty, setLoyalty] = useState<LoyaltyData>({
     sellos: 0,
@@ -435,6 +494,7 @@ export default function MisReservasPage() {
     const token = getToken();
     if (token) {
       apiGetFavoritos().then(setFavoriteIds);
+      apiGetMisPartidos().then((data) => setMisPartidos(Array.isArray(data) ? data : []));
       apiGetLoyalty().then((data) =>
         setLoyalty({
           sellos: data.sellos ?? 0,
@@ -610,23 +670,6 @@ export default function MisReservasPage() {
     });
     return s.charAt(0).toUpperCase() + s.slice(1);
   })();
-
-  const startOfWeek = (() => {
-    const d = new Date();
-    d.setDate(d.getDate() - d.getDay());
-    d.setHours(0, 0, 0, 0);
-    return d;
-  })();
-  const endOfWeek = (() => {
-    const d = new Date(startOfWeek);
-    d.setDate(d.getDate() + 6);
-    d.setHours(23, 59, 59, 999);
-    return d;
-  })();
-  const partidosEstaSemana = reservas.filter((r) => {
-    const f = new Date(r.fecha + "T00:00:00");
-    return f >= startOfWeek && f <= endOfWeek;
-  }).length;
 
   const recentesAll = [...reservas]
     .sort(
@@ -944,8 +987,8 @@ export default function MisReservasPage() {
               <NavItem
                 icon={<Users className="h-4 w-4" />}
                 label="Mis partidos"
-                count={partidosEstaSemana > 0 ? partidosEstaSemana : undefined}
-                section="reservas"
+                count={misPartidos.length > 0 ? misPartidos.length : undefined}
+                section="partidos"
               />
             </div>
 
@@ -1161,13 +1204,9 @@ export default function MisReservasPage() {
                   />
                   <StatCard
                     icon={<Users className="h-5 w-5 text-green-600" />}
-                    value={
-                      partidosEstaSemana > 0
-                        ? `${partidosEstaSemana} esta sem.`
-                        : "0 esta sem."
-                    }
+                    value={`${misPartidos.length} creados`}
                     label="Mis partidos"
-                    sub={`${reservas.length} en total`}
+                    sub={`${misPartidos.filter(p => p.estado === 'abierto' || p.estado === 'completo').length} activos`}
                     iconBg="bg-green-100"
                   />
                 </div>
@@ -1827,6 +1866,143 @@ export default function MisReservasPage() {
               </div>
             )}
 
+            {/* ── SECCIÓN: MIS PARTIDOS ── */}
+            {activeSection === "partidos" && (() => {
+              const deporteEmoji: Record<string, string> = {
+                futbol: "⚽", futsal: "🥅", basquet: "🏀", voley: "🏐", tenis: "🎾",
+              };
+              const estadoConfig: Record<string, { label: string; cls: string }> = {
+                abierto:    { label: "Abierto",    cls: "bg-green-500/10 text-green-700 border-green-500/20" },
+                completo:   { label: "Completo",   cls: "bg-blue-500/10 text-blue-700 border-blue-500/20" },
+                cancelado:  { label: "Cancelado",  cls: "bg-destructive/10 text-destructive border-destructive/20" },
+                finalizado: { label: "Finalizado", cls: "bg-muted text-muted-foreground" },
+              };
+
+              const proximos  = misPartidos.filter(p => (p.estado === "abierto" || p.estado === "completo") && !fechaHoraPasada(p.fecha, p.hora));
+              const historial = misPartidos.filter(p => p.estado === "cancelado" || p.estado === "finalizado" || fechaHoraPasada(p.fecha, p.hora));
+
+              const PartidoCard = ({ p }: { p: PartidoItem }) => {
+                const cfg = estadoConfig[p.estado] ?? estadoConfig.abierto;
+                const esHoy = p.fecha === hoyStr;
+                const fechaLabel = esHoy
+                  ? "Hoy"
+                  : new Date(p.fecha + "T00:00:00").toLocaleDateString("es-PE", {
+                      day: "numeric", month: "long", year: "numeric",
+                    });
+                const horaFin = `${String((parseInt(p.hora.split(":")[0]) + 1) % 24).padStart(2, "0")}:00`;
+                const cuposOcupados = p.jugadores_actuales ?? 0;
+                const canchaLocal = canchas.find((c) => c.id === p.cancha_id);
+                const img = canchaLocal?.images[0] ?? "https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=800&h=600&fit=crop";
+
+                return (
+                  <Card className="overflow-hidden border-border">
+                    <div className="flex">
+                      <div className="relative w-36 shrink-0">
+                        <Image src={img} alt={p.cancha_nombre} fill className="object-cover" />
+                      </div>
+                      <div className="flex flex-1 flex-col p-4">
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge variant="outline" className={cfg.cls}>{cfg.label}</Badge>
+                            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                              {deporteEmoji[p.deporte] ?? "🏟️"} {p.deporte.charAt(0).toUpperCase() + p.deporte.slice(1)}
+                            </Badge>
+                          </div>
+                          <p className="text-sm font-bold text-primary shrink-0">S/ {p.precio_total}</p>
+                        </div>
+
+                        <p className="font-semibold text-foreground">{p.cancha_nombre}</p>
+                        {p.cancha_distrito && (
+                          <p className="text-xs text-muted-foreground">{p.cancha_distrito}</p>
+                        )}
+
+                        <div className="mt-2 space-y-1">
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Calendar className="h-4 w-4" />
+                            <span className="capitalize">{fechaLabel}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Clock className="h-4 w-4" />
+                            <span>{p.hora} - {horaFin}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Users className="h-4 w-4" />
+                            <span>{cuposOcupados}/{p.jugadores_max} jugadores · nivel {p.nivel}</span>
+                          </div>
+                        </div>
+
+                        {p.descripcion && (
+                          <p className="mt-2 text-xs text-muted-foreground line-clamp-1 italic">
+                            "{p.descripcion}"
+                          </p>
+                        )}
+
+                        <div className="mt-3">
+                          <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                            <span>Cupos</span>
+                            <span>{cuposOcupados}/{p.jugadores_max}</span>
+                          </div>
+                          <div className="h-1.5 w-full rounded-full bg-gray-100 overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-green-500 transition-all"
+                              style={{ width: `${Math.min(100, (cuposOcupados / p.jugadores_max) * 100)}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                );
+              };
+
+              return (
+                <div className="w-full">
+                  <h1 className="text-2xl font-bold text-gray-900">Mis partidos</h1>
+                  <p className="text-sm text-muted-foreground mt-1 mb-6">
+                    Partidos que organizaste en CanchaGo
+                  </p>
+
+                  {misPartidos.length === 0 ? (
+                    <EmptyState type="partidos_activos" />
+                  ) : (
+                    <Tabs defaultValue="proximos" className="w-full">
+                      <TabsList className="mb-6">
+                        <TabsTrigger value="proximos" className="gap-1.5">
+                          <CalendarPlus className="h-4 w-4" />
+                          Próximos
+                          {proximos.length > 0 && (
+                            <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1.5 text-xs">
+                              {proximos.length}
+                            </Badge>
+                          )}
+                        </TabsTrigger>
+                        <TabsTrigger value="historial" className="gap-1.5">
+                          <Clock className="h-4 w-4" />
+                          Historial
+                          {historial.length > 0 && (
+                            <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1.5 text-xs">
+                              {historial.length}
+                            </Badge>
+                          )}
+                        </TabsTrigger>
+                      </TabsList>
+
+                      <TabsContent value="proximos" className="space-y-4">
+                        {proximos.length > 0
+                          ? proximos.map(p => <PartidoCard key={p.id} p={p} />)
+                          : <EmptyState type="partidos_activos" />}
+                      </TabsContent>
+                      <TabsContent value="historial" className="space-y-4">
+                        {historial.length > 0
+                          ? historial.map(p => <PartidoCard key={p.id} p={p} />)
+                          : <EmptyState type="partidos_historial" />}
+                      </TabsContent>
+                    </Tabs>
+                  )}
+                </div>
+              );
+            })()}
+
             {/* ── SECCIÓN: FAVORITOS ── */}
             {activeSection === "favoritos" && (
               <div className="max-w">
@@ -2126,6 +2302,95 @@ export default function MisReservasPage() {
               );
             })()}
 
+            {activeSection === 'partidos' && (() => {
+              const deporteEmoji: Record<string, string> = {
+                futbol: "⚽", futsal: "🥅", basquet: "🏀", voley: "🏐", tenis: "🎾",
+              };
+              const estadoConfig: Record<string, { label: string; cls: string }> = {
+                abierto:    { label: "Abierto",    cls: "bg-green-500/10 text-green-700 border-green-500/20" },
+                completo:   { label: "Completo",   cls: "bg-blue-500/10 text-blue-700 border-blue-500/20" },
+                cancelado:  { label: "Cancelado",  cls: "bg-destructive/10 text-destructive border-destructive/20" },
+                finalizado: { label: "Finalizado", cls: "bg-muted text-muted-foreground" },
+              };
+
+              const proximos  = misPartidos.filter(p => (p.estado === "abierto" || p.estado === "completo") && !fechaHoraPasada(p.fecha, p.hora));
+              const historial = misPartidos.filter(p => p.estado === "cancelado" || p.estado === "finalizado" || fechaHoraPasada(p.fecha, p.hora));
+
+              const PartidoCardMobile = ({ p }: { p: PartidoItem }) => {
+                const cfg = estadoConfig[p.estado] ?? estadoConfig.abierto;
+                const esHoy = p.fecha === hoyStr;
+                const fechaLabel = esHoy
+                  ? "Hoy"
+                  : new Date(p.fecha + "T00:00:00").toLocaleDateString("es-PE", { day: "numeric", month: "short" });
+                const horaFin = `${String((parseInt(p.hora.split(":")[0]) + 1) % 24).padStart(2, "0")}:00`;
+                const cuposOcupados = p.jugadores_actuales ?? 0;
+                const canchaLocal = canchas.find((c) => c.id === p.cancha_id);
+                const img = canchaLocal?.images[0] ?? "https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=800&h=600&fit=crop";
+
+                return (
+                  <Card className="overflow-hidden">
+                    <div className="flex">
+                      <div className="relative w-24 shrink-0">
+                        <Image src={img} alt={p.cancha_nombre} fill className="object-cover" />
+                      </div>
+                      <div className="flex-1 p-3">
+                        <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
+                          <Badge variant="outline" className={cn("text-xs", cfg.cls)}>{cfg.label}</Badge>
+                          <span className="text-xs text-muted-foreground">{deporteEmoji[p.deporte] ?? "🏟️"}</span>
+                        </div>
+                        <p className="font-semibold text-sm text-foreground line-clamp-1">{p.cancha_nombre}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {fechaLabel} · {p.hora} - {horaFin}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          <Users className="inline h-3 w-3 mr-0.5" />{cuposOcupados}/{p.jugadores_max} jugadores
+                        </p>
+                        <div className="mt-2 h-1.5 w-full rounded-full bg-gray-100 overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-green-500"
+                            style={{ width: `${Math.min(100, (cuposOcupados / p.jugadores_max) * 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                );
+              };
+
+              return (
+                <div className="space-y-4">
+                  <h2 className="text-xl font-bold text-gray-900">Mis partidos</h2>
+
+                  {misPartidos.length === 0 ? (
+                    <EmptyState type="partidos_activos" />
+                  ) : (
+                    <Tabs defaultValue="proximos">
+                      <TabsList className="w-full mb-3">
+                        <TabsTrigger value="proximos" className="flex-1 gap-1.5">
+                          Próximos
+                          {proximos.length > 0 && <Badge variant="secondary" className="ml-1 h-4 min-w-4 px-1 text-xs">{proximos.length}</Badge>}
+                        </TabsTrigger>
+                        <TabsTrigger value="historial" className="flex-1 gap-1.5">
+                          Historial
+                          {historial.length > 0 && <Badge variant="secondary" className="ml-1 h-4 min-w-4 px-1 text-xs">{historial.length}</Badge>}
+                        </TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="proximos" className="space-y-3">
+                        {proximos.length > 0
+                          ? proximos.map(p => <PartidoCardMobile key={p.id} p={p} />)
+                          : <EmptyState type="partidos_activos" />}
+                      </TabsContent>
+                      <TabsContent value="historial" className="space-y-3">
+                        {historial.length > 0
+                          ? historial.map(p => <PartidoCardMobile key={p.id} p={p} />)
+                          : <EmptyState type="partidos_historial" />}
+                      </TabsContent>
+                    </Tabs>
+                  )}
+                </div>
+              );
+            })()}
+
             {activeSection === 'favoritos' && (
               <div className="space-y-4">
                 <h2 className="text-xl font-bold text-gray-900">Favoritos</h2>
@@ -2308,7 +2573,7 @@ export default function MisReservasPage() {
                 { icon: <Stamp className="h-5 w-5 text-green-600" />, label: 'Mis sellos', value: `${loyalty.sellos} de 8`, section: 'sellos' as Section },
                 { icon: <Calendar className="h-5 w-5 text-green-600" />, label: 'Mis reservas', value: `${proximas.length} activas`, section: 'reservas' as Section },
                 { icon: <Heart className="h-5 w-5 text-green-600" />, label: 'Favoritos', value: `${favoriteCanchas.length} canchas`, section: 'favoritos' as Section },
-                { icon: <Users className="h-5 w-5 text-green-600" />, label: 'Mis partidos', value: `${partidosEstaSemana} esta sem.`, section: 'reservas' as Section },
+                { icon: <Users className="h-5 w-5 text-green-600" />, label: 'Mis partidos', value: `${misPartidos.length} creados`, section: 'partidos' as Section },
               ].map(({ icon, label, value, section }) => (
                 <button key={label} onClick={() => setActiveSection(section)}
                   className="bg-white rounded-xl p-4 text-left active:opacity-80 transition-opacity">
