@@ -183,7 +183,7 @@ export function Header() {
                   <ChevronDown className="hidden lg:inline h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48" modal={false}>
+              <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem asChild>
                   <Link
                     href="/mi-cuenta"
