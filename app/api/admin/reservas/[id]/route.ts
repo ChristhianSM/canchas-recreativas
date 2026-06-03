@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase';
 import { sendReservaEmail } from '@/lib/email';
 import { notificarEstadoReserva } from '@/lib/whatsapp';
 import { verifyAdmin } from '@/lib/admin-auth';
+import { agregarSellosReserva } from '@/lib/loyalty';
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -40,6 +41,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Sellos de loyalty al confirmar
+  if (estado === 'confirmada') {
+    await agregarSellosReserva(sb, reserva);
+  }
 
   // Notificación in-app + email
   const fechaLabel = new Date(reserva.fecha).toLocaleDateString('es-PE', { day: 'numeric', month: 'long' });

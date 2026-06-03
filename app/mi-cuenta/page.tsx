@@ -51,12 +51,14 @@ import { getUser, logout, type LoyaltyData } from "@/lib/auth";
 import { type Notificacion, type Reserva } from "@/lib/store";
 import {
   apiGetReservas,
+  apiGetHistorial,
   apiGetNotificaciones,
   apiMarcarNotifLeida,
   apiGetFavoritos,
   apiToggleFavorito,
   apiGetLoyalty,
   apiGetMisPartidos,
+  apiGetMisPartidosHistorial,
   getToken,
   getStoredUser,
 } from "@/lib/api";
@@ -422,7 +424,15 @@ interface PartidoItem {
 export default function MisReservasPage() {
   const router = useRouter();
   const [reservas, setReservas] = useState<Reserva[]>([]);
+  const [historialItems, setHistorialItems]   = useState<Reserva[]>([]);
+  const [historialTotal, setHistorialTotal]   = useState(0);
+  const [historialPage,  setHistorialPage]    = useState(0);
+  const [historialLoading, setHistorialLoading] = useState(false);
   const [misPartidos, setMisPartidos] = useState<PartidoItem[]>([]);
+  const [partHistorialItems, setPartHistorialItems] = useState<PartidoItem[]>([]);
+  const [partHistorialTotal, setPartHistorialTotal] = useState(0);
+  const [partHistorialPage,  setPartHistorialPage]  = useState(0);
+  const [partHistorialLoading, setPartHistorialLoading] = useState(false);
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [loyalty, setLoyalty] = useState<LoyaltyData>({
     sellos: 0,
@@ -457,33 +467,49 @@ export default function MisReservasPage() {
     telefono?: string;
   }>({});
 
+  const mapReserva = (r: any): Reserva => ({
+    id: r.id,
+    canchaId: r.cancha_id,
+    canchaName: r.cancha_nombre,
+    usuarioNombre: r.usuario_nombre,
+    usuarioEmail: r.usuario_email,
+    usuarioPhone: r.usuario_telefono,
+    fecha: r.fecha,
+    hora: r.hora,
+    precio: r.precio,
+    metodoPago: r.metodo_pago,
+    comprobante: r.comprobante_url,
+    estado: r.estado,
+    creadaEn: r.creado_en,
+    notificado: true,
+    modoPago: r.modo_pago ?? "completo",
+    montoAdelanto: r.monto_adelanto,
+    saldoPendiente: r.saldo_pendiente ?? 0,
+    saldoCobrado: r.saldo_cobrado ?? false,
+  });
+
   const reload = async () => {
     const data = await apiGetReservas();
-    setReservas(
-      Array.isArray(data)
-        ? data.map((r: any) => ({
-            id: r.id,
-            canchaId: r.cancha_id,
-            canchaName: r.cancha_nombre,
-            usuarioNombre: r.usuario_nombre,
-            usuarioEmail: r.usuario_email,
-            usuarioPhone: r.usuario_telefono,
-            fecha: r.fecha,
-            hora: r.hora,
-            precio: r.precio,
-            metodoPago: r.metodo_pago,
-            comprobante: r.comprobante_url,
-            estado: r.estado,
-            creadaEn: r.creado_en,
-            notificado: true,
-            modoPago: r.modo_pago ?? "completo",
-            montoAdelanto: r.monto_adelanto,
-            saldoPendiente: r.saldo_pendiente ?? 0,
-            saldoCobrado: r.saldo_cobrado ?? false,
-          }))
-        : [],
-    );
+    setReservas(Array.isArray(data) ? data.map(mapReserva) : []);
     setLoading(false);
+  };
+
+  const cargarHistorial = async (page: number) => {
+    setHistorialLoading(true);
+    const { items, total } = await apiGetHistorial(page, 10);
+    setHistorialItems((prev) => page === 0 ? items.map(mapReserva) : [...prev, ...items.map(mapReserva)]);
+    setHistorialTotal(total);
+    setHistorialPage(page);
+    setHistorialLoading(false);
+  };
+
+  const cargarPartidosHistorial = async (page: number) => {
+    setPartHistorialLoading(true);
+    const { items, total } = await apiGetMisPartidosHistorial(page, 10);
+    setPartHistorialItems((prev) => page === 0 ? items : [...prev, ...items]);
+    setPartHistorialTotal(total);
+    setPartHistorialPage(page);
+    setPartHistorialLoading(false);
   };
 
   useEffect(() => {
@@ -495,6 +521,8 @@ export default function MisReservasPage() {
     if (token) {
       apiGetFavoritos().then(setFavoriteIds);
       apiGetMisPartidos().then((data) => setMisPartidos(Array.isArray(data) ? data : []));
+      cargarHistorial(0);
+      cargarPartidosHistorial(0);
       apiGetLoyalty().then((data) =>
         setLoyalty({
           sellos: data.sellos ?? 0,
@@ -852,14 +880,22 @@ export default function MisReservasPage() {
     label,
     sub,
     iconBg,
+    onClick,
   }: {
     icon: React.ReactNode;
     value: string;
     label: string;
     sub: string;
     iconBg: string;
+    onClick?: () => void;
   }) => (
-    <div className="bg-white rounded-xl p-4 flex flex-col gap-3">
+    <button
+      onClick={onClick}
+      className={cn(
+        "bg-white rounded-xl p-4 flex flex-col gap-3 text-left w-full",
+        onClick && "hover:shadow-md hover:-translate-y-0.5 transition-all duration-150 cursor-pointer active:scale-95",
+      )}
+    >
       <span
         className={cn(
           "flex h-10 w-10 items-center justify-center rounded-xl",
@@ -873,7 +909,7 @@ export default function MisReservasPage() {
         <p className="text-sm font-medium text-gray-700">{label}</p>
         <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>
       </div>
-    </div>
+    </button>
   );
 
   return (
@@ -950,15 +986,15 @@ export default function MisReservasPage() {
             {/* Navegación */}
             <div className="bg-white rounded-xl p-2 flex-1">
               <NavItem
-                icon={<User className="h-4 w-4" />}
-                label="Mi perfil"
-                section="perfil"
-              />
-
-              <NavItem
                 icon={<Home className="h-4 w-4" />}
                 label="Mi cuenta"
                 section="cuenta"
+              />
+
+              <NavItem
+                icon={<User className="h-4 w-4" />}
+                label="Mi perfil"
+                section="perfil"
               />
               <NavItem
                 icon={<Calendar className="h-4 w-4" />}
@@ -1187,6 +1223,7 @@ export default function MisReservasPage() {
                     label="Mis sellos"
                     sub={`Faltan ${Math.max(0, 8 - loyalty.sellos)} para 1h gratis`}
                     iconBg="bg-amber-100"
+                    onClick={() => setActiveSection("sellos")}
                   />
                   <StatCard
                     icon={<Calendar className="h-5 w-5 text-green-600" />}
@@ -1194,20 +1231,23 @@ export default function MisReservasPage() {
                     label="Mis reservas"
                     sub={`${reservas.length} en total`}
                     iconBg="bg-green-100"
+                    onClick={() => setActiveSection("reservas")}
                   />
                   <StatCard
-                    icon={<Heart className="h-5 w-5 text-green-600" />}
+                    icon={<Heart className="h-5 w-5 text-rose-500" />}
                     value={`${favoriteCanchas.length} canchas`}
                     label="Favoritos"
                     sub="Guardadas"
-                    iconBg="bg-green-100"
+                    iconBg="bg-rose-100"
+                    onClick={() => setActiveSection("favoritos")}
                   />
                   <StatCard
-                    icon={<Users className="h-5 w-5 text-green-600" />}
+                    icon={<Users className="h-5 w-5 text-orange-500" />}
                     value={`${misPartidos.length} creados`}
                     label="Mis partidos"
                     sub={`${misPartidos.filter(p => p.estado === 'abierto' || p.estado === 'completo').length} activos`}
-                    iconBg="bg-green-100"
+                    iconBg="bg-orange-100"
+                    onClick={() => setActiveSection("partidos")}
                   />
                 </div>
 
@@ -1344,12 +1384,12 @@ export default function MisReservasPage() {
                     <TabsTrigger value="historial" className="gap-1.5">
                       <Clock className="h-4 w-4" />
                       Historial
-                      {historial.length > 0 && (
+                      {historialTotal > 0 && (
                         <Badge
                           variant="secondary"
                           className="ml-1 h-5 min-w-5 px-1.5 text-xs"
                         >
-                          {historial.length}
+                          {historialTotal}
                         </Badge>
                       )}
                     </TabsTrigger>
@@ -1369,15 +1409,28 @@ export default function MisReservasPage() {
                     )}
                   </TabsContent>
                   <TabsContent value="historial" className="space-y-4">
-                    {historial.length > 0 ? (
-                      historial.map((r) => (
-                        <ReservaCard
-                          key={r.id}
-                          r={r}
-                          onDetalle={setReservaDetalle}
-                          onCancelar={setReservaCancelar}
-                        />
-                      ))
+                    {historialItems.length > 0 ? (
+                      <>
+                        {historialItems.map((r) => (
+                          <ReservaCard
+                            key={r.id}
+                            r={r}
+                            onDetalle={setReservaDetalle}
+                            onCancelar={setReservaCancelar}
+                          />
+                        ))}
+                        {historialItems.length < historialTotal && (
+                          <button
+                            onClick={() => cargarHistorial(historialPage + 1)}
+                            disabled={historialLoading}
+                            className="w-full py-3 text-sm font-medium text-primary border border-primary/30 rounded-xl hover:bg-primary/5 transition-colors disabled:opacity-50"
+                          >
+                            {historialLoading ? "Cargando..." : `Ver más (${historialTotal - historialItems.length} restantes)`}
+                          </button>
+                        )}
+                      </>
+                    ) : historialLoading ? (
+                      <div className="text-center py-8 text-sm text-muted-foreground">Cargando...</div>
                     ) : (
                       <EmptyState type="historial" />
                     )}
@@ -1878,8 +1931,7 @@ export default function MisReservasPage() {
                 finalizado: { label: "Finalizado", cls: "bg-muted text-muted-foreground" },
               };
 
-              const proximos  = misPartidos.filter(p => (p.estado === "abierto" || p.estado === "completo") && !fechaHoraPasada(p.fecha, p.hora));
-              const historial = misPartidos.filter(p => p.estado === "cancelado" || p.estado === "finalizado" || fechaHoraPasada(p.fecha, p.hora));
+              const proximos = misPartidos;
 
               const PartidoCard = ({ p }: { p: PartidoItem }) => {
                 const cfg = estadoConfig[p.estado] ?? estadoConfig.abierto;
@@ -1962,7 +2014,7 @@ export default function MisReservasPage() {
                     Partidos que organizaste en CanchaGo
                   </p>
 
-                  {misPartidos.length === 0 ? (
+                  {misPartidos.length === 0 && partHistorialTotal === 0 && !partHistorialLoading ? (
                     <EmptyState type="partidos_activos" />
                   ) : (
                     <Tabs defaultValue="proximos" className="w-full">
@@ -1979,9 +2031,9 @@ export default function MisReservasPage() {
                         <TabsTrigger value="historial" className="gap-1.5">
                           <Clock className="h-4 w-4" />
                           Historial
-                          {historial.length > 0 && (
+                          {partHistorialTotal > 0 && (
                             <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1.5 text-xs">
-                              {historial.length}
+                              {partHistorialTotal}
                             </Badge>
                           )}
                         </TabsTrigger>
@@ -1993,9 +2045,21 @@ export default function MisReservasPage() {
                           : <EmptyState type="partidos_activos" />}
                       </TabsContent>
                       <TabsContent value="historial" className="space-y-4">
-                        {historial.length > 0
-                          ? historial.map(p => <PartidoCard key={p.id} p={p} />)
-                          : <EmptyState type="partidos_historial" />}
+                        {partHistorialItems.length > 0
+                          ? partHistorialItems.map(p => <PartidoCard key={p.id} p={p} />)
+                          : !partHistorialLoading && <EmptyState type="partidos_historial" />}
+                        {partHistorialItems.length < partHistorialTotal && (
+                          <Button
+                            variant="outline"
+                            className="w-full"
+                            onClick={() => cargarPartidosHistorial(partHistorialPage + 1)}
+                            disabled={partHistorialLoading}
+                          >
+                            {partHistorialLoading
+                              ? "Cargando..."
+                              : `Ver más (${partHistorialTotal - partHistorialItems.length} restantes)`}
+                          </Button>
+                        )}
                       </TabsContent>
                     </Tabs>
                   )}
@@ -2313,8 +2377,7 @@ export default function MisReservasPage() {
                 finalizado: { label: "Finalizado", cls: "bg-muted text-muted-foreground" },
               };
 
-              const proximos  = misPartidos.filter(p => (p.estado === "abierto" || p.estado === "completo") && !fechaHoraPasada(p.fecha, p.hora));
-              const historial = misPartidos.filter(p => p.estado === "cancelado" || p.estado === "finalizado" || fechaHoraPasada(p.fecha, p.hora));
+              const proximos = misPartidos;
 
               const PartidoCardMobile = ({ p }: { p: PartidoItem }) => {
                 const cfg = estadoConfig[p.estado] ?? estadoConfig.abierto;
@@ -2361,7 +2424,7 @@ export default function MisReservasPage() {
                 <div className="space-y-4">
                   <h2 className="text-xl font-bold text-gray-900">Mis partidos</h2>
 
-                  {misPartidos.length === 0 ? (
+                  {misPartidos.length === 0 && partHistorialTotal === 0 && !partHistorialLoading ? (
                     <EmptyState type="partidos_activos" />
                   ) : (
                     <Tabs defaultValue="proximos">
@@ -2372,7 +2435,7 @@ export default function MisReservasPage() {
                         </TabsTrigger>
                         <TabsTrigger value="historial" className="flex-1 gap-1.5">
                           Historial
-                          {historial.length > 0 && <Badge variant="secondary" className="ml-1 h-4 min-w-4 px-1 text-xs">{historial.length}</Badge>}
+                          {partHistorialTotal > 0 && <Badge variant="secondary" className="ml-1 h-4 min-w-4 px-1 text-xs">{partHistorialTotal}</Badge>}
                         </TabsTrigger>
                       </TabsList>
                       <TabsContent value="proximos" className="space-y-3">
@@ -2381,9 +2444,21 @@ export default function MisReservasPage() {
                           : <EmptyState type="partidos_activos" />}
                       </TabsContent>
                       <TabsContent value="historial" className="space-y-3">
-                        {historial.length > 0
-                          ? historial.map(p => <PartidoCardMobile key={p.id} p={p} />)
-                          : <EmptyState type="partidos_historial" />}
+                        {partHistorialItems.length > 0
+                          ? partHistorialItems.map(p => <PartidoCardMobile key={p.id} p={p} />)
+                          : !partHistorialLoading && <EmptyState type="partidos_historial" />}
+                        {partHistorialItems.length < partHistorialTotal && (
+                          <Button
+                            variant="outline"
+                            className="w-full mt-2"
+                            onClick={() => cargarPartidosHistorial(partHistorialPage + 1)}
+                            disabled={partHistorialLoading}
+                          >
+                            {partHistorialLoading
+                              ? "Cargando..."
+                              : `Ver más (${partHistorialTotal - partHistorialItems.length} restantes)`}
+                          </Button>
+                        )}
                       </TabsContent>
                     </Tabs>
                   )}
@@ -2570,14 +2645,14 @@ export default function MisReservasPage() {
             {/* Grid 2x2 de accesos rápidos */}
             <div className="grid grid-cols-2 gap-3">
               {[
-                { icon: <Stamp className="h-5 w-5 text-green-600" />, label: 'Mis sellos', value: `${loyalty.sellos} de 8`, section: 'sellos' as Section },
-                { icon: <Calendar className="h-5 w-5 text-green-600" />, label: 'Mis reservas', value: `${proximas.length} activas`, section: 'reservas' as Section },
-                { icon: <Heart className="h-5 w-5 text-green-600" />, label: 'Favoritos', value: `${favoriteCanchas.length} canchas`, section: 'favoritos' as Section },
-                { icon: <Users className="h-5 w-5 text-green-600" />, label: 'Mis partidos', value: `${misPartidos.length} creados`, section: 'partidos' as Section },
-              ].map(({ icon, label, value, section }) => (
+                { icon: <Stamp className="h-5 w-5 text-amber-600" />, iconBg: 'bg-amber-100', label: 'Mis sellos', value: `${loyalty.sellos} de 8`, section: 'sellos' as Section },
+                { icon: <Calendar className="h-5 w-5 text-green-600" />, iconBg: 'bg-green-100', label: 'Mis reservas', value: `${proximas.length} activas`, section: 'reservas' as Section },
+                { icon: <Heart className="h-5 w-5 text-rose-500" />, iconBg: 'bg-rose-100', label: 'Favoritos', value: `${favoriteCanchas.length} canchas`, section: 'favoritos' as Section },
+                { icon: <Users className="h-5 w-5 text-orange-500" />, iconBg: 'bg-orange-100', label: 'Mis partidos', value: `${misPartidos.length} creados`, section: 'partidos' as Section },
+              ].map(({ icon, iconBg, label, value, section }) => (
                 <button key={label} onClick={() => setActiveSection(section)}
                   className="bg-white rounded-xl p-4 text-left active:opacity-80 transition-opacity">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-green-50 mb-3">
+                  <span className={cn("flex h-9 w-9 items-center justify-center rounded-xl mb-3", iconBg)}>
                     {icon}
                   </span>
                   <p className="text-xs text-muted-foreground">{label}</p>

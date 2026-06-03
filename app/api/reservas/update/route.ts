@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
 import { sendReservaEmail } from '@/lib/email';
 import { notificarEstadoReserva } from '@/lib/whatsapp';
+import { agregarSellosReserva } from '@/lib/loyalty';
 
 // PATCH /api/reservas/update?id=xxx — actualizar estado de reserva
 export async function PATCH(req: NextRequest) {
@@ -73,6 +74,11 @@ export async function PATCH(req: NextRequest) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Sellos de loyalty al confirmar
+  if (estado === 'confirmada') {
+    await agregarSellosReserva(sb, reserva);
+  }
 
   // Crear notificación + enviar email
   if (estado === 'confirmada' || estado === 'rechazada') {
