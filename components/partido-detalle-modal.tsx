@@ -37,7 +37,7 @@ export interface PartidoDetalle {
   jugadores_equipo: number;
   precio_total: number;
   precio_por_persona: number;
-  estado: "abierto" | "completo" | "cancelado" | "finalizado";
+  estado: "pendiente" | "abierto" | "completo" | "cancelado" | "finalizado";
   descripcion: string | null;
   jugadores: JugadorPreview[] | null;
   ya_unido: boolean;

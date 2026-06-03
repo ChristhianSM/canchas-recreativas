@@ -42,12 +42,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ items, total: count ?? 0, page, limit });
   }
 
-  // Default: próximos (abierto/completo y fecha >= hoy)
+  // Default: próximos (pendiente/abierto/completo y fecha >= hoy)
   const { data, error } = await sb
     .from('partidos_con_detalles')
     .select('*')
     .eq('organizador_id', user.id)
-    .or('estado.eq.abierto,estado.eq.completo')
+    .or('estado.eq.pendiente,estado.eq.abierto,estado.eq.completo')
     .gte('fecha', hoy)
     .order('fecha', { ascending: true })
     .order('hora', { ascending: true });

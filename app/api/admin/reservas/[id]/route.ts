@@ -47,11 +47,27 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     await agregarSellosReserva(sb, reserva);
   }
 
+  // Si hay un partido vinculado a esta reserva, actualizar su estado también
+  const { data: partido } = await sb
+    .from('partidos')
+    .select('id, organizador_id')
+    .eq('reserva_id', reserva.id)
+    .maybeSingle();
+
+  if (partido) {
+    const estadoPartido = estado === 'confirmada' ? 'abierto' : 'cancelado';
+    await sb.from('partidos').update({ estado: estadoPartido }).eq('id', partido.id);
+  }
+
   // Notificación in-app + email
   const fechaLabel = new Date(reserva.fecha).toLocaleDateString('es-PE', { day: 'numeric', month: 'long' });
-  const msg = estado === 'confirmada'
-    ? `✅ Tu reserva en ${reserva.cancha_nombre} el ${fechaLabel} a las ${reserva.hora} fue confirmada.`
-    : `❌ Tu reserva en ${reserva.cancha_nombre} el ${fechaLabel} a las ${reserva.hora} fue rechazada.`;
+  const msg = partido
+    ? estado === 'confirmada'
+      ? `✅ Tu partido en ${reserva.cancha_nombre} el ${fechaLabel} a las ${reserva.hora} fue confirmado y ya está visible para otros jugadores.`
+      : `❌ Tu partido en ${reserva.cancha_nombre} el ${fechaLabel} a las ${reserva.hora} fue rechazado.`
+    : estado === 'confirmada'
+      ? `✅ Tu reserva en ${reserva.cancha_nombre} el ${fechaLabel} a las ${reserva.hora} fue confirmada.`
+      : `❌ Tu reserva en ${reserva.cancha_nombre} el ${fechaLabel} a las ${reserva.hora} fue rechazada.`;
 
   if (reserva.usuario_id) {
     await sb.from('notificaciones').insert({

@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
     // Query liviana: solo la columna estado para contar con exactitud
     sb.from('reservas').select('estado'),
     // Query paginada: datos completos de la página
-    sb.from('reservas').select('*').order('creado_en', { ascending: false }).range(offset, offset + limit - 1),
+    sb.from('reservas').select('*').order('creado_en', { ascending: false }).order('id', { ascending: false }).range(offset, offset + limit - 1),
   ]);
 
   if (dataResult.error) return NextResponse.json({ error: dataResult.error.message }, { status: 500 });

@@ -497,7 +497,12 @@ export default function MisReservasPage() {
   const cargarHistorial = async (page: number) => {
     setHistorialLoading(true);
     const { items, total } = await apiGetHistorial(page, 10);
-    setHistorialItems((prev) => page === 0 ? items.map(mapReserva) : [...prev, ...items.map(mapReserva)]);
+    setHistorialItems((prev) => {
+      const nuevos = items.map(mapReserva);
+      if (page === 0) return nuevos;
+      const ids = new Set(prev.map(r => r.id));
+      return [...prev, ...nuevos.filter(r => !ids.has(r.id))];
+    });
     setHistorialTotal(total);
     setHistorialPage(page);
     setHistorialLoading(false);

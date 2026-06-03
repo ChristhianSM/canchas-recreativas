@@ -21,7 +21,7 @@ import {
   MapPin,
   Map,
 } from "lucide-react";
-import { getToken } from "@/lib/api";
+import { getToken, getStoredUser } from "@/lib/api";
 import { getLocalDateString } from "@/lib/date-utils";
 import { useRouter } from "next/navigation";
 import { MapaPartidoModal } from "@/components/mapa-partido-modal";
@@ -66,7 +66,7 @@ interface PartidoAPI {
   jugadores_actuales: number;
   precio_total: number;
   precio_por_persona: number;
-  estado: "abierto" | "completo" | "cancelado" | "finalizado";
+  estado: "pendiente" | "abierto" | "completo" | "cancelado" | "finalizado";
   descripcion: string | null;
   jugadores: JugadorPreview[] | null;
   ya_unido: boolean;
@@ -184,12 +184,26 @@ function PartidoCard({
   const casiLleno = !lleno && cuposRestantes <= 2 && partido.jugadores_actuales > 0;
 
 
+  const esPendiente = partido.estado === "pendiente";
+
   return (
     <div
-      className={`bg-card rounded-2xl border border-border shadow-sm p-4 flex flex-col gap-3 transition-shadow hover:shadow-md ${
-        lleno && !partido.ya_unido ? "opacity-70" : ""
+      className={`bg-card rounded-2xl border shadow-sm p-4 flex flex-col gap-3 transition-shadow hover:shadow-md ${
+        esPendiente
+          ? "border-amber-300 opacity-90"
+          : lleno && !partido.ya_unido
+          ? "border-border opacity-70"
+          : "border-border"
       }`}
     >
+      {/* Banner de pendiente */}
+      {esPendiente && (
+        <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs font-semibold text-amber-700">
+          <Clock className="h-3.5 w-3.5 shrink-0" />
+          Pendiente de confirmación por el administrador
+        </div>
+      )}
+
       {/* Encabezado */}
       <div className="flex items-start gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-xl select-none">
@@ -310,7 +324,7 @@ function PartidoCard({
             ) : (
               <>
                 <X className="h-4 w-4" />
-                Cancelar partido
+                {esPendiente ? "Cancelar solicitud" : "Cancelar partido"}
               </>
             )}
           </button>
@@ -540,12 +554,14 @@ function CrearPartidoSheet({
           fecha: form.fecha,
           hora: form.hora,
           nivel: form.nivel,
-          jugadores_max: form.jugadores_max + 1,  // +1 para reservar el cupo del organizador
+          jugadores_max: form.jugadores_max + 1,
           jugadores_equipo: form.jugadores_equipo,
           precio_total: precioTotal,
           descripcion: form.descripcion || null,
           metodo_pago: metodo,
           comprobante_url: comprobante,
+          organizador_nombre: getStoredUser()?.nombre ?? null,
+          organizador_telefono: getStoredUser()?.telefono ?? null,
         }),
       });
       const data = await res.json();
@@ -1063,6 +1079,7 @@ function CrearPartidoSheet({
 export default function PartidosPage() {
   const router = useRouter();
   const [partidos, setPartidos] = useState<PartidoAPI[]>([]);
+  const [misPartidosPendientes, setMisPartidosPendientes] = useState<PartidoAPI[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [deporte, setDeporte] = useState("todos");
@@ -1075,6 +1092,24 @@ export default function PartidosPage() {
   const [confirmacion, setConfirmacion] = useState<{ id: string; tipo: "salir" | "cancelar" } | null>(null);
   const [partidoMapa, setPartidoMapa] = useState<PartidoAPI | null>(null);
   const [partidoDetalle, setPartidoDetalle] = useState<PartidoAPI | null>(null);
+
+  const fetchMisPartidosPendientes = useCallback(async () => {
+    const token = getToken();
+    if (!token) { setMisPartidosPendientes([]); return; }
+    try {
+      const res = await fetch("/api/partidos/mis-partidos", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      const pendientes = (Array.isArray(data) ? data : []).filter(
+        (p: PartidoAPI) => p.estado === "pendiente"
+      );
+      setMisPartidosPendientes(pendientes);
+    } catch {
+      // silencioso: no bloquea la vista principal
+    }
+  }, []);
 
   const fetchPartidos = useCallback(async () => {
     setLoading(true);
@@ -1100,7 +1135,8 @@ export default function PartidosPage() {
 
   useEffect(() => {
     fetchPartidos();
-  }, [fetchPartidos]);
+    fetchMisPartidosPendientes();
+  }, [fetchPartidos, fetchMisPartidosPendientes]);
 
   useEffect(() => {
     const guardada = obtenerUbicacionGuardada();
@@ -1202,6 +1238,7 @@ export default function PartidosPage() {
         return;
       }
       await fetchPartidos();
+      await fetchMisPartidosPendientes();
     } catch {
       setAlertMsg("Error de conexión. Intenta de nuevo.");
     } finally {
@@ -1318,6 +1355,34 @@ export default function PartidosPage() {
               >
                 <X className="h-4 w-4" />
               </button>
+            </div>
+          )}
+
+          {/* Mis partidos pendientes de confirmación */}
+          {misPartidosPendientes.length > 0 && (
+            <div className="mb-6">
+              <div className="flex items-center gap-2 mb-3">
+                <Clock className="h-4 w-4 text-amber-600" />
+                <h2 className="text-sm font-bold text-amber-700">
+                  {misPartidosPendientes.length === 1
+                    ? "Tu partido pendiente de confirmación"
+                    : `Tus partidos pendientes (${misPartidosPendientes.length})`}
+                </h2>
+              </div>
+              <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
+                {misPartidosPendientes.map((p) => (
+                  <PartidoCard
+                    key={p.id}
+                    partido={p}
+                    loadingId={loadingId}
+                    onUnirse={handleUnirse}
+                    onSolicitarSalir={solicitarSalir}
+                    onSolicitarCancelar={solicitarCancelar}
+                    onAbrirMapa={setPartidoMapa}
+                    onVerDetalle={setPartidoDetalle}
+                  />
+                ))}
+              </div>
             </div>
           )}
 
@@ -1468,7 +1533,7 @@ export default function PartidosPage() {
       <CrearPartidoSheet
         open={showCrear}
         onClose={() => setShowCrear(false)}
-        onCreado={fetchPartidos}
+        onCreado={async () => { await fetchPartidos(); await fetchMisPartidosPendientes(); }}
       />
     </div>
   );

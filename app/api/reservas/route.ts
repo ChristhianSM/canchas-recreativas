@@ -30,6 +30,7 @@ export async function GET(req: NextRequest) {
       .eq('usuario_id', user.id)
       .or(`estado.in.(rechazada,cancelada),and(estado.eq.confirmada,fecha.lt.${hoy})`)
       .order('creado_en', { ascending: false })
+      .order('id',        { ascending: false })
       .range(from, to);
 
     if (error) return NextResponse.json({ items: [], total: 0, page, limit });
