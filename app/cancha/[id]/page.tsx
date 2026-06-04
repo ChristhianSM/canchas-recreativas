@@ -109,6 +109,8 @@ type CanchaDB = {
   chalecos_precio: number | null;
   superficie: string | null;
   max_jugadores: number | null;
+  yape_numero?: string;
+  plin_numero?: string;
 };
 
 function buildSchedule(
@@ -299,6 +301,19 @@ export default function CanchaDetailPage() {
     const bloqueoKey = `cp_bloqueo_inicio_${cancha.id}_${selectedDate}_${selectedSlots[0].time.replace(":", "-")}`;
     localStorage.setItem(bloqueoKey, String(Date.now()));
 
+    // Cachear datos de cancha para que /pago no repita el fetch
+    sessionStorage.setItem(`cp_cancha_pago_${cancha.id}`, JSON.stringify({
+      id: cancha.id,
+      name: cancha.nombre,
+      images: cancha.imagenes?.length ? cancha.imagenes : [],
+      address: cancha.direccion,
+      phone: cancha.telefono,
+      balonPrecio: cancha.balon_precio ?? null,
+      chalecosPrecio: cancha.chalecos_precio ?? null,
+      yapeNumero: cancha.yape_numero ?? "",
+      plinNumero: cancha.plin_numero ?? "",
+    }));
+
     setReservaStep(2);
     setTimeout(() => {
       const extrasParams = [
@@ -374,7 +389,7 @@ export default function CanchaDetailPage() {
         setIsFav(ids.includes(cancha.id)),
       );
     }
-  }, [cancha]);
+  }, [cancha?.id]);
 
   useEffect(() => {
     if (selectedSlots.length > 0 && prevSlotLengthRef.current === 0) {

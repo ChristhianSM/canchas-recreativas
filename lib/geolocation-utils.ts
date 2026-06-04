@@ -126,12 +126,37 @@ export function obtenerUbicacionGuardada(): Coordenadas | null {
 }
 
 /**
+ * Guarda el nombre de ciudad resuelto por geocoding inverso
+ */
+export function guardarCiudad(city: string): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem('cp_ciudad', city);
+}
+
+/**
+ * Obtiene el nombre de ciudad guardado, válido mientras las coords no hayan expirado
+ */
+export function obtenerCiudadGuardada(): string | null {
+  if (typeof window === 'undefined') return null;
+  const city = localStorage.getItem('cp_ciudad');
+  const tiempo = localStorage.getItem('cp_ubicacion_time');
+  if (!city || !tiempo) return null;
+  const elapsed = Date.now() - Number(tiempo);
+  if (elapsed > 60 * 60 * 1000) {
+    localStorage.removeItem('cp_ciudad');
+    return null;
+  }
+  return city;
+}
+
+/**
  * Limpia la ubicación guardada
  */
 export function limpiarUbicacion(): void {
   if (typeof window === 'undefined') return;
   localStorage.removeItem('cp_ubicacion');
   localStorage.removeItem('cp_ubicacion_time');
+  localStorage.removeItem('cp_ciudad');
 }
 
 /**

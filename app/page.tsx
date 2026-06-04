@@ -13,7 +13,6 @@ import {
   Zap,
   Phone,
   CreditCard,
-  ShieldCheck,
   Clock,
   X,
   Loader2,
@@ -21,13 +20,13 @@ import {
   ChevronRight,
   MessageCircle,
   Mail,
-  Newspaper,
 } from "lucide-react";
 import { Header } from "@/components/header";
 import { CanchaCard } from "@/components/cancha-card";
 import { SportType } from "@/lib/types";
 import { getLocalDateString } from "@/lib/date-utils";
-import { guardarUbicacion } from "@/lib/geolocation-utils";
+import { guardarUbicacion, guardarCiudad, obtenerCiudadGuardada } from "@/lib/geolocation-utils";
+import { getAllDistricts } from "@/lib/filter-utils";
 
 type Cancha = {
   id: string;
@@ -77,21 +76,6 @@ const HORAS = [
   "23:00",
 ];
 
-const UBICACIONES_POR_CIUDAD: Record<string, string[]> = {
-  Piura: [
-    "Piura",
-    "Castilla",
-    "Catacaos",
-    "La Unión",
-    "Las Lomas",
-    "Tambogrande",
-    "Sullana",
-    "Paita",
-    "Talara",
-    "Chulucanas",
-  ],
-  // Próximamente: Lima, Trujillo, Chiclayo, Arequipa...
-};
 
 const HERO_SLIDES = [
   {
@@ -222,8 +206,8 @@ export default function HomePage() {
   } | null>(null);
   const [favIds, setFavIds] = useState<Set<string>>(new Set());
 
-  // Cache de todas las canchas para evitar re-fetch al calcular horarios disponibles
   const allCanchasRef = useRef<Cancha[]>([]);
+  const [allDistricts, setAllDistricts] = useState<string[]>([]);
 
   // Estados para el buscador avanzado
   const [showLocationModal, setShowLocationModal] = useState(false);
@@ -263,6 +247,13 @@ export default function HomePage() {
         const coords = { lat: latitude, lng: longitude };
         setUserCoords(coords);
         guardarUbicacion(coords);
+
+        const cachedCity = obtenerCiudadGuardada();
+        if (cachedCity) {
+          setUbicacion(cachedCity);
+          return;
+        }
+
         try {
           const res = await fetch(
             `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=es`,
@@ -275,6 +266,7 @@ export default function HomePage() {
             data.address?.state ||
             "Ubicación actual";
           setUbicacion(city);
+          guardarCiudad(city);
         } catch {
           setUbicacion("Ubicación actual");
         }
@@ -307,10 +299,10 @@ export default function HomePage() {
       .then((r) => r.json())
       .then((data) => {
         const todas = Array.isArray(data) ? data : [];
-        allCanchasRef.current = todas; // guardar en cache para reutilizar
+        allCanchasRef.current = todas;
         setCanchas(todas);
+        setAllDistricts(getAllDistricts(todas.map(adaptCancha) as any));
         setLoading(false);
-        // Calcular horarios disponibles con los datos ya cargados (sin segundo fetch)
         computeAvailableHours(new Date(), todas);
       })
       .catch(() => setLoading(false));
@@ -440,6 +432,7 @@ export default function HomePage() {
             data.address?.state ||
             "Ubicación actual";
           setUbicacion(city);
+          guardarCiudad(city);
           setShowLocationModal(false);
         } catch (error) {
           console.error("Error getting location name:", error);
@@ -759,33 +752,37 @@ export default function HomePage() {
                   )}
 
                   <div className="mt-3 pt-3 border-t border-gray-100 dark:border-border max-h-64 overflow-y-auto">
-                    {Object.entries(UBICACIONES_POR_CIUDAD).map(
-                      ([ciudad, distritos]) => (
-                        <div key={ciudad} className="mb-2">
-                          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1 px-1">
-                            {ciudad}
-                          </p>
-                          <div className="space-y-0.5">
-                            {distritos.map((distrito) => (
-                              <button
-                                key={distrito}
-                                onClick={() => {
-                                  setUbicacion(distrito);
-                                  setShowLocationModal(false);
-                                }}
-                                className={`flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm transition-colors text-left ${
-                                  ubicacion === distrito
-                                    ? "bg-[#16a34a]/10 text-[#16a34a] font-medium"
-                                    : "text-gray-700 dark:text-foreground hover:bg-gray-50 dark:hover:bg-muted"
-                                }`}
-                              >
-                                <MapPin className="h-3.5 w-3.5 shrink-0 text-gray-400" />
-                                {distrito}
-                              </button>
-                            ))}
-                          </div>
+                    {loading ? (
+                      <div className="space-y-1 px-1">
+                        {[1, 2, 3, 4, 5].map((i) => (
+                          <div key={i} className="h-8 rounded-md bg-gray-100 dark:bg-muted animate-pulse" />
+                        ))}
+                      </div>
+                    ) : allDistricts.length > 0 && (
+                      <div className="mb-2">
+                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1 px-1">
+                          Piura
+                        </p>
+                        <div className="space-y-0.5">
+                          {allDistricts.map((distrito) => (
+                            <button
+                              key={distrito}
+                              onClick={() => {
+                                setUbicacion(distrito);
+                                setShowLocationModal(false);
+                              }}
+                              className={`flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm transition-colors text-left ${
+                                ubicacion === distrito
+                                  ? "bg-[#16a34a]/10 text-[#16a34a] font-medium"
+                                  : "text-gray-700 dark:text-foreground hover:bg-gray-50 dark:hover:bg-muted"
+                              }`}
+                            >
+                              <MapPin className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+                              {distrito}
+                            </button>
+                          ))}
                         </div>
-                      ),
+                      </div>
                     )}
                   </div>
                 </div>

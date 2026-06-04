@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Bell, CheckCircle2, XCircle, Heart } from "lucide-react";
-import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { Bell, CheckCircle2, XCircle, Heart, X } from "lucide-react";
+import { Sheet, SheetContent, SheetTitle, SheetClose } from "@/components/ui/sheet";
 import { getToken, apiGetNotificaciones, apiMarcarNotifLeida } from "@/lib/api";
 import type { Notificacion } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -69,17 +69,23 @@ export function NotificationBell() {
       </button>
 
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent side="right" className="w-[340px] sm:w-[400px] p-0 flex flex-col">
+        <SheetContent side="right" className="w-[340px] sm:w-[400px] p-0 flex flex-col" showCloseButton={false}>
           <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
             <SheetTitle className="text-base font-bold">Notificaciones</SheetTitle>
-            {noLeidas > 0 && (
-              <button
-                onClick={marcarTodas}
-                className="text-xs font-semibold text-primary hover:text-primary/70 transition-colors"
-              >
-                Marcar todas
-              </button>
-            )}
+            <div className="flex items-center gap-3">
+              {noLeidas > 0 && (
+                <button
+                  onClick={marcarTodas}
+                  className="text-xs font-semibold text-primary hover:text-primary/70 transition-colors"
+                >
+                  Marcar todas
+                </button>
+              )}
+              <SheetClose className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-muted transition-colors">
+                <X className="h-4 w-4 text-muted-foreground" />
+                <span className="sr-only">Cerrar</span>
+              </SheetClose>
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto">

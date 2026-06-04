@@ -113,6 +113,18 @@ function PagoContent() {
   // Cargar cancha
   useEffect(() => {
     if (!canchaId) return;
+
+    // Leer caché de sessionStorage (guardado al hacer click en "Reservar")
+    const cached = sessionStorage.getItem(`cp_cancha_pago_${canchaId}`);
+    if (cached) {
+      try {
+        setCancha(JSON.parse(cached));
+        sessionStorage.removeItem(`cp_cancha_pago_${canchaId}`);
+        setCanchaLoading(false);
+        return;
+      } catch {}
+    }
+
     fetch(`/api/canchas/detail?id=${canchaId}`)
       .then((r) => r.json())
       .then((data) => {
