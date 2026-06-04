@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
+import { agregarSellos } from '@/lib/loyalty';
 
 // GET — obtener reseñas de una cancha
 export async function GET(req: NextRequest) {
@@ -104,6 +105,8 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  await agregarSellos(sb, user.id, 1, 'resena');
 
   // Actualizar el rating promedio en la tabla canchas
   const { data: todasResenas } = await sb

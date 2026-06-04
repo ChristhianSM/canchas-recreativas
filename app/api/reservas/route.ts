@@ -5,6 +5,8 @@ import { notificarNuevaReserva, notificarReservaRecibida } from '@/lib/whatsapp'
 import { rateLimit } from '@/lib/rate-limit';
 
 // GET — obtener reservas del usuario autenticado
+// ?tipo=historial&page=0&limit=10 → devuelve historial paginado con total
+// sin params → devuelve reservas próximas/pendientes
 export async function GET(req: NextRequest) {
   const token = req.headers.get('authorization')?.replace('Bearer ', '');
   if (!token) return NextResponse.json([]);
@@ -13,13 +15,37 @@ export async function GET(req: NextRequest) {
   const { data: { user }, error: authError } = await sb.auth.getUser(token);
   if (authError || !user) return NextResponse.json([]);
 
+  const tipo  = req.nextUrl.searchParams.get('tipo');
+  const page  = Math.max(0, parseInt(req.nextUrl.searchParams.get('page')  ?? '0'));
+  const limit = Math.min(50, parseInt(req.nextUrl.searchParams.get('limit') ?? '10'));
+  const hoy   = new Date().toISOString().split('T')[0];
+
+  if (tipo === 'historial') {
+    const from = page * limit;
+    const to   = from + limit - 1;
+
+    const { data, error, count } = await sb
+      .from('reservas')
+      .select('*', { count: 'exact' })
+      .eq('usuario_id', user.id)
+      .or(`estado.in.(rechazada,cancelada),and(estado.eq.confirmada,fecha.lt.${hoy})`)
+      .order('creado_en', { ascending: false })
+      .order('id',        { ascending: false })
+      .range(from, to);
+
+    if (error) return NextResponse.json({ items: [], total: 0, page, limit });
+    return NextResponse.json({ items: data ?? [], total: count ?? 0, page, limit });
+  }
+
+  // Próximas: pendientes + confirmadas futuras
   const { data, error } = await sb
     .from('reservas')
     .select('*')
     .eq('usuario_id', user.id)
+    .or(`estado.eq.pendiente,and(estado.eq.confirmada,fecha.gte.${hoy})`)
     .order('creado_en', { ascending: false });
 
-  if (error) return NextResponse.json([], { status: 200 });
+  if (error) return NextResponse.json([]);
   return NextResponse.json(data ?? []);
 }
 

@@ -139,6 +139,75 @@ export async function notificarNuevaReserva(data: {
   }
 }
 
+export async function notificarNuevoPartido(data: {
+  adminPhone:          string;
+  canchaNombre:        string;
+  fecha:               string;
+  hora:                string;
+  precio:              number;
+  metodoPago:          string;
+  organizadorNombre:   string;
+  organizadorTelefono: string;
+  reservaId:           string;
+  deporte:             string;
+  nivel:               string;
+  jugadoresMax:        number;
+  comprobanteUrl?:     string | null;
+}) {
+  const client = getClient();
+  if (!client) return;
+
+  const to = toWaNumber(data.adminPhone);
+  if (!to) return;
+
+  const codigo = data.reservaId.slice(-6).toUpperCase();
+  const metodoLabel = data.metodoPago === 'yape' ? 'Yape'
+    : data.metodoPago === 'plin' ? 'Plin'
+    : data.metodoPago;
+
+  const deporteLabel = data.deporte.charAt(0).toUpperCase() + data.deporte.slice(1);
+  const nivelLabel   = data.nivel.charAt(0).toUpperCase() + data.nivel.slice(1);
+
+  let mediaUrl: string | null = null;
+  if (data.comprobanteUrl) {
+    if (data.comprobanteUrl.startsWith('data:')) {
+      mediaUrl = await uploadBase64Comprobante(data.comprobanteUrl, data.reservaId);
+    } else if (data.comprobanteUrl.startsWith('http')) {
+      mediaUrl = data.comprobanteUrl;
+    }
+  }
+
+  const body = [
+    `⚽ *Nuevo partido abierto* — #${codigo}`,
+    `🏟️ ${data.canchaNombre}`,
+    `📅 ${data.fecha}   🕐 ${data.hora}`,
+    `🎮 ${deporteLabel} · ${nivelLabel} · ${data.jugadoresMax} cupos disponibles`,
+    `💰 S/ ${data.precio}   💳 ${metodoLabel}`,
+    `👤 ${data.organizadorNombre}`,
+    data.organizadorTelefono ? `📱 ${data.organizadorTelefono}` : null,
+    ``,
+    mediaUrl
+      ? `✅ Envió comprobante (ver foto)`
+      : `⚠️ No envió comprobante — revisa tu ${metodoLabel} para verificar si llegó el pago.`,
+    ``,
+    `Responde *SI* para confirmar o *NO* para rechazar.`,
+    `(Si tienes varias pendientes, responde *SI ${codigo}* o *NO ${codigo}*)`,
+  ].filter(Boolean).join('\n');
+
+  try {
+    const msgParams: Parameters<typeof client.messages.create>[0] = {
+      from: fromNumber,
+      to,
+      body,
+      ...(mediaUrl ? { mediaUrl: [mediaUrl] } : {}),
+    };
+    await client.messages.create(msgParams);
+    console.log('[whatsapp] ✅ Admin notificado (partido):', data.adminPhone);
+  } catch (err: any) {
+    console.error('[whatsapp] ❌ Error al notificar admin (partido):', err?.message ?? err);
+  }
+}
+
 export async function notificarEstadoReserva(data: {
   clientePhone: string;
   canchaNombre: string;

@@ -1,7 +1,6 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useRef } from 'react';
-import Link from 'next/link';
 
 interface CanchaMapPin {
   id: string;
@@ -17,12 +16,17 @@ interface CanchasMapProps {
   selectedId?: string;
   onSelectCancha?: (id: string) => void;
   centerLocation?: string; // nombre del distrito/ubicación para centrar el mapa
+  userCoords?: { lat: number; lng: number }; // coordenadas GPS reales del usuario
 }
 
-export function CanchasMap({ canchas, selectedId, onSelectCancha, centerLocation }: CanchasMapProps) {
+export function CanchasMap({ canchas, selectedId, onSelectCancha, centerLocation, userCoords }: CanchasMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
+  const userMarkerRef = useRef<any>(null);
+  // Ref que siempre tiene el valor actual de userCoords, accesible dentro de closures async
+  const userCoordsRef = useRef(userCoords);
+  userCoordsRef.current = userCoords;
   // Trackear los IDs de las canchas para detectar cambios reales en la lista
   const prevCanchaIdsRef = useRef<string>('');
 
@@ -49,14 +53,19 @@ export function CanchasMap({ canchas, selectedId, onSelectCancha, centerLocation
         shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
       });
 
-      // Calcular centro del mapa
+      // Leer coordenadas actuales del usuario (via ref para evitar stale closure)
+      const currentUserCoords = userCoordsRef.current;
+
+      // Calcular centro inicial: coordenadas GPS del usuario > promedio de canchas > Piura
       const validCanchas = canchas.filter(c => c.lat && c.lng);
-      const center: [number, number] = validCanchas.length > 0
-        ? [
-            validCanchas.reduce((s, c) => s + c.lat, 0) / validCanchas.length,
-            validCanchas.reduce((s, c) => s + c.lng, 0) / validCanchas.length,
-          ]
-        : [-5.1945, -80.6328]; // Piura por defecto
+      const center: [number, number] = currentUserCoords
+        ? [currentUserCoords.lat, currentUserCoords.lng]
+        : validCanchas.length > 0
+          ? [
+              validCanchas.reduce((s, c) => s + c.lat, 0) / validCanchas.length,
+              validCanchas.reduce((s, c) => s + c.lng, 0) / validCanchas.length,
+            ]
+          : [-5.1945, -80.6328]; // Piura como último fallback
 
       const map = L.map(mapRef.current!, {
         center,
@@ -71,6 +80,19 @@ export function CanchasMap({ canchas, selectedId, onSelectCancha, centerLocation
       }).addTo(map);
 
       mapInstanceRef.current = map;
+
+      // Marcador de ubicación del usuario
+      if (currentUserCoords) {
+        const userIcon = L.divIcon({
+          className: '',
+          html: `<div style="width:16px;height:16px;background:#2563eb;border:3px solid white;border-radius:50%;box-shadow:0 0 0 3px rgba(37,99,235,0.3);"></div>`,
+          iconSize: [16, 16],
+          iconAnchor: [8, 8],
+        });
+        userMarkerRef.current = L.marker([currentUserCoords.lat, currentUserCoords.lng], { icon: userIcon })
+          .addTo(map)
+          .bindPopup('Tu ubicación');
+      }
 
       // Agregar marcadores
       validCanchas.forEach((cancha) => {
@@ -136,6 +158,7 @@ export function CanchasMap({ canchas, selectedId, onSelectCancha, centerLocation
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
         markersRef.current = [];
+        userMarkerRef.current = null;
       }
       // Limpiar el _leaflet_id del div para permitir re-inicialización
       if (mapRef.current) {
@@ -143,6 +166,37 @@ export function CanchasMap({ canchas, selectedId, onSelectCancha, centerLocation
       }
     };
   }, []); // Solo montar una vez
+
+  // Actualizar marcador y centro cuando cambian las coordenadas del usuario
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+    import('leaflet').then((L) => {
+      // Remover marcador anterior del usuario
+      if (userMarkerRef.current) {
+        userMarkerRef.current.remove();
+        userMarkerRef.current = null;
+      }
+      if (!userCoords) return;
+
+      const userIcon = L.divIcon({
+        className: '',
+        html: `<div style="width:16px;height:16px;background:#2563eb;border:3px solid white;border-radius:50%;box-shadow:0 0 0 3px rgba(37,99,235,0.3);"></div>`,
+        iconSize: [16, 16],
+        iconAnchor: [8, 8],
+      });
+      userMarkerRef.current = L.marker([userCoords.lat, userCoords.lng], { icon: userIcon })
+        .addTo(mapInstanceRef.current)
+        .bindPopup('Tu ubicación');
+
+      // Solo centrar en el usuario si no hay canchas visibles cerca
+      const validCanchas = canchas.filter(c => c.lat && c.lng);
+      if (validCanchas.length === 0) {
+        mapInstanceRef.current.setView([userCoords.lat, userCoords.lng], 13);
+      } else {
+        mapInstanceRef.current.setView([userCoords.lat, userCoords.lng], 13);
+      }
+    });
+  }, [userCoords]);
 
   // Actualizar marcadores cuando cambia la lista de canchas (filtros, ubicación)
   useEffect(() => {
@@ -160,8 +214,8 @@ export function CanchasMap({ canchas, selectedId, onSelectCancha, centerLocation
 
       const validCanchas = canchas.filter(c => c.lat && c.lng);
 
-      // Re-centrar SOLO si la lista de canchas cambió realmente
-      if (listChanged && validCanchas.length > 0) {
+      // Re-centrar SOLO si la lista cambió y no hay coordenadas del usuario
+      if (listChanged && validCanchas.length > 0 && !userCoords) {
         const centerLat = validCanchas.reduce((s, c) => s + c.lat, 0) / validCanchas.length;
         const centerLng = validCanchas.reduce((s, c) => s + c.lng, 0) / validCanchas.length;
         mapInstanceRef.current.setView([centerLat, centerLng], 13);
@@ -210,13 +264,15 @@ export function CanchasMap({ canchas, selectedId, onSelectCancha, centerLocation
     });
   }, [canchas]); // Se ejecuta cada vez que cambia la lista de canchas
 
-  // Centrar mapa en la ubicación seleccionada (distrito) cuando no hay canchas allí
+  // Centrar mapa en la ubicación seleccionada cuando no hay coordenadas GPS ni canchas
   useEffect(() => {
     if (!centerLocation || !mapInstanceRef.current) return;
+    // Si hay coordenadas GPS del usuario, tienen prioridad — no geocodificar
+    if (userCoords) return;
     // Si hay canchas con coordenadas, ya se centró en ellas — no hacer nada
     const validCanchas = canchas.filter(c => c.lat && c.lng);
     if (validCanchas.length > 0) return;
-    // Geocodificar el nombre del distrito con Nominatim
+    // Geocodificar el nombre del distrito con Nominatim como último recurso
     fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(centerLocation + ', Piura, Peru')}&limit=1&accept-language=es`)
       .then(r => r.json())
       .then(data => {
@@ -227,7 +283,7 @@ export function CanchasMap({ canchas, selectedId, onSelectCancha, centerLocation
         }
       })
       .catch(() => {});
-  }, [centerLocation, canchas]);
+  }, [centerLocation, canchas, userCoords]);
 
   // Resaltar pin seleccionado cuando cambia selectedId
   useEffect(() => {

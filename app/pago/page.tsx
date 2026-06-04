@@ -34,6 +34,7 @@ type MetodoPago = "yape" | "plin" | "efectivo";
 type Paso = "pago" | "datos" | "metodo" | "confirmar" | "exito";
 const TIEMPO_LIMITE = 5 * 60;
 
+
 function bloqueoKey(canchaId: string, fecha: string, hora: string) {
   return `cp_bloqueo_inicio_${canchaId}_${fecha}_${hora.replace(":", "-")}`;
 }
@@ -252,6 +253,13 @@ function PagoContent() {
       setAuthChecked(true);
     }
   }, []);
+
+  // Saltar paso "datos" si el usuario ya está registrado y tiene email + teléfono
+  useEffect(() => {
+    if (authChecked && !esInvitado && emailRegistrado && telefonoRegistrado) {
+      setPaso("pago");
+    }
+  }, [authChecked, esInvitado, emailRegistrado, telefonoRegistrado]);
 
   const prevPaso = useRef<Paso>("pago");
   useEffect(() => {
@@ -541,20 +549,33 @@ function PagoContent() {
     }
   };
 
+  // Desktop: pago + método combinados → 3 pasos (igual que mobile)
   const PASOS_LABELS = soloEfectivo
     ? (["Datos", "Pago", "Resumen"] as const)
-    : (["Datos", "Pago", "Método", "Confirmar"] as const);
+    : (["Datos", "Pago", "Confirmar"] as const);
 
   const PASO_INDEX: Record<string, number> = soloEfectivo
     ? { datos: 0, pago: 1, metodo: 2 }
-    : { datos: 0, pago: 1, metodo: 2, confirmar: 3 };
+    : { datos: 0, pago: 1, metodo: 1, confirmar: 2 };
+
+  // Mobile: pago + método combinados → 3 pasos
+  const MOBILE_PASOS_LABELS = soloEfectivo
+    ? (["Datos", "Pago", "Resumen"] as const)
+    : (["Datos", "Pago", "Confirmar"] as const);
+
+  const MOBILE_PASO_INDEX: Record<string, number> = soloEfectivo
+    ? { datos: 0, pago: 1, metodo: 2 }
+    : { datos: 0, pago: 1, metodo: 1, confirmar: 2 };
 
   const idx = PASO_INDEX[paso] ?? 0;
-  const stepperJSX = (
+  // Mobile usa el mismo índice que desktop (ambos tienen 3 pasos ahora)
+  const mobileIdx = MOBILE_PASO_INDEX[paso] ?? 0;
+
+  const makeStepperJSX = (labels: readonly string[], activeIdx: number) => (
     <div className="flex items-center justify-center gap-0 w-full">
-      {PASOS_LABELS.map((label, i) => {
-        const done = i < idx;
-        const current = i === idx;
+      {labels.map((label, i) => {
+        const done = i < activeIdx;
+        const current = i === activeIdx;
         return (
           <div key={label} className="flex items-center">
             <div className="flex flex-col items-center gap-1">
@@ -599,11 +620,11 @@ function PagoContent() {
                 {label}
               </span>
             </div>
-            {i < PASOS_LABELS.length - 1 && (
+            {i < labels.length - 1 && (
               <div
                 className={cn(
                   "h-0.5 w-8 mx-1 mb-4 transition-all",
-                  i < idx ? "bg-primary" : "bg-muted",
+                  i < activeIdx ? "bg-primary" : "bg-muted",
                 )}
               />
             )}
@@ -612,6 +633,9 @@ function PagoContent() {
       })}
     </div>
   );
+
+  const stepperJSX = makeStepperJSX(PASOS_LABELS, idx);
+  const mobileStepperJSX = makeStepperJSX(MOBILE_PASOS_LABELS, mobileIdx);
 
   const headerTitles: Record<string, string> = {
     pago: "Tipo de pago",
@@ -628,7 +652,7 @@ function PagoContent() {
           <CheckCircle2 className="h-12 w-12 text-primary" />
         </div>
         <h1 className="mb-2 text-2xl font-bold text-foreground">
-          {soloEfectivo ? "¡Reserva confirmada!" : "¡Listo, ya casi!"}
+          {soloEfectivo ? "¡Reserva recibida!" : "¡Listo, ya casi!"}
         </h1>
         <p className="mb-3 text-muted-foreground">
           {soloEfectivo
@@ -942,7 +966,7 @@ function PagoContent() {
         </div>
       </div>
       <p className="text-center text-sm text-muted-foreground">
-        Escanea el código QR desde tu app o ingresa el número.
+        Ingresa el número en tu app o ábrela directamente.
       </p>
       <Card className="border-border overflow-hidden">
         <div
@@ -1009,7 +1033,7 @@ function PagoContent() {
           </div>
           <a
             href={metodo === "yape" ? "yape://" : "plin://"}
-            className="flex items-center justify-center gap-3 w-full rounded-xl py-3.5 font-bold text-white active:scale-[0.98] transition-all"
+            className="sm:hidden flex items-center justify-center gap-3 w-full rounded-xl py-3.5 font-bold text-white active:scale-[0.98] transition-all"
             style={{
               backgroundColor: metodo === "yape" ? "#6C1FC6" : "#00B4D8",
             }}
@@ -1083,8 +1107,7 @@ function PagoContent() {
         <div className="flex items-start gap-2 rounded-xl bg-muted/60 p-3">
           <Shield className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
           <p className="text-xs text-muted-foreground">
-            También puedes enviar sin comprobante. El admin podrá pedírtelo
-            después.
+            Si no tienes el comprobante a mano, puedes enviarlo después. El administrador revisará tu pago y te confirmará la reserva por WhatsApp.
           </p>
         </div>
       </Card>
@@ -1156,9 +1179,19 @@ function PagoContent() {
         </div>
         {/* Stepper solo mobile */}
         <div className="lg:hidden px-4 pb-3 pt-1">
-          {stepperJSX}
+          {mobileStepperJSX}
         </div>
       </header>
+
+      {/* Aviso de urgencia cuando quedan menos de 60 segundos */}
+      {segundos > 0 && segundos <= 60 && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-destructive px-4 py-3 flex items-center justify-center gap-2 animate-pulse shadow-lg">
+          <Timer className="h-4 w-4 text-white shrink-0" />
+          <p className="text-white text-sm font-bold">
+            ¡Tu reserva expira en {segundos} {segundos === 1 ? "segundo" : "segundos"}! Completa el pago ahora.
+          </p>
+        </div>
+      )}
 
       {/* ══════════════════════════════════════════════════════════
           MOBILE: wizard original con pasos
@@ -1196,6 +1229,32 @@ function PagoContent() {
                   </div>
                 </div>
               </div>
+              {/* Desglose de precio */}
+              <div className="mt-3 pt-3 border-t border-border space-y-1 text-sm">
+                <div className="flex justify-between text-muted-foreground">
+                  <span>{horas > 1 ? `${horas}h × S/ ${precioRaw}` : `1h × S/ ${precioRaw}`}</span>
+                  <span>S/ {precioRaw * horas}</span>
+                </div>
+                {conBalon && extraBalon > 0 && (
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>⚽ Balón</span><span>S/ {extraBalon}</span>
+                  </div>
+                )}
+                {conChalecos && extraChalecos > 0 && (
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>🎽 Chalecos</span><span>S/ {extraChalecos}</span>
+                  </div>
+                )}
+                {descuento > 0 && (
+                  <div className="flex justify-between text-primary">
+                    <span>🎟 Cupón</span><span>− S/ {descuento}</span>
+                  </div>
+                )}
+                <div className="flex justify-between font-bold text-foreground pt-1 border-t border-border">
+                  <span>Total</span>
+                  <span className="text-primary">S/ {total}</span>
+                </div>
+              </div>
             </Card>
             {fromCard &&
               cancha &&
@@ -1230,8 +1289,8 @@ function PagoContent() {
                             className={cn(
                               "inline-block h-5 w-5 rounded-full bg-white shadow transition-transform",
                               conBalon
-                                ? "translate-x-[22px]"
-                                : "translate-x-[2px]",
+                                ? "translate-x-5.5"
+                                : "translate-x-0.5",
                             )}
                           />
                         </button>
@@ -1264,8 +1323,8 @@ function PagoContent() {
                             className={cn(
                               "inline-block h-5 w-5 rounded-full bg-white shadow transition-transform",
                               conChalecos
-                                ? "translate-x-[22px]"
-                                : "translate-x-[2px]",
+                                ? "translate-x-5.5"
+                                : "translate-x-0.5",
                             )}
                           />
                         </button>
@@ -1385,13 +1444,59 @@ function PagoContent() {
                 )}
               </>
             )}
+            {/* Selector de método integrado (solo en mobile, para no duplicar paso) */}
+            {!soloEfectivo && (
+              <div>
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Método de pago
+                </p>
+                <div className="space-y-3">
+                  {(["yape", "plin"] as MetodoPago[])
+                    .filter((m) => m === "yape" ? yapeDisponible : plinDisponible)
+                    .map((m) => (
+                      <button
+                        key={m}
+                        onClick={() => setMetodo(m)}
+                        className={cn(
+                          "w-full flex items-center gap-4 rounded-xl border-2 p-4 transition-all text-left",
+                          metodo === m
+                            ? m === "yape"
+                              ? "border-[#6C1FC6] bg-[#6C1FC6]/5 shadow-sm"
+                              : "border-[#00C2CB] bg-[#00C2CB]/5 shadow-sm"
+                            : "border-border hover:border-muted-foreground/40",
+                        )}
+                      >
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl overflow-hidden bg-white border border-border">
+                          <Image src={m === "yape" ? "/images/yape.png" : "/images/plin.png"} alt={m} width={48} height={48} className="object-contain" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-semibold text-foreground">{m === "yape" ? "Yape" : "Plin"}</p>
+                          <p className="text-xs text-muted-foreground">Pago móvil instantáneo</p>
+                        </div>
+                        <div className={cn(
+                          "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2",
+                          metodo === m
+                            ? m === "yape" ? "border-[#6C1FC6] bg-[#6C1FC6]" : "border-[#00C2CB] bg-[#00C2CB]"
+                            : "border-muted-foreground/40",
+                        )}>
+                          {metodo === m && (
+                            <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                </div>
+              </div>
+            )}
             <div className="space-y-3">
               <Button
                 size="lg"
                 className="w-full"
-                onClick={() => setPaso("metodo")}
+                onClick={() => soloEfectivo ? setPaso("metodo") : setPaso("confirmar")}
               >
-                Continuar
+                {soloEfectivo ? "Continuar" : "Ir a pagar"}
               </Button>
               <Button
                 variant="outline"
@@ -1427,6 +1532,11 @@ function PagoContent() {
                       onChange={(e) => {
                         setEmailInvitado(e.target.value);
                         setEmailError("");
+                      }}
+                      onBlur={(e) => {
+                        const v = e.target.value.trim();
+                        if (!v) setEmailError("Ingresa tu correo");
+                        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) setEmailError("Correo no válido");
                       }}
                       className={cn(
                         "bg-background",
@@ -1475,6 +1585,11 @@ function PagoContent() {
                         setTelefonoRegistrado(e.target.value);
                         setTelefonoError("");
                       }
+                    }}
+                    onBlur={(e) => {
+                      const v = e.target.value.trim();
+                      if (!v) setTelefonoError("Ingresa tu número de WhatsApp");
+                      else if (!/^9\d{8}$/.test(v)) setTelefonoError("Número inválido (9 dígitos, empieza en 9)");
                     }}
                     className={cn(
                       "bg-background flex-1",
@@ -1844,9 +1959,9 @@ function PagoContent() {
                 );
               })()}
 
-              {/* Card 2: Tipo de pago */}
+              {/* Card 2: Tipo de pago + Método */}
               {(() => {
-                const done = paso === "metodo" || paso === "confirmar";
+                const done = paso === "confirmar";
                 const pending = paso === "datos";
                 return (
                   <div className={cn(
@@ -1870,7 +1985,7 @@ function PagoContent() {
                           ) : <span className={paso === "pago" ? "text-primary-foreground" : ""}>2</span>}
                         </div>
                         <span className={cn("text-sm font-semibold", pending ? "text-muted-foreground" : "text-foreground")}>
-                          Tipo de pago
+                          Pago
                         </span>
                       </div>
                       {done && (
@@ -1878,57 +1993,17 @@ function PagoContent() {
                       )}
                     </div>
                     {done ? (
-                      <>
-                        <p className="text-sm font-medium text-foreground ml-8">{modoPago === "completo" ? "Pago completo" : "Adelanto 20%"}</p>
-                        <p className="text-xs text-muted-foreground ml-8 mt-0.5">S/ {montoAdelanto} a pagar ahora</p>
-                      </>
-                    ) : (
-                      <p className="text-xs text-muted-foreground ml-8">{paso === "pago" ? "Elige completo o adelanto" : "Pendiente"}</p>
-                    )}
-                  </div>
-                );
-              })()}
-
-              {/* Card 3: Método de pago (solo si no es soloEfectivo) */}
-              {!soloEfectivo && (() => {
-                const done = paso === "confirmar";
-                return (
-                  <div className={cn(
-                    "rounded-xl border p-5 transition-all",
-                    done ? "bg-white dark:bg-card border-border"
-                         : paso === "metodo" ? "bg-white dark:bg-card border-primary shadow-sm ring-1 ring-primary/20"
-                         : "bg-muted/30 dark:bg-muted/10 border-border opacity-60"
-                  )}>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <div className={cn(
-                          "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold",
-                          done ? "bg-primary"
-                               : paso === "metodo" ? "bg-primary ring-4 ring-primary/20"
-                               : "bg-muted text-muted-foreground"
-                        )}>
-                          {done ? (
-                            <svg className="h-3.5 w-3.5 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                            </svg>
-                          ) : <span className={paso === "metodo" ? "text-primary-foreground" : ""}>3</span>}
-                        </div>
-                        <span className={cn("text-sm font-semibold", paso !== "metodo" && !done ? "text-muted-foreground" : "text-foreground")}>
-                          Método de pago
-                        </span>
-                      </div>
-                      {done && (
-                        <button onClick={() => setPaso("metodo")} className="text-xs font-medium text-primary hover:underline">Editar</button>
-                      )}
-                    </div>
-                    {done ? (
-                      <div className="flex items-center gap-2 ml-8">
-                        <Image src={metodo === "yape" ? "/images/yape.png" : "/images/plin.png"} alt={metodo} width={18} height={18} className="rounded object-contain shrink-0" />
-                        <span className="text-sm font-medium text-foreground capitalize">{metodo}</span>
-                        <span className="text-xs text-muted-foreground">· S/ {montoAdelanto}</span>
+                      <div className="space-y-1 ml-8">
+                        <p className="text-sm font-medium text-foreground">{modoPago === "completo" ? "Pago completo" : "Adelanto 20%"}</p>
+                        {!soloEfectivo && (
+                          <div className="flex items-center gap-1.5">
+                            <Image src={metodo === "yape" ? "/images/yape.png" : "/images/plin.png"} alt={metodo} width={14} height={14} className="rounded object-contain shrink-0" />
+                            <span className="text-xs text-muted-foreground capitalize">{metodo} · S/ {montoAdelanto}</span>
+                          </div>
+                        )}
                       </div>
                     ) : (
-                      <p className="text-xs text-muted-foreground ml-8">{paso === "metodo" ? "Elige Yape o Plin" : "Pendiente"}</p>
+                      <p className="text-xs text-muted-foreground ml-8">{paso === "pago" ? "Elige monto y método" : "Pendiente"}</p>
                     )}
                   </div>
                 );
@@ -1976,8 +2051,8 @@ function PagoContent() {
                                   className={cn(
                                     "inline-block h-5 w-5 rounded-full bg-white shadow transition-transform",
                                     conBalon
-                                      ? "translate-x-[22px]"
-                                      : "translate-x-[2px]",
+                                      ? "translate-x-5.5"
+                                      : "translate-x-0.5",
                                   )}
                                 />
                               </button>
@@ -2010,8 +2085,8 @@ function PagoContent() {
                                   className={cn(
                                     "inline-block h-5 w-5 rounded-full bg-white shadow transition-transform",
                                     conChalecos
-                                      ? "translate-x-[22px]"
-                                      : "translate-x-[2px]",
+                                      ? "translate-x-5.5"
+                                      : "translate-x-0.5",
                                   )}
                                 />
                               </button>
@@ -2020,25 +2095,70 @@ function PagoContent() {
                         </div>
                       </div>
                     )}
-                  <div className="bg-white dark:bg-card rounded-xl border border-border p-6">
-                    <h2 className="text-base font-semibold text-foreground mb-4">
-                      ¿Cómo quieres pagar?
-                    </h2>
-                    {soloEfectivo ? (
-                      <div className="flex items-start gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4">
-                        <span className="text-xl shrink-0 mt-0.5">💵</span>
-                        <div>
-                          <p className="text-sm font-bold text-amber-700 dark:text-amber-400">
-                            Esta cancha solo acepta pago en efectivo
-                          </p>
-                          <p className="text-xs text-amber-600 dark:text-amber-500 mt-1 leading-relaxed">
-                            El pago se realiza directamente en la cancha el día
-                            de tu partido.
-                          </p>
+                  <div className="bg-white dark:bg-card rounded-xl border border-border p-6 space-y-6">
+                    <div>
+                      <h2 className="text-base font-semibold text-foreground mb-4">
+                        ¿Cómo quieres pagar?
+                      </h2>
+                      {soloEfectivo ? (
+                        <div className="flex items-start gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4">
+                          <span className="text-xl shrink-0 mt-0.5">💵</span>
+                          <div>
+                            <p className="text-sm font-bold text-amber-700 dark:text-amber-400">
+                              Esta cancha solo acepta pago en efectivo
+                            </p>
+                            <p className="text-xs text-amber-600 dark:text-amber-500 mt-1 leading-relaxed">
+                              El pago se realiza directamente en la cancha el día
+                              de tu partido.
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        modoPagoOpcionesJSX
+                      )}
+                    </div>
+                    {!soloEfectivo && (
+                      <div>
+                        <h2 className="text-base font-semibold text-foreground mb-4">
+                          Método de pago
+                        </h2>
+                        <div className="space-y-3">
+                          {(["yape", "plin"] as MetodoPago[])
+                            .filter((m) => m === "yape" ? yapeDisponible : plinDisponible)
+                            .map((m) => (
+                              <button
+                                key={m}
+                                onClick={() => setMetodo(m)}
+                                className={cn(
+                                  "w-full flex items-center gap-4 rounded-xl border-2 p-4 transition-all text-left",
+                                  metodo === m
+                                    ? m === "yape" ? "border-[#6C1FC6] bg-[#6C1FC6]/5" : "border-[#00C2CB] bg-[#00C2CB]/5"
+                                    : "border-border hover:border-muted-foreground/40",
+                                )}
+                              >
+                                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl overflow-hidden bg-white border border-border">
+                                  <Image src={m === "yape" ? "/images/yape.png" : "/images/plin.png"} alt={m} width={48} height={48} className="object-contain" />
+                                </div>
+                                <div className="flex-1">
+                                  <p className="font-semibold text-foreground">{m === "yape" ? "Yape" : "Plin"}</p>
+                                  <p className="text-xs text-muted-foreground">Pago móvil instantáneo</p>
+                                </div>
+                                <div className={cn(
+                                  "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2",
+                                  metodo === m
+                                    ? m === "yape" ? "border-[#6C1FC6] bg-[#6C1FC6]" : "border-[#00C2CB] bg-[#00C2CB]"
+                                    : "border-muted-foreground/40",
+                                )}>
+                                  {metodo === m && (
+                                    <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                  )}
+                                </div>
+                              </button>
+                            ))}
                         </div>
                       </div>
-                    ) : (
-                      modoPagoOpcionesJSX
                     )}
                   </div>
                   {!esInvitado && cupones.length > 0 && (
@@ -2071,9 +2191,7 @@ function PagoContent() {
                               )}
                             >
                               <span>S/5</span>
-                              <span className="text-[10px] font-normal">
-                                OFF
-                              </span>
+                              <span className="text-[10px] font-normal">OFF</span>
                             </div>
                             <div className="flex-1">
                               <p className="text-sm font-medium text-foreground">
@@ -2118,9 +2236,9 @@ function PagoContent() {
                     <Button
                       size="lg"
                       className="w-full"
-                      onClick={() => setPaso("metodo")}
+                      onClick={() => soloEfectivo ? setPaso("metodo") : setPaso("confirmar")}
                     >
-                      Continuar
+                      {soloEfectivo ? "Continuar" : "Ir a pagar"}
                     </Button>
                     <Button
                       variant="outline"

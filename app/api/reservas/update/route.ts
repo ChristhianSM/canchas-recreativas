@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
 import { sendReservaEmail } from '@/lib/email';
 import { notificarEstadoReserva } from '@/lib/whatsapp';
+import { agregarSellosReserva } from '@/lib/loyalty';
 
 // PATCH /api/reservas/update?id=xxx — actualizar estado de reserva
 export async function PATCH(req: NextRequest) {
@@ -74,12 +75,37 @@ export async function PATCH(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  // Sellos de loyalty al confirmar
+  if (estado === 'confirmada') {
+    await agregarSellosReserva(sb, reserva);
+  }
+
+  // Si hay un partido vinculado a esta reserva, actualizar su estado también
+  let partido: any = null;
+  if (estado === 'confirmada' || estado === 'rechazada') {
+    const { data: p } = await sb
+      .from('partidos')
+      .select('id, organizador_id')
+      .eq('reserva_id', reserva.id)
+      .maybeSingle();
+    partido = p;
+
+    if (partido) {
+      const estadoPartido = estado === 'confirmada' ? 'abierto' : 'cancelado';
+      await sb.from('partidos').update({ estado: estadoPartido }).eq('id', partido.id);
+    }
+  }
+
   // Crear notificación + enviar email
   if (estado === 'confirmada' || estado === 'rechazada') {
     const fechaLabel = new Date(reserva.fecha).toLocaleDateString('es-PE', { day: 'numeric', month: 'long' });
-    const msg = estado === 'confirmada'
-      ? `✅ Tu reserva en ${reserva.cancha_nombre} el ${fechaLabel} a las ${reserva.hora} fue confirmada.`
-      : `❌ Tu reserva en ${reserva.cancha_nombre} el ${fechaLabel} a las ${reserva.hora} fue rechazada.`;
+    const msg = partido
+      ? estado === 'confirmada'
+        ? `✅ Tu partido en ${reserva.cancha_nombre} el ${fechaLabel} a las ${reserva.hora} fue confirmado y ya está visible para otros jugadores.`
+        : `❌ Tu partido en ${reserva.cancha_nombre} el ${fechaLabel} a las ${reserva.hora} fue rechazado.`
+      : estado === 'confirmada'
+        ? `✅ Tu reserva en ${reserva.cancha_nombre} el ${fechaLabel} a las ${reserva.hora} fue confirmada.`
+        : `❌ Tu reserva en ${reserva.cancha_nombre} el ${fechaLabel} a las ${reserva.hora} fue rechazada.`;
 
     // Notificación in-app (solo usuarios registrados)
     if (reserva.usuario_id) {
@@ -120,27 +146,6 @@ export async function PATCH(req: NextRequest) {
       });
     }
 
-    // Sumar sello de loyalty si fue confirmada
-    if (estado === 'confirmada') {
-      const { data: loyalty } = await sb
-        .from('loyalty')
-        .select('*')
-        .eq('usuario_id', reserva.usuario_id)
-        .single();
-
-      if (loyalty) {
-        const nuevosSellos = loyalty.sellos + 1;
-        const generaCupon = nuevosSellos >= 6;
-        await sb.from('loyalty').update({
-          sellos: generaCupon ? 0 : nuevosSellos,
-          total_reservas: loyalty.total_reservas + 1,
-        }).eq('usuario_id', reserva.usuario_id);
-
-        if (generaCupon) {
-          await sb.from('cupones').insert({ usuario_id: reserva.usuario_id, descuento: 5 });
-        }
-      }
-    }
   }
 
   return NextResponse.json(reserva);

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
 import { notificarEstadoReserva } from '@/lib/whatsapp';
+import { agregarSellosReserva } from '@/lib/loyalty';
 
 // Parsear la respuesta del admin
 function parsearRespuesta(body: string): { accion: 'confirmar' | 'rechazar' | null; codigo: string | null } {
@@ -114,8 +115,40 @@ async function procesarReserva(sb: any, reserva: any, accion: 'confirmar' | 'rec
 
   if (error) return twimlResponse('Error al actualizar la reserva. Intenta desde el panel de administración.');
 
-  // Notificación in-app para usuarios registrados
-  if (reserva.usuario_id) {
+  // Sellos de loyalty al confirmar
+  if (accion === 'confirmar') {
+    await agregarSellosReserva(sb, reserva);
+  }
+
+  // Si la reserva tiene un partido vinculado, actualizar su estado también
+  const { data: partido } = await sb
+    .from('partidos')
+    .select('id, organizador_id')
+    .eq('reserva_id', reserva.id)
+    .maybeSingle();
+
+  if (partido) {
+    const estadoPartido = accion === 'confirmar' ? 'abierto' : 'cancelado';
+    await sb.from('partidos').update({ estado: estadoPartido }).eq('id', partido.id);
+
+    // Notificación in-app al organizador del partido
+    if (partido.organizador_id) {
+      const fechaLabel = new Date(reserva.fecha).toLocaleDateString('es-PE', { day: 'numeric', month: 'long' });
+      const msgPartido = accion === 'confirmar'
+        ? `✅ Tu partido en ${reserva.cancha_nombre} el ${fechaLabel} a las ${reserva.hora} fue confirmado y ya está visible para otros jugadores.`
+        : `❌ Tu partido en ${reserva.cancha_nombre} el ${fechaLabel} a las ${reserva.hora} fue rechazado.`;
+
+      await sb.from('notificaciones').insert({
+        usuario_id: partido.organizador_id,
+        reserva_id: reserva.id,
+        mensaje:    msgPartido,
+        tipo:       estado,
+      });
+    }
+  }
+
+  // Notificación in-app para usuarios registrados (reserva normal)
+  if (reserva.usuario_id && !partido) {
     const fechaLabel = new Date(reserva.fecha).toLocaleDateString('es-PE', { day: 'numeric', month: 'long' });
     const msg = estado === 'confirmada'
       ? `✅ Tu reserva en ${reserva.cancha_nombre} el ${fechaLabel} a las ${reserva.hora} fue confirmada.`
@@ -127,27 +160,6 @@ async function procesarReserva(sb: any, reserva: any, accion: 'confirmar' | 'rec
       mensaje:    msg,
       tipo:       estado,
     });
-
-    // Sello de loyalty si fue confirmada
-    if (estado === 'confirmada') {
-      const { data: loyalty } = await sb
-        .from('loyalty')
-        .select('*')
-        .eq('usuario_id', reserva.usuario_id)
-        .single();
-
-      if (loyalty) {
-        const nuevosSellos = loyalty.sellos + 1;
-        const generaCupon  = nuevosSellos >= 6;
-        await sb.from('loyalty').update({
-          sellos:         generaCupon ? 0 : nuevosSellos,
-          total_reservas: loyalty.total_reservas + 1,
-        }).eq('usuario_id', reserva.usuario_id);
-        if (generaCupon) {
-          await sb.from('cupones').insert({ usuario_id: reserva.usuario_id, descuento: 5 });
-        }
-      }
-    }
   }
 
   // WhatsApp al cliente si tiene teléfono
@@ -166,5 +178,6 @@ async function procesarReserva(sb: any, reserva: any, accion: 'confirmar' | 'rec
   const emoji      = estado === 'confirmada' ? '✅' : '❌';
   const textoEstado = estado === 'confirmada' ? 'confirmada' : 'rechazada';
   const avisoCliente = reserva.usuario_telefono ? ' El cliente fue notificado por WhatsApp.' : '';
-  return twimlResponse(`${emoji} Reserva #${codigo} ${textoEstado}.${avisoCliente}`);
+  const avisoPartido = partido ? (accion === 'confirmar' ? ' El partido ya está visible para jugadores.' : ' El partido fue cancelado.') : '';
+  return twimlResponse(`${emoji} Reserva #${codigo} ${textoEstado}.${avisoCliente}${avisoPartido}`);
 }

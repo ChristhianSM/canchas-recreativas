@@ -205,6 +205,9 @@ export default function CanchaDetailPage() {
           })())
       : "",
   );
+  const slotPickerRef = useRef<HTMLDivElement>(null);
+  const [buttonPulse, setButtonPulse] = useState(false);
+  const prevSlotLengthRef = useRef(0);
 
   // Abrir modal automáticamente si viene de /pago con ?ocupado=1
   useEffect(() => {
@@ -373,6 +376,15 @@ export default function CanchaDetailPage() {
     }
   }, [cancha]);
 
+  useEffect(() => {
+    if (selectedSlots.length > 0 && prevSlotLengthRef.current === 0) {
+      setButtonPulse(true);
+      const timer = setTimeout(() => setButtonPulse(false), 2500);
+      return () => clearTimeout(timer);
+    }
+    prevSlotLengthRef.current = selectedSlots.length;
+  }, [selectedSlots.length]);
+
   const handleToggleFavorite = async () => {
     if (!cancha || togglingFav) return;
 
@@ -464,11 +476,83 @@ export default function CanchaDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background pb-28">
         <Header />
-        <div className="container mx-auto px-4 py-8 space-y-4">
-          <div className="h-8 w-64 animate-pulse rounded-lg bg-muted" />
-          <div className="aspect-video w-full animate-pulse rounded-xl bg-muted" />
+        {/* Botón volver */}
+        <div className="container mx-auto px-4 pt-3 pb-1">
+          <div className="h-4 w-14 animate-pulse rounded bg-muted" />
+        </div>
+        {/* Título */}
+        <div className="container mx-auto flex items-center justify-between px-4 pt-3">
+          <div className="flex-1 min-w-0 pr-4 space-y-2">
+            <div className="h-5 w-20 animate-pulse rounded-full bg-muted" />
+            <div className="h-6 w-52 animate-pulse rounded bg-muted" />
+          </div>
+          <div className="flex gap-1 shrink-0">
+            <div className="h-9 w-9 animate-pulse rounded-md bg-muted" />
+            <div className="h-9 w-9 animate-pulse rounded-md bg-muted" />
+          </div>
+        </div>
+        {/* Galería */}
+        <div className="container mx-auto px-4 pt-4">
+          <div className="aspect-video sm:aspect-2/1 w-full animate-pulse rounded-xl bg-muted" />
+        </div>
+        {/* Contenido */}
+        <div className="container mx-auto px-4 py-6">
+          <div className="grid gap-8 lg:grid-cols-3">
+            <div className="min-w-0 space-y-6 lg:col-span-2">
+              <div className="flex gap-3 flex-wrap">
+                <div className="h-4 w-20 animate-pulse rounded-full bg-muted" />
+                <div className="h-4 w-28 animate-pulse rounded-full bg-muted" />
+              </div>
+              {/* Info bar mobile */}
+              <div className="h-16 w-full animate-pulse rounded-xl bg-muted lg:hidden" />
+              {/* Descripción */}
+              <div className="space-y-2">
+                <div className="h-5 w-28 animate-pulse rounded bg-muted" />
+                <div className="h-3 w-full animate-pulse rounded-full bg-muted" />
+                <div className="h-3 w-5/6 animate-pulse rounded-full bg-muted" />
+                <div className="h-3 w-4/5 animate-pulse rounded-full bg-muted" />
+              </div>
+              {/* Slot picker mobile */}
+              <div className="lg:hidden space-y-3">
+                <div className="h-5 w-36 animate-pulse rounded bg-muted" />
+                <div className="flex gap-2 overflow-hidden">
+                  {[1,2,3,4,5].map(i => (
+                    <div key={i} className="h-17 w-15 shrink-0 animate-pulse rounded-xl bg-muted" />
+                  ))}
+                </div>
+                <div className="grid grid-cols-4 gap-2">
+                  {Array.from({length: 12}).map((_, i) => (
+                    <div key={i} className="h-14 animate-pulse rounded-xl bg-muted" />
+                  ))}
+                </div>
+              </div>
+              {/* Servicios */}
+              <div className="space-y-3">
+                <div className="h-5 w-24 animate-pulse rounded bg-muted" />
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {[1,2,3,4].map(i => (
+                    <div key={i} className="h-5 animate-pulse rounded-full bg-muted" />
+                  ))}
+                </div>
+              </div>
+            </div>
+            {/* Sidebar desktop */}
+            <div className="hidden lg:block">
+              <div className="h-100 animate-pulse rounded-xl bg-muted sticky top-20" />
+            </div>
+          </div>
+        </div>
+        {/* Bottom bar mobile */}
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-card px-4 py-3 shadow-xl">
+          <div className="container mx-auto flex items-center gap-3">
+            <div className="flex-1 space-y-1.5">
+              <div className="h-3 w-20 animate-pulse rounded-full bg-muted" />
+              <div className="h-6 w-28 animate-pulse rounded bg-muted" />
+            </div>
+            <div className="h-14 w-40 animate-pulse rounded-lg bg-muted shrink-0" />
+          </div>
         </div>
       </div>
     );
@@ -779,7 +863,6 @@ export default function CanchaDetailPage() {
             </div>
 
             <div className="flex items-center gap-4 rounded-xl border border-border bg-card p-4 lg:hidden">
-              <Separator orientation="vertical" className="h-10" />
               <div className="flex-1 text-center">
                 <p className="text-xs text-muted-foreground">Horario</p>
                 <p className="text-sm font-medium text-foreground">
@@ -797,6 +880,20 @@ export default function CanchaDetailPage() {
                   </div>
                 </>
               )}
+              {cancha.telefono && (
+                <>
+                  <Separator orientation="vertical" className="h-10" />
+                  <div className="flex-1 text-center">
+                    <p className="text-xs text-muted-foreground">Teléfono</p>
+                    <a
+                      href={`tel:${cancha.telefono}`}
+                      className="text-sm font-medium text-primary hover:underline"
+                    >
+                      {cancha.telefono}
+                    </a>
+                  </div>
+                </>
+              )}
             </div>
 
             <div>
@@ -809,7 +906,7 @@ export default function CanchaDetailPage() {
             </div>
 
             {/* ── Horarios inline — solo mobile, construido desde cero ── */}
-            <div className="lg:hidden">
+            <div className="lg:hidden" ref={slotPickerRef}>
               <h2 className="mb-3 text-lg font-semibold text-foreground">
                 Elige día y hora
               </h2>
@@ -963,6 +1060,47 @@ export default function CanchaDetailPage() {
               </div>
             </div>
             {/* ──────────────────────────────────────────────────────────── */}
+
+            {/* Extras mobile — aparece al seleccionar slots si hay extras disponibles */}
+            {selectedSlots.length > 0 && (cancha.balon_disponible || cancha.chalecos_disponible) && (
+              <div className="lg:hidden rounded-xl border border-border bg-card p-4 space-y-3">
+                <p className="text-sm font-semibold text-foreground">¿Necesitas extras?</p>
+                {cancha.balon_disponible && (
+                  <label className="flex items-center justify-between gap-3 cursor-pointer">
+                    <div className="flex items-center gap-2">
+                      <span>⚽</span>
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Balón</p>
+                        <p className="text-xs text-muted-foreground">
+                          {cancha.balon_precio != null ? `+ S/ ${cancha.balon_precio}` : "Gratis"}
+                        </p>
+                      </div>
+                    </div>
+                    <Checkbox
+                      checked={quiereBalon}
+                      onCheckedChange={(v) => setQuiereBalon(v as boolean)}
+                    />
+                  </label>
+                )}
+                {cancha.chalecos_disponible && (
+                  <label className="flex items-center justify-between gap-3 cursor-pointer">
+                    <div className="flex items-center gap-2">
+                      <span>🎽</span>
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Chalecos</p>
+                        <p className="text-xs text-muted-foreground">
+                          {cancha.chalecos_precio != null ? `+ S/ ${cancha.chalecos_precio}` : "Gratis"}
+                        </p>
+                      </div>
+                    </div>
+                    <Checkbox
+                      checked={quiereChalecos}
+                      onCheckedChange={(v) => setQuiereChalecos(v as boolean)}
+                    />
+                  </label>
+                )}
+              </div>
+            )}
 
             <div>
               <h2 className="mb-3 text-lg font-semibold text-foreground">
@@ -1344,13 +1482,21 @@ export default function CanchaDetailPage() {
             </div>
             <StepButton
               size="lg"
-              className="gap-2 px-6 shrink-0 w-43.75 h-14 justify-center"
+              className={cn(
+                "gap-2 px-6 shrink-0 w-43.75 h-14 justify-center",
+                buttonPulse && "animate-border-pulse",
+              )}
               isLoading={reservando}
               stackedLoading
               steps={["Verificando disponibilidad", "Redirigiendo al pago"]}
               currentStep={reservaStep - 1}
-              onClick={handleReservar}
-              disabled={selectedSlots.length === 0}
+              onClick={() => {
+                if (selectedSlots.length === 0) {
+                  slotPickerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                } else {
+                  handleReservar();
+                }
+              }}
             >
               <CalendarDays className="h-5 w-5" />
               {selectedSlots.length > 0 ? "Reservar" : "Seleccionar hora"}

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
 import { getLocalDateString } from '@/lib/date-utils';
+import { notificarReservaRecibida, notificarNuevoPartido } from '@/lib/whatsapp';
 
 // GET — listar partidos abiertos/completos desde hoy
 export async function GET(req: NextRequest) {
@@ -26,6 +27,18 @@ export async function GET(req: NextRequest) {
   const { data, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  // Hora actual en Lima para descartar partidos de hoy que ya pasaron
+  const horaActual = new Date().toLocaleTimeString('es-PE', {
+    timeZone: 'America/Lima',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+
+  const dataSinPasados = (data ?? []).filter(
+    (p) => p.fecha > hoy || (p.fecha === hoy && p.hora >= horaActual),
+  );
+
   // Marcar qué partidos ya unió el usuario autenticado
   let userId: string | null = null;
   if (token) {
@@ -33,15 +46,38 @@ export async function GET(req: NextRequest) {
     userId = user?.id ?? null;
   }
 
-  const partidos = (data ?? []).map((p) => ({
-    ...p,
-    ya_unido: userId
+  const partidos = dataSinPasados.map((p) => {
+    const esMiembro = userId
       ? Array.isArray(p.jugadores) && p.jugadores.some((j: any) => j.usuario_id === userId)
-      : false,
-    ya_organizador: userId
+      : false;
+
+    const esOrganizador = userId
       ? Array.isArray(p.jugadores) && p.jugadores.some((j: any) => j.usuario_id === userId && j.es_organizador)
-      : false,
-  }));
+      : false;
+
+    const jugadores = Array.isArray(p.jugadores)
+      ? p.jugadores.map((j: any) => ({
+          ...j,
+          // Solo el organizador ve nombre y teléfono de los jugadores
+          nombre:   esOrganizador ? j.nombre : null,
+          inicial:  esOrganizador ? j.inicial : null,
+          telefono: esOrganizador ? (j.telefono ?? null) : null,
+        }))
+      : p.jugadores;
+
+    return {
+      ...p,
+      jugadores,
+      // precio_por_persona se recalcula usando jugadores_equipo (total del partido)
+      precio_por_persona: Math.ceil(
+        p.precio_total / (p.jugadores_equipo ?? p.jugadores_max)
+      ),
+      ya_unido: esMiembro,
+      ya_organizador: userId
+        ? Array.isArray(p.jugadores) && p.jugadores.some((j: any) => j.usuario_id === userId && j.es_organizador)
+        : false,
+    };
+  });
 
   return NextResponse.json(partidos);
 }
@@ -58,15 +94,19 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const {
     cancha_id, cancha_nombre, deporte, fecha, hora,
-    nivel, jugadores_max, precio_total, descripcion,
-    metodo_pago, comprobante_url,
+    nivel, jugadores_max, jugadores_equipo, precio_total, descripcion,
+    metodo_pago, comprobante_url, organizador_nombre, organizador_telefono,
   } = body;
 
   if (!cancha_id || !cancha_nombre || !deporte || !fecha || !hora || !jugadores_max || !precio_total || !metodo_pago) {
     return NextResponse.json({ error: 'Faltan campos requeridos' }, { status: 400 });
   }
-  if (Number(jugadores_max) < 2) {
-    return NextResponse.json({ error: 'Se necesitan al menos 2 jugadores' }, { status: 400 });
+  if (Number(jugadores_max) < 1) {
+    return NextResponse.json({ error: 'Debes abrir al menos 1 cupo' }, { status: 400 });
+  }
+  const equipoTotal = Number(jugadores_equipo ?? jugadores_max);
+  if (equipoTotal < Number(jugadores_max)) {
+    return NextResponse.json({ error: 'El total del partido no puede ser menor que los cupos disponibles' }, { status: 400 });
   }
 
   // Verificar que el slot no esté ya reservado
@@ -86,12 +126,22 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Obtener datos del organizador
-  const { data: usuario } = await sb
-    .from('usuarios')
-    .select('nombre, telefono')
-    .eq('id', user.id)
-    .single();
+  // Verificar que no exista ya un partido activo en ese horario
+  const { data: partidoExistente } = await sb
+    .from('partidos')
+    .select('id')
+    .eq('cancha_id', cancha_id)
+    .eq('fecha', fecha)
+    .eq('hora', hora)
+    .not('estado', 'in', '("cancelado","finalizado")')
+    .maybeSingle();
+
+  if (partidoExistente) {
+    return NextResponse.json(
+      { error: 'Ya existe un partido en este horario. Elige otro.' },
+      { status: 409 },
+    );
+  }
 
   // Crear la reserva que asegura el slot
   const { data: reserva, error: reservaError } = await sb
@@ -100,9 +150,9 @@ export async function POST(req: NextRequest) {
       cancha_id,
       cancha_nombre,
       usuario_id:       user.id,
-      usuario_nombre:   usuario?.nombre ?? user.email ?? 'Usuario',
+      usuario_nombre:   organizador_nombre ?? user.email ?? 'Usuario',
       usuario_email:    user.email ?? '',
-      usuario_telefono: usuario?.telefono ?? '',
+      usuario_telefono: organizador_telefono ?? '',
       fecha,
       hora,
       precio:           Number(precio_total),
@@ -125,7 +175,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: reservaError.message }, { status: 500 });
   }
 
-  // Crear el partido vinculado a la reserva
+  // Crear el partido vinculado a la reserva (nace en pendiente hasta confirmación del admin)
   const { data: partido, error: insertError } = await sb
     .from('partidos')
     .insert({
@@ -135,10 +185,12 @@ export async function POST(req: NextRequest) {
       fecha,
       hora,
       nivel:         nivel ?? 'libre',
-      jugadores_max: Number(jugadores_max),
-      precio_total:  Number(precio_total),
+      jugadores_max:    Number(jugadores_max),
+      jugadores_equipo: equipoTotal,
+      precio_total:     Number(precio_total),
       descripcion:   descripcion || null,
       organizador_id: user.id,
+      estado:        'pendiente',
     })
     .select()
     .single();
@@ -156,6 +208,45 @@ export async function POST(req: NextRequest) {
     es_organizador: true,
     estado_pago: 'pendiente',
   });
+
+  // Notificar al organizador que su partido está pendiente de confirmación
+  if (organizador_telefono) {
+    await notificarReservaRecibida({
+      clientePhone: organizador_telefono,
+      canchaNombre: cancha_nombre,
+      fecha,
+      hora,
+      precio:     Number(precio_total),
+      metodoPago: metodo_pago,
+      reservaId:  reserva.id,
+    });
+  }
+
+  // Notificar al dueño de la cancha para que confirme o rechace
+  const { data: dueno } = await sb
+    .from('duenos_canchas')
+    .select('usuarios(telefono)')
+    .eq('cancha_id', cancha_id)
+    .maybeSingle();
+
+  const duenoPhone = (dueno?.usuarios as any)?.telefono ?? process.env.ADMIN_WHATSAPP_NUMBER;
+  if (duenoPhone) {
+    await notificarNuevoPartido({
+      adminPhone:          duenoPhone,
+      canchaNombre:        cancha_nombre,
+      fecha,
+      hora,
+      precio:              Number(precio_total),
+      metodoPago:          metodo_pago,
+      organizadorNombre:   organizador_nombre ?? user.email ?? 'Organizador',
+      organizadorTelefono: organizador_telefono ?? '',
+      reservaId:           reserva.id,
+      deporte,
+      nivel:               nivel ?? 'libre',
+      jugadoresMax:        Number(jugadores_max),
+      comprobanteUrl:      comprobante_url ?? null,
+    });
+  }
 
   return NextResponse.json(partido, { status: 201 });
 }

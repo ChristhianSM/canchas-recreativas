@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState, useEffect, useMemo, Suspense, useRef } from "react";
+import { useState, useEffect, useMemo, Suspense, useRef, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import {
@@ -186,12 +186,16 @@ function adaptCancha(c: Cancha) {
   };
 }
 
+const BATCH_SIZE = 9;
+
 function CanchasContent() {
   const searchParams = useSearchParams();
   const [canchas, setCanchas] = useState<Cancha[]>([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<AdvancedFilters>(DEFAULT_FILTERS);
   const [sortBy, setSortBy] = useState<SortOption>("relevancia");
+  const [visibleCount, setVisibleCount] = useState(BATCH_SIZE);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [ubicacion, setUbicacion] = useState<Coordenadas | null>(null);
   // Una sola llamada a favoritos para toda la página
   const [favIds, setFavIds] = useState<Set<string>>(new Set());
@@ -261,6 +265,20 @@ function CanchasContent() {
         })
         .catch(() => {});
     }
+  }, []);
+
+  // Resetear paginación al cambiar filtros o sort
+  useEffect(() => {
+    setVisibleCount(BATCH_SIZE);
+    setLoadingMore(false);
+  }, [filters, sortBy]);
+
+  const handleVerMas = useCallback(() => {
+    setLoadingMore(true);
+    setTimeout(() => {
+      setVisibleCount((v) => v + BATCH_SIZE);
+      setLoadingMore(false);
+    }, 600);
   }, []);
 
   // Aplicar parámetros de URL al cargar
@@ -348,6 +366,16 @@ function CanchasContent() {
   }, [canchas, filters, sortBy, ubicacion]);
 
   // Contar filtros activos
+  const canchasFiltradas = useMemo(
+    () => (filtered as any[]).filter((c) => !canchasOcupadas.has(c.id)),
+    [filtered, canchasOcupadas],
+  );
+  const canchasVisibles = useMemo(
+    () => canchasFiltradas.slice(0, visibleCount),
+    [canchasFiltradas, visibleCount],
+  );
+  const restantes = Math.max(0, canchasFiltradas.length - visibleCount);
+
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (filters.sports.length > 0) count++;
@@ -510,16 +538,8 @@ function CanchasContent() {
     setCanchasOcupadas((prev) => new Set([...prev, canchaId]));
   };
 
-  // Limpiar todos los filtros incluyendo la barra de búsqueda
   const handleClearAll = () => {
     setFilters(DEFAULT_FILTERS);
-    setDesktopUbicacion("");
-    setDesktopFecha(null);
-    setDesktopHora("");
-    setTempUbicacion("");
-    setTempDate(new Date());
-    setTempTime("");
-    window.location.href = "/canchas";
   };
 
   const openSearchModal = (
@@ -1427,9 +1447,16 @@ function CanchasContent() {
             {/* Contador siempre visible */}
             <div className="flex items-center justify-between mb-3">
               <p className="text-sm font-semibold text-gray-800">
-                {loading
-                  ? "Cargando..."
-                  : `${filtered.length} ${filtered.length === 1 ? "cancha encontrada" : "canchas encontradas"}`}
+                {loading ? (
+                  <span className="flex items-center gap-0.5">
+                    Cargando
+                    <span className="flex items-end gap-0.5 ml-0.5">
+                      <span className="animate-bounce h-1 w-1 rounded-full bg-gray-800 inline-block" style={{ animationDelay: '0ms' }} />
+                      <span className="animate-bounce h-1 w-1 rounded-full bg-gray-800 inline-block" style={{ animationDelay: '150ms' }} />
+                      <span className="animate-bounce h-1 w-1 rounded-full bg-gray-800 inline-block" style={{ animationDelay: '300ms' }} />
+                    </span>
+                  </span>
+                ) : `${filtered.length} ${filtered.length === 1 ? "cancha encontrada" : "canchas encontradas"}`}
               </p>
               <div className="flex items-center gap-2">
                 {/* Ver mapa — solo visible debajo de lg donde el sidebar no existe */}
@@ -1445,24 +1472,20 @@ function CanchasContent() {
                     <span className="hidden sm:inline">Ver mapa</span>
                   </button>
                 )}
-                <Select
-                  value={sortBy}
-                  onValueChange={(v) => setSortBy(v as SortOption)}
-                >
-                  <SelectTrigger className="w-auto rounded-md border border-gray-300 bg-white px-2 sm:px-4 py-1.5 h-auto text-sm font-semibold text-gray-700 hover:border-gray-400 focus:ring-0 gap-1.5">
-                    <SlidersHorizontal className="h-4 w-4 text-gray-500" />
-                    <span className="hidden sm:inline">Ordenar</span>
-                  </SelectTrigger>
-                  <SelectContent align="end">
-                    <SelectItem value="relevancia">
-                      {ubicacion ? "Más cercanas" : "Relevancia"}
-                    </SelectItem>
-                    <SelectItem value="precio-asc">Menor precio</SelectItem>
-                    <SelectItem value="precio-desc">Mayor precio</SelectItem>
-                    <SelectItem value="rating">Mejor puntuación</SelectItem>
-                    <SelectItem value="nombre">Nombre (A-Z)</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="relative flex items-center">
+                  <SlidersHorizontal className="pointer-events-none absolute left-2 h-4 w-4 text-gray-500" />
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as SortOption)}
+                    className="appearance-none rounded-md border border-gray-300 bg-white pl-8 pr-3 sm:pr-8 py-1.5 text-sm font-semibold text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-0 cursor-pointer"
+                  >
+                    <option value="relevancia">{ubicacion ? "Más cercanas" : "Relevancia"}</option>
+                    <option value="precio-asc">Menor precio</option>
+                    <option value="precio-desc">Mayor precio</option>
+                    <option value="rating">Mejor puntuación</option>
+                    <option value="nombre">Nombre (A-Z)</option>
+                  </select>
+                </div>
               </div>
             </div>
             {/* Cards */}
@@ -1554,88 +1577,92 @@ function CanchasContent() {
                   ))}
                 </div>
               </>
-            ) : filtered.length > 0 ? (
+            ) : canchasFiltradas.length > 0 ? (
               <>
                 {/* < 1440px: cards verticales 2 columnas */}
-                <div className="xl:hidden grid gap-4 grid-cols-1 sm:grid-cols-2 pb-8">
-                  {(filtered as any[])
-                    .filter((c) => !canchasOcupadas.has(c.id))
-                    .map((c) => (
-                      <CanchaCard
-                        key={c.id}
-                        cancha={c}
-                        distancia={c.distancia}
-                        selectedDate={filters.selectedDate}
-                        preselectedHour={filters.availableHours[0]}
-                        isFav={favIds.has(c.id)}
-                        onToggleFav={handleToggleFav}
-                        onCanchaOcupada={handleCanchaOcupada}
-                      />
-                    ))}
+                <div className="xl:hidden grid gap-4 grid-cols-1 sm:grid-cols-2">
+                  {canchasVisibles.map((c: any) => (
+                    <CanchaCard
+                      key={c.id}
+                      cancha={c}
+                      distancia={c.distancia}
+                      selectedDate={filters.selectedDate}
+                      preselectedHour={filters.availableHours[0]}
+                      isFav={favIds.has(c.id)}
+                      onToggleFav={handleToggleFav}
+                      onCanchaOcupada={handleCanchaOcupada}
+                    />
+                  ))}
                 </div>
 
-                {/* 768–1023px: oculto (cubierto por grid vertical lg:hidden) */}
-                <div className="hidden">
-                  {(filtered as any[])
-                    .filter((c) => !canchasOcupadas.has(c.id))
-                    .map((c) => (
-                      <CanchaCardHorizontal
-                        key={c.id}
-                        cancha={c}
-                        distancia={c.distancia}
-                        selectedDate={filters.selectedDate}
-                        preselectedHour={filters.availableHours[0]}
-                        isHighlighted={hoveredCanchaId === c.id}
-                        onHover={setHoveredCanchaId}
-                        compact={true}
-                        isFav={favIds.has(c.id)}
-                        onToggleFav={handleToggleFav}
-                        onCanchaOcupada={handleCanchaOcupada}
-                      />
-                    ))}
-                </div>
-
-                {/* 1024–1439px: cubierto por grid xl:hidden arriba */}
-                <div className="hidden">
-                  {(filtered as any[])
-                    .filter((c) => !canchasOcupadas.has(c.id))
-                    .map((c) => (
-                      <CanchaCardHorizontal
-                        key={c.id}
-                        cancha={c}
-                        distancia={c.distancia}
-                        selectedDate={filters.selectedDate}
-                        preselectedHour={filters.availableHours[0]}
-                        isHighlighted={hoveredCanchaId === c.id}
-                        onHover={setHoveredCanchaId}
-                        compact={true}
-                        isFav={favIds.has(c.id)}
-                        onToggleFav={handleToggleFav}
-                        onCanchaOcupada={handleCanchaOcupada}
-                      />
-                    ))}
-                </div>
-
-                {/* 1440px+: cards horizontales normales */}
+                {/* 1440px+: cards horizontales */}
                 <div className="hidden xl:flex flex-col gap-3">
-                  {(filtered as any[])
-                    .filter((c) => !canchasOcupadas.has(c.id))
-                    .map((c) => (
-                      <CanchaCardHorizontal
-                        key={c.id}
-                        cancha={c}
-                        distancia={c.distancia}
-                        selectedDate={filters.selectedDate}
-                        preselectedHour={filters.availableHours[0]}
-                        isHighlighted={hoveredCanchaId === c.id}
-                        onHover={setHoveredCanchaId}
-                        compact={false}
-                        isFav={favIds.has(c.id)}
-                        onToggleFav={handleToggleFav}
-                        onCanchaOcupada={handleCanchaOcupada}
-                      />
-                    ))}
+                  {canchasVisibles.map((c: any) => (
+                    <CanchaCardHorizontal
+                      key={c.id}
+                      cancha={c}
+                      distancia={c.distancia}
+                      selectedDate={filters.selectedDate}
+                      preselectedHour={filters.availableHours[0]}
+                      isHighlighted={hoveredCanchaId === c.id}
+                      onHover={setHoveredCanchaId}
+                      compact={false}
+                      isFav={favIds.has(c.id)}
+                      onToggleFav={handleToggleFav}
+                      onCanchaOcupada={handleCanchaOcupada}
+                    />
+                  ))}
                 </div>
+
+                {/* Skeletons mientras carga el siguiente batch */}
+                {loadingMore && (
+                  <>
+                    <div className="xl:hidden grid gap-4 grid-cols-1 sm:grid-cols-2 mt-4">
+                      {Array.from({ length: Math.min(BATCH_SIZE, restantes) }).map((_, i) => (
+                        <div key={i} className="rounded-xl border border-border overflow-hidden animate-pulse bg-card">
+                          <div className="aspect-[2/1] bg-muted" />
+                          <div className="p-4 space-y-3">
+                            <div className="h-4 bg-muted rounded-full w-4/5" />
+                            <div className="h-4 bg-muted rounded-full w-3/5" />
+                            <div className="h-3 bg-muted rounded-full w-2/5" />
+                            <div className="flex gap-1.5">
+                              {[1,2,3,4].map((j) => <div key={j} className="h-9 flex-1 bg-muted rounded-lg" />)}
+                            </div>
+                            <div className="h-11 bg-muted rounded-lg" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="hidden xl:flex flex-col gap-3 mt-3">
+                      {Array.from({ length: Math.min(BATCH_SIZE, restantes) }).map((_, i) => (
+                        <div key={i} className="flex rounded-xl border border-border overflow-hidden animate-pulse bg-card h-[210px]">
+                          <div className="w-48 shrink-0 bg-muted" />
+                          <div className="flex-1 p-4 flex flex-col gap-3">
+                            <div className="h-5 bg-muted rounded-full w-1/2" />
+                            <div className="h-3 bg-muted rounded-full w-2/3" />
+                            <div className="h-3 bg-muted rounded-full w-1/4" />
+                            <div className="flex gap-1.5 mt-1">
+                              {[1,2,3,4,5].map((j) => <div key={j} className="h-9 w-16 bg-muted rounded-lg" />)}
+                            </div>
+                            <div className="mt-auto h-10 w-32 bg-muted rounded-lg" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                {/* Botón Ver más */}
+                {restantes > 0 && !loadingMore && (
+                  <div className="flex justify-center pt-6 pb-8">
+                    <button
+                      onClick={handleVerMas}
+                      className="flex items-center gap-2 border border-gray-300 hover:border-gray-500 bg-white hover:bg-gray-50 text-gray-800 font-semibold px-8 py-3 rounded-xl transition-all active:scale-95 shadow-sm"
+                    >
+                      Ver más ({restantes} restante{restantes !== 1 ? "s" : ""})
+                    </button>
+                  </div>
+                )}
               </>
             ) : (
               <div className="flex flex-col items-center py-16 px-4 text-center">
@@ -1700,6 +1727,7 @@ function CanchasContent() {
                     }))}
                   selectedId={mobileMapSelectedId ?? undefined}
                   onSelectCancha={(id) => setMobileMapSelectedId(id)}
+                  userCoords={ubicacion ?? undefined}
                   centerLocation={
                     desktopUbicacion ||
                     searchParams.get("ubicacion") ||
@@ -1756,11 +1784,10 @@ function CanchasContent() {
           {/* ── COL 3: Mapa + panel (md+, ≥768px) ────────────────── */}
           <aside className="hidden xl:flex flex-col w-[340px] shrink-0 pl-3 pt-4 gap-4">
             {/* Mapa sticky */}
-            <div className="sticky top-40 flex flex-col gap-4">
-              {/* Mapa */}
+            <div className="sticky top-40">
               <div
                 className="rounded-xl overflow-hidden border border-gray-100 shadow-sm"
-                style={{ height: "420px" }}
+                style={{ height: "calc(100vh - 180px)" }}
               >
                 <CanchasMap
                   canchas={(filtered as any[])
@@ -1775,50 +1802,13 @@ function CanchasContent() {
                     }))}
                   selectedId={hoveredCanchaId ?? undefined}
                   onSelectCancha={setHoveredCanchaId}
+                  userCoords={ubicacion ?? undefined}
                   centerLocation={
                     desktopUbicacion ||
                     searchParams.get("ubicacion") ||
                     undefined
                   }
                 />
-              </div>
-
-              {/* Panel de beneficios */}
-              <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-4 space-y-3">
-                <h3 className="text-sm font-bold text-gray-800">
-                  ¿Por qué reservar aquí?
-                </h3>
-                <div className="space-y-2.5">
-                  {[
-                    {
-                      icon: CheckCircle,
-                      text: "Reserva 100% online",
-                      sub: "Sin llamadas, sin complicaciones.",
-                    },
-                    {
-                      icon: RefreshCw,
-                      text: "Cancelación flexible",
-                      sub: "Cancela gratis hasta 2 horas antes.",
-                    },
-                    {
-                      icon: ShieldCheck,
-                      text: "Canchas verificadas",
-                      sub: "Todas pasan por un proceso de verificación.",
-                    },
-                  ].map(({ icon: Icon, text, sub }) => (
-                    <div key={text} className="flex items-start gap-2.5">
-                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#16a34a]/10">
-                        <Icon className="h-3.5 w-3.5 text-[#16a34a]" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold text-gray-800">
-                          {text}
-                        </p>
-                        <p className="text-xs text-gray-400">{sub}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
               </div>
             </div>
           </aside>
@@ -1832,22 +1822,103 @@ export default function CanchasPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex flex-col flex-1 bg-white md:bg-background">
+        <div className="flex flex-col flex-1 bg-white">
           <Header />
-          <main className="flex-1 container mx-auto px-4 py-8">
-            <div className="mb-6 space-y-2">
-              <div className="h-8 w-48 animate-pulse rounded-lg bg-muted" />
-              <div className="h-4 w-64 animate-pulse rounded-lg bg-muted" />
+
+          {/* Barra de búsqueda skeleton */}
+          <div className="bg-white border-b border-gray-100 py-3 sticky top-16 z-30">
+            <div className="container mx-auto px-4">
+              {/* Mobile */}
+              <div className="md:hidden flex items-center gap-2">
+                <div className="flex-1 h-11 animate-pulse rounded-md bg-gray-100" />
+                <div className="h-11 w-11 animate-pulse rounded-md bg-gray-100 shrink-0" />
+              </div>
+              {/* Desktop */}
+              <div className="hidden md:flex items-center gap-2 max-w-3xl mx-auto">
+                <div className="flex-1 h-12 animate-pulse rounded-xl bg-gray-100" />
+                <div className="h-12 w-24 animate-pulse rounded-xl bg-gray-100 shrink-0" />
+              </div>
             </div>
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div
-                  key={i}
-                  className="h-80 animate-pulse rounded-xl bg-muted"
-                />
-              ))}
+          </div>
+
+          {/* Contenido */}
+          <div className="flex flex-1 bg-[#eef3ee] pb-6">
+            <div className="container mx-auto px-4 flex bg-[#eef3ee]">
+
+              {/* Sidebar filtros (lg+) */}
+              <aside className="hidden lg:block w-[280px] xl:w-[300px] shrink-0 pr-3 pt-4">
+                <div className="sticky top-40 py-4 px-3 space-y-4 rounded-xl">
+                  <div className="h-5 w-20 animate-pulse rounded bg-gray-200" />
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <div key={i} className="h-10 animate-pulse rounded-xl bg-gray-200" />
+                  ))}
+                </div>
+              </aside>
+
+              {/* Columna central — cards */}
+              <main className="flex-1 min-w-0 pt-4 flex flex-col gap-4">
+                {/* Contador + sort */}
+                <div className="flex items-center justify-between">
+                  <div className="h-4 w-36 animate-pulse rounded-full bg-gray-200" />
+                  <div className="h-8 w-28 animate-pulse rounded-md bg-gray-200" />
+                </div>
+
+                {/* Cards mobile (< xl) */}
+                <div className="xl:hidden grid gap-4 grid-cols-1 sm:grid-cols-2">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="rounded-xl border border-gray-100 overflow-hidden animate-pulse bg-white">
+                      <div className="aspect-[2/1] bg-gray-200" />
+                      <div className="p-4 space-y-3">
+                        <div className="space-y-1.5">
+                          <div className="h-4 bg-gray-200 rounded-full w-4/5" />
+                          <div className="h-4 bg-gray-200 rounded-full w-3/5" />
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1 h-3 bg-gray-200 rounded-full" />
+                          <div className="h-6 w-14 bg-gray-200 rounded" />
+                        </div>
+                        <div className="flex gap-1.5">
+                          {[1, 2, 3, 4].map((j) => (
+                            <div key={j} className="h-9 flex-1 bg-gray-200 rounded-lg" />
+                          ))}
+                        </div>
+                        <div className="h-11 bg-gray-200 rounded-lg" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Cards desktop (xl+) */}
+                <div className="hidden xl:flex flex-col gap-3">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="flex rounded-xl border border-gray-100 overflow-hidden animate-pulse bg-white h-[210px] md:h-[270px]">
+                      <div className="w-[200px] shrink-0 bg-gray-200" />
+                      <div className="flex-1 p-4 flex flex-col gap-2.5">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-5 bg-gray-200 rounded-full" />
+                          <div className="h-5 w-16 bg-gray-200 rounded-full shrink-0" />
+                        </div>
+                        <div className="h-3 bg-gray-200 rounded-full w-2/3" />
+                        <div className="h-3 bg-gray-200 rounded-full w-1/4" />
+                        <div className="flex gap-1.5 mt-2">
+                          {[1, 2, 3, 4, 5].map((j) => (
+                            <div key={j} className="h-9 w-16 bg-gray-200 rounded-lg" />
+                          ))}
+                        </div>
+                        <div className="mt-auto h-10 w-32 bg-gray-200 rounded-lg" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </main>
+
+              {/* Mapa placeholder (xl+) */}
+              <aside className="hidden xl:flex flex-col w-[340px] shrink-0 pl-3 pt-4">
+                <div className="sticky top-40 h-[calc(100vh-180px)] animate-pulse rounded-xl bg-gray-200" />
+              </aside>
+
             </div>
-          </main>
+          </div>
         </div>
       }
     >

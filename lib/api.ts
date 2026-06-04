@@ -137,6 +137,12 @@ export async function apiGetReservas() {
   return Array.isArray(data) ? data : [];
 }
 
+export async function apiGetHistorial(page = 0, limit = 10) {
+  const res = await fetch(`/api/reservas?tipo=historial&page=${page}&limit=${limit}`, { headers: authHeaders() });
+  const data = await res.json();
+  return { items: data.items ?? [], total: data.total ?? 0 };
+}
+
 export async function apiCrearReserva(data: {
   canchaId: string; canchaNombre: string; fecha: string; hora: string; horas?: number;
   precio: number; precioOriginal?: number; cuponId?: string | null;
@@ -212,6 +218,21 @@ export async function apiToggleFavorito(canchaId: string) {
     body: JSON.stringify({ canchaId }),
   });
   return res.json();
+}
+
+// ── Partidos ───────────────────────────────────────────────────
+
+export async function apiGetMisPartidos() {
+  const res = await fetch('/api/partidos/mis-partidos', { headers: authHeaders() });
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export async function apiGetMisPartidosHistorial(page = 0, limit = 10) {
+  const res = await fetch(`/api/partidos/mis-partidos?tipo=historial&page=${page}&limit=${limit}`, { headers: authHeaders() });
+  if (!res.ok) return { items: [], total: 0 };
+  const data = await res.json();
+  return { items: data.items ?? [], total: data.total ?? 0 };
 }
 
 // ── Admin cancha ───────────────────────────────────────────────
