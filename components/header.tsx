@@ -39,6 +39,7 @@ import {
   getToken,
   isTokenLikelyExpired,
 } from "@/lib/api";
+import { NotificationBell } from "@/components/notification-bell";
 
 export function Header() {
   const router = useRouter();
@@ -170,6 +171,7 @@ export function Header() {
 
         {/* Auth (tablet + desktop) — un solo DropdownMenu desde md+ */}
         <div className="hidden md:flex items-center gap-3 shrink-0">
+          <NotificationBell />
           {!hydrated ? (
             <div className="h-8 w-8 animate-pulse rounded-full bg-muted lg:w-32 lg:rounded-lg" />
           ) : user?.name ? (
@@ -220,6 +222,7 @@ export function Header() {
 
         {/* Mobile Navigation */}
         <div className="flex items-center gap-1 md:hidden">
+          <NotificationBell />
           {/* Icono circular login/usuario */}
           {hydrated &&
             (user?.name ? (

@@ -205,6 +205,21 @@ export function PartidoDetalleModal({
               </div>
             </div>
 
+            {/* Banner de pago para jugadores unidos */}
+            {partido.ya_unido && !partido.ya_organizador && (
+              <div className="flex items-start gap-3 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3">
+                <span className="text-lg leading-none mt-0.5">💰</span>
+                <div>
+                  <p className="text-sm font-semibold text-amber-800">Pago pendiente</p>
+                  <p className="text-xs text-amber-700 mt-0.5">
+                    Coordina el pago de{" "}
+                    <span className="font-bold">S/ {partido.precio_por_persona}</span>{" "}
+                    con el organizador al llegar a la cancha.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Descripción */}
             {partido.descripcion && (
               <p className="text-sm text-muted-foreground leading-relaxed">

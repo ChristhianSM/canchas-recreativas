@@ -278,6 +278,17 @@ html {
 }
 
 
+/* ── Pulso de borde para botón CTA ── */
+@keyframes border-pulse {
+  0%   { box-shadow: 0 0 0 0px rgba(22, 163, 74, 0.8); }
+  70%  { box-shadow: 0 0 0 8px rgba(22, 163, 74, 0);   }
+  100% { box-shadow: 0 0 0 0px rgba(22, 163, 74, 0);   }
+}
+
+.animate-border-pulse {
+  animation: border-pulse 0.8s ease-out 3;
+}
+
 /* ── Animaciones para botón de favoritos ── */
 @keyframes heart-pop {
   0% {

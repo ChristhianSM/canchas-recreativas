@@ -538,16 +538,8 @@ function CanchasContent() {
     setCanchasOcupadas((prev) => new Set([...prev, canchaId]));
   };
 
-  // Limpiar todos los filtros incluyendo la barra de búsqueda
   const handleClearAll = () => {
     setFilters(DEFAULT_FILTERS);
-    setDesktopUbicacion("");
-    setDesktopFecha(null);
-    setDesktopHora("");
-    setTempUbicacion("");
-    setTempDate(new Date());
-    setTempTime("");
-    window.location.href = "/canchas";
   };
 
   const openSearchModal = (
@@ -1455,9 +1447,16 @@ function CanchasContent() {
             {/* Contador siempre visible */}
             <div className="flex items-center justify-between mb-3">
               <p className="text-sm font-semibold text-gray-800">
-                {loading
-                  ? "Cargando..."
-                  : `${filtered.length} ${filtered.length === 1 ? "cancha encontrada" : "canchas encontradas"}`}
+                {loading ? (
+                  <span className="flex items-center gap-0.5">
+                    Cargando
+                    <span className="flex items-end gap-0.5 ml-0.5">
+                      <span className="animate-bounce h-1 w-1 rounded-full bg-gray-800 inline-block" style={{ animationDelay: '0ms' }} />
+                      <span className="animate-bounce h-1 w-1 rounded-full bg-gray-800 inline-block" style={{ animationDelay: '150ms' }} />
+                      <span className="animate-bounce h-1 w-1 rounded-full bg-gray-800 inline-block" style={{ animationDelay: '300ms' }} />
+                    </span>
+                  </span>
+                ) : `${filtered.length} ${filtered.length === 1 ? "cancha encontrada" : "canchas encontradas"}`}
               </p>
               <div className="flex items-center gap-2">
                 {/* Ver mapa — solo visible debajo de lg donde el sidebar no existe */}
@@ -1728,6 +1727,7 @@ function CanchasContent() {
                     }))}
                   selectedId={mobileMapSelectedId ?? undefined}
                   onSelectCancha={(id) => setMobileMapSelectedId(id)}
+                  userCoords={ubicacion ?? undefined}
                   centerLocation={
                     desktopUbicacion ||
                     searchParams.get("ubicacion") ||
@@ -1802,6 +1802,7 @@ function CanchasContent() {
                     }))}
                   selectedId={hoveredCanchaId ?? undefined}
                   onSelectCancha={setHoveredCanchaId}
+                  userCoords={ubicacion ?? undefined}
                   centerLocation={
                     desktopUbicacion ||
                     searchParams.get("ubicacion") ||
@@ -1821,22 +1822,103 @@ export default function CanchasPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex flex-col flex-1 bg-white md:bg-background">
+        <div className="flex flex-col flex-1 bg-white">
           <Header />
-          <main className="flex-1 container mx-auto px-4 py-8">
-            <div className="mb-6 space-y-2">
-              <div className="h-8 w-48 animate-pulse rounded-lg bg-muted" />
-              <div className="h-4 w-64 animate-pulse rounded-lg bg-muted" />
+
+          {/* Barra de búsqueda skeleton */}
+          <div className="bg-white border-b border-gray-100 py-3 sticky top-16 z-30">
+            <div className="container mx-auto px-4">
+              {/* Mobile */}
+              <div className="md:hidden flex items-center gap-2">
+                <div className="flex-1 h-11 animate-pulse rounded-md bg-gray-100" />
+                <div className="h-11 w-11 animate-pulse rounded-md bg-gray-100 shrink-0" />
+              </div>
+              {/* Desktop */}
+              <div className="hidden md:flex items-center gap-2 max-w-3xl mx-auto">
+                <div className="flex-1 h-12 animate-pulse rounded-xl bg-gray-100" />
+                <div className="h-12 w-24 animate-pulse rounded-xl bg-gray-100 shrink-0" />
+              </div>
             </div>
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div
-                  key={i}
-                  className="h-80 animate-pulse rounded-xl bg-muted"
-                />
-              ))}
+          </div>
+
+          {/* Contenido */}
+          <div className="flex flex-1 bg-[#eef3ee] pb-6">
+            <div className="container mx-auto px-4 flex bg-[#eef3ee]">
+
+              {/* Sidebar filtros (lg+) */}
+              <aside className="hidden lg:block w-[280px] xl:w-[300px] shrink-0 pr-3 pt-4">
+                <div className="sticky top-40 py-4 px-3 space-y-4 rounded-xl">
+                  <div className="h-5 w-20 animate-pulse rounded bg-gray-200" />
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <div key={i} className="h-10 animate-pulse rounded-xl bg-gray-200" />
+                  ))}
+                </div>
+              </aside>
+
+              {/* Columna central — cards */}
+              <main className="flex-1 min-w-0 pt-4 flex flex-col gap-4">
+                {/* Contador + sort */}
+                <div className="flex items-center justify-between">
+                  <div className="h-4 w-36 animate-pulse rounded-full bg-gray-200" />
+                  <div className="h-8 w-28 animate-pulse rounded-md bg-gray-200" />
+                </div>
+
+                {/* Cards mobile (< xl) */}
+                <div className="xl:hidden grid gap-4 grid-cols-1 sm:grid-cols-2">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="rounded-xl border border-gray-100 overflow-hidden animate-pulse bg-white">
+                      <div className="aspect-[2/1] bg-gray-200" />
+                      <div className="p-4 space-y-3">
+                        <div className="space-y-1.5">
+                          <div className="h-4 bg-gray-200 rounded-full w-4/5" />
+                          <div className="h-4 bg-gray-200 rounded-full w-3/5" />
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1 h-3 bg-gray-200 rounded-full" />
+                          <div className="h-6 w-14 bg-gray-200 rounded" />
+                        </div>
+                        <div className="flex gap-1.5">
+                          {[1, 2, 3, 4].map((j) => (
+                            <div key={j} className="h-9 flex-1 bg-gray-200 rounded-lg" />
+                          ))}
+                        </div>
+                        <div className="h-11 bg-gray-200 rounded-lg" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Cards desktop (xl+) */}
+                <div className="hidden xl:flex flex-col gap-3">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="flex rounded-xl border border-gray-100 overflow-hidden animate-pulse bg-white h-[210px] md:h-[270px]">
+                      <div className="w-[200px] shrink-0 bg-gray-200" />
+                      <div className="flex-1 p-4 flex flex-col gap-2.5">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-5 bg-gray-200 rounded-full" />
+                          <div className="h-5 w-16 bg-gray-200 rounded-full shrink-0" />
+                        </div>
+                        <div className="h-3 bg-gray-200 rounded-full w-2/3" />
+                        <div className="h-3 bg-gray-200 rounded-full w-1/4" />
+                        <div className="flex gap-1.5 mt-2">
+                          {[1, 2, 3, 4, 5].map((j) => (
+                            <div key={j} className="h-9 w-16 bg-gray-200 rounded-lg" />
+                          ))}
+                        </div>
+                        <div className="mt-auto h-10 w-32 bg-gray-200 rounded-lg" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </main>
+
+              {/* Mapa placeholder (xl+) */}
+              <aside className="hidden xl:flex flex-col w-[340px] shrink-0 pl-3 pt-4">
+                <div className="sticky top-40 h-[calc(100vh-180px)] animate-pulse rounded-xl bg-gray-200" />
+              </aside>
+
             </div>
-          </main>
+          </div>
         </div>
       }
     >

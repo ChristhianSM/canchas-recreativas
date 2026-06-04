@@ -102,6 +102,25 @@ export async function PATCH(
         tipo:       'cancelada',
       });
 
+      // Notificar a los jugadores que se habían unido
+      const { data: jugadores } = await sb
+        .from('partido_jugadores')
+        .select('usuario_id')
+        .eq('partido_id', id)
+        .eq('es_organizador', false);
+
+      if (jugadores && jugadores.length > 0) {
+        const mensajeJugador = `El partido del ${fechaLabel} en ${reserva.cancha_nombre} fue cancelado por el organizador.`;
+        await sb.from('notificaciones').insert(
+          jugadores.map((j: any) => ({
+            usuario_id: j.usuario_id,
+            reserva_id: partido.reserva_id,
+            mensaje:    mensajeJugador,
+            tipo:       'cancelada',
+          }))
+        );
+      }
+
       // Notificar a superadmins si hay devolución pendiente
       if (devolucion > 0) {
         const { data: admins } = await sb.from('usuarios').select('id').eq('rol', 'superadmin');

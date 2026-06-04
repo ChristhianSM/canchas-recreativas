@@ -24,6 +24,7 @@ import {
 import { getToken, getStoredUser } from "@/lib/api";
 import { getLocalDateString } from "@/lib/date-utils";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/components/ui/use-toast";
 import { MapaPartidoModal } from "@/components/mapa-partido-modal";
 import { PartidoDetalleModal } from "@/components/partido-detalle-modal";
 import {
@@ -188,7 +189,8 @@ function PartidoCard({
 
   return (
     <div
-      className={`bg-card rounded-2xl border shadow-sm p-4 flex flex-col gap-3 transition-shadow hover:shadow-md ${
+      onClick={() => onVerDetalle(partido)}
+      className={`bg-card rounded-2xl border shadow-sm p-4 flex flex-col gap-3 transition-shadow hover:shadow-md cursor-pointer ${
         esPendiente
           ? "border-amber-300 opacity-90"
           : lleno && !partido.ya_unido
@@ -237,7 +239,7 @@ function PartidoCard({
           </span>
           {partido.cancha_lat != null && (
             <button
-              onClick={() => onAbrirMapa(partido)}
+              onClick={(e) => { e.stopPropagation(); onAbrirMapa(partido); }}
               title="Ver cómo llegar"
               className="flex items-center gap-1 text-xs font-semibold text-primary hover:text-primary/70 transition-colors"
             >
@@ -254,12 +256,12 @@ function PartidoCard({
           {jugadores.slice(0, 5).map((j, i) => (
             <div
               key={j.usuario_id}
-              title={j.nombre}
+              title={j.nombre ?? `Jugador ${i + 1}`}
               className={`flex h-7 w-7 items-center justify-center rounded-full text-white text-[10px] font-bold border-2 border-card ${
                 AVATAR_COLORS[i % AVATAR_COLORS.length]
               }`}
             >
-              {j.inicial}
+              {j.inicial ?? String(i + 1)}
             </div>
           ))}
           {partido.jugadores_actuales > 5 && (
@@ -301,7 +303,7 @@ function PartidoCard({
       </div>
 
       {/* Precio + botón */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
         <div className="shrink-0">
           <p className="text-xl font-bold text-foreground leading-none">
             S/ {partido.precio_por_persona}
@@ -368,13 +370,6 @@ function PartidoCard({
         )}
       </div>
 
-      {/* Ver detalles */}
-      <button
-        onClick={() => onVerDetalle(partido)}
-        className="w-full text-center text-xs font-semibold text-primary hover:text-primary/70 py-1 transition-colors"
-      >
-        Ver detalles y jugadores
-      </button>
     </div>
   );
 }
@@ -443,10 +438,6 @@ function CrearPartidoSheet({
     jugadores_max: 9,
     descripcion: "",
   });
-
-  // Estados string para permitir borrar y escribir libremente en los inputs numéricos
-  const [equipoInput, setEquipoInput] = useState("10");
-  const [maxInput, setMaxInput] = useState("9");
 
   // Resetear y cargar canchas al abrir
   useEffect(() => {
@@ -517,8 +508,6 @@ function CrearPartidoSheet({
     setForm((prev) => {
       const equipo = Math.min(prev.jugadores_equipo, maxCancha);
       const max = Math.min(prev.jugadores_max, maxCancha - 1);
-      setEquipoInput(String(equipo));
-      setMaxInput(String(max));
       return { ...prev, cancha_id: id, hora: "", jugadores_equipo: equipo, jugadores_max: max };
     });
   };
@@ -786,22 +775,28 @@ function CrearPartidoSheet({
                   <label className="block text-xs font-medium text-muted-foreground mb-1">
                     Total del partido (para dividir el precio)
                   </label>
-                  <input
-                    type="number"
-                    required
-                    min={2}
-                    max={maxJugadores}
-                    value={equipoInput}
-                    onChange={(e) => setEquipoInput(e.target.value)}
-                    onBlur={() => {
-                      const equipo = Math.min(Math.max(parseInt(equipoInput, 10) || 2, 2), maxJugadores);
-                      const max = Math.max(1, Math.min(form.jugadores_max, equipo - 1));
-                      setEquipoInput(String(equipo));
-                      setMaxInput(String(max));
-                      setForm((p) => ({ ...p, jugadores_equipo: equipo, jugadores_max: max }));
-                    }}
-                    className="w-full h-11 px-3 rounded-xl border border-border bg-background text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  />
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = Math.max(form.jugadores_equipo - 1, 2);
+                        const max = Math.max(1, Math.min(form.jugadores_max, next - 1));
+                        setForm((p) => ({ ...p, jugadores_equipo: next, jugadores_max: max }));
+                      }}
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-background text-lg font-bold hover:bg-muted transition-colors disabled:opacity-40"
+                      disabled={form.jugadores_equipo <= 2}
+                    >−</button>
+                    <span className="flex-1 text-center text-xl font-bold text-foreground">{form.jugadores_equipo}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = Math.min(form.jugadores_equipo + 1, maxJugadores);
+                        setForm((p) => ({ ...p, jugadores_equipo: next }));
+                      }}
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-background text-lg font-bold hover:bg-muted transition-colors disabled:opacity-40"
+                      disabled={form.jugadores_equipo >= maxJugadores}
+                    >+</button>
+                  </div>
                   <p className="text-[10px] text-muted-foreground mt-1">
                     {canchaSeleccionada?.max_jugadores ? `Máx. ${maxJugadores} según la cancha` : "Ej: 10 para una pichanga de 5 vs 5"}
                   </p>
@@ -812,20 +807,27 @@ function CrearPartidoSheet({
                   <label className="block text-xs font-medium text-muted-foreground mb-1">
                     Cupos que abres (jugadores que buscas)
                   </label>
-                  <input
-                    type="number"
-                    required
-                    min={1}
-                    max={form.jugadores_equipo - 1}
-                    value={maxInput}
-                    onChange={(e) => setMaxInput(e.target.value)}
-                    onBlur={() => {
-                      const max = Math.min(Math.max(parseInt(maxInput, 10) || 1, 1), form.jugadores_equipo - 1);
-                      setMaxInput(String(max));
-                      setForm((p) => ({ ...p, jugadores_max: max }));
-                    }}
-                    className="w-full h-11 px-3 rounded-xl border border-border bg-background text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  />
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = Math.max(form.jugadores_max - 1, 1);
+                        setForm((p) => ({ ...p, jugadores_max: next }));
+                      }}
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-background text-lg font-bold hover:bg-muted transition-colors disabled:opacity-40"
+                      disabled={form.jugadores_max <= 1}
+                    >−</button>
+                    <span className="flex-1 text-center text-xl font-bold text-foreground">{form.jugadores_max}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = Math.min(form.jugadores_max + 1, form.jugadores_equipo - 1);
+                        setForm((p) => ({ ...p, jugadores_max: next }));
+                      }}
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-background text-lg font-bold hover:bg-muted transition-colors disabled:opacity-40"
+                      disabled={form.jugadores_max >= form.jugadores_equipo - 1}
+                    >+</button>
+                  </div>
                   {form.jugadores_max >= 1 && form.jugadores_max < form.jugadores_equipo && (
                     <p className="text-[10px] text-primary font-semibold mt-1">
                       Tu grupo: {form.jugadores_equipo - form.jugadores_max} · Buscas: {form.jugadores_max} más
@@ -1074,10 +1076,33 @@ function CrearPartidoSheet({
   );
 }
 
+// ── Helper: devolución estimada para cancelación de partido ───
+
+function calcularDevolucionEstimada(partido: PartidoAPI) {
+  const precio = partido.precio_total;
+
+  if (partido.estado === "pendiente") {
+    return { porcentaje: 100, devolucion: precio, motivo: "Partido no confirmado aún" };
+  }
+
+  const horasRestantes =
+    (new Date(`${partido.fecha}T${partido.hora}`).getTime() - Date.now()) / (1000 * 60 * 60);
+
+  let porcentaje = 0;
+  let motivo = "";
+  if (horasRestantes >= 4)      { porcentaje = 85; motivo = "Más de 4 h de anticipación"; }
+  else if (horasRestantes >= 2) { porcentaje = 60; motivo = "Entre 2 y 4 h de anticipación"; }
+  else if (horasRestantes >= 1) { porcentaje = 30; motivo = "Entre 1 y 2 h de anticipación"; }
+  else                          { porcentaje = 0;  motivo = "Menos de 1 h de anticipación"; }
+
+  return { porcentaje, devolucion: Math.round(precio * porcentaje / 100), motivo };
+}
+
 // ── Página principal ──────────────────────────────────────────
 
 export default function PartidosPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [partidos, setPartidos] = useState<PartidoAPI[]>([]);
   const [misPartidosPendientes, setMisPartidosPendientes] = useState<PartidoAPI[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1111,8 +1136,8 @@ export default function PartidosPage() {
     }
   }, []);
 
-  const fetchPartidos = useCallback(async () => {
-    setLoading(true);
+  const fetchPartidos = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     setError("");
     try {
       const token = getToken();
@@ -1129,7 +1154,7 @@ export default function PartidosPage() {
     } catch {
       setError("No se pudieron cargar los partidos. Intenta de nuevo.");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [deporte, soloHoy]);
 
@@ -1151,7 +1176,7 @@ export default function PartidosPage() {
       guardarUbicacion(coords);
       setUbicacion(coords);
     } catch {
-      // el usuario denegó o falló
+      toast({ title: "No se pudo obtener tu ubicación", description: "Verifica que hayas dado permiso al navegador.", variant: "destructive" });
     } finally {
       setLoadingUbicacion(false);
     }
@@ -1179,6 +1204,7 @@ export default function PartidosPage() {
       router.push("/login?redirect=/partidos");
       return;
     }
+    const partidoInfo = partidos.find((p) => p.id === id);
     setLoadingId(id);
     setAlertMsg("");
     try {
@@ -1191,7 +1217,13 @@ export default function PartidosPage() {
         setAlertMsg(data.error ?? "No se pudo unir al partido.");
         return;
       }
-      await fetchPartidos();
+      toast({
+        title: "¡Te uniste al partido!",
+        description: partidoInfo
+          ? `Recuerda pagar S/ ${partidoInfo.precio_por_persona} al organizador al llegar a la cancha.`
+          : "Recuerda pagar tu parte al llegar a la cancha.",
+      });
+      await fetchPartidos(true);
     } catch {
       setAlertMsg("Error de conexión. Intenta de nuevo.");
     } finally {
@@ -1270,7 +1302,7 @@ export default function PartidosPage() {
 
       {/* Hero + filtros */}
       <div className="bg-white border-b border-border">
-        <div className="container mx-auto px-4 pt-6 pb-4">
+        <div className="container mx-auto px-4 md:px-8 lg:px-12 pt-6 pb-4">
           <h1 className="text-2xl font-bold text-foreground">
             Partidos abiertos
           </h1>
@@ -1342,7 +1374,7 @@ export default function PartidosPage() {
 
       {/* Contenido */}
       <div className="flex-1 bg-[#eef3ee]">
-        <div className="container mx-auto px-4 py-5">
+        <div className="container mx-auto px-4 md:px-8 lg:px-12 py-5">
 
           {/* Alerta de error inline */}
           {alertMsg && (
@@ -1422,7 +1454,7 @@ export default function PartidosPage() {
               </div>
               <p className="font-semibold text-foreground mb-4">{error}</p>
               <button
-                onClick={fetchPartidos}
+                onClick={() => fetchPartidos()}
                 className="flex items-center gap-2 bg-primary text-primary-foreground font-bold px-5 py-2.5 rounded-xl"
               >
                 Reintentar
@@ -1500,40 +1532,77 @@ export default function PartidosPage() {
       )}
 
       {/* Dialog de confirmación para salir/cancelar */}
-      {confirmacion && (
-        <Dialog open onOpenChange={(v) => !v && setConfirmacion(null)}>
-          <DialogContent className="sm:max-w-sm">
-            <DialogTitle>
-              {confirmacion.tipo === "cancelar" ? "Cancelar partido" : "Salir del partido"}
-            </DialogTitle>
-            <p className="text-sm text-muted-foreground mt-1">
-              {confirmacion.tipo === "cancelar"
-                ? "¿Seguro que quieres cancelar este partido? Los jugadores serán notificados."
-                : "¿Seguro que quieres salir de este partido?"}
-            </p>
-            <div className="flex gap-3 mt-4">
-              <button
-                onClick={() => setConfirmacion(null)}
-                className="flex-1 py-2.5 rounded-xl border border-border text-sm font-semibold text-foreground hover:bg-muted/40 transition-colors"
-              >
-                Volver
-              </button>
-              <button
-                onClick={confirmarAccion}
-                className="flex-1 py-2.5 rounded-xl bg-destructive text-destructive-foreground text-sm font-bold hover:bg-destructive/90 transition-colors"
-              >
-                {confirmacion.tipo === "cancelar" ? "Sí, cancelar" : "Sí, salir"}
-              </button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
+      {confirmacion && (() => {
+        const partidoACancelar = confirmacion.tipo === "cancelar"
+          ? ([...partidos, ...misPartidosPendientes].find((p) => p.id === confirmacion.id) ?? null)
+          : null;
+        const dev = partidoACancelar ? calcularDevolucionEstimada(partidoACancelar) : null;
+
+        return (
+          <Dialog open onOpenChange={(v) => !v && setConfirmacion(null)}>
+            <DialogContent className="sm:max-w-sm">
+              <DialogTitle>
+                {confirmacion.tipo === "cancelar" ? "Cancelar partido" : "Salir del partido"}
+              </DialogTitle>
+
+              {confirmacion.tipo === "cancelar" && dev && partidoACancelar ? (
+                <div className="mt-2 space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Los jugadores serán notificados. Revisa la devolución estimada:
+                  </p>
+                  <div className="rounded-xl border border-border bg-secondary/40 px-4 py-3 space-y-2">
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                      Devolución estimada
+                    </p>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Pagado</span>
+                      <span className="font-semibold">S/ {partidoACancelar.precio_total}</span>
+                    </div>
+                    <div className="h-px bg-border" />
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Devolución ({dev.porcentaje}%)</span>
+                      <span className={`text-base font-bold ${dev.devolucion > 0 ? "text-primary" : "text-destructive"}`}>
+                        S/ {dev.devolucion}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">{dev.motivo}</p>
+                  </div>
+                  {dev.devolucion === 0 && (
+                    <p className="text-xs text-destructive font-medium">
+                      No se realizará ninguna devolución por cancelación tardía.
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground mt-1">
+                  ¿Seguro que quieres salir de este partido?
+                </p>
+              )}
+
+              <div className="flex gap-3 mt-4">
+                <button
+                  onClick={() => setConfirmacion(null)}
+                  className="flex-1 py-2.5 rounded-xl border border-border text-sm font-semibold text-foreground hover:bg-muted/40 transition-colors"
+                >
+                  Volver
+                </button>
+                <button
+                  onClick={confirmarAccion}
+                  className="flex-1 py-2.5 rounded-xl bg-destructive text-destructive-foreground text-sm font-bold hover:bg-destructive/90 transition-colors"
+                >
+                  {confirmacion.tipo === "cancelar" ? "Sí, cancelar" : "Sí, salir"}
+                </button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
 
       {/* Sheet para crear partido */}
       <CrearPartidoSheet
         open={showCrear}
         onClose={() => setShowCrear(false)}
-        onCreado={async () => { await fetchPartidos(); await fetchMisPartidosPendientes(); }}
+        onCreado={async () => { await Promise.all([fetchPartidos(true), fetchMisPartidosPendientes()]); }}
       />
     </div>
   );
