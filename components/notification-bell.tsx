@@ -31,6 +31,8 @@ export function NotificationBell() {
   useEffect(() => {
     setHydrated(true);
     cargar();
+    window.addEventListener('notifications-update', cargar);
+    return () => window.removeEventListener('notifications-update', cargar);
   }, [cargar]);
 
   // Recargar al abrir el sheet

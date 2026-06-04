@@ -217,7 +217,11 @@ export async function apiToggleFavorito(canchaId: string) {
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({ canchaId }),
   });
-  return res.json();
+  const data = await res.json();
+  if (res.ok && typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('notifications-update'));
+  }
+  return data;
 }
 
 // ── Partidos ───────────────────────────────────────────────────

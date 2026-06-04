@@ -15,8 +15,8 @@ import {
   Users,
   Newspaper,
   Phone,
-  CircleUser,
-  Swords,
+  Trophy,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,6 +24,7 @@ import {
   SheetContent,
   SheetTrigger,
   SheetTitle,
+  SheetClose,
 } from "@/components/ui/sheet";
 import {
   DropdownMenu,
@@ -125,9 +126,9 @@ export function Header() {
     { href: "/", label: "Inicio", icon: Home },
     { href: "/nosotros", label: "Nosotros", icon: Users },
     { href: "/canchas", label: "Canchas", icon: Calendar },
-    { href: "/partidos", label: "Partidos", icon: Swords },
+    { href: "/partidos", label: "Partidos", icon: Trophy },
     { href: "/noticias", label: "Noticias", icon: Newspaper },
-    { href: "/contacto", label: "Contáctanos", icon: Phone },
+    { href: "/contacto", label: "Contacto", icon: Phone },
     ...(user
       ? [{ href: "/mi-cuenta", label: "Mi Cuenta", icon: CalendarCheck }]
       : []),
@@ -157,10 +158,10 @@ export function Header() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`rounded-lg px-3 py-2 text-sm font-medium transition-all ${
+                  className={`rounded-lg px-3 py-2 text-sm transition-all ${
                     isActive
-                      ? "bg-primary/10 text-primary"
-                      : "text-foreground hover:bg-primary/10 hover:text-primary"
+                      ? "font-semibold text-primary"
+                      : "font-medium text-foreground hover:text-primary"
                   }`}
                 >
                   {item.label}
@@ -170,7 +171,9 @@ export function Header() {
         </nav>
 
         {/* Auth (tablet + desktop) — un solo DropdownMenu desde md+ */}
-        <div className="hidden md:flex items-center gap-3 shrink-0">
+        <div className="hidden md:flex items-center shrink-0">
+          <div className="w-px h-5 bg-border mx-4" />
+          <div className="flex items-center gap-2">
           <NotificationBell />
           {!hydrated ? (
             <div className="h-8 w-8 animate-pulse rounded-full bg-muted lg:w-32 lg:rounded-lg" />
@@ -218,28 +221,12 @@ export function Header() {
               </Button>
             </>
           )}
+          </div>
         </div>
 
         {/* Mobile Navigation */}
         <div className="flex items-center gap-1 md:hidden">
           <NotificationBell />
-          {/* Icono circular login/usuario */}
-          {hydrated &&
-            (user?.name ? (
-              <Link
-                href="/mi-cuenta"
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground"
-              >
-                {user.name.charAt(0).toUpperCase()}
-              </Link>
-            ) : (
-              <Link
-                href="/login"
-                className="flex items-center justify-center text-primary hover:bg-primary/10 transition-colors"
-              >
-                <CircleUser className="h-6 w-6" />
-              </Link>
-            ))}
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon">
@@ -247,11 +234,26 @@ export function Header() {
                 <span className="sr-only">Abrir menú</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-70 bg-card p-0">
-              {/* Título oculto para accesibilidad */}
-              <SheetTitle className="sr-only">Menú de navegación</SheetTitle>
-              <div className="h-16 border-b border-border" />
-              <nav className="flex flex-col gap-1 p-4 pt-0">
+            <SheetContent side="right" className="w-70 bg-card p-0" showCloseButton={false}>
+              {/* Header del sheet con logo y botón cerrar */}
+              <div className="flex h-16 items-center justify-between border-b border-border px-4">
+                <SheetTitle className="sr-only">Menú de navegación</SheetTitle>
+                <Link href="/" onClick={() => setOpen(false)}>
+                  <Image
+                    src="/images/logo-new.svg"
+                    alt="CanchaGo"
+                    width={120}
+                    height={40}
+                    className="h-8 w-auto object-contain"
+                  />
+                </Link>
+                <SheetClose className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted transition-colors">
+                  <X className="h-4 w-4 text-muted-foreground" />
+                  <span className="sr-only">Cerrar</span>
+                </SheetClose>
+              </div>
+
+              <nav className="flex flex-col gap-0.5 p-3">
                 {navItems
                   .filter((i) => i.href !== "/mi-cuenta")
                   .map((item) => {
@@ -261,64 +263,68 @@ export function Header() {
                         key={item.href}
                         href={item.href}
                         onClick={() => setOpen(false)}
-                        className={`flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium transition-colors ${
+                        className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${
                           isActive
-                            ? "bg-primary/10 text-primary"
-                            : "text-foreground hover:bg-secondary"
+                            ? "font-semibold text-primary"
+                            : "font-medium text-foreground hover:bg-secondary"
                         }`}
                       >
-                        <item.icon className="h-5 w-5 text-primary" />
+                        <item.icon className={`h-4 w-4 shrink-0 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
                         {item.label}
                       </Link>
                     );
                   })}
-                <div className="mt-4 flex flex-col gap-2 border-t border-border pt-4">
+
+                <div className="mt-2 border-t border-border pt-2">
                   {!hydrated ? (
-                    /* Skeleton mobile */
-                    <div className="space-y-2 px-1">
-                      <div className="h-10 w-full animate-pulse rounded-lg bg-muted" />
-                      <div className="h-10 w-full animate-pulse rounded-lg bg-muted" />
+                    <div className="space-y-1 px-1">
+                      <div className="h-9 w-full animate-pulse rounded-lg bg-muted" />
+                      <div className="h-9 w-full animate-pulse rounded-lg bg-muted" />
                     </div>
                   ) : user?.name ? (
                     <>
-                      <div className="flex items-center gap-3 px-4 py-2">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
+                      <div className="flex items-center gap-3 px-3 py-2.5">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
                           {user.name.charAt(0).toUpperCase()}
                         </div>
-                        <div>
-                          <p className="text-sm font-medium text-foreground">
-                            {user.name}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {user.email}
-                          </p>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-foreground truncate">{user.name}</p>
+                          <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                         </div>
                       </div>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start"
-                        asChild
+                      <Link
+                        href="/mi-cuenta"
+                        onClick={() => setOpen(false)}
+                        className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground hover:bg-secondary transition-colors"
                       >
-                        <Link href="/mi-cuenta" onClick={() => setOpen(false)}>
-                          <User className="mr-2 h-4 w-4" />
-                          Mi Cuenta
-                        </Link>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start text-destructive hover:text-destructive"
+                        <User className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        Mi Cuenta
+                      </Link>
+                      <button
                         onClick={handleLogout}
+                        className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-destructive hover:bg-destructive/5 transition-colors"
                       >
-                        <LogOut className="mr-2 h-4 w-4" />
+                        <LogOut className="h-4 w-4 shrink-0" />
                         Cerrar Sesión
-                      </Button>
+                      </button>
                     </>
                   ) : (
-                    <Button className="w-full justify-center" asChild>
-                      <Link href="/registro" onClick={() => setOpen(false)}>
+                    <div className="flex flex-col gap-1.5 px-1 pt-1">
+                      <Link
+                        href="/login"
+                        onClick={() => setOpen(false)}
+                        className="flex items-center justify-center rounded-lg px-3 py-2.5 text-sm font-medium text-foreground border border-border hover:bg-secondary transition-colors"
+                      >
+                        Iniciar Sesión
+                      </Link>
+                      <Link
+                        href="/registro"
+                        onClick={() => setOpen(false)}
+                        className="flex items-center justify-center rounded-lg px-3 py-2.5 text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                      >
                         Registrarse
                       </Link>
-                    </Button>
+                    </div>
                   )}
                 </div>
               </nav>

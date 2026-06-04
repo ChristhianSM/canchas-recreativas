@@ -430,6 +430,8 @@ export default function MisReservasPage() {
   const [partHistorialTotal, setPartHistorialTotal] = useState(0);
   const [partHistorialPage,  setPartHistorialPage]  = useState(0);
   const [partHistorialLoading, setPartHistorialLoading] = useState(false);
+  const [historialCargado, setHistorialCargado] = useState(false);
+  const [partHistorialCargado, setPartHistorialCargado] = useState(false);
   const [favoriteCanchasData, setFavoriteCanchasData] = useState<any[]>([]);
   const [loyalty, setLoyalty] = useState<LoyaltyData>({
     sellos: 0,
@@ -548,8 +550,6 @@ export default function MisReservasPage() {
         }
       });
       apiGetMisPartidos().then((data) => setMisPartidos(Array.isArray(data) ? data : []));
-      cargarHistorial(0);
-      cargarPartidosHistorial(0);
       apiGetLoyalty().then((data) =>
         setLoyalty({
           sellos: data.sellos ?? 0,
@@ -592,6 +592,23 @@ export default function MisReservasPage() {
     await apiToggleFavorito(canchaId);
     setFavoriteCanchasData((prev) => prev.filter((c) => c.id !== canchaId));
   };
+
+  // ── Scroll al top al cambiar de sección ──
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [activeSection]);
+
+  // ── Carga lazy del historial de reservas y partidos ──
+  useEffect(() => {
+    if (activeSection === "reservas" && !historialCargado) {
+      setHistorialCargado(true);
+      cargarHistorial(0);
+    }
+    if (activeSection === "partidos" && !partHistorialCargado) {
+      setPartHistorialCargado(true);
+      cargarPartidosHistorial(0);
+    }
+  }, [activeSection]);
 
   // ── Carga perfil al entrar a la sección ──
   useEffect(() => {
@@ -720,29 +737,42 @@ export default function MisReservasPage() {
         <Header />
 
         {/* Mobile skeleton */}
-        <div className="lg:hidden container mx-auto px-4 py-6 space-y-4">
-          <div className="space-y-1.5">
-            <div className="h-7 w-48 animate-pulse rounded-lg bg-muted" />
-            <div className="h-4 w-36 animate-pulse rounded-lg bg-muted" />
+        <div className="lg:hidden flex-1 bg-green-50/60 px-4 py-5 space-y-5">
+          {/* Avatar + saludo */}
+          <div className="bg-white rounded-xl p-4 flex items-center gap-3">
+            <div className="h-14 w-14 rounded-full bg-muted animate-pulse shrink-0" />
+            <div className="space-y-2">
+              <div className="h-5 w-36 bg-muted animate-pulse rounded-lg" />
+              <div className="h-3 w-24 bg-muted animate-pulse rounded-lg" />
+            </div>
           </div>
-          <div className="flex gap-2 overflow-x-auto pb-1">
+
+          {/* Próxima reserva */}
+          <div className="space-y-2">
+            <div className="h-4 w-36 bg-muted animate-pulse rounded" />
+            <div className="bg-white rounded-xl p-4 flex items-center gap-3">
+              <div className="h-14 w-14 rounded-xl bg-muted animate-pulse shrink-0" />
+              <div className="flex-1 space-y-2">
+                <div className="h-4 w-40 bg-muted animate-pulse rounded" />
+                <div className="h-3 w-32 bg-muted animate-pulse rounded" />
+                <div className="h-3 w-20 bg-muted animate-pulse rounded" />
+              </div>
+            </div>
+          </div>
+
+          {/* Grid 2x2 accesos rápidos */}
+          <div className="grid grid-cols-2 gap-3">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-9 w-28 shrink-0 animate-pulse rounded-lg bg-muted" />
-            ))}
-          </div>
-          <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="flex overflow-hidden rounded-xl border border-border bg-card">
-                <div className="h-36 w-36 shrink-0 animate-pulse bg-muted" />
-                <div className="flex flex-1 flex-col gap-3 p-4">
-                  <div className="h-4 w-20 animate-pulse rounded bg-muted" />
-                  <div className="h-5 w-40 animate-pulse rounded bg-muted" />
-                  <div className="h-3 w-32 animate-pulse rounded bg-muted" />
-                  <div className="h-3 w-24 animate-pulse rounded bg-muted" />
-                </div>
+              <div key={i} className="bg-white rounded-xl p-4">
+                <div className="h-9 w-9 rounded-xl bg-muted animate-pulse mb-3" />
+                <div className="h-3 w-16 bg-muted animate-pulse rounded mb-1.5" />
+                <div className="h-5 w-20 bg-muted animate-pulse rounded" />
               </div>
             ))}
           </div>
+
+          {/* CTA buscar cancha */}
+          <div className="h-12 w-full rounded-xl bg-muted animate-pulse" />
         </div>
 
         {/* Desktop skeleton */}
@@ -1047,7 +1077,7 @@ export default function MisReservasPage() {
           </aside>
 
           {/* ── Contenido principal ────────────────────────────── */}
-          <main className="flex-1 overflow-y-auto p-6">
+          <main className="flex-1 overflow-y-auto p-6 pr-0">
             {/* ── SECCIÓN: MI CUENTA (dashboard) ── */}
             {activeSection === "cuenta" && (
               <div className="max-w-4xl">
@@ -1402,7 +1432,9 @@ export default function MisReservasPage() {
                     <TabsTrigger value="historial" className="gap-1.5">
                       <Clock className="h-4 w-4" />
                       Historial
-                      {historialTotal > 0 && (
+                      {historialLoading ? (
+                        <span className="ml-1 h-3.5 w-3.5 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground" />
+                      ) : historialTotal > 0 && (
                         <Badge
                           variant="secondary"
                           className="ml-1 h-5 min-w-5 px-1.5 text-xs"
@@ -2049,7 +2081,9 @@ export default function MisReservasPage() {
                         <TabsTrigger value="historial" className="gap-1.5">
                           <Clock className="h-4 w-4" />
                           Historial
-                          {partHistorialTotal > 0 && (
+                          {partHistorialLoading ? (
+                            <span className="ml-1 h-3.5 w-3.5 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground" />
+                          ) : partHistorialTotal > 0 && (
                             <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1.5 text-xs">
                               {partHistorialTotal}
                             </Badge>
@@ -2212,7 +2246,11 @@ export default function MisReservasPage() {
                     </TabsTrigger>
                     <TabsTrigger value="historial" className="flex-1 gap-1.5">
                       Historial
-                      {historialTotal > 0 && <Badge variant="secondary" className="ml-1 h-4 min-w-4 px-1 text-xs">{historialTotal}</Badge>}
+                      {historialLoading ? (
+                        <span className="ml-1 h-3 w-3 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground" />
+                      ) : historialTotal > 0 && (
+                        <Badge variant="secondary" className="ml-1 h-4 min-w-4 px-1 text-xs">{historialTotal}</Badge>
+                      )}
                     </TabsTrigger>
                   </TabsList>
                   <TabsContent value="proximas" className="space-y-3">
@@ -2470,7 +2508,11 @@ export default function MisReservasPage() {
                         </TabsTrigger>
                         <TabsTrigger value="historial" className="flex-1 gap-1.5">
                           Historial
-                          {partHistorialTotal > 0 && <Badge variant="secondary" className="ml-1 h-4 min-w-4 px-1 text-xs">{partHistorialTotal}</Badge>}
+                          {partHistorialLoading ? (
+                            <span className="ml-1 h-3 w-3 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground" />
+                          ) : partHistorialTotal > 0 && (
+                            <Badge variant="secondary" className="ml-1 h-4 min-w-4 px-1 text-xs">{partHistorialTotal}</Badge>
+                          )}
                         </TabsTrigger>
                       </TabsList>
                       <TabsContent value="proximos" className="space-y-3">
