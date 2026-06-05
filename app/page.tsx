@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, memo } from "react";
+import { useState, useEffect, useRef, memo, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -222,6 +222,11 @@ export default function HomePage() {
   const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [slideIndex, setSlideIndex] = useState(0);
   const [loadingSearch, setLoadingSearch] = useState(false);
+
+  const [newsletterEmail, setNewsletterEmail] = useState("");
+  const [newsletterStatus, setNewsletterStatus] = useState<
+    "idle" | "loading" | "success" | "ya_suscrito" | "error"
+  >("idle");
 
   const locationRef = useRef<HTMLDivElement>(null);
   const dateRef = useRef<HTMLDivElement>(null);
@@ -499,6 +504,32 @@ export default function HomePage() {
     if (ubicacion !== "Mi ubicación") params.set("ubicacion", ubicacion);
     router.push(`/canchas?${params.toString()}`);
   };
+
+  const handleNewsletter = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newsletterEmail || newsletterStatus === "loading") return;
+    setNewsletterStatus("loading");
+    try {
+      const res = await fetch("/api/newsletter/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: newsletterEmail }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setNewsletterStatus("error");
+        return;
+      }
+      if (data.status === "ya_suscrito") {
+        setNewsletterStatus("ya_suscrito");
+      } else {
+        setNewsletterStatus("success");
+        setNewsletterEmail("");
+      }
+    } catch {
+      setNewsletterStatus("error");
+    }
+  }, [newsletterEmail, newsletterStatus]);
 
   // Generar calendario para el mes mostrado (puede diferir del mes seleccionado)
   const generateCalendar = () => {
@@ -1359,28 +1390,68 @@ export default function HomePage() {
 
             {/* Columna derecha — formulario */}
             <div>
-              <form
-                className="flex flex-col sm:flex-row gap-3 w-full"
-                onSubmit={(e) => e.preventDefault()}
-              >
-                <div className="relative flex-1">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/50" />
-                  <input
-                    type="email"
-                    placeholder="tu@correo.com"
-                    className="w-full pl-9 pr-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder:text-white/45 text-sm focus:outline-none focus:border-white/60 transition-colors"
-                  />
+              {newsletterStatus === "success" || newsletterStatus === "ya_suscrito" ? (
+                <div className="flex items-start gap-3 bg-white/10 border border-white/20 rounded-xl px-5 py-4">
+                  <CheckCircle className="h-5 w-5 text-[#4ade80] shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-white font-semibold text-sm">
+                      {newsletterStatus === "success"
+                        ? "¡Listo! Ya estás suscrito."
+                        : "Este correo ya está registrado."}
+                    </p>
+                    <p className="text-white/60 text-xs mt-0.5">
+                      {newsletterStatus === "success"
+                        ? "Te avisaremos sobre torneos y novedades en Piura."
+                        : "Recibirás nuestras novedades cuando las publiquemos."}
+                    </p>
+                  </div>
                 </div>
-                <button
-                  type="submit"
-                  className="px-6 py-3 bg-white text-primary font-bold rounded-xl text-sm hover:bg-white/90 active:scale-[0.98] transition-all whitespace-nowrap"
+              ) : (
+                <form
+                  className="flex flex-col sm:flex-row gap-3 w-full"
+                  onSubmit={handleNewsletter}
                 >
-                  Suscribirme
-                </button>
-              </form>
-              <p className="text-white/40 text-xs mt-3">
-                Al suscribirte aceptas recibir contenido informativo de CanchaGo
-              </p>
+                  <div className="relative flex-1">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/50" />
+                    <input
+                      type="email"
+                      value={newsletterEmail}
+                      onChange={(e) => {
+                        setNewsletterEmail(e.target.value);
+                        if (newsletterStatus === "error") setNewsletterStatus("idle");
+                      }}
+                      placeholder="tu@correo.com"
+                      required
+                      disabled={newsletterStatus === "loading"}
+                      className="w-full pl-9 pr-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder:text-white/45 text-sm focus:outline-none focus:border-white/60 transition-colors disabled:opacity-60"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={newsletterStatus === "loading"}
+                    className="px-6 py-3 bg-white text-primary font-bold rounded-xl text-sm hover:bg-white/90 active:scale-[0.98] transition-all whitespace-nowrap disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {newsletterStatus === "loading" ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Enviando...
+                      </>
+                    ) : (
+                      "Suscribirme"
+                    )}
+                  </button>
+                </form>
+              )}
+              {newsletterStatus === "error" && (
+                <p className="text-red-300 text-xs mt-2">
+                  Ocurrió un error. Por favor intenta de nuevo.
+                </p>
+              )}
+              {newsletterStatus !== "success" && newsletterStatus !== "ya_suscrito" && (
+                <p className="text-white/40 text-xs mt-3">
+                  Al suscribirte aceptas recibir contenido informativo de CanchaGo
+                </p>
+              )}
             </div>
           </div>
         </div>

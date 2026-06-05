@@ -13,7 +13,13 @@ export default function AuthCallbackPage() {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    const handleCallback = async () => {
+      const code = new URLSearchParams(window.location.search).get('code');
+      if (code) {
+        await supabase.auth.exchangeCodeForSession(code);
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         router.replace('/login');
         return;
@@ -53,7 +59,9 @@ export default function AuthCallbackPage() {
       window.dispatchEvent(new Event('user-login'));
 
       router.replace('/');
-    });
+    };
+
+    handleCallback();
   }, [router]);
 
   return (
