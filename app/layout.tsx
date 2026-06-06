@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   keywords: ['canchas deportivas', 'canchas piura', 'reservar cancha', 'fútbol piura', 'alquiler cancha'],
   authors: [{ name: 'CanchaGo' }],
   creator: 'CanchaGo',
-  metadataBase: new URL('https://canchago.pe'),
+  metadataBase: new URL('https://www.tucanchago.com'),
   openGraph: {
     type: 'website',
     locale: 'es_PE',

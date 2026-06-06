@@ -27,6 +27,30 @@ import { SportType } from "@/lib/types";
 import { getLocalDateString } from "@/lib/date-utils";
 import { guardarUbicacion, guardarCiudad, obtenerCiudadGuardada } from "@/lib/geolocation-utils";
 import { getAllDistricts } from "@/lib/filter-utils";
+import { generateFaqSchema } from "@/lib/seo-utils";
+
+const HOME_FAQS = [
+  {
+    question: '¿Cómo funciona CanchaGo?',
+    answer: 'Busca una cancha por deporte, fecha y hora. Elige el horario disponible y confirma tu reserva pagando un adelanto con Yape, Plin o transferencia bancaria. Recibes la confirmación al instante, sin llamadas.',
+  },
+  {
+    question: '¿Cómo pago mi reserva?',
+    answer: 'Aceptamos Yape, Plin y transferencia bancaria. Puedes pagar el monto completo o dejar un adelanto y cancelar el saldo restante el día de tu reserva.',
+  },
+  {
+    question: '¿Puedo cancelar o modificar mi reserva?',
+    answer: 'Sí. Puedes cancelar tu reserva desde la sección "Mis reservas" en tu perfil. Consulta las políticas de cancelación de cada cancha para conocer los plazos y condiciones de devolución.',
+  },
+  {
+    question: '¿En qué zonas de Piura tienen canchas disponibles?',
+    answer: 'TuCanchaGo tiene canchas en los principales distritos de Piura, incluyendo Piura Centro, Castilla, Sullana, Catacaos, La Unión y más. Usa el mapa interactivo para encontrar canchas cerca de ti.',
+  },
+  {
+    question: '¿Cómo registro mi cancha en CanchaGo?',
+    answer: 'Escríbenos por WhatsApp al +51 959 686 193 y te explicamos el proceso. Nos encargamos de configurar tu cancha desde cero: horarios, precios y disponibilidad en tiempo real.',
+  },
+];
 
 type Cancha = {
   id: string;
@@ -557,6 +581,10 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col flex-1 bg-white dark:bg-background">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(generateFaqSchema(HOME_FAQS)) }}
+      />
       <Header />
 
       {/* ── HERO ─────────────────────────────────────────────────── */}

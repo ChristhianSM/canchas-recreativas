@@ -46,6 +46,14 @@ export function Header() {
   const router = useRouter();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+
+  const AUTH_PAGES = ['/login', '/registro', '/recuperar-contrasena', '/auth/callback'];
+  const loginHref = AUTH_PAGES.includes(pathname)
+    ? '/login'
+    : `/login?redirect=${encodeURIComponent(pathname)}`;
+  const registroHref = AUTH_PAGES.includes(pathname)
+    ? '/registro'
+    : `/registro?redirect=${encodeURIComponent(pathname)}`;
   const [user, setUser] = useState<AuthUser | null>(null);
   const [hydrated, setHydrated] = useState(false);
 
@@ -211,13 +219,13 @@ export function Header() {
           ) : (
             <>
               <Link
-                href="/login"
+                href={loginHref}
                 className="hidden lg:block text-sm font-medium text-foreground hover:text-primary transition-colors"
               >
                 Iniciar Sesión
               </Link>
               <Button size="sm" asChild>
-                <Link href="/registro">Registrarse</Link>
+                <Link href={registroHref}>Registrarse</Link>
               </Button>
             </>
           )}
@@ -311,14 +319,14 @@ export function Header() {
                   ) : (
                     <div className="flex flex-col gap-1.5 px-1 pt-1">
                       <Link
-                        href="/login"
+                        href={loginHref}
                         onClick={() => setOpen(false)}
                         className="flex items-center justify-center rounded-lg px-3 py-2.5 text-sm font-medium text-foreground border border-border hover:bg-secondary transition-colors"
                       >
                         Iniciar Sesión
                       </Link>
                       <Link
-                        href="/registro"
+                        href={registroHref}
                         onClick={() => setOpen(false)}
                         className="flex items-center justify-center rounded-lg px-3 py-2.5 text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
                       >

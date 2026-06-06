@@ -1489,11 +1489,22 @@ function CanchasContent() {
                   </button>
                 )}
                 <div className="relative flex items-center">
-                  <SlidersHorizontal className="pointer-events-none absolute left-2 h-4 w-4 text-gray-500" />
+                  <div className="flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 pointer-events-none">
+                    <SlidersHorizontal className="h-4 w-4 text-gray-500 shrink-0" />
+                    <span className="hidden sm:inline text-sm font-semibold text-gray-700">
+                      {sortBy === "relevancia"
+                        ? ubicacion ? "Más cercanas" : "Relevancia"
+                        : sortBy === "precio-asc" ? "Menor precio"
+                        : sortBy === "precio-desc" ? "Mayor precio"
+                        : sortBy === "rating" ? "Mejor puntuación"
+                        : "Nombre (A-Z)"}
+                    </span>
+                    <ArrowUpDown className="hidden sm:block h-3 w-3 text-gray-400 shrink-0" />
+                  </div>
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value as SortOption)}
-                    className="appearance-none rounded-md border border-gray-300 bg-white pl-8 pr-3 sm:pr-8 py-1.5 text-sm font-semibold text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-0 cursor-pointer"
+                    className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
                   >
                     <option value="relevancia">{ubicacion ? "Más cercanas" : "Relevancia"}</option>
                     <option value="precio-asc">Menor precio</option>

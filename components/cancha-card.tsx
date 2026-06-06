@@ -608,7 +608,13 @@ export function CanchaCard({
         </DialogContent>
       </Dialog>
 
-      <Card className="group overflow-hidden border-border bg-card transition-all hover:shadow-lg hover:shadow-primary/10 hover:-translate-y-1">
+      <Card
+        className="group overflow-hidden border-border bg-card transition-all hover:shadow-lg hover:shadow-primary/10 hover:-translate-y-1 cursor-pointer"
+        onClick={(e) => {
+          if ((e.target as HTMLElement).closest('button, a')) return;
+          router.push(`/cancha/${cancha.id}`);
+        }}
+      >
         {/* Imagen */}
         <div className="relative">
           <Link href={`/cancha/${cancha.id}`}>
