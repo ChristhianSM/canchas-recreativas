@@ -233,7 +233,7 @@ export function AdvancedFiltersComponent({
   }) =>
     isSidebar ? (
       // Sidebar: tarjeta individual por sección con ícono circular
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm mb-2">
+      <div className="bg-card rounded-xl border border-border overflow-hidden shadow-sm mb-2">
         <button
           type="button"
           tabIndex={-1}
@@ -243,7 +243,7 @@ export function AdvancedFiltersComponent({
             e.currentTarget.blur();
             toggleSection(id);
           }}
-          className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-gray-50 transition-colors focus:outline-none"
+          className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-muted/50 transition-colors focus:outline-none"
         >
           <div className="flex items-center gap-3">
             {iconBg && (
@@ -253,28 +253,28 @@ export function AdvancedFiltersComponent({
                 {icon}
               </div>
             )}
-            <span className="text-sm font-semibold text-gray-800">{title}</span>
+            <span className="text-sm font-semibold text-foreground">{title}</span>
             {badge !== undefined && badge > 0 && (
-              <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#16a34a] text-[9px] font-bold text-white">
+              <span className="flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
                 {badge}
               </span>
             )}
           </div>
           <ChevronDown
-            className={`h-4 w-4 text-gray-400 transition-transform duration-200 shrink-0 ${expandedSections[id] ? "rotate-180" : ""}`}
+            className={`h-4 w-4 text-muted-foreground transition-transform duration-200 shrink-0 ${expandedSections[id] ? "rotate-180" : ""}`}
           />
         </button>
         <div
           className={`transition-all duration-300 ease-in-out overflow-hidden ${expandedSections[id] ? "max-h-500 opacity-100" : "max-h-0 opacity-0"}`}
         >
-          <div className="px-4 pb-4 pt-1 border-t border-gray-100">
+          <div className="px-4 pb-4 pt-1 border-t border-border">
             {children}
           </div>
         </div>
       </div>
     ) : (
       // Sheet: misma tarjeta con emoji
-      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <div className="bg-card border border-border rounded-lg overflow-hidden">
         <button
           type="button"
           tabIndex={-1}
@@ -284,7 +284,7 @@ export function AdvancedFiltersComponent({
             e.currentTarget.blur();
             toggleSection(id);
           }}
-          className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-gray-50 transition-colors focus:outline-none"
+          className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-muted/50 transition-colors focus:outline-none"
         >
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <span className="text-sm font-semibold text-foreground flex items-center gap-2">
@@ -292,19 +292,19 @@ export function AdvancedFiltersComponent({
               <span>{title}</span>
             </span>
             {badge !== undefined && badge > 0 && (
-              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#16a34a] text-[10px] font-bold text-white shrink-0">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground shrink-0">
                 {badge}
               </span>
             )}
           </div>
           <ChevronDown
-            className={`h-4 w-4 text-gray-400 transition-transform duration-200 shrink-0 ml-2 ${expandedSections[id] ? "rotate-180" : ""}`}
+            className={`h-4 w-4 text-muted-foreground transition-transform duration-200 shrink-0 ml-2 ${expandedSections[id] ? "rotate-180" : ""}`}
           />
         </button>
         <div
           className={`transition-all duration-300 ease-in-out overflow-hidden ${expandedSections[id] ? "max-h-500 opacity-100" : "max-h-0 opacity-0"}`}
         >
-          <div className="px-4 pb-4 pt-1 border-t border-gray-100">
+          <div className="px-4 pb-4 pt-1 border-t border-border">
             {children}
           </div>
         </div>
@@ -363,9 +363,9 @@ export function AdvancedFiltersComponent({
           </button>
         ) : (
           <div className="mt-2 space-y-3">
-            <div className="flex items-center justify-between px-3 py-2 bg-green-50 rounded-md border border-green-200">
+            <div className="flex items-center justify-between px-3 py-2 bg-green-500/10 rounded-md border border-green-500/30">
               <span className="text-sm text-foreground flex items-center gap-2">
-                <MapPin className="h-4 w-4 text-[#16a34a]" />
+                <MapPin className="h-4 w-4 text-primary" />
                 Ubicación activada
               </span>
               <button
@@ -373,14 +373,14 @@ export function AdvancedFiltersComponent({
                   limpiarUbicacion();
                   if (onUbicacionLimpiada) onUbicacionLimpiada();
                 }}
-                className="text-xs text-gray-500 hover:text-gray-700 underline"
+                className="text-xs text-muted-foreground hover:text-foreground underline"
               >
                 Desactivar
               </button>
             </div>
             {/* Radio */}
             <div>
-              <p className="text-xs text-gray-500 mb-2">Radio de búsqueda</p>
+              <p className="text-xs text-muted-foreground mb-2">Radio de búsqueda</p>
               <div className="grid grid-cols-4 gap-1.5">
                 {[
                   { value: undefined, label: "Todas" },
@@ -396,8 +396,8 @@ export function AdvancedFiltersComponent({
                     className={cn(
                       "px-2 py-1.5 text-xs font-medium rounded-md transition-colors border",
                       filters.radioKm === opt.value
-                        ? "bg-[#16a34a] text-white border-[#16a34a]"
-                        : "bg-white text-foreground border-gray-200 hover:border-[#16a34a]",
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-card text-foreground border-border hover:border-primary",
                     )}
                   >
                     {opt.label}
@@ -556,8 +556,8 @@ export function AdvancedFiltersComponent({
               className={cn(
                 "rounded-lg border px-2 py-2 text-xs font-medium transition-all focus:outline-none",
                 filters.minJugadores === n
-                  ? "border-[#16a34a] bg-[#16a34a] text-white"
-                  : "border-gray-200 bg-white text-foreground hover:border-[#16a34a]",
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-card text-foreground hover:border-primary",
               )}
             >
               {n === 0 ? "Todos" : `${n}+`}
@@ -574,7 +574,7 @@ export function AdvancedFiltersComponent({
         title="Precio por hora"
       >
         <div className="mt-3">
-          <div className="flex justify-between text-xs text-gray-500 mb-3">
+          <div className="flex justify-between text-xs text-muted-foreground mb-3">
             <span>S/ {filters.priceRange[0]}</span>
             <span>S/ {filters.priceRange[1]}</span>
           </div>
@@ -632,8 +632,8 @@ export function AdvancedFiltersComponent({
               className={cn(
                 "rounded-lg border px-2 py-2 text-xs font-medium transition-all text-center focus:outline-none",
                 filters.minRating === opt.value
-                  ? "border-[#16a34a] bg-[#16a34a] text-white"
-                  : "border-gray-200 bg-white text-foreground hover:border-[#16a34a]",
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-card text-foreground hover:border-primary",
               )}
             >
               {opt.label}
@@ -710,7 +710,7 @@ export function AdvancedFiltersComponent({
             className="p-0 flex flex-col sm:max-w-md w-full"
           >
             {/* Header fijo con título y botón de cerrar */}
-            <div className="sticky top-0 z-10 bg-white border-b border-border px-6 py-4 flex items-center justify-between">
+            <div className="sticky top-0 z-10 bg-card border-b border-border px-6 py-4 flex items-center justify-between">
               <SheetTitle className="text-lg font-semibold">Filtros</SheetTitle>
               {/* El botón de cerrar ya viene por defecto en SheetContent */}
             </div>
@@ -745,7 +745,7 @@ export function AdvancedFiltersComponent({
 
             {/* Footer sticky con botón de ver resultados */}
             {resultCount !== undefined && (
-              <div className="sticky bottom-0 z-10 bg-white border-t border-border px-6 py-4">
+              <div className="sticky bottom-0 z-10 bg-card border-t border-border px-6 py-4">
                 <button
                   onClick={() => setIsOpen(false)}
                   className="w-full bg-[#16a34a] hover:bg-[#15803d] text-white font-semibold py-3 rounded-lg transition-colors"

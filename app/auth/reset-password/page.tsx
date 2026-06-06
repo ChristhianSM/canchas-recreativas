@@ -26,100 +26,58 @@ function ResetPasswordContent() {
   );
 
   useEffect(() => {
-    // Leer parámetros tanto de query string como del hash (#)
-    // Los emails modernos usan hash para evitar que los escáneres de seguridad consuman el token
+    // Leer parámetros de query string y del hash (el hash nunca se envía al servidor,
+    // así que los escáneres de email no pueden consumir los tokens)
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
 
     const allParams = Array.from(searchParams.entries());
-    const debugMsg = `URL params: ${JSON.stringify(allParams)}, hash: ${window.location.hash.substring(0, 40)}`;
+    const debugMsg = `params: ${JSON.stringify(allParams)}, hash keys: ${Array.from(hashParams.keys()).join(',')}`;
     setDebugInfo(debugMsg);
     console.log(debugMsg);
 
-    // Nuevo flujo PKCE: el code viene como query param ?code=xxx
-    const code = searchParams.get('code');
-    const accessToken = searchParams.get('access_token') || hashParams.get('access_token');
+    const code      = searchParams.get('code');
+    const tokenHash = hashParams.get('token_hash');
+    const accessToken  = searchParams.get('access_token') || hashParams.get('access_token');
     const refreshToken = searchParams.get('refresh_token') || hashParams.get('refresh_token');
-    const error_code = searchParams.get('error_code') || hashParams.get('error_code');
+    const error_code   = searchParams.get('error_code')   || hashParams.get('error_code');
     const error_description = searchParams.get('error_description') || hashParams.get('error_description');
 
-    // Verificar si hay error en los parámetros
     if (error_code) {
       console.error('Error from Supabase:', error_code, error_description);
-      let errorMsg = 'El link expiró o ya fue usado. Solicita uno nuevo.';
-      
-      if (error_code === 'invalid_code') {
-        errorMsg = 'El código es inválido. Solicita un nuevo link.';
-      } else if (error_code === 'expired_code') {
-        errorMsg = 'El link expiró. Solicita uno nuevo.';
-      } else if (error_code === 'access_denied') {
-        errorMsg = 'Acceso denegado. Solicita un nuevo link.';
-      }
-      
-      setError(errorMsg);
+      setError('El link expiró o ya fue usado. Solicita uno nuevo.');
       return;
     }
 
     if (code) {
-      console.log('Using PKCE flow with code:', code.substring(0, 10) + '...');
-      // Intercambiar el code por una sesión válida
+      // Flujo PKCE: Supabase redirigió con ?code=
       supabase.auth.exchangeCodeForSession(code).then(({ error: err }) => {
+        if (err) { setError('El link expiró o ya fue usado. Solicita uno nuevo.'); }
+        else      { setSessionReady(true); }
+      });
+    } else if (tokenHash) {
+      // Flujo token_hash (fragment): el más seguro contra escáneres de email
+      supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'recovery' }).then(({ error: err }) => {
         if (err) {
-          console.error('Error exchanging code:', err);
-          let errorMsg = 'El link expiró o ya fue usado. Solicita uno nuevo.';
-          
-          if (err.message.includes('invalid')) {
-            errorMsg = 'El código es inválido. Solicita un nuevo link.';
-          } else if (err.message.includes('expired')) {
-            errorMsg = 'El link expiró. Solicita uno nuevo.';
-          }
-          
-          setError(errorMsg);
+          console.error('Error verifying token_hash:', err);
+          setError('El link expiró o ya fue usado. Solicita uno nuevo.');
         } else {
-          console.log('Session established successfully');
           setSessionReady(true);
         }
       });
     } else if (accessToken && refreshToken) {
-      console.log('Using legacy flow with tokens');
-      // Flujo legacy con tokens en URL
-      supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken
-      }).then(({ error: err }) => {
-        if (err) {
-          console.error('Error setting session:', err);
-          setError('El link expiró o ya fue usado. Solicita uno nuevo.');
-        } else {
-          console.log('Legacy session established successfully');
-          setSessionReady(true);
-        }
-      });
+      // Flujo legacy con tokens directos
+      supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
+        .then(({ error: err }) => {
+          if (err) { setError('El link expiró o ya fue usado. Solicita uno nuevo.'); }
+          else      { setSessionReady(true); }
+        });
     } else {
-      console.log('No code or tokens found, checking existing session');
-      // Verificar si ya hay una sesión activa
+      // Sin tokens: verificar sesión existente (ej. usuario ya autenticado)
       supabase.auth.getSession().then(({ data: { session }, error: err }) => {
-        if (err) {
-          console.error('Error getting session:', err);
+        if (err || !session) {
           setError('El link expiró o ya fue usado. Solicita uno nuevo.');
-        } else if (session) {
-          console.log('Found existing session');
-          setSessionReady(true);
         } else {
-          console.log('No existing session, listening for auth changes');
-          // Escuchar cambios de autenticación como fallback
-          const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-            console.log('Auth state change:', event);
-            if (event === 'PASSWORD_RECOVERY') setSessionReady(true);
-          });
-          
-          // Si no hay sesión después de 3 segundos, mostrar error
-          setTimeout(() => {
-            if (!sessionReady) {
-              setError('El link expiró o ya fue usado. Solicita uno nuevo.');
-            }
-          }, 3000);
-          
-          return () => subscription.unsubscribe();
+          setSessionReady(true);
         }
       });
     }

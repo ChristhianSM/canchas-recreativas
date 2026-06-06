@@ -1429,7 +1429,7 @@ function CanchasContent() {
           {/* ── COL 1: Filtros (lg+, ≥1024px) ────────────────────── */}
           <aside className="hidden lg:block w-[280px] xl:w-[300px] shrink-0 pr-3 pt-4">
             <div
-              className="sticky top-40 py-4 px-3 space-y-4 rounded-xl max-h-[calc(100vh-100px)] overflow-y-auto scrollbar-thin"
+              className="sticky top-40 py-4 px-3 space-y-4 rounded-xl max-h-[calc(100vh-10.5rem)] overflow-y-auto scrollbar-thin"
               style={{ scrollbarGutter: "stable" }}
             >
               <div className="flex items-center justify-between">

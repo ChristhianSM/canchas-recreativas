@@ -279,8 +279,8 @@ export function CanchaCardHorizontal({
           if ((e.target as HTMLElement).closest('button, a')) return;
           router.push(`/cancha/${cancha.id}`);
         }}
-        className={`group flex rounded-xl border bg-white overflow-hidden transition-all duration-200 hover:shadow-md h-[210px] md:h-[270px] cursor-pointer ${
-          isHighlighted ? 'border-[#16a34a] shadow-md ring-1 ring-[#16a34a]/30' : 'border-gray-200 hover:border-gray-300'
+        className={`group flex rounded-xl border bg-card overflow-hidden transition-all duration-200 hover:shadow-md h-[210px] md:h-[270px] cursor-pointer ${
+          isHighlighted ? 'border-primary shadow-md ring-1 ring-primary/30' : 'border-border hover:border-border/60'
         }`}
       >
         {/* Imagen izquierda — ancho según modo */}
@@ -303,7 +303,7 @@ export function CanchaCardHorizontal({
           {/* Fila superior: nombre + precio + corazón */}
           <div className="flex justify-between items-center gap-2 mb-2">
             <Link href={`/cancha/${cancha.id}`} className="flex-1 min-w-0">
-              <h3 className="font-bold text-gray-900 text-lg leading-tight line-clamp-1 group-hover:text-[#16a34a] transition-colors">
+              <h3 className="font-bold text-foreground text-lg leading-tight line-clamp-1 group-hover:text-primary transition-colors">
                 {cancha.name}
               </h3>
             </Link>
@@ -312,14 +312,14 @@ export function CanchaCardHorizontal({
               onClick={handleToggleFav}
               disabled={togglingFav}
               className={`relative shrink-0 flex h-7 w-7 items-center justify-center rounded-full backdrop-blur-sm transition-all duration-300 ${
-                isFav ? 'bg-destructive/20 hover:bg-destructive/30' : 'bg-gray-100 hover:bg-gray-200'
+                isFav ? 'bg-destructive/20 hover:bg-destructive/30' : 'bg-muted hover:bg-muted/80'
               }`}
               aria-label={isFav ? 'Quitar de favoritos' : 'Agregar a favoritos'}
             >
               <Heart className={`h-5 w-5 transition-all duration-300 ${
                 isFav
                   ? 'fill-destructive text-destructive scale-110'
-                  : 'text-gray-400 scale-100'
+                  : 'text-muted-foreground scale-100'
               }`} />
               {togglingFav && (
                 <span className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-full backdrop-blur-sm">
@@ -333,42 +333,42 @@ export function CanchaCardHorizontal({
           <Link href={`/cancha/${cancha.id}`}>
           <div className="flex items-start justify-between gap-2 mb-1.5">
             <div className="flex-1 min-w-0 space-y-0.5">
-              <div className="flex items-center gap-1 text-xs text-gray-500 flex-wrap">
+              <div className="flex items-center gap-1 text-xs text-muted-foreground flex-wrap">
                 {cancha.rating > 0 ? (
                   <>
                     <Star className="h-3 w-3 fill-yellow-400 text-yellow-400 shrink-0" />
-                    <span className="font-medium text-gray-800">{cancha.rating}</span>
-                    {cancha.reviewCount > 0 && <span className="text-gray-400">({cancha.reviewCount})</span>}
+                    <span className="font-medium text-foreground">{cancha.rating}</span>
+                    {cancha.reviewCount > 0 && <span className="text-muted-foreground">({cancha.reviewCount})</span>}
                   </>
                 ) : (
-                  <span className="text-[11px] text-gray-400 italic">Sin reseñas aún</span>
+                  <span className="text-[11px] text-muted-foreground italic">Sin reseñas aún</span>
                 )}
                 {distancia !== undefined && (
                   <>
-                    <span className="text-gray-300">•</span>
+                    <span className="text-border">•</span>
                     <Navigation className="h-3 w-3 fill-[#16a34a] text-[#16a34a] shrink-0" />
                     <span className="text-[11px] text-[#16a34a] font-medium">{formatearDistancia(distancia)}</span>
                   </>
                 )}
               </div>
-              <div className="flex items-center gap-1 text-gray-400">
+              <div className="flex items-center gap-1 text-muted-foreground">
                 <MapPin className="h-2.5 w-2.5 shrink-0" />
                 <span className="text-[11px] line-clamp-1">{cancha.address}</span>
               </div>
               <div className="pt-0.5">
-                <span className="inline-flex items-center rounded-md bg-gray-100 px-1.5 py-0.5 text-[11px] font-medium text-gray-600">
+                <span className="inline-flex items-center rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
                   {sportLabels[cancha.type]}
                 </span>
               </div>
               {(cancha.balonDisponible || cancha.chalecoDisponible) && (
                 <div className="flex items-center gap-1 flex-wrap mt-2">
                   {cancha.balonDisponible && (
-                    <span className="inline-flex items-center rounded-md bg-green-50 border border-green-200 px-1.5 py-0.5 text-[11px] font-medium text-green-700">
+                    <span className="inline-flex items-center rounded-md bg-green-500/10 border border-green-500/30 px-1.5 py-0.5 text-[11px] font-medium text-green-600">
                       ⚽{cancha.balonPrecio != null ? ` S/${cancha.balonPrecio}` : ' gratis'}
                     </span>
                   )}
                   {cancha.chalecoDisponible && (
-                    <span className="inline-flex items-center rounded-md bg-green-50 border border-green-200 px-1.5 py-0.5 text-[11px] font-medium text-green-700">
+                    <span className="inline-flex items-center rounded-md bg-green-500/10 border border-green-500/30 px-1.5 py-0.5 text-[11px] font-medium text-green-600">
                       🎽{cancha.chalecosPrecio != null ? ` S/${cancha.chalecosPrecio}` : ' gratis'}
                     </span>
                   )}
@@ -376,8 +376,8 @@ export function CanchaCardHorizontal({
               )}
             </div>
             <div className="shrink-0 text-right">
-              <span className="text-xl font-bold text-gray-900 leading-none">S/ {cancha.pricePerHour}</span>
-              <p className="text-[10px] text-gray-400 mt-0.5">por hora</p>
+              <span className="text-xl font-bold text-foreground leading-none">S/ {cancha.pricePerHour}</span>
+              <p className="text-[10px] text-muted-foreground mt-0.5">por hora</p>
             </div>
           </div>
           </Link>
@@ -386,7 +386,7 @@ export function CanchaCardHorizontal({
           <div className="mt-auto">
             {visibleSlotsFiltered.length > 0 ? (
               <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-[11px] text-gray-400 shrink-0">Horarios:</span>
+                <span className="text-[11px] text-muted-foreground shrink-0">Horarios:</span>
                 {visibleSlotsFiltered.map(slot => {
                   const isSelected = selectedSlots.some(s => s.id === slot.id);
                   return (
@@ -395,8 +395,8 @@ export function CanchaCardHorizontal({
                       onClick={(e) => handleSlotClick(slot, e)}
                       className={`rounded-md border px-2 py-1 text-[11px] font-semibold transition-all ${
                         isSelected
-                          ? 'bg-[#16a34a] border-[#16a34a] text-white'
-                          : 'border-gray-200 text-gray-700 hover:border-[#16a34a]/50 hover:text-[#16a34a]'
+                          ? 'bg-primary border-primary text-primary-foreground'
+                          : 'border-border text-foreground hover:border-primary/50 hover:text-primary'
                       }`}
                     >
                       {slot.time}
@@ -406,7 +406,7 @@ export function CanchaCardHorizontal({
                 {extraCountFiltered > 0 && (
                   <button
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(`/cancha/${cancha.id}`); }}
-                    className="rounded-md border border-gray-200 px-2 py-1 text-[11px] font-medium text-gray-400 hover:border-gray-400 transition-all"
+                    className="rounded-md border border-border px-2 py-1 text-[11px] font-medium text-muted-foreground hover:border-muted-foreground/50 transition-all"
                   >
                     +{extraCountFiltered}
                   </button>
@@ -429,7 +429,7 @@ export function CanchaCardHorizontal({
                 </button>
               </div>
             ) : (
-              <div className="flex items-center gap-1.5 text-[11px] text-gray-400">
+              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                 <CalendarDays className="h-3 w-3" />
                 <span>Sin disponibilidad próxima</span>
                 <Link href={`/cancha/${cancha.id}`} className="ml-auto text-[#16a34a] font-medium hover:underline">
