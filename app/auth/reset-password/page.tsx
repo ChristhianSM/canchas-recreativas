@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 import { Lock, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -101,64 +102,70 @@ function ResetPasswordContent() {
     setTimeout(() => router.push('/login'), 3000);
   };
 
+  const bgLayout = (children: React.ReactNode) => (
+    <div className="relative min-h-screen flex items-center justify-center px-4 overflow-hidden">
+      <div className="absolute inset-0">
+        <Image src="/images/login.jpg" alt="Cancha deportiva" fill className="object-cover object-center scale-105 blur-sm" priority />
+        <div className="absolute inset-0 bg-black/55" />
+      </div>
+      <div className="relative z-10 w-full max-w-md">
+        {children}
+      </div>
+    </div>
+  );
+
   if (listo) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background px-4">
-        <div className="text-center space-y-4">
-          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
-            <CheckCircle2 className="h-10 w-10 text-primary" />
-          </div>
-          <h1 className="text-2xl font-bold text-foreground">¡Contraseña actualizada!</h1>
-          <p className="text-muted-foreground">Redirigiendo al inicio de sesión...</p>
+    return bgLayout(
+      <div className="bg-white dark:bg-card rounded-xl shadow-2xl p-8 text-center space-y-4">
+        <Image src="/images/logo.png" alt="CanchaGo" width={200} height={70} className="mx-auto h-14 w-auto object-contain" />
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+          <CheckCircle2 className="h-8 w-8 text-primary" />
         </div>
+        <h1 className="text-2xl font-bold text-foreground">¡Contraseña actualizada!</h1>
+        <p className="text-muted-foreground">Redirigiendo al inicio de sesión...</p>
       </div>
     );
   }
 
   if (error && !sessionReady) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background px-4">
-        <div className="text-center space-y-4 max-w-sm">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10">
-            <span className="text-2xl">❌</span>
-          </div>
-          <h1 className="text-xl font-bold text-foreground">Link inválido</h1>
-          <p className="text-muted-foreground text-sm">{error}</p>
-          {debugInfo && (
-            <details className="text-xs text-muted-foreground text-left">
-              <summary className="cursor-pointer">Ver información técnica</summary>
-              <pre className="mt-2 p-2 bg-muted rounded text-xs overflow-auto">{debugInfo}</pre>
-            </details>
-          )}
-          <Button className="w-full" onClick={() => router.push('/recuperar-contrasena')}>
-            Solicitar nuevo link
-          </Button>
+    return bgLayout(
+      <div className="bg-white dark:bg-card rounded-xl shadow-2xl p-8 text-center space-y-4">
+        <Image src="/images/logo.png" alt="CanchaGo" width={200} height={70} className="mx-auto h-14 w-auto object-contain" />
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-destructive/10">
+          <span className="text-2xl">❌</span>
         </div>
+        <h1 className="text-xl font-bold text-foreground">Link inválido</h1>
+        <p className="text-muted-foreground text-sm">{error}</p>
+        {debugInfo && (
+          <details className="text-xs text-muted-foreground text-left">
+            <summary className="cursor-pointer">Ver información técnica</summary>
+            <pre className="mt-2 p-2 bg-muted rounded text-xs overflow-auto">{debugInfo}</pre>
+          </details>
+        )}
+        <Button className="w-full" onClick={() => router.push('/recuperar-contrasena')}>
+          Solicitar nuevo link
+        </Button>
       </div>
     );
   }
 
   if (!sessionReady) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="text-center space-y-3">
-          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-          <p className="text-muted-foreground">Verificando link...</p>
-        </div>
+    return bgLayout(
+      <div className="bg-white dark:bg-card rounded-xl shadow-2xl p-8 text-center space-y-4">
+        <Image src="/images/logo.png" alt="CanchaGo" width={200} height={70} className="mx-auto h-14 w-auto object-contain" />
+        <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        <p className="text-muted-foreground">Verificando link...</p>
       </div>
     );
   }
 
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="mx-auto w-full max-w-md space-y-6">
-        <div className="text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-xl bg-primary">
-            <span className="text-2xl font-bold text-primary-foreground">CP</span>
-          </div>
-          <h1 className="text-2xl font-bold text-foreground">Nueva contraseña</h1>
-          <p className="mt-2 text-muted-foreground">Ingresa tu nueva contraseña</p>
-        </div>
+  return bgLayout(
+    <div className="bg-white dark:bg-card rounded-xl shadow-2xl p-8 space-y-6">
+      <div className="text-center">
+        <Image src="/images/logo.png" alt="CanchaGo" width={200} height={70} className="mx-auto mb-4 h-14 w-auto object-contain" />
+        <h1 className="text-2xl font-bold text-foreground">Nueva contraseña</h1>
+        <p className="mt-2 text-muted-foreground">Ingresa tu nueva contraseña</p>
+      </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
@@ -196,7 +203,6 @@ function ResetPasswordContent() {
           </Button>
         </form>
       </div>
-    </div>
   );
 }
 
