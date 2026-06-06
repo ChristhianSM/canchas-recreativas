@@ -189,7 +189,7 @@ export async function sendReservaRecibidaEmail(data: ReservaRecibidaEmailData) {
       console.log(`[email] ✅ Email recibida enviado a ${toEmail}`);
     }
   } catch (err: any) {
-    console.error('[email] ❌ Error de red:', err?.message ?? err);
+    console.error('[email] ❌ Error de red (recibida):', err?.message ?? err);
   }
 }
 
@@ -367,6 +367,98 @@ export async function sendReservaEmail(data: ReservaEmailData) {
       console.log(`[email] ✅ Enviado a ${toEmail} — estado: ${estado}`);
     }
   } catch (err: any) {
-    console.error('[email] ❌ Error de red:', err?.message ?? err);
+    console.error('[email] ❌ Error de red (confirmacion):', err?.message ?? err);
+  }
+}
+
+export async function sendNewsletterWelcomeEmail(email: string, unsubscribeUrl: string) {
+  const apiKey    = process.env.API_KEY_BREVO;
+  const fromEmail = process.env.BREVO_FROM_EMAIL;
+  const fromName  = process.env.BREVO_FROM_NAME ?? 'CanchaGo';
+
+  if (!apiKey || !fromEmail) return;
+
+  const htmlContent = `
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/></head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:32px 16px;">
+    <tr><td align="center">
+      <table width="100%" style="max-width:520px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+
+        <tr>
+          <td style="background:#111827;padding:28px 32px;text-align:center;">
+            <p style="margin:0;font-size:22px;font-weight:700;color:#ffffff;">⚽ CanchaGo</p>
+            <p style="margin:6px 0 0;font-size:13px;color:#9ca3af;">Reserva tu cancha en Piura</p>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:36px 32px 0;text-align:center;">
+            <div style="display:inline-block;background:#f0fdf4;border:1px solid #16a34a33;border-radius:12px;padding:16px 24px;">
+              <p style="margin:0;font-size:32px;">🎉</p>
+              <p style="margin:8px 0 0;font-size:18px;font-weight:700;color:#16a34a;">¡Ya estás suscrito!</p>
+            </div>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:24px 32px 0;">
+            <p style="margin:0;font-size:15px;color:#374151;line-height:1.7;">
+              Gracias por suscribirte a las novedades de <strong>CanchaGo</strong>.
+              A partir de ahora te avisaremos sobre torneos, nuevas canchas y ofertas exclusivas en Piura.
+            </p>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:24px 32px 32px;text-align:center;">
+            <a href="https://canchago.pe/canchas" style="display:inline-block;background:#16a34a;color:#ffffff;font-size:15px;font-weight:600;padding:14px 32px;border-radius:10px;text-decoration:none;">
+              Ver canchas disponibles
+            </a>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:0 32px 28px;text-align:center;border-top:1px solid #f3f4f6;">
+            <p style="margin:16px 0 0;font-size:11px;color:#9ca3af;">
+              Este correo fue enviado automáticamente por CanchaGo.<br/>
+              Si no quieres recibir más correos,
+              <a href="${unsubscribeUrl}" style="color:#9ca3af;">cancela tu suscripción aquí</a>.
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`.trim();
+
+  try {
+    const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method:  'POST',
+      headers: {
+        'accept':       'application/json',
+        'content-type': 'application/json',
+        'api-key':      apiKey,
+      },
+      body: JSON.stringify({
+        sender:      { name: fromName, email: fromEmail },
+        to:          [{ email }],
+        subject:     '🎉 ¡Bienvenido a las novedades de CanchaGo!',
+        htmlContent,
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      console.error('[email] ❌ Error Brevo (newsletter):', err);
+    } else {
+      console.log(`[email] ✅ Email bienvenida newsletter enviado a ${email}`);
+    }
+  } catch (err: any) {
+    console.error('[email] ❌ Error de red (newsletter):', err?.message ?? err);
   }
 }

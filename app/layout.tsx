@@ -3,6 +3,7 @@ import { Inter, Poppins } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { Toaster } from '@/components/ui/toaster'
 import { ConditionalFooter } from '@/components/conditional-footer'
+import { ThemeProvider } from '@/components/theme-provider'
 import { generateOrganizationSchema } from '@/lib/seo-utils'
 import './globals.css'
 
@@ -28,7 +29,7 @@ export const metadata: Metadata = {
   keywords: ['canchas deportivas', 'canchas piura', 'reservar cancha', 'fútbol piura', 'alquiler cancha'],
   authors: [{ name: 'CanchaGo' }],
   creator: 'CanchaGo',
-  metadataBase: new URL('https://canchago.pe'),
+  metadataBase: new URL('https://www.tucanchago.com'),
   openGraph: {
     type: 'website',
     locale: 'es_PE',
@@ -84,7 +85,7 @@ export default function RootLayout({
   const organizationSchema = generateOrganizationSchema();
   
   return (
-    <html lang="es" className="bg-background h-full" style={{ overflowX: 'clip' }}>
+    <html lang="es" className="bg-background h-full" style={{ overflowX: 'clip' }} suppressHydrationWarning>
       <head>
         {/* JSON-LD Schema para la organización */}
         <script
@@ -93,10 +94,12 @@ export default function RootLayout({
         />
       </head>
       <body className={`${inter.variable} ${poppins.variable} font-sans antialiased min-h-screen flex flex-col`}>
-        {children}
-        <ConditionalFooter />
-        <Toaster />
-        {process.env.NODE_ENV === 'production' && <Analytics />}
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          {children}
+          <ConditionalFooter />
+          <Toaster />
+          {process.env.NODE_ENV === 'production' && <Analytics />}
+        </ThemeProvider>
       </body>
     </html>
   )

@@ -62,6 +62,7 @@ function PagoContent() {
   const router = useRouter();
   const params = useSearchParams();
   const fileRef = useRef<HTMLInputElement>(null);
+  const autoSkipRef = useRef(false);
 
   const canchaId = params.get("canchaId") ?? "";
   const fecha = params.get("fecha") ?? "";
@@ -113,6 +114,18 @@ function PagoContent() {
   // Cargar cancha
   useEffect(() => {
     if (!canchaId) return;
+
+    // Leer caché de sessionStorage (guardado al hacer click en "Reservar")
+    const cached = sessionStorage.getItem(`cp_cancha_pago_${canchaId}`);
+    if (cached) {
+      try {
+        setCancha(JSON.parse(cached));
+        sessionStorage.removeItem(`cp_cancha_pago_${canchaId}`);
+        setCanchaLoading(false);
+        return;
+      } catch {}
+    }
+
     fetch(`/api/canchas/detail?id=${canchaId}`)
       .then((r) => r.json())
       .then((data) => {
@@ -254,9 +267,12 @@ function PagoContent() {
     }
   }, []);
 
-  // Saltar paso "datos" si el usuario ya está registrado y tiene email + teléfono
+  // Saltar paso "datos" solo una vez al cargar, si el usuario ya tiene todos sus datos.
+  // El ref evita que se re-dispare cuando el usuario edita su teléfono manualmente.
   useEffect(() => {
+    if (autoSkipRef.current) return;
     if (authChecked && !esInvitado && emailRegistrado && telefonoRegistrado) {
+      autoSkipRef.current = true;
       setPaso("pago");
     }
   }, [authChecked, esInvitado, emailRegistrado, telefonoRegistrado]);
@@ -1031,8 +1047,10 @@ function PagoContent() {
               </button>
             </div>
           </div>
-          <a
-            href={metodo === "yape" ? "yape://" : "plin://"}
+          <button
+            onClick={() => {
+              window.location.href = metodo === "yape" ? "yape://" : "plin://";
+            }}
             className="sm:hidden flex items-center justify-center gap-3 w-full rounded-xl py-3.5 font-bold text-white active:scale-[0.98] transition-all"
             style={{
               backgroundColor: metodo === "yape" ? "#6C1FC6" : "#00B4D8",
@@ -1048,7 +1066,7 @@ function PagoContent() {
             Abrir {metodo === "yape" ? "Yape" : "Plin"} · Enviar S/{" "}
             {montoAdelanto}
             <ExternalLink className="h-4 w-4 opacity-70" />
-          </a>
+          </button>
         </div>
       </Card>
       <Card className="border-border p-5 space-y-3">
@@ -1576,13 +1594,15 @@ function PagoContent() {
                   <Input
                     type="tel"
                     placeholder="987654321"
+                    maxLength={9}
                     value={esInvitado ? telefonoInvitado : telefonoRegistrado}
                     onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, "").slice(0, 9);
                       if (esInvitado) {
-                        setTelefonoInvitado(e.target.value);
+                        setTelefonoInvitado(val);
                         setTelefonoError("");
                       } else {
-                        setTelefonoRegistrado(e.target.value);
+                        setTelefonoRegistrado(val);
                         setTelefonoError("");
                       }
                     }}
@@ -2313,15 +2333,17 @@ function PagoContent() {
                           <Input
                             type="tel"
                             placeholder="987654321"
+                            maxLength={9}
                             value={
                               esInvitado ? telefonoInvitado : telefonoRegistrado
                             }
                             onChange={(e) => {
+                              const val = e.target.value.replace(/\D/g, "").slice(0, 9);
                               if (esInvitado) {
-                                setTelefonoInvitado(e.target.value);
+                                setTelefonoInvitado(val);
                                 setTelefonoError("");
                               } else {
-                                setTelefonoRegistrado(e.target.value);
+                                setTelefonoRegistrado(val);
                                 setTelefonoError("");
                               }
                             }}

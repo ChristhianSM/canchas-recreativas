@@ -15,13 +15,13 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Explora Canchas Deportivas en Piura | CanchaGo',
     description: 'Encuentra y reserva las mejores canchas deportivas en Piura. Compara precios, ubicaciones y disponibilidad.',
-    url: 'https://canchago.pe/canchas',
+    url: 'https://www.tucanchago.com/canchas',
     siteName: 'CanchaGo',
     locale: 'es_PE',
     type: 'website',
   },
   alternates: {
-    canonical: 'https://canchago.pe/canchas',
+    canonical: 'https://www.tucanchago.com/canchas',
   },
 };
 

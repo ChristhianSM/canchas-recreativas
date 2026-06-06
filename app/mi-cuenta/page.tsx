@@ -177,7 +177,7 @@ function ReservaCard({
                   !fechaHoraPasada && (
                     <Badge
                       variant="outline"
-                      className="bg-amber-500/10 text-amber-700 border-amber-500/20"
+                      className="bg-amber-500/100/10 text-amber-700 border-amber-500/20"
                     >
                       Saldo pendiente en cancha: S/ {r.saldoPendiente}
                     </Badge>
@@ -191,7 +191,7 @@ function ReservaCard({
                   (r.estado === "confirmada" || r.estado === "pendiente") && (
                     <Badge
                       variant="outline"
-                      className="bg-green-500/10 text-green-700 border-green-500/20"
+                      className="bg-green-500/100/10 text-green-700 border-green-500/20"
                     >
                       Pago completo ✓
                     </Badge>
@@ -247,7 +247,7 @@ function ReservaCard({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="w-auto border-green-500 text-green-600 hover:bg-green-50"
+                  className="w-auto border-green-500 text-green-600 hover:bg-green-500/10"
                   asChild
                 >
                   <a
@@ -430,6 +430,8 @@ export default function MisReservasPage() {
   const [partHistorialTotal, setPartHistorialTotal] = useState(0);
   const [partHistorialPage,  setPartHistorialPage]  = useState(0);
   const [partHistorialLoading, setPartHistorialLoading] = useState(false);
+  const [historialCargado, setHistorialCargado] = useState(false);
+  const [partHistorialCargado, setPartHistorialCargado] = useState(false);
   const [favoriteCanchasData, setFavoriteCanchasData] = useState<any[]>([]);
   const [loyalty, setLoyalty] = useState<LoyaltyData>({
     sellos: 0,
@@ -548,8 +550,6 @@ export default function MisReservasPage() {
         }
       });
       apiGetMisPartidos().then((data) => setMisPartidos(Array.isArray(data) ? data : []));
-      cargarHistorial(0);
-      cargarPartidosHistorial(0);
       apiGetLoyalty().then((data) =>
         setLoyalty({
           sellos: data.sellos ?? 0,
@@ -592,6 +592,23 @@ export default function MisReservasPage() {
     await apiToggleFavorito(canchaId);
     setFavoriteCanchasData((prev) => prev.filter((c) => c.id !== canchaId));
   };
+
+  // ── Scroll al top al cambiar de sección ──
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [activeSection]);
+
+  // ── Carga lazy del historial de reservas y partidos ──
+  useEffect(() => {
+    if (activeSection === "reservas" && !historialCargado) {
+      setHistorialCargado(true);
+      cargarHistorial(0);
+    }
+    if (activeSection === "partidos" && !partHistorialCargado) {
+      setPartHistorialCargado(true);
+      cargarPartidosHistorial(0);
+    }
+  }, [activeSection]);
 
   // ── Carga perfil al entrar a la sección ──
   useEffect(() => {
@@ -716,40 +733,53 @@ export default function MisReservasPage() {
   // Skeleton
   if (!hydrated || loading) {
     return (
-      <div className="flex flex-col flex-1 bg-background lg:bg-green-50/60">
+      <div className="flex flex-col flex-1 bg-background lg:bg-muted/40">
         <Header />
 
         {/* Mobile skeleton */}
-        <div className="lg:hidden container mx-auto px-4 py-6 space-y-4">
-          <div className="space-y-1.5">
-            <div className="h-7 w-48 animate-pulse rounded-lg bg-muted" />
-            <div className="h-4 w-36 animate-pulse rounded-lg bg-muted" />
+        <div className="lg:hidden flex-1 bg-muted/40 px-4 py-5 space-y-5">
+          {/* Avatar + saludo */}
+          <div className="bg-card rounded-xl p-4 flex items-center gap-3">
+            <div className="h-14 w-14 rounded-full bg-muted animate-pulse shrink-0" />
+            <div className="space-y-2">
+              <div className="h-5 w-36 bg-muted animate-pulse rounded-lg" />
+              <div className="h-3 w-24 bg-muted animate-pulse rounded-lg" />
+            </div>
           </div>
-          <div className="flex gap-2 overflow-x-auto pb-1">
+
+          {/* Próxima reserva */}
+          <div className="space-y-2">
+            <div className="h-4 w-36 bg-muted animate-pulse rounded" />
+            <div className="bg-card rounded-xl p-4 flex items-center gap-3">
+              <div className="h-14 w-14 rounded-xl bg-muted animate-pulse shrink-0" />
+              <div className="flex-1 space-y-2">
+                <div className="h-4 w-40 bg-muted animate-pulse rounded" />
+                <div className="h-3 w-32 bg-muted animate-pulse rounded" />
+                <div className="h-3 w-20 bg-muted animate-pulse rounded" />
+              </div>
+            </div>
+          </div>
+
+          {/* Grid 2x2 accesos rápidos */}
+          <div className="grid grid-cols-2 gap-3">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-9 w-28 shrink-0 animate-pulse rounded-lg bg-muted" />
-            ))}
-          </div>
-          <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="flex overflow-hidden rounded-xl border border-border bg-card">
-                <div className="h-36 w-36 shrink-0 animate-pulse bg-muted" />
-                <div className="flex flex-1 flex-col gap-3 p-4">
-                  <div className="h-4 w-20 animate-pulse rounded bg-muted" />
-                  <div className="h-5 w-40 animate-pulse rounded bg-muted" />
-                  <div className="h-3 w-32 animate-pulse rounded bg-muted" />
-                  <div className="h-3 w-24 animate-pulse rounded bg-muted" />
-                </div>
+              <div key={i} className="bg-card rounded-xl p-4">
+                <div className="h-9 w-9 rounded-xl bg-muted animate-pulse mb-3" />
+                <div className="h-3 w-16 bg-muted animate-pulse rounded mb-1.5" />
+                <div className="h-5 w-20 bg-muted animate-pulse rounded" />
               </div>
             ))}
           </div>
+
+          {/* CTA buscar cancha */}
+          <div className="h-12 w-full rounded-xl bg-muted animate-pulse" />
         </div>
 
         {/* Desktop skeleton */}
         <div className="hidden lg:grid grid-cols-[2fr_6fr] flex-1 container mx-auto px-8 lg:px-12">
           {/* Sidebar */}
           <aside className="flex flex-col gap-3 p-4 pl-0 pt-6">
-            <div className="bg-white rounded-xl p-4 flex flex-col items-center animate-pulse">
+            <div className="bg-card rounded-xl p-4 flex flex-col items-center animate-pulse">
               <div className="h-16 w-16 rounded-full bg-muted mb-3" />
               <div className="h-4 w-28 bg-muted rounded-full mb-1.5" />
               <div className="h-3 w-20 bg-muted rounded-full mb-3" />
@@ -759,7 +789,7 @@ export default function MisReservasPage() {
                 ))}
               </div>
             </div>
-            <div className="bg-white rounded-xl p-2 animate-pulse space-y-1">
+            <div className="bg-card rounded-xl p-2 animate-pulse space-y-1">
               {[1, 2, 3, 4, 5, 6].map((i) => (
                 <div key={i} className="h-10 bg-muted rounded-xl" />
               ))}
@@ -779,7 +809,7 @@ export default function MisReservasPage() {
             {/* Próxima reserva */}
             <div>
               <div className="h-5 w-36 bg-muted rounded mb-3" />
-              <div className="bg-white rounded-xl overflow-hidden flex h-44">
+              <div className="bg-card rounded-xl overflow-hidden flex h-44">
                 <div className="w-44 shrink-0 bg-muted" />
                 <div className="flex-1 p-5 space-y-3">
                   <div className="h-5 w-48 bg-muted rounded" />
@@ -795,7 +825,7 @@ export default function MisReservasPage() {
             {/* Stats */}
             <div className="grid grid-cols-4 gap-3">
               {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="bg-white rounded-xl p-4 space-y-3">
+                <div key={i} className="bg-card rounded-xl p-4 space-y-3">
                   <div className="h-10 w-10 bg-muted rounded-xl" />
                   <div className="h-6 w-16 bg-muted rounded" />
                   <div className="h-3 w-24 bg-muted rounded" />
@@ -804,7 +834,7 @@ export default function MisReservasPage() {
             </div>
             {/* Dos columnas */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-white rounded-xl p-5 space-y-4">
+              <div className="bg-card rounded-xl p-5 space-y-4">
                 <div className="h-5 w-36 bg-muted rounded" />
                 {[1, 2, 3].map((i) => (
                   <div key={i} className="flex items-center gap-3">
@@ -816,7 +846,7 @@ export default function MisReservasPage() {
                   </div>
                 ))}
               </div>
-              <div className="bg-white rounded-xl p-5 space-y-4">
+              <div className="bg-card rounded-xl p-5 space-y-4">
                 <div className="h-5 w-28 bg-muted rounded" />
                 {[1, 2, 3].map((i) => (
                   <div key={i} className="flex items-center gap-3 p-3">
@@ -853,13 +883,13 @@ export default function MisReservasPage() {
         onClick={() => setActiveSection(section)}
         className={cn(
           "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-left",
-          isActive ? "bg-green-50" : "hover:bg-gray-50",
+          isActive ? "bg-primary/10" : "hover:bg-muted/50",
         )}
       >
         <span
           className={cn(
             "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
-            isActive ? "bg-green-600 text-white" : "bg-gray-100 text-gray-500",
+            isActive ? "bg-green-600 text-white" : "bg-muted text-muted-foreground",
           )}
         >
           {icon}
@@ -867,7 +897,7 @@ export default function MisReservasPage() {
         <span
           className={cn(
             "flex-1 text-sm font-medium",
-            isActive ? "text-green-700" : "text-gray-700",
+            isActive ? "text-green-700" : "text-foreground/80",
           )}
         >
           {label}
@@ -900,7 +930,7 @@ export default function MisReservasPage() {
     <button
       onClick={onClick}
       className={cn(
-        "bg-white rounded-xl p-4 flex flex-col gap-3 text-left w-full",
+        "bg-card rounded-xl p-4 flex flex-col gap-3 text-left w-full",
         onClick && "hover:shadow-md hover:-translate-y-0.5 transition-all duration-150 cursor-pointer active:scale-95",
       )}
     >
@@ -913,8 +943,8 @@ export default function MisReservasPage() {
         {icon}
       </span>
       <div>
-        <p className="text-xl font-bold text-gray-900">{value}</p>
-        <p className="text-sm font-medium text-gray-700">{label}</p>
+        <p className="text-xl font-bold text-foreground">{value}</p>
+        <p className="text-sm font-medium text-foreground/80">{label}</p>
         <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>
       </div>
     </button>
@@ -925,20 +955,20 @@ export default function MisReservasPage() {
       {/* ══════════════════════════════════════════════════════════
           DESKTOP LAYOUT (lg+)
       ══════════════════════════════════════════════════════════ */}
-      <div className="hidden lg:flex lg:flex-col min-h-screen bg-green-50/60">
+      <div className="hidden lg:flex lg:flex-col min-h-screen bg-muted/40">
         <Header />
         <div className="grid grid-cols-[2fr_6fr] flex-1 container mx-auto px-8 lg:px-12">
           {/* ── Sidebar ────────────────────────────────────────── */}
           <aside className="flex flex-col gap-3 p-4 pl-0 sticky top-0 self-start overflow-y-auto max-h-[calc(100vh-4rem)]">
             {/* Perfil */}
-            <div className="bg-white rounded-xl p-4 flex flex-col items-center text-center">
+            <div className="bg-card rounded-xl p-4 flex flex-col items-center text-center">
               <div className="relative mb-3">
                 <div className="h-16 w-16 rounded-full bg-green-600 flex items-center justify-center text-white text-2xl font-bold shadow">
                   {user?.name?.charAt(0).toUpperCase() ?? "U"}
                 </div>
                 <button
                   onClick={() => setActiveSection("perfil")}
-                  className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-white border-2 border-green-600 text-green-600 hover:bg-green-50 transition-colors shadow-sm"
+                  className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-card border-2 border-green-600 text-green-600 hover:bg-green-500/10 transition-colors shadow-sm"
                   title="Editar perfil"
                 >
                   <svg
@@ -955,7 +985,7 @@ export default function MisReservasPage() {
                   </svg>
                 </button>
               </div>
-              <p className="font-semibold text-gray-900 text-sm">
+              <p className="font-semibold text-foreground text-sm">
                 {user?.name ?? "Usuario"}
               </p>
               {user?.phone && (
@@ -964,7 +994,7 @@ export default function MisReservasPage() {
                 </p>
               )}
               <div className="mt-3 grid grid-cols-3 gap-1.5 w-full">
-                <div className="flex flex-col items-center rounded-xl bg-amber-50 py-1.5 px-1">
+                <div className="flex flex-col items-center rounded-xl bg-amber-500/10 py-1.5 px-1">
                   <span className="text-base font-bold text-amber-600">
                     {loyalty.sellos}
                   </span>
@@ -972,7 +1002,7 @@ export default function MisReservasPage() {
                     Sellos
                   </span>
                 </div>
-                <div className="flex flex-col items-center rounded-xl bg-green-50 py-1.5 px-1">
+                <div className="flex flex-col items-center rounded-xl bg-green-500/10 py-1.5 px-1">
                   <span className="text-base font-bold text-green-600">
                     {proximas.length}
                   </span>
@@ -992,7 +1022,7 @@ export default function MisReservasPage() {
             </div>
 
             {/* Navegación */}
-            <div className="bg-white rounded-xl p-2 flex-1">
+            <div className="bg-card rounded-xl p-2 flex-1">
               <NavItem
                 icon={<Home className="h-4 w-4" />}
                 label="Mi cuenta"
@@ -1047,14 +1077,14 @@ export default function MisReservasPage() {
           </aside>
 
           {/* ── Contenido principal ────────────────────────────── */}
-          <main className="flex-1 overflow-y-auto p-6">
+          <main className="flex-1 overflow-y-auto p-6 pr-0">
             {/* ── SECCIÓN: MI CUENTA (dashboard) ── */}
             {activeSection === "cuenta" && (
               <div className="max-w-4xl">
                 {/* Header */}
                 <div className="flex items-start justify-between mb-6">
                   <div>
-                    <h1 className="text-3xl font-bold text-gray-900">
+                    <h1 className="text-3xl font-bold text-foreground">
                       ¡Hola, {user?.name?.split(" ")[0] ?? "Usuario"}!
                     </h1>
                     <p className="text-sm text-muted-foreground mt-1">
@@ -1110,7 +1140,7 @@ export default function MisReservasPage() {
                     return (
                       <div className="mb-6">
                         <div className="flex items-center justify-between mb-3">
-                          <h2 className="font-semibold text-gray-900">
+                          <h2 className="font-semibold text-foreground">
                             Tu próxima reserva
                           </h2>
                           <button
@@ -1120,7 +1150,7 @@ export default function MisReservasPage() {
                             Ver todas <ChevronRight className="h-3.5 w-3.5" />
                           </button>
                         </div>
-                        <div className="bg-white rounded-xl overflow-hidden flex gap-0">
+                        <div className="bg-card rounded-xl overflow-hidden flex gap-0">
                           <div className="relative w-44 shrink-0">
                             <Image
                               src={img}
@@ -1132,11 +1162,11 @@ export default function MisReservasPage() {
                           <div className="flex-1 p-5 flex gap-4">
                             <div className="flex-1 min-w-0">
                               {cl && (
-                                <Badge className="mb-2 bg-green-100 text-green-700 border-0 hover:bg-green-100 text-xs font-medium">
+                                <Badge className="mb-2 bg-green-500/100/20 text-green-700 border-0 hover:bg-green-500/100/20 text-xs font-medium">
                                   ⚽ {sportLabels[cl.type]}
                                 </Badge>
                               )}
-                              <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                              <h3 className="text-2xl font-bold text-foreground mb-2">
                                 {proximaReserva.canchaName}
                               </h3>
                               <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground mb-3">
@@ -1179,7 +1209,7 @@ export default function MisReservasPage() {
                               </Button>
                               <Button
                                 variant="outline"
-                                className="gap-2 rounded-xl border-green-200 text-green-700 hover:bg-green-50"
+                                className="gap-2 rounded-xl border-green-200 text-green-700 hover:bg-green-500/10"
                                 size="sm"
                                 asChild
                               >
@@ -1207,11 +1237,11 @@ export default function MisReservasPage() {
                 ) : (
                   <div className="mb-6">
                     <div className="flex items-center justify-between mb-3">
-                      <h2 className="font-semibold text-gray-900">
+                      <h2 className="font-semibold text-foreground">
                         Tu próxima reserva
                       </h2>
                     </div>
-                    <div className="bg-white rounded-xl p-8 text-center border border-dashed border-green-200">
+                    <div className="bg-card rounded-xl p-8 text-center border border-dashed border-green-200">
                       <CalendarPlus className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
                       <p className="text-sm text-muted-foreground">
                         No tienes reservas próximas
@@ -1230,7 +1260,7 @@ export default function MisReservasPage() {
                     value={`${loyalty.sellos} de 8`}
                     label="Mis sellos"
                     sub={`Faltan ${Math.max(0, 8 - loyalty.sellos)} para 1h gratis`}
-                    iconBg="bg-amber-100"
+                    iconBg="bg-amber-500/20"
                     onClick={() => setActiveSection("sellos")}
                   />
                   <StatCard
@@ -1238,7 +1268,7 @@ export default function MisReservasPage() {
                     value={`${proximas.length} activas`}
                     label="Mis reservas"
                     sub={`${reservas.length} en total`}
-                    iconBg="bg-green-100"
+                    iconBg="bg-green-500/100/20"
                     onClick={() => setActiveSection("reservas")}
                   />
                   <StatCard
@@ -1246,7 +1276,7 @@ export default function MisReservasPage() {
                     value={`${favoriteCanchas.length} canchas`}
                     label="Favoritos"
                     sub="Guardadas"
-                    iconBg="bg-rose-100"
+                    iconBg="bg-rose-500/20"
                     onClick={() => setActiveSection("favoritos")}
                   />
                   <StatCard
@@ -1254,7 +1284,7 @@ export default function MisReservasPage() {
                     value={`${misPartidos.length} creados`}
                     label="Mis partidos"
                     sub={`${misPartidos.filter(p => p.estado === 'abierto' || p.estado === 'completo').length} activos`}
-                    iconBg="bg-orange-100"
+                    iconBg="bg-orange-500/20"
                     onClick={() => setActiveSection("partidos")}
                   />
                 </div>
@@ -1262,9 +1292,9 @@ export default function MisReservasPage() {
                 {/* Reservas recientes + Configuración */}
                 <div className="grid grid-cols-2 gap-4">
                   {/* Reservas recientes */}
-                  <div className="bg-white rounded-xl p-5">
+                  <div className="bg-card rounded-xl p-5">
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="font-semibold text-gray-900">
+                      <h3 className="font-semibold text-foreground">
                         Reservas recientes
                       </h3>
                       <button
@@ -1292,7 +1322,7 @@ export default function MisReservasPage() {
                                 />
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-gray-900 truncate">
+                                <p className="text-sm font-medium text-foreground truncate">
                                   {r.canchaName}
                                 </p>
                                 <p className="text-xs text-muted-foreground">
@@ -1307,7 +1337,7 @@ export default function MisReservasPage() {
                               </div>
                               <Badge
                                 variant="outline"
-                                className="text-xs border-amber-200 text-amber-600 bg-amber-50 shrink-0"
+                                className="text-xs border-amber-200 text-amber-600 bg-amber-500/10 shrink-0"
                               >
                                 {(() => { const n = partidoReservaIds.has(r.id) ? 2 : 1; return `🎟 +${n} sello${n > 1 ? 's' : ''}`; })()}
                               </Badge>
@@ -1323,8 +1353,8 @@ export default function MisReservasPage() {
                   </div>
 
                   {/* Acciones rápidas */}
-                  <div className="bg-white rounded-xl p-5">
-                    <h3 className="font-semibold text-gray-900 mb-4">
+                  <div className="bg-card rounded-xl p-5">
+                    <h3 className="font-semibold text-foreground mb-4">
                       Acciones rápidas
                     </h3>
                     <div className="space-y-1">
@@ -1354,16 +1384,16 @@ export default function MisReservasPage() {
                         <button
                           key={label}
                           onClick={onClick}
-                          className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors text-left"
+                          className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-muted/50 transition-colors text-left"
                         >
                           <span className={cn(
                             "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
-                            danger ? "bg-red-50 text-red-500" : "bg-green-50 text-green-600"
+                            danger ? "bg-red-50 text-red-500" : "bg-green-500/10 text-green-600"
                           )}>
                             {icon}
                           </span>
                           <div className="flex-1 min-w-0">
-                            <p className={cn("text-sm font-medium", danger ? "text-red-600" : "text-gray-800")}>
+                            <p className={cn("text-sm font-medium", danger ? "text-red-600" : "text-foreground")}>
                               {label}
                             </p>
                             <p className="text-xs text-muted-foreground">
@@ -1382,7 +1412,7 @@ export default function MisReservasPage() {
             {/* ── SECCIÓN: MIS RESERVAS ── */}
             {activeSection === "reservas" && (
               <div className="max-w">
-                <h1 className="text-2xl font-bold text-gray-900 mb-6">
+                <h1 className="text-2xl font-bold text-foreground mb-6">
                   Mis reservas
                 </h1>
                 <Tabs defaultValue="proximas" className="w-full">
@@ -1402,7 +1432,9 @@ export default function MisReservasPage() {
                     <TabsTrigger value="historial" className="gap-1.5">
                       <Clock className="h-4 w-4" />
                       Historial
-                      {historialTotal > 0 && (
+                      {historialLoading ? (
+                        <span className="ml-1 h-3.5 w-3.5 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground" />
+                      ) : historialTotal > 0 && (
                         <Badge
                           variant="secondary"
                           className="ml-1 h-5 min-w-5 px-1.5 text-xs"
@@ -1465,7 +1497,7 @@ export default function MisReservasPage() {
                 const faltan = Math.max(0, TOTAL - sellos);
                 return (
                   <div className="w-full">
-                    <h1 className="text-2xl font-bold text-gray-900">
+                    <h1 className="text-2xl font-bold text-foreground">
                       Mis sellos
                     </h1>
                     <p className="text-sm text-muted-foreground mt-1 mb-6">
@@ -1483,7 +1515,7 @@ export default function MisReservasPage() {
                             1 hora gratis
                           </p>
                         </div>
-                        <div className="bg-white rounded-xl px-3 py-2 flex items-center gap-1.5 shrink-0">
+                        <div className="bg-card rounded-xl px-3 py-2 flex items-center gap-1.5 shrink-0">
                           <span className="text-green-700 font-extrabold text-sm">
                             CanchaGo
                           </span>
@@ -1498,7 +1530,7 @@ export default function MisReservasPage() {
                             className={cn(
                               "aspect-square flex items-center justify-center rounded-xl text-sm font-bold transition-all",
                               i < sellos
-                                ? "bg-white text-green-600 shadow"
+                                ? "bg-card text-green-600 shadow"
                                 : "border-2 border-dashed border-white/40 text-white/50",
                             )}
                           >
@@ -1537,8 +1569,8 @@ export default function MisReservasPage() {
                     <div className="grid grid-cols-2 gap-4">
                       {/* Columna izquierda: Cómo ganar + Historial */}
                       <div className="flex flex-col gap-4">
-                        <div className="bg-white rounded-xl p-5">
-                          <h3 className="font-semibold text-gray-900 mb-4">
+                        <div className="bg-card rounded-xl p-5">
+                          <h3 className="font-semibold text-foreground mb-4">
                             Cómo ganar sellos
                           </h3>
                           <div className="space-y-3">
@@ -1561,13 +1593,13 @@ export default function MisReservasPage() {
                             ].map(({ icon, label, sub }) => (
                               <div
                                 key={label}
-                                className="flex items-start gap-3 p-3 rounded-xl bg-amber-50"
+                                className="flex items-start gap-3 p-3 rounded-xl bg-amber-500/10"
                               >
-                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-lg">
+                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-lg">
                                   {icon}
                                 </span>
                                 <div>
-                                  <p className="text-sm font-semibold text-gray-800">
+                                  <p className="text-sm font-semibold text-foreground">
                                     {label}
                                   </p>
                                   <p className="text-xs text-muted-foreground">
@@ -1579,8 +1611,8 @@ export default function MisReservasPage() {
                           </div>
                         </div>
 
-                        <div className="bg-white rounded-xl p-5">
-                          <h3 className="font-semibold text-gray-900 mb-4">
+                        <div className="bg-card rounded-xl p-5">
+                          <h3 className="font-semibold text-foreground mb-4">
                             Historial
                           </h3>
                           {loyalty.historial.length > 0 ? (
@@ -1591,7 +1623,7 @@ export default function MisReservasPage() {
                                     {h.motivo === 'reserva' ? '✅' : h.motivo === 'partido' ? '🏟️' : '⭐'}
                                   </span>
                                   <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-gray-900 truncate">
+                                    <p className="text-sm font-medium text-foreground truncate">
                                       {h.motivo === 'reserva' ? 'Reserva confirmada' : h.motivo === 'partido' ? 'Partido creado' : 'Reseña enviada'}
                                     </p>
                                     <p className="text-xs text-muted-foreground">
@@ -1611,14 +1643,14 @@ export default function MisReservasPage() {
                       </div>
 
                       {/* Columna derecha: Tus cupones con pestañas */}
-                      <div className="bg-white rounded-xl p-5 flex flex-col">
+                      <div className="bg-card rounded-xl p-5 flex flex-col">
                         <div className="flex items-center justify-between mb-4">
-                          <h3 className="font-semibold text-gray-900">
+                          <h3 className="font-semibold text-foreground">
                             Tus cupones
                           </h3>
                           {loyalty.cupones.filter((c) => !c.usado).length >
                             0 && (
-                            <span className="text-xs font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                            <span className="text-xs font-semibold bg-green-500/100/20 text-green-700 px-2 py-0.5 rounded-full">
                               {loyalty.cupones.filter((c) => !c.usado).length}{" "}
                               activos
                             </span>
@@ -1628,7 +1660,7 @@ export default function MisReservasPage() {
                         {loyalty.cupones.length === 0 ? (
                           <div className="flex flex-col items-center justify-center flex-1 py-8 text-center">
                             <span className="text-4xl mb-3">🎟️</span>
-                            <p className="text-sm font-medium text-gray-700">
+                            <p className="text-sm font-medium text-foreground/80">
                               Aún no tienes cupones
                             </p>
                             <p className="text-xs text-muted-foreground mt-1">
@@ -1663,12 +1695,12 @@ export default function MisReservasPage() {
                                   className={cn(
                                     "relative flex items-center gap-3 rounded-xl border-2 border-dashed p-3 overflow-hidden",
                                     disponible
-                                      ? "border-green-300 bg-green-50"
-                                      : "border-gray-200 bg-gray-50",
+                                      ? "border-green-300 bg-green-500/10"
+                                      : "border-gray-200 bg-muted/50",
                                   )}
                                 >
-                                  <div className="absolute -left-2.5 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full bg-white border border-gray-200" />
-                                  <div className="absolute -right-2.5 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full bg-white border border-gray-200" />
+                                  <div className="absolute -left-2.5 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full bg-background border border-border" />
+                                  <div className="absolute -right-2.5 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full bg-background border border-border" />
                                   <div
                                     className={cn(
                                       "flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-lg",
@@ -1688,7 +1720,7 @@ export default function MisReservasPage() {
                                     </span>
                                   </div>
                                   <div className="flex-1 min-w-0 pl-1">
-                                    <p className="text-sm font-bold text-gray-900">
+                                    <p className="text-sm font-bold text-foreground">
                                       Descuento en reserva
                                     </p>
                                     <p className="text-xs text-muted-foreground">
@@ -1789,7 +1821,7 @@ export default function MisReservasPage() {
             {/* ── SECCIÓN: MI PERFIL ── */}
             {activeSection === "perfil" && (
               <div className="">
-                <h1 className="text-2xl font-bold text-gray-900">Mi perfil</h1>
+                <h1 className="text-2xl font-bold text-foreground">Mi perfil</h1>
                 <p className="text-sm text-muted-foreground mt-1 mb-6">
                   Actualiza tu información personal
                 </p>
@@ -1802,18 +1834,18 @@ export default function MisReservasPage() {
                 ) : (
                   <div className="space-y-4">
                     {/* Avatar */}
-                    <div className="bg-white rounded-xl p-5 flex items-center gap-4">
+                    <div className="bg-card rounded-xl p-5 flex items-center gap-4">
                       <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-600 text-2xl font-bold text-white shrink-0">
                         {perfilNombre.charAt(0).toUpperCase() || "?"}
                       </div>
                       <div>
-                        <p className="font-semibold text-gray-900">
+                        <p className="font-semibold text-foreground">
                           {perfilNombre || "Sin nombre"}
                         </p>
                         <p className="text-sm text-muted-foreground">
                           {perfil?.email}
                         </p>
-                        <span className="mt-1 inline-block rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 capitalize">
+                        <span className="mt-1 inline-block rounded-full bg-green-500/100/20 px-2 py-0.5 text-xs font-medium text-green-700 capitalize">
                           {perfil?.rol === "superadmin"
                             ? "Administrador"
                             : perfil?.rol === "dueno"
@@ -1824,13 +1856,13 @@ export default function MisReservasPage() {
                     </div>
 
                     {/* Formulario */}
-                    <div className="bg-white rounded-xl p-5 space-y-4">
-                      <h2 className="font-semibold text-gray-900">
+                    <div className="bg-card rounded-xl p-5 space-y-4">
+                      <h2 className="font-semibold text-foreground">
                         Información personal
                       </h2>
 
                       <div className="space-y-1.5">
-                        <label className="text-sm font-medium text-gray-700">
+                        <label className="text-sm font-medium text-foreground/80">
                           Nombre completo
                         </label>
                         <div className="relative">
@@ -1860,7 +1892,7 @@ export default function MisReservasPage() {
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-sm font-medium text-gray-700">
+                        <label className="text-sm font-medium text-foreground/80">
                           Correo electrónico
                         </label>
                         <div className="relative">
@@ -1878,7 +1910,7 @@ export default function MisReservasPage() {
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-sm font-medium text-gray-700">
+                        <label className="text-sm font-medium text-foreground/80">
                           Número de Yape/Plin
                         </label>
                         <div className="relative">
@@ -1943,8 +1975,8 @@ export default function MisReservasPage() {
                 futbol: "⚽", futsal: "🥅", basquet: "🏀", voley: "🏐", tenis: "🎾",
               };
               const estadoConfig: Record<string, { label: string; cls: string }> = {
-                abierto:    { label: "Abierto",    cls: "bg-green-500/10 text-green-700 border-green-500/20" },
-                completo:   { label: "Completo",   cls: "bg-blue-500/10 text-blue-700 border-blue-500/20" },
+                abierto:    { label: "Abierto",    cls: "bg-green-500/100/10 text-green-700 border-green-500/20" },
+                completo:   { label: "Completo",   cls: "bg-blue-500/100/10 text-blue-700 border-blue-500/20" },
                 cancelado:  { label: "Cancelado",  cls: "bg-destructive/10 text-destructive border-destructive/20" },
                 finalizado: { label: "Finalizado", cls: "bg-muted text-muted-foreground" },
               };
@@ -1974,7 +2006,7 @@ export default function MisReservasPage() {
                         <div className="flex items-start justify-between gap-2 mb-2">
                           <div className="flex flex-wrap items-center gap-2">
                             <Badge variant="outline" className={cfg.cls}>{cfg.label}</Badge>
-                            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                            <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-200">
                               {deporteEmoji[p.deporte] ?? "🏟️"} {p.deporte.charAt(0).toUpperCase() + p.deporte.slice(1)}
                             </Badge>
                           </div>
@@ -2012,9 +2044,9 @@ export default function MisReservasPage() {
                             <span>Cupos</span>
                             <span>{cuposOcupados}/{p.jugadores_max}</span>
                           </div>
-                          <div className="h-1.5 w-full rounded-full bg-gray-100 overflow-hidden">
+                          <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
                             <div
-                              className="h-full rounded-full bg-green-500 transition-all"
+                              className="h-full rounded-full bg-green-500/100 transition-all"
                               style={{ width: `${Math.min(100, (cuposOcupados / p.jugadores_max) * 100)}%` }}
                             />
                           </div>
@@ -2027,7 +2059,7 @@ export default function MisReservasPage() {
 
               return (
                 <div className="w-full">
-                  <h1 className="text-2xl font-bold text-gray-900">Mis partidos</h1>
+                  <h1 className="text-2xl font-bold text-foreground">Mis partidos</h1>
                   <p className="text-sm text-muted-foreground mt-1 mb-6">
                     Partidos que organizaste en CanchaGo
                   </p>
@@ -2049,7 +2081,9 @@ export default function MisReservasPage() {
                         <TabsTrigger value="historial" className="gap-1.5">
                           <Clock className="h-4 w-4" />
                           Historial
-                          {partHistorialTotal > 0 && (
+                          {partHistorialLoading ? (
+                            <span className="ml-1 h-3.5 w-3.5 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground" />
+                          ) : partHistorialTotal > 0 && (
                             <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1.5 text-xs">
                               {partHistorialTotal}
                             </Badge>
@@ -2088,7 +2122,7 @@ export default function MisReservasPage() {
             {/* ── SECCIÓN: FAVORITOS ── */}
             {activeSection === "favoritos" && (
               <div className="max-w">
-                <h1 className="text-2xl font-bold text-gray-900 mb-6">
+                <h1 className="text-2xl font-bold text-foreground mb-6">
                   Favoritos
                 </h1>
                 {favoriteCanchas.length > 0 ? (
@@ -2161,7 +2195,7 @@ export default function MisReservasPage() {
       {/* ══════════════════════════════════════════════════════════
           MOBILE LAYOUT (< lg)
       ══════════════════════════════════════════════════════════ */}
-      <div className="flex flex-col flex-1 bg-green-50/60 lg:hidden">
+      <div className="flex flex-col flex-1 bg-muted/40 lg:hidden">
         <Header />
 
         {!user ? (
@@ -2183,7 +2217,7 @@ export default function MisReservasPage() {
                   </Button>
                 </div>
                 <Separator />
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-left">
+                <div className="bg-blue-500/10 border border-blue-200 rounded-xl p-4 text-left">
                   <p className="text-sm font-medium text-blue-900 mb-1">¿Reservaste como invitado?</p>
                   <p className="text-sm text-blue-700">Revisa tu correo, te enviamos los detalles con un enlace para ver el estado.</p>
                 </div>
@@ -2203,7 +2237,7 @@ export default function MisReservasPage() {
 
             {activeSection === 'reservas' && (
               <div className="space-y-4">
-                <h2 className="text-xl font-bold text-gray-900">Mis reservas</h2>
+                <h2 className="text-xl font-bold text-foreground">Mis reservas</h2>
                 <Tabs defaultValue="proximas">
                   <TabsList className="w-full mb-4">
                     <TabsTrigger value="proximas" className="flex-1 gap-1.5">
@@ -2212,7 +2246,11 @@ export default function MisReservasPage() {
                     </TabsTrigger>
                     <TabsTrigger value="historial" className="flex-1 gap-1.5">
                       Historial
-                      {historialTotal > 0 && <Badge variant="secondary" className="ml-1 h-4 min-w-4 px-1 text-xs">{historialTotal}</Badge>}
+                      {historialLoading ? (
+                        <span className="ml-1 h-3 w-3 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground" />
+                      ) : historialTotal > 0 && (
+                        <Badge variant="secondary" className="ml-1 h-4 min-w-4 px-1 text-xs">{historialTotal}</Badge>
+                      )}
                     </TabsTrigger>
                   </TabsList>
                   <TabsContent value="proximas" className="space-y-3">
@@ -2254,7 +2292,7 @@ export default function MisReservasPage() {
               const usados  = loyalty.cupones.filter(c => c.usado);
               return (
                 <div className="space-y-4">
-                  <h2 className="text-xl font-bold text-gray-900">Mis sellos</h2>
+                  <h2 className="text-xl font-bold text-foreground">Mis sellos</h2>
 
                   {/* Banner verde con grid 4×2 */}
                   <div className="rounded-xl bg-green-600 p-5">
@@ -2263,7 +2301,7 @@ export default function MisReservasPage() {
                         <p className="text-xs font-semibold text-green-200 uppercase tracking-widest mb-0.5">Recompensa</p>
                         <p className="text-2xl font-extrabold text-white leading-tight">1 hora gratis</p>
                       </div>
-                      <div className="bg-white rounded-xl px-2.5 py-1.5 shrink-0">
+                      <div className="bg-card rounded-xl px-2.5 py-1.5 shrink-0">
                         <span className="text-green-700 font-extrabold text-xs">CanchaGo</span>
                       </div>
                     </div>
@@ -2273,7 +2311,7 @@ export default function MisReservasPage() {
                         <div key={i} className={cn(
                           'aspect-square flex items-center justify-center rounded-xl text-sm font-bold',
                           i < sellos
-                            ? 'bg-white text-green-600 shadow'
+                            ? 'bg-card text-green-600 shadow'
                             : 'border-2 border-dashed border-white/40 text-white/50'
                         )}>
                           {i < sellos
@@ -2289,18 +2327,18 @@ export default function MisReservasPage() {
                   </div>
 
                   {/* Cómo ganar sellos */}
-                  <div className="bg-white rounded-xl p-4">
-                    <h3 className="font-semibold text-gray-900 mb-3">Cómo ganar sellos</h3>
+                  <div className="bg-card rounded-xl p-4">
+                    <h3 className="font-semibold text-foreground mb-3">Cómo ganar sellos</h3>
                     <div className="space-y-2">
                       {[
                         { icon: '⚡', label: '1 sello por cada reserva',   sub: 'Cualquier cancha, cualquier deporte.' },
                         { icon: '👥', label: '2 sellos por crear un partido', sub: 'Abre cupos y completa con la comunidad.' },
                         { icon: '❤️', label: '1 sello por reseña',          sub: 'Cuenta tu experiencia tras jugar.' },
                       ].map(({ icon, label, sub }) => (
-                        <div key={label} className="flex items-start gap-3 p-3 rounded-xl bg-amber-50">
-                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-lg">{icon}</span>
+                        <div key={label} className="flex items-start gap-3 p-3 rounded-xl bg-amber-500/10">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-lg">{icon}</span>
                           <div>
-                            <p className="text-sm font-semibold text-gray-800">{label}</p>
+                            <p className="text-sm font-semibold text-foreground">{label}</p>
                             <p className="text-xs text-muted-foreground">{sub}</p>
                           </div>
                         </div>
@@ -2309,8 +2347,8 @@ export default function MisReservasPage() {
                   </div>
 
                   {/* Historial de sellos ganados */}
-                  <div className="bg-white rounded-xl p-4">
-                    <h3 className="font-semibold text-gray-900 mb-3">Historial de sellos</h3>
+                  <div className="bg-card rounded-xl p-4">
+                    <h3 className="font-semibold text-foreground mb-3">Historial de sellos</h3>
                     {loyalty.historial.length > 0 ? (
                       <div className="space-y-3">
                         {loyalty.historial.map(h => (
@@ -2319,7 +2357,7 @@ export default function MisReservasPage() {
                               {h.motivo === 'reserva' ? '✅' : h.motivo === 'partido' ? '🏟️' : '⭐'}
                             </span>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-gray-900 truncate">
+                              <p className="text-sm font-medium text-foreground truncate">
                                 {h.motivo === 'reserva' ? 'Reserva confirmada' : h.motivo === 'partido' ? 'Partido creado' : 'Reseña enviada'}
                               </p>
                               <p className="text-xs text-muted-foreground">
@@ -2336,17 +2374,17 @@ export default function MisReservasPage() {
                   </div>
 
                   {/* Cupones con pestañas */}
-                  <div className="bg-white rounded-xl p-4">
+                  <div className="bg-card rounded-xl p-4">
                     <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-semibold text-gray-900">Tus cupones</h3>
+                      <h3 className="font-semibold text-foreground">Tus cupones</h3>
                       {activos.length > 0 && (
-                        <span className="text-xs font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">{activos.length} activos</span>
+                        <span className="text-xs font-semibold bg-green-500/100/20 text-green-700 px-2 py-0.5 rounded-full">{activos.length} activos</span>
                       )}
                     </div>
                     {loyalty.cupones.length === 0 ? (
                       <div className="text-center py-6">
                         <p className="text-2xl mb-2">🎟️</p>
-                        <p className="text-sm font-medium text-gray-700">Aún no tienes cupones</p>
+                        <p className="text-sm font-medium text-foreground/80">Aún no tienes cupones</p>
                         <p className="text-xs text-muted-foreground mt-1">Completa {TOTAL} reservas para ganar tu primer cupón</p>
                       </div>
                     ) : (
@@ -2366,10 +2404,10 @@ export default function MisReservasPage() {
                               return (
                                 <div key={cupon.id} className={cn(
                                   'relative flex items-center gap-3 rounded-xl border-2 border-dashed p-3 overflow-hidden',
-                                  disponible ? 'border-green-300 bg-green-50' : 'border-gray-200 bg-gray-50 opacity-60'
+                                  disponible ? 'border-green-300 bg-green-500/10' : 'border-gray-200 bg-muted/50 opacity-60'
                                 )}>
-                                  <div className="absolute -left-2 top-1/2 -translate-y-1/2 h-4 w-4 rounded-full bg-white border border-gray-200" />
-                                  <div className="absolute -right-2 top-1/2 -translate-y-1/2 h-4 w-4 rounded-full bg-white border border-gray-200" />
+                                  <div className="absolute -left-2 top-1/2 -translate-y-1/2 h-4 w-4 rounded-full bg-background border border-border" />
+                                  <div className="absolute -right-2 top-1/2 -translate-y-1/2 h-4 w-4 rounded-full bg-background border border-border" />
                                   <div className={cn(
                                     'flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-lg',
                                     disponible ? 'bg-green-600 text-white' : 'bg-gray-300 text-gray-500'
@@ -2379,7 +2417,7 @@ export default function MisReservasPage() {
                                     <span className="text-[10px]">OFF</span>
                                   </div>
                                   <div className="flex-1 min-w-0 pl-1">
-                                    <p className="text-sm font-bold text-gray-900">Descuento en reserva</p>
+                                    <p className="text-sm font-bold text-foreground">Descuento en reserva</p>
                                     <p className="text-xs text-muted-foreground">Generado el {fecha}</p>
                                     {disponible
                                       ? <p className="text-xs text-green-600 font-medium mt-0.5">✓ Se aplica automáticamente</p>
@@ -2406,8 +2444,8 @@ export default function MisReservasPage() {
                 futbol: "⚽", futsal: "🥅", basquet: "🏀", voley: "🏐", tenis: "🎾",
               };
               const estadoConfig: Record<string, { label: string; cls: string }> = {
-                abierto:    { label: "Abierto",    cls: "bg-green-500/10 text-green-700 border-green-500/20" },
-                completo:   { label: "Completo",   cls: "bg-blue-500/10 text-blue-700 border-blue-500/20" },
+                abierto:    { label: "Abierto",    cls: "bg-green-500/100/10 text-green-700 border-green-500/20" },
+                completo:   { label: "Completo",   cls: "bg-blue-500/100/10 text-blue-700 border-blue-500/20" },
                 cancelado:  { label: "Cancelado",  cls: "bg-destructive/10 text-destructive border-destructive/20" },
                 finalizado: { label: "Finalizado", cls: "bg-muted text-muted-foreground" },
               };
@@ -2443,9 +2481,9 @@ export default function MisReservasPage() {
                         <p className="text-xs text-muted-foreground mt-0.5">
                           <Users className="inline h-3 w-3 mr-0.5" />{cuposOcupados}/{p.jugadores_max} jugadores
                         </p>
-                        <div className="mt-2 h-1.5 w-full rounded-full bg-gray-100 overflow-hidden">
+                        <div className="mt-2 h-1.5 w-full rounded-full bg-muted overflow-hidden">
                           <div
-                            className="h-full rounded-full bg-green-500"
+                            className="h-full rounded-full bg-green-500/100"
                             style={{ width: `${Math.min(100, (cuposOcupados / p.jugadores_max) * 100)}%` }}
                           />
                         </div>
@@ -2457,7 +2495,7 @@ export default function MisReservasPage() {
 
               return (
                 <div className="space-y-4">
-                  <h2 className="text-xl font-bold text-gray-900">Mis partidos</h2>
+                  <h2 className="text-xl font-bold text-foreground">Mis partidos</h2>
 
                   {misPartidos.length === 0 && partHistorialTotal === 0 && !partHistorialLoading ? (
                     <EmptyState type="partidos_activos" />
@@ -2470,7 +2508,11 @@ export default function MisReservasPage() {
                         </TabsTrigger>
                         <TabsTrigger value="historial" className="flex-1 gap-1.5">
                           Historial
-                          {partHistorialTotal > 0 && <Badge variant="secondary" className="ml-1 h-4 min-w-4 px-1 text-xs">{partHistorialTotal}</Badge>}
+                          {partHistorialLoading ? (
+                            <span className="ml-1 h-3 w-3 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground" />
+                          ) : partHistorialTotal > 0 && (
+                            <Badge variant="secondary" className="ml-1 h-4 min-w-4 px-1 text-xs">{partHistorialTotal}</Badge>
+                          )}
                         </TabsTrigger>
                       </TabsList>
                       <TabsContent value="proximos" className="space-y-3">
@@ -2503,7 +2545,7 @@ export default function MisReservasPage() {
 
             {activeSection === 'favoritos' && (
               <div className="space-y-4">
-                <h2 className="text-xl font-bold text-gray-900">Favoritos</h2>
+                <h2 className="text-xl font-bold text-foreground">Favoritos</h2>
                 {favoriteCanchas.length > 0 ? (
                   <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
                     {favoriteCanchas.map(cancha => (
@@ -2511,7 +2553,7 @@ export default function MisReservasPage() {
                         <div className="relative aspect-video">
                           <Image src={cancha.images[0]} alt={cancha.name} fill className="object-cover" />
                           <button onClick={() => handleRemoveFavorite(cancha.id)}
-                            className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-destructive shadow">
+                            className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-card/90 text-destructive shadow">
                             <Heart className="h-3.5 w-3.5 fill-destructive" />
                           </button>
                         </div>
@@ -2532,7 +2574,7 @@ export default function MisReservasPage() {
 
             {activeSection === 'perfil' && (
               <div className="space-y-4">
-                <h2 className="text-xl font-bold text-gray-900">Mi perfil</h2>
+                <h2 className="text-xl font-bold text-foreground">Mi perfil</h2>
                 {perfilLoading ? (
                   <div className="space-y-3">
                     <div className="h-20 animate-pulse rounded-xl bg-muted" />
@@ -2540,19 +2582,19 @@ export default function MisReservasPage() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <div className="bg-white rounded-xl p-4 flex items-center gap-3">
+                    <div className="bg-card rounded-xl p-4 flex items-center gap-3">
                       <div className="flex h-14 w-14 items-center justify-center rounded-full bg-green-600 text-xl font-bold text-white shrink-0">
                         {perfilNombre.charAt(0).toUpperCase() || '?'}
                       </div>
                       <div>
-                        <p className="font-semibold text-gray-900">{perfilNombre || 'Sin nombre'}</p>
+                        <p className="font-semibold text-foreground">{perfilNombre || 'Sin nombre'}</p>
                         <p className="text-sm text-muted-foreground">{perfil?.email}</p>
                       </div>
                     </div>
-                    <div className="bg-white rounded-xl p-4 space-y-4">
-                      <h3 className="font-semibold text-gray-900">Información personal</h3>
+                    <div className="bg-card rounded-xl p-4 space-y-4">
+                      <h3 className="font-semibold text-foreground">Información personal</h3>
                       <div className="space-y-1.5">
-                        <label className="text-sm font-medium text-gray-700">Nombre completo</label>
+                        <label className="text-sm font-medium text-foreground/80">Nombre completo</label>
                         <div className="relative">
                           <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                           <Input type="text" placeholder="Tu nombre completo" value={perfilNombre}
@@ -2562,7 +2604,7 @@ export default function MisReservasPage() {
                         {perfilErrores.nombre && <p className="text-xs text-destructive">{perfilErrores.nombre}</p>}
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-sm font-medium text-gray-700">Correo electrónico</label>
+                        <label className="text-sm font-medium text-foreground/80">Correo electrónico</label>
                         <div className="relative">
                           <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                           <Input type="email" value={perfil?.email || ''} disabled className="pl-9 bg-muted/50 text-muted-foreground cursor-not-allowed" />
@@ -2570,7 +2612,7 @@ export default function MisReservasPage() {
                         <p className="text-xs text-muted-foreground">El correo no se puede cambiar</p>
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-sm font-medium text-gray-700">Número de Yape/Plin</label>
+                        <label className="text-sm font-medium text-foreground/80">Número de Yape/Plin</label>
                         <div className="relative">
                           <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                           <Input type="tel" placeholder="987654321" value={perfilTelefono}
@@ -2601,13 +2643,13 @@ export default function MisReservasPage() {
           <main className="flex-1 px-4 py-5 space-y-5">
 
             {/* Saludo + avatar */}
-            <div className="bg-white rounded-xl p-4 flex items-center gap-3">
+            <div className="bg-card rounded-xl p-4 flex items-center gap-3">
               <div className="relative shrink-0">
                 <div className="h-14 w-14 rounded-full bg-green-600 flex items-center justify-center text-white text-xl font-bold shadow">
                   {user.name?.charAt(0).toUpperCase() ?? 'U'}
                 </div>
                 <button onClick={() => setActiveSection('perfil')}
-                  className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-white border-2 border-green-600 text-green-600 shadow-sm">
+                  className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-card border-2 border-green-600 text-green-600 shadow-sm">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="h-2.5 w-2.5">
                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
@@ -2615,14 +2657,14 @@ export default function MisReservasPage() {
                 </button>
               </div>
               <div>
-                <h1 className="text-lg font-bold text-gray-900">¡Hola, {user.name?.split(' ')[0]}!</h1>
+                <h1 className="text-lg font-bold text-foreground">¡Hola, {user.name?.split(' ')[0]}!</h1>
                 {user.phone && <p className="text-sm text-muted-foreground">{user.phone}</p>}
               </div>
             </div>
 
             {/* Tu próxima reserva */}
             <div>
-              <p className="text-sm font-semibold text-gray-900 mb-2">Tu próxima reserva</p>
+              <p className="text-sm font-semibold text-foreground mb-2">Tu próxima reserva</p>
               {proximaReserva ? (() => {
                 const cl = canchas.find(c => c.id === proximaReserva.canchaId);
                 const img = cl?.images[0] ?? 'https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=800&h=600&fit=crop';
@@ -2632,12 +2674,12 @@ export default function MisReservasPage() {
                 const codigo = `CG-${proximaReserva.id.slice(0, 4).toUpperCase()}`;
                 return (
                   <button onClick={() => setActiveSection('reservas')}
-                    className="w-full bg-white rounded-xl p-4 flex items-center gap-3 active:opacity-80 transition-opacity text-left">
+                    className="w-full bg-card rounded-xl p-4 flex items-center gap-3 active:opacity-80 transition-opacity text-left">
                     <div className="relative h-14 w-14 shrink-0 rounded-xl overflow-hidden bg-green-800">
                       <Image src={img} alt={proximaReserva.canchaName} fill className="object-cover opacity-90" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold text-gray-900 truncate">{proximaReserva.canchaName}</p>
+                      <p className="font-bold text-foreground truncate">{proximaReserva.canchaName}</p>
                       <p className="text-xs text-muted-foreground mt-0.5">
                         {cl ? `${sportLabels[cl.type]} · ` : ''}{fechaLabel} {proximaReserva.hora} - {horaFin}
                       </p>
@@ -2648,7 +2690,7 @@ export default function MisReservasPage() {
                 );
               })() : (
                 <button onClick={() => setActiveSection('reservas')}
-                  className="w-full bg-white rounded-xl p-4 flex items-center justify-between active:opacity-80 transition-opacity">
+                  className="w-full bg-card rounded-xl p-4 flex items-center justify-between active:opacity-80 transition-opacity">
                   <p className="text-sm text-muted-foreground">No tienes reservas próximas</p>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </button>
@@ -2658,18 +2700,18 @@ export default function MisReservasPage() {
             {/* Grid 2x2 de accesos rápidos */}
             <div className="grid grid-cols-2 gap-3">
               {[
-                { icon: <Stamp className="h-5 w-5 text-amber-600" />, iconBg: 'bg-amber-100', label: 'Mis sellos', value: `${loyalty.sellos} de 8`, section: 'sellos' as Section },
-                { icon: <Calendar className="h-5 w-5 text-green-600" />, iconBg: 'bg-green-100', label: 'Mis reservas', value: `${proximas.length} activas`, section: 'reservas' as Section },
-                { icon: <Heart className="h-5 w-5 text-rose-500" />, iconBg: 'bg-rose-100', label: 'Favoritos', value: `${favoriteCanchas.length} canchas`, section: 'favoritos' as Section },
-                { icon: <Users className="h-5 w-5 text-orange-500" />, iconBg: 'bg-orange-100', label: 'Mis partidos', value: `${misPartidos.length} creados`, section: 'partidos' as Section },
+                { icon: <Stamp className="h-5 w-5 text-amber-600" />, iconBg: 'bg-amber-500/20', label: 'Mis sellos', value: `${loyalty.sellos} de 8`, section: 'sellos' as Section },
+                { icon: <Calendar className="h-5 w-5 text-green-600" />, iconBg: 'bg-green-500/100/20', label: 'Mis reservas', value: `${proximas.length} activas`, section: 'reservas' as Section },
+                { icon: <Heart className="h-5 w-5 text-rose-500" />, iconBg: 'bg-rose-500/20', label: 'Favoritos', value: `${favoriteCanchas.length} canchas`, section: 'favoritos' as Section },
+                { icon: <Users className="h-5 w-5 text-orange-500" />, iconBg: 'bg-orange-500/20', label: 'Mis partidos', value: `${misPartidos.length} creados`, section: 'partidos' as Section },
               ].map(({ icon, iconBg, label, value, section }) => (
                 <button key={label} onClick={() => setActiveSection(section)}
-                  className="bg-white rounded-xl p-4 text-left active:opacity-80 transition-opacity">
+                  className="bg-card rounded-xl p-4 text-left active:opacity-80 transition-opacity">
                   <span className={cn("flex h-9 w-9 items-center justify-center rounded-xl mb-3", iconBg)}>
                     {icon}
                   </span>
                   <p className="text-xs text-muted-foreground">{label}</p>
-                  <p className="text-base font-bold text-gray-900 mt-0.5">{value}</p>
+                  <p className="text-base font-bold text-foreground mt-0.5">{value}</p>
                 </button>
               ))}
             </div>
@@ -2756,7 +2798,7 @@ export default function MisReservasPage() {
                   {reservaDetalle.modoPago === "parcial" && (
                     <>
                       <Separator />
-                      <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 space-y-2 text-sm">
+                      <div className="rounded-lg bg-amber-500/10 border border-amber-200 p-3 space-y-2 text-sm">
                         <p className="font-semibold text-amber-800">
                           Desglose de pago
                         </p>

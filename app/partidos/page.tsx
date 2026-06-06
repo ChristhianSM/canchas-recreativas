@@ -1141,11 +1141,7 @@ export default function PartidosPage() {
     setError("");
     try {
       const token = getToken();
-      const params = new URLSearchParams();
-      if (deporte !== "todos") params.set("deporte", deporte);
-      if (soloHoy) params.set("solo_hoy", "true");
-
-      const res = await fetch(`/api/partidos?${params}`, {
+      const res = await fetch(`/api/partidos`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!res.ok) throw new Error("Error al cargar los partidos");
@@ -1156,11 +1152,11 @@ export default function PartidosPage() {
     } finally {
       if (!silent) setLoading(false);
     }
-  }, [deporte, soloHoy]);
+  }, []);
 
   useEffect(() => {
     fetchPartidos();
-    fetchMisPartidosPendientes();
+    if (getToken()) fetchMisPartidosPendientes();
   }, [fetchPartidos, fetchMisPartidosPendientes]);
 
   useEffect(() => {
@@ -1278,14 +1274,19 @@ export default function PartidosPage() {
     }
   };
 
-  const disponibles = useMemo(
-    () => partidos.filter((p) => p.estado === "abierto").length,
-    [partidos],
-  );
-
   const partidosFiltrados = useMemo((): PartidoConDistancia[] => {
-    if (!ubicacion) return partidos;
-    return [...partidos]
+    let resultado = partidos;
+
+    if (deporte !== "todos") {
+      resultado = resultado.filter((p) => p.deporte === deporte);
+    }
+    if (soloHoy) {
+      const hoy = getLocalDateString();
+      resultado = resultado.filter((p) => p.fecha === hoy);
+    }
+
+    if (!ubicacion) return resultado;
+    return [...resultado]
       .map((p) => ({
         ...p,
         distancia:
@@ -1294,14 +1295,16 @@ export default function PartidosPage() {
             : undefined,
       }))
       .sort((a, b) => (a.distancia ?? Infinity) - (b.distancia ?? Infinity));
-  }, [partidos, ubicacion]);
+  }, [partidos, ubicacion, deporte, soloHoy]);
+
+  const disponibles = partidosFiltrados.filter((p) => p.estado === "abierto").length;
 
   return (
     <div className="flex flex-col flex-1 bg-background">
       <Header />
 
       {/* Hero + filtros */}
-      <div className="bg-white border-b border-border">
+      <div className="bg-card border-b border-border">
         <div className="container mx-auto px-4 md:px-8 lg:px-12 pt-6 pb-4">
           <h1 className="text-2xl font-bold text-foreground">
             Partidos abiertos
@@ -1373,7 +1376,7 @@ export default function PartidosPage() {
       </div>
 
       {/* Contenido */}
-      <div className="flex-1 bg-[#eef3ee]">
+      <div className="flex-1 bg-background">
         <div className="container mx-auto px-4 md:px-8 lg:px-12 py-5">
 
           {/* Alerta de error inline */}

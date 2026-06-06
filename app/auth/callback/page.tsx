@@ -13,19 +13,17 @@ export default function AuthCallbackPage() {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    const sync = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+
       if (!session) {
         router.replace('/login');
         return;
       }
 
-      const user = session.user;
+      const user  = session.user;
       const token = session.access_token;
 
-      // Guardar token en localStorage
-      localStorage.setItem('cp_token', token);
-
-      // Obtener nombre del proveedor OAuth
       const nombre =
         user.user_metadata?.full_name ??
         user.user_metadata?.name ??
@@ -33,13 +31,12 @@ export default function AuthCallbackPage() {
         user.email?.split('@')[0] ??
         'Usuario';
 
-      const email = user.email ?? '';
+      const email    = user.email ?? '';
       const telefono = user.user_metadata?.phone ?? user.user_metadata?.telefono ?? '';
 
-      // Guardar usuario en localStorage
+      localStorage.setItem('cp_token', token);
       localStorage.setItem('cp_user', JSON.stringify({ name: nombre, email, phone: telefono }));
 
-      // Sincronizar con tabla usuarios en Supabase (upsert)
       await fetch('/api/auth/sync-oauth', {
         method: 'POST',
         headers: {
@@ -49,11 +46,11 @@ export default function AuthCallbackPage() {
         body: JSON.stringify({ nombre, email, telefono }),
       });
 
-      // Notificar al header
       window.dispatchEvent(new Event('user-login'));
-
       router.replace('/');
-    });
+    };
+
+    sync();
   }, [router]);
 
   return (

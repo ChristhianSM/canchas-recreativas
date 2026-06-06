@@ -114,17 +114,15 @@ export default function RecuperarContrasenaPage() {
         <div className="container mx-auto flex items-center gap-4 px-4 py-4">
           <Link
             href="/login"
-            className="flex cursor-pointer items-center text-white/80 hover:text-white transition-colors"
+            className="flex cursor-pointer items-center gap-4 text-white/80 hover:text-white transition-colors"
           >
             <ArrowLeft className="h-5 w-5" />
+            <h1 className="text-lg font-semibold">Recuperar contraseña</h1>
           </Link>
-          <h1 className="text-lg font-semibold text-white">
-            Recuperar contraseña
-          </h1>
         </div>
       </header>
 
-      <main className="relative z-10 flex-1 flex items-center justify-center px-4 py-12">
+      <main className="relative z-10 flex-1 flex items-center justify-center px-4">
         <div className="w-full max-w-md bg-white dark:bg-card rounded-xl shadow-2xl p-8">
           {/* Logo */}
           <div className="mb-8 text-center">

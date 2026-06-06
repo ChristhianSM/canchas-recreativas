@@ -608,7 +608,13 @@ export function CanchaCard({
         </DialogContent>
       </Dialog>
 
-      <Card className="group overflow-hidden border-border bg-card transition-all hover:shadow-lg hover:shadow-primary/10 hover:-translate-y-1">
+      <Card
+        className="group overflow-hidden border-border bg-card transition-all hover:shadow-lg hover:shadow-primary/10 hover:-translate-y-1 cursor-pointer"
+        onClick={(e) => {
+          if ((e.target as HTMLElement).closest('button, a')) return;
+          router.push(`/cancha/${cancha.id}`);
+        }}
+      >
         {/* Imagen */}
         <div className="relative">
           <Link href={`/cancha/${cancha.id}`}>
@@ -715,7 +721,7 @@ export function CanchaCard({
                       aria-label={`Seleccionar horario ${slot.time}`}
                       className={`flex-1 min-w-0 rounded-lg border px-2 py-2 text-sm font-medium transition-all text-center ${
                         isSelected
-                          ? "bg-brand-black  text-primary-foreground"
+                          ? "border-foreground bg-foreground text-background"
                           : "border-border bg-background text-foreground hover:border-primary/50"
                       }`}
                     >

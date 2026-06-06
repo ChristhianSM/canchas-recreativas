@@ -18,9 +18,28 @@ import {
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Nosotros",
+  title: "Sobre Nosotros — CanchaGo | Reserva Canchas Deportivas en Piura",
   description:
-    "Conoce a CanchaGo, la plataforma que conecta jugadores con las mejores canchas deportivas de Piura. Nuestra misión, visión y valores.",
+    "Conoce a CanchaGo, la plataforma que conecta jugadores con las mejores canchas deportivas de Piura. Nuestra misión es hacer el deporte más accesible en Piura.",
+  keywords: [
+    'sobre canchago',
+    'quienes somos canchago',
+    'plataforma canchas piura',
+    'reserva canchas deportivas piura',
+    'equipo canchago',
+  ],
+  openGraph: {
+    title: "Sobre Nosotros — CanchaGo | Reserva Canchas Deportivas en Piura",
+    description:
+      "Conoce a CanchaGo, la plataforma que conecta jugadores con las mejores canchas deportivas de Piura.",
+    url: 'https://www.tucanchago.com/nosotros',
+    siteName: 'CanchaGo',
+    locale: 'es_PE',
+    type: 'website',
+  },
+  alternates: {
+    canonical: 'https://www.tucanchago.com/nosotros',
+  },
 };
 
 const VALORES = [

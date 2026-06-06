@@ -51,6 +51,9 @@ import {
   obtenerUbicacionGuardada,
   ordenarPorDistancia,
   filtrarPorRadio,
+  guardarUbicacion,
+  guardarCiudad,
+  obtenerCiudadGuardada,
   type Coordenadas,
 } from "@/lib/geolocation-utils";
 
@@ -101,21 +104,6 @@ const HORAS = [
   "23:00",
 ];
 
-const UBICACIONES_POR_CIUDAD: Record<string, string[]> = {
-  Piura: [
-    "Piura",
-    "Castilla",
-    "Catacaos",
-    "La Unión",
-    "Las Lomas",
-    "Tambogrande",
-    "Sullana",
-    "Paita",
-    "Talara",
-    "Chulucanas",
-  ],
-  // Próximamente: Lima, Trujillo, Chiclayo, Arequipa...
-};
 
 function adaptCancha(c: Cancha) {
   // Construir schedule a partir de horariosOcupados
@@ -659,6 +647,15 @@ function CanchasContent() {
                   onClick={() => {
                     if (!navigator.geolocation) return;
                     navigator.geolocation.getCurrentPosition(async (pos) => {
+                      const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                      guardarUbicacion(coords);
+
+                      const cachedCity = obtenerCiudadGuardada();
+                      if (cachedCity) {
+                        setModalUbicacion(cachedCity);
+                        return;
+                      }
+
                       try {
                         const r = await fetch(
                           `https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&accept-language=es`,
@@ -670,6 +667,7 @@ function CanchasContent() {
                           d.address?.village ||
                           "Mi ubicación";
                         setModalUbicacion(city);
+                        guardarCiudad(city);
                       } catch {
                         setModalUbicacion("Mi ubicación");
                       }
@@ -691,29 +689,33 @@ function CanchasContent() {
                   </div>
                 </button>
 
-                {Object.entries(UBICACIONES_POR_CIUDAD).map(
-                  ([ciudad, distritos]) => (
-                    <div key={ciudad} className="mb-3">
-                      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">
-                        {ciudad}
-                      </p>
-                      <div className="space-y-1">
-                        {distritos.map((distrito) => (
-                          <button
-                            key={distrito}
-                            onClick={() => {
-                              setModalUbicacion(distrito);
-                              setSearchStep("fecha");
-                            }}
-                            className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl border transition-colors ${modalUbicacion === distrito ? "border-[#16a34a] bg-green-50 text-[#16a34a]" : "border-gray-100 hover:border-gray-300 text-gray-700"}`}
-                          >
-                            <MapPin className="h-3.5 w-3.5 shrink-0 text-gray-400" />
-                            <span className="text-sm">{distrito}</span>
-                          </button>
-                        ))}
-                      </div>
+                {loading ? (
+                  <div className="space-y-1 mb-3">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <div key={i} className="h-10 rounded-xl bg-gray-100 animate-pulse" />
+                    ))}
+                  </div>
+                ) : allDistricts.length > 0 && (
+                  <div className="mb-3">
+                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">
+                      Piura
+                    </p>
+                    <div className="space-y-1">
+                      {allDistricts.map((distrito) => (
+                        <button
+                          key={distrito}
+                          onClick={() => {
+                            setModalUbicacion(distrito);
+                            setSearchStep("fecha");
+                          }}
+                          className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl border transition-colors ${modalUbicacion === distrito ? "border-[#16a34a] bg-green-50 text-[#16a34a]" : "border-gray-100 hover:border-gray-300 text-gray-700"}`}
+                        >
+                          <MapPin className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+                          <span className="text-sm">{distrito}</span>
+                        </button>
+                      ))}
                     </div>
-                  ),
+                  </div>
                 )}
               </div>
             )}
@@ -993,6 +995,15 @@ function CanchasContent() {
                           if (!navigator.geolocation) return;
                           navigator.geolocation.getCurrentPosition(
                             async (pos) => {
+                              const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                              guardarUbicacion(coords);
+
+                              const cachedCity = obtenerCiudadGuardada();
+                              if (cachedCity) {
+                                setDesktopUbicacion(cachedCity);
+                                return;
+                              }
+
                               try {
                                 const r = await fetch(
                                   `https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&accept-language=es`,
@@ -1004,6 +1015,7 @@ function CanchasContent() {
                                   d.address?.village ||
                                   "Mi ubicación";
                                 setDesktopUbicacion(city);
+                                guardarCiudad(city);
                               } catch {
                                 setDesktopUbicacion("Mi ubicación");
                               }
@@ -1026,35 +1038,39 @@ function CanchasContent() {
                         </div>
                       </button>
 
-                      {/* Ubicaciones agrupadas por ciudad */}
+                      {/* Ubicaciones derivadas de las canchas cargadas */}
                       <div className="max-h-64 overflow-y-auto">
-                        {Object.entries(UBICACIONES_POR_CIUDAD).map(
-                          ([ciudad, distritos]) => (
-                            <div key={ciudad}>
-                              <div className="px-4 pt-3 pb-1">
-                                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
-                                  {ciudad}
-                                </p>
-                              </div>
-                              {distritos.map((distrito) => (
-                                <button
-                                  key={distrito}
-                                  onClick={() => {
-                                    setDesktopUbicacion(distrito);
-                                    setActiveField("fecha");
-                                  }}
-                                  className="flex items-center gap-3 w-full px-4 py-2.5 hover:bg-gray-50 transition-colors"
-                                >
-                                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gray-100">
-                                    <MapPin className="h-3.5 w-3.5 text-gray-500" />
-                                  </div>
-                                  <span className="text-sm text-gray-700">
-                                    {distrito}
-                                  </span>
-                                </button>
-                              ))}
+                        {loading ? (
+                          <div className="px-4 py-3 space-y-2">
+                            {[1, 2, 3, 4, 5].map((i) => (
+                              <div key={i} className="h-9 rounded-lg bg-gray-100 animate-pulse" />
+                            ))}
+                          </div>
+                        ) : allDistricts.length > 0 && (
+                          <div>
+                            <div className="px-4 pt-3 pb-1">
+                              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
+                                Piura
+                              </p>
                             </div>
-                          ),
+                            {allDistricts.map((distrito) => (
+                              <button
+                                key={distrito}
+                                onClick={() => {
+                                  setDesktopUbicacion(distrito);
+                                  setActiveField("fecha");
+                                }}
+                                className="flex items-center gap-3 w-full px-4 py-2.5 hover:bg-gray-50 transition-colors"
+                              >
+                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gray-100">
+                                  <MapPin className="h-3.5 w-3.5 text-gray-500" />
+                                </div>
+                                <span className="text-sm text-gray-700">
+                                  {distrito}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
                         )}
                       </div>
                     </div>
@@ -1473,11 +1489,22 @@ function CanchasContent() {
                   </button>
                 )}
                 <div className="relative flex items-center">
-                  <SlidersHorizontal className="pointer-events-none absolute left-2 h-4 w-4 text-gray-500" />
+                  <div className="flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 pointer-events-none">
+                    <SlidersHorizontal className="h-4 w-4 text-gray-500 shrink-0" />
+                    <span className="hidden sm:inline text-sm font-semibold text-gray-700">
+                      {sortBy === "relevancia"
+                        ? ubicacion ? "Más cercanas" : "Relevancia"
+                        : sortBy === "precio-asc" ? "Menor precio"
+                        : sortBy === "precio-desc" ? "Mayor precio"
+                        : sortBy === "rating" ? "Mejor puntuación"
+                        : "Nombre (A-Z)"}
+                    </span>
+                    <ArrowUpDown className="hidden sm:block h-3 w-3 text-gray-400 shrink-0" />
+                  </div>
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value as SortOption)}
-                    className="appearance-none rounded-md border border-gray-300 bg-white pl-8 pr-3 sm:pr-8 py-1.5 text-sm font-semibold text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-0 cursor-pointer"
+                    className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
                   >
                     <option value="relevancia">{ubicacion ? "Más cercanas" : "Relevancia"}</option>
                     <option value="precio-asc">Menor precio</option>

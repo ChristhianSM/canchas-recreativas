@@ -275,7 +275,11 @@ export function CanchaCardHorizontal({
       <div
         onMouseEnter={() => onHover?.(cancha.id)}
         onMouseLeave={() => onHover?.(null)}
-        className={`group flex rounded-xl border bg-white overflow-hidden transition-all duration-200 hover:shadow-md h-[210px] md:h-[270px] ${
+        onClick={(e) => {
+          if ((e.target as HTMLElement).closest('button, a')) return;
+          router.push(`/cancha/${cancha.id}`);
+        }}
+        className={`group flex rounded-xl border bg-white overflow-hidden transition-all duration-200 hover:shadow-md h-[210px] md:h-[270px] cursor-pointer ${
           isHighlighted ? 'border-[#16a34a] shadow-md ring-1 ring-[#16a34a]/30' : 'border-gray-200 hover:border-gray-300'
         }`}
       >
@@ -526,7 +530,7 @@ export function CanchaCardHorizontal({
                         onClick={(e) => handleSlotClick(slot, e)}
                         className={`rounded-lg border px-3 py-1 text-sm font-semibold transition-all ${
                           isSelected
-                            ? 'bg-brand-black border-brand-black text-primary-foreground'
+                            ? 'bg-foreground border-foreground text-background'
                             : 'border-border text-foreground hover:border-primary hover:text-primary'
                         }`}
                       >

@@ -116,7 +116,7 @@ export async function apiLoginWithOAuth(provider: 'google' | 'facebook') {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider,
     options: {
-      redirectTo: `${window.location.origin}/auth/callback`,
+      redirectTo: `${window.location.origin}/api/auth/callback`,
     },
   });
   if (error) console.error('[oauth]', error.message);
@@ -217,7 +217,11 @@ export async function apiToggleFavorito(canchaId: string) {
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({ canchaId }),
   });
-  return res.json();
+  const data = await res.json();
+  if (res.ok && typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('notifications-update'));
+  }
+  return data;
 }
 
 // ── Partidos ───────────────────────────────────────────────────

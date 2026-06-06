@@ -3,7 +3,9 @@
 
 html {
   scrollbar-gutter: stable;
+  overflow-y: scroll;
 }
+
 
 @custom-variant dark (&:is(.dark *));
 
@@ -185,6 +187,14 @@ html {
   select,
   summary {
     cursor: pointer;
+  }
+  /* react-remove-scroll-bar inyecta margin-right !important al body para compensar
+     el scrollbar al abrir modales. Como html tiene overflow-y:scroll (scrollbar
+     siempre visible), esa compensación causa un desplazamiento doble.
+     Al estar dentro de @layer base, este !important gana al !important sin layer
+     que inyecta la librería dinámicamente. */
+  body[data-scroll-locked] {
+    margin-right: 0 !important;
   }
 }
 
