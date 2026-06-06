@@ -461,6 +461,9 @@ export default function MisReservasPage() {
   const [perfilLoading, setPerfilLoading] = useState(false);
   const [perfilGuardando, setPerfilGuardando] = useState(false);
   const [perfilGuardado, setPerfilGuardado] = useState(false);
+  const [showAllHistorial, setShowAllHistorial] = useState(false);
+  const [showAllCuponesActivos, setShowAllCuponesActivos] = useState(false);
+  const [showAllCuponesUsados, setShowAllCuponesUsados] = useState(false);
   const [perfilErrores, setPerfilErrores] = useState<{
     nombre?: string;
     telefono?: string;
@@ -1617,7 +1620,7 @@ export default function MisReservasPage() {
                           </h3>
                           {loyalty.historial.length > 0 ? (
                             <div className="space-y-3">
-                              {loyalty.historial.map((h) => (
+                              {(showAllHistorial ? loyalty.historial : loyalty.historial.slice(0, 5)).map((h) => (
                                 <div key={h.id} className="flex items-center gap-3">
                                   <span className="text-lg">
                                     {h.motivo === 'reserva' ? '✅' : h.motivo === 'partido' ? '🏟️' : '⭐'}
@@ -1633,6 +1636,14 @@ export default function MisReservasPage() {
                                   <span className="text-xs font-semibold text-amber-600 shrink-0">+{h.cantidad}</span>
                                 </div>
                               ))}
+                              {loyalty.historial.length > 5 && (
+                                <button
+                                  onClick={() => setShowAllHistorial(v => !v)}
+                                  className="w-full text-xs font-medium text-primary hover:text-primary/80 text-center pt-1 transition-colors"
+                                >
+                                  {showAllHistorial ? 'Ver menos ↑' : `Ver todos (+${loyalty.historial.length - 5}) ↓`}
+                                </button>
+                              )}
                             </div>
                           ) : (
                             <p className="text-sm text-muted-foreground text-center py-4">
@@ -1777,13 +1788,19 @@ export default function MisReservasPage() {
                                   className="space-y-3 mt-0"
                                 >
                                   {activos.length > 0 ? (
-                                    activos.map((c) => (
-                                      <CuponItem
-                                        key={c.id}
-                                        cupon={c}
-                                        disponible={true}
-                                      />
-                                    ))
+                                    <>
+                                      {(showAllCuponesActivos ? activos : activos.slice(0, 3)).map((c) => (
+                                        <CuponItem key={c.id} cupon={c} disponible={true} />
+                                      ))}
+                                      {activos.length > 3 && (
+                                        <button
+                                          onClick={() => setShowAllCuponesActivos(v => !v)}
+                                          className="w-full text-xs font-medium text-primary hover:text-primary/80 text-center pt-1 transition-colors"
+                                        >
+                                          {showAllCuponesActivos ? 'Ver menos ↑' : `Ver todos (+${activos.length - 3}) ↓`}
+                                        </button>
+                                      )}
+                                    </>
                                   ) : (
                                     <p className="text-sm text-muted-foreground text-center py-6">
                                       No tienes cupones activos
@@ -1795,13 +1812,19 @@ export default function MisReservasPage() {
                                   className="space-y-3 mt-0"
                                 >
                                   {usados.length > 0 ? (
-                                    usados.map((c) => (
-                                      <CuponItem
-                                        key={c.id}
-                                        cupon={c}
-                                        disponible={false}
-                                      />
-                                    ))
+                                    <>
+                                      {(showAllCuponesUsados ? usados : usados.slice(0, 3)).map((c) => (
+                                        <CuponItem key={c.id} cupon={c} disponible={false} />
+                                      ))}
+                                      {usados.length > 3 && (
+                                        <button
+                                          onClick={() => setShowAllCuponesUsados(v => !v)}
+                                          className="w-full text-xs font-medium text-primary hover:text-primary/80 text-center pt-1 transition-colors"
+                                        >
+                                          {showAllCuponesUsados ? 'Ver menos ↑' : `Ver todos (+${usados.length - 3}) ↓`}
+                                        </button>
+                                      )}
+                                    </>
                                   ) : (
                                     <p className="text-sm text-muted-foreground text-center py-6">
                                       No has usado cupones aún
@@ -2351,7 +2374,7 @@ export default function MisReservasPage() {
                     <h3 className="font-semibold text-foreground mb-3">Historial de sellos</h3>
                     {loyalty.historial.length > 0 ? (
                       <div className="space-y-3">
-                        {loyalty.historial.map(h => (
+                        {(showAllHistorial ? loyalty.historial : loyalty.historial.slice(0, 5)).map(h => (
                           <div key={h.id} className="flex items-center gap-3">
                             <span className="text-lg">
                               {h.motivo === 'reserva' ? '✅' : h.motivo === 'partido' ? '🏟️' : '⭐'}
@@ -2367,6 +2390,14 @@ export default function MisReservasPage() {
                             <span className="text-xs font-semibold text-amber-600 shrink-0">+{h.cantidad}</span>
                           </div>
                         ))}
+                        {loyalty.historial.length > 5 && (
+                          <button
+                            onClick={() => setShowAllHistorial(v => !v)}
+                            className="w-full text-xs font-medium text-primary hover:text-primary/80 text-center pt-1 transition-colors"
+                          >
+                            {showAllHistorial ? 'Ver menos ↑' : `Ver todos (+${loyalty.historial.length - 5}) ↓`}
+                          </button>
+                        )}
                       </div>
                     ) : (
                       <p className="text-sm text-muted-foreground text-center py-3">Sin historial aún</p>
@@ -2397,9 +2428,12 @@ export default function MisReservasPage() {
                             Usados {usados.length > 0 && <Badge variant="secondary" className="h-4 min-w-4 px-1 text-xs">{usados.length}</Badge>}
                           </TabsTrigger>
                         </TabsList>
-                        {[{ key: 'activos', list: activos, disponible: true }, { key: 'usados', list: usados, disponible: false }].map(({ key, list, disponible }) => (
+                        {[
+                          { key: 'activos', list: activos, disponible: true, showAll: showAllCuponesActivos, setShowAll: setShowAllCuponesActivos },
+                          { key: 'usados',  list: usados,  disponible: false, showAll: showAllCuponesUsados,  setShowAll: setShowAllCuponesUsados },
+                        ].map(({ key, list, disponible, showAll, setShowAll }) => (
                           <TabsContent key={key} value={key} className="space-y-2 mt-0">
-                            {list.length > 0 ? list.map(cupon => {
+                            {list.length > 0 ? (showAll ? list : list.slice(0, 3)).map(cupon => {
                               const fecha = new Date(cupon.generadoEn).toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: 'numeric' });
                               return (
                                 <div key={cupon.id} className={cn(
@@ -2425,7 +2459,16 @@ export default function MisReservasPage() {
                                   </div>
                                 </div>
                               );
-                            }) : (
+                            }) : null}
+                            {list.length > 3 && (
+                              <button
+                                onClick={() => setShowAll((v: boolean) => !v)}
+                                className="w-full text-xs font-medium text-primary hover:text-primary/80 text-center pt-1 transition-colors"
+                              >
+                                {showAll ? 'Ver menos ↑' : `Ver todos (+${list.length - 3}) ↓`}
+                              </button>
+                            )}
+                            {list.length === 0 && (
                               <p className="text-sm text-muted-foreground text-center py-4">
                                 {disponible ? 'No tienes cupones activos' : 'No has usado cupones aún'}
                               </p>

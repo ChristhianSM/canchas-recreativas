@@ -588,21 +588,21 @@ function CanchasContent() {
   }, [canchas, modalDate]);
 
   return (
-    <div className="flex flex-col flex-1 bg-white">
+    <div className="flex flex-col flex-1 bg-card">
       <Header />
 
       {/* ── MODAL FULLSCREEN DE BÚSQUEDA (mobile) ────────────────── */}
       {showSearchModal && (
-        <div className="fixed inset-0 z-50 bg-white flex flex-col">
+        <div className="fixed inset-0 z-50 bg-card flex flex-col">
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
             <button
               onClick={() => setShowSearchModal(false)}
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 hover:bg-gray-50"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-border hover:bg-muted/50"
             >
               <X className="h-4 w-4 text-gray-600" />
             </button>
-            <span className="text-sm font-semibold text-gray-800">
+            <span className="text-sm font-semibold text-foreground">
               Buscar canchas
             </span>
             <button
@@ -611,14 +611,14 @@ function CanchasContent() {
                 setModalDate(new Date());
                 setModalTime("");
               }}
-              className="text-xs text-gray-400 hover:text-gray-700 underline"
+              className="text-xs text-gray-400 hover:text-foreground/80 underline"
             >
               Limpiar
             </button>
           </div>
 
           {/* Tabs: Dónde / Fecha / Hora */}
-          <div className="flex border-b border-gray-100">
+          <div className="flex border-b border-border">
             {(["ubicacion", "fecha", "hora"] as const).map((step, i) => (
               <button
                 key={step}
@@ -639,7 +639,7 @@ function CanchasContent() {
             {/* ── UBICACIÓN ── */}
             {searchStep === "ubicacion" && (
               <div>
-                <h2 className="text-base font-bold text-gray-900 mb-3">
+                <h2 className="text-base font-bold text-foreground mb-3">
                   ¿Dónde quieres jugar?
                 </h2>
                 {/* Cerca de mí */}
@@ -674,13 +674,13 @@ function CanchasContent() {
                     });
                     setSearchStep("fecha");
                   }}
-                  className="flex items-center gap-3 w-full px-3 py-3 rounded-xl border border-gray-200 hover:border-[#16a34a] hover:bg-green-50 transition-colors mb-3"
+                  className="flex items-center gap-3 w-full px-3 py-3 rounded-xl border border-border hover:border-[#16a34a] hover:bg-green-500/100/10 transition-colors mb-3"
                 >
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gray-100">
                     <Navigation className="h-4 w-4 text-gray-600" />
                   </div>
                   <div className="text-left">
-                    <p className="text-sm font-semibold text-gray-800">
+                    <p className="text-sm font-semibold text-foreground">
                       Cerca de mí
                     </p>
                     <p className="text-xs text-gray-400">
@@ -708,7 +708,7 @@ function CanchasContent() {
                             setModalUbicacion(distrito);
                             setSearchStep("fecha");
                           }}
-                          className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl border transition-colors ${modalUbicacion === distrito ? "border-[#16a34a] bg-green-50 text-[#16a34a]" : "border-gray-100 hover:border-gray-300 text-gray-700"}`}
+                          className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl border transition-colors ${modalUbicacion === distrito ? "border-[#16a34a] bg-green-500/10 text-[#16a34a]" : "border-border hover:border-border text-foreground/80"}`}
                         >
                           <MapPin className="h-3.5 w-3.5 shrink-0 text-gray-400" />
                           <span className="text-sm">{distrito}</span>
@@ -723,7 +723,7 @@ function CanchasContent() {
             {/* ── FECHA ── */}
             {searchStep === "fecha" && (
               <div>
-                <h2 className="text-base font-bold text-gray-900 mb-3">
+                <h2 className="text-base font-bold text-foreground mb-3">
                   ¿Cuándo quieres jugar?
                 </h2>
                 {/* Chips rápidos */}
@@ -758,7 +758,7 @@ function CanchasContent() {
                           setModalDate(date);
                           setSearchStep("hora");
                         }}
-                        className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${isSelected ? "bg-gray-900 text-white border-gray-900" : "border-gray-200 text-gray-700 hover:border-gray-400"}`}
+                        className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${isSelected ? "bg-gray-900 text-white border-gray-900" : "border-border text-foreground/80 hover:border-gray-400"}`}
                       >
                         {label}
                       </button>
@@ -879,7 +879,7 @@ function CanchasContent() {
             {/* ── HORA ── */}
             {searchStep === "hora" && (
               <div>
-                <h2 className="text-base font-bold text-gray-900 mb-1">
+                <h2 className="text-base font-bold text-foreground mb-1">
                   ¿A qué hora?
                 </h2>
                 <p className="text-xs text-gray-500 mb-4 capitalize">
@@ -906,10 +906,10 @@ function CanchasContent() {
                           className={`py-2.5 rounded-xl text-sm font-semibold border-2 transition-all
                             ${
                               isPast
-                                ? "bg-gray-100 border-gray-100 text-gray-300 cursor-not-allowed"
+                                ? "bg-gray-100 border-border text-gray-300 cursor-not-allowed"
                                 : modalTime === time
                                   ? "bg-[#16a34a] border-[#16a34a] text-white"
-                                  : "border-gray-200 text-gray-700 hover:border-[#16a34a]/50"
+                                  : "border-border text-foreground/80 hover:border-[#16a34a]/50"
                             }`}
                         >
                           {time}
@@ -920,7 +920,7 @@ function CanchasContent() {
                 ) : (
                   <div className="text-center py-8">
                     <p className="text-3xl mb-2">😔</p>
-                    <p className="font-semibold text-gray-800 text-sm">
+                    <p className="font-semibold text-foreground text-sm">
                       Sin horarios disponibles
                     </p>
                     <button
@@ -936,7 +936,7 @@ function CanchasContent() {
           </div>
 
           {/* Footer */}
-          <div className="border-t border-gray-100 px-4 py-3 bg-white">
+          <div className="border-t border-border px-4 py-3 bg-card">
             <div className="flex items-center justify-between mb-2 text-xs text-gray-500">
               <span>{modalUbicacion || "Piura, Perú"}</span>
               <span>
@@ -959,11 +959,11 @@ function CanchasContent() {
       )}
 
       {/* ── BARRA DE BÚSQUEDA DESKTOP (estilo Airbnb) ────────────── */}
-      <div className="bg-white border-b border-gray-100 py-3 sticky top-16 z-30">
+      <div className="bg-card border-b border-border py-3 sticky top-16 z-30">
         <div className="container mx-auto px-4">
           {/* Desktop: barra expandida con 3 campos */}
           <div className="hidden md:flex items-center gap-2 max-w-3xl mx-auto">
-            <div className="flex-1 flex items-center gap-0 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex-1 flex items-center gap-0 bg-card border border-border rounded-xl shadow-sm hover:shadow-md transition-shadow">
               {/* Campo: Dónde */}
               <div className="relative flex-1">
                 <button
@@ -972,12 +972,12 @@ function CanchasContent() {
                       activeField === "ubicacion" ? null : "ubicacion",
                     );
                   }}
-                  className={`w-full text-left px-5 py-3 rounded-xl transition-colors ${activeField === "ubicacion" ? "bg-white shadow-lg ring-1 ring-gray-200 rounded-full z-10 relative" : "hover:bg-gray-50"}`}
+                  className={`w-full text-left px-5 py-3 rounded-xl transition-colors ${activeField === "ubicacion" ? "bg-card shadow-lg ring-1 ring-gray-200 rounded-full z-10 relative" : "hover:bg-muted/50"}`}
                 >
                   <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
                     Dónde
                   </p>
-                  <p className="text-sm font-medium text-gray-800 truncate">
+                  <p className="text-sm font-medium text-foreground truncate">
                     {desktopUbicacion || "Buscar destino"}
                   </p>
                 </button>
@@ -988,7 +988,7 @@ function CanchasContent() {
                       className="fixed inset-0 z-40"
                       onClick={() => setActiveField(null)}
                     />
-                    <div className="absolute top-full left-0 mt-2 w-72 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 overflow-hidden">
+                    <div className="absolute top-full left-0 mt-2 w-72 bg-card rounded-xl shadow-2xl border border-border z-50 overflow-hidden">
                       {/* Opción: Cerca de mí */}
                       <button
                         onClick={() => {
@@ -1023,13 +1023,13 @@ function CanchasContent() {
                           );
                           setActiveField("fecha");
                         }}
-                        className="flex items-center gap-3 w-full px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-100"
+                        className="flex items-center gap-3 w-full px-4 py-3 hover:bg-muted/50 transition-colors border-b border-border"
                       >
                         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gray-100">
                           <Navigation className="h-4 w-4 text-gray-600" />
                         </div>
                         <div className="text-left">
-                          <p className="text-sm font-semibold text-gray-800">
+                          <p className="text-sm font-semibold text-foreground">
                             Cerca de mí
                           </p>
                           <p className="text-xs text-gray-400">
@@ -1060,12 +1060,12 @@ function CanchasContent() {
                                   setDesktopUbicacion(distrito);
                                   setActiveField("fecha");
                                 }}
-                                className="flex items-center gap-3 w-full px-4 py-2.5 hover:bg-gray-50 transition-colors"
+                                className="flex items-center gap-3 w-full px-4 py-2.5 hover:bg-muted/50 transition-colors"
                               >
                                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gray-100">
                                   <MapPin className="h-3.5 w-3.5 text-gray-500" />
                                 </div>
-                                <span className="text-sm text-gray-700">
+                                <span className="text-sm text-foreground/80">
                                   {distrito}
                                 </span>
                               </button>
@@ -1086,12 +1086,12 @@ function CanchasContent() {
                   onClick={() =>
                     setActiveField(activeField === "fecha" ? null : "fecha")
                   }
-                  className={`w-full text-left px-5 py-3 transition-colors ${activeField === "fecha" ? "bg-white shadow-lg ring-1 ring-gray-200 rounded-xl z-10 relative" : "hover:bg-gray-50"}`}
+                  className={`w-full text-left px-5 py-3 transition-colors ${activeField === "fecha" ? "bg-card shadow-lg ring-1 ring-gray-200 rounded-xl z-10 relative" : "hover:bg-muted/50"}`}
                 >
                   <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
                     Fecha
                   </p>
-                  <p className="text-sm font-medium text-gray-800">
+                  <p className="text-sm font-medium text-foreground">
                     {desktopFecha
                       ? getLocalDateString(desktopFecha) ===
                         getLocalDateString()
@@ -1114,7 +1114,7 @@ function CanchasContent() {
                       className="fixed inset-0 z-40"
                       onClick={() => setActiveField(null)}
                     />
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 p-4">
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-80 bg-card rounded-xl shadow-2xl border border-border z-50 p-4">
                       <div className="flex items-center justify-between mb-4">
                         <button
                           onClick={() => {
@@ -1226,12 +1226,12 @@ function CanchasContent() {
                   onClick={() =>
                     setActiveField(activeField === "hora" ? null : "hora")
                   }
-                  className={`w-full text-left px-5 py-3 transition-colors ${activeField === "hora" ? "bg-white shadow-lg ring-1 ring-gray-200 rounded-xl z-10 relative" : "hover:bg-gray-50"}`}
+                  className={`w-full text-left px-5 py-3 transition-colors ${activeField === "hora" ? "bg-card shadow-lg ring-1 ring-gray-200 rounded-xl z-10 relative" : "hover:bg-muted/50"}`}
                 >
                   <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
                     Hora
                   </p>
-                  <p className="text-sm font-medium text-gray-800">
+                  <p className="text-sm font-medium text-foreground">
                     {desktopHora || "Cualquier hora"}
                   </p>
                 </button>
@@ -1242,7 +1242,7 @@ function CanchasContent() {
                       className="fixed inset-0 z-40"
                       onClick={() => setActiveField(null)}
                     />
-                    <div className="absolute top-full right-0 mt-2 w-72 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 p-4">
+                    <div className="absolute top-full right-0 mt-2 w-72 bg-card rounded-xl shadow-2xl border border-border z-50 p-4">
                       <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-3">
                         Horarios disponibles
                       </p>
@@ -1269,10 +1269,10 @@ function CanchasContent() {
                               className={`py-2.5 rounded-lg text-xs font-semibold border transition-all
                               ${
                                 isPast
-                                  ? "bg-gray-100 border-gray-100 text-gray-300 cursor-not-allowed"
+                                  ? "bg-gray-100 border-border text-gray-300 cursor-not-allowed"
                                   : isSelected
                                     ? "bg-[#16a34a] border-[#16a34a] text-white"
-                                    : "border-gray-200 text-gray-700 hover:border-[#16a34a]/50 hover:text-[#16a34a] bg-white"
+                                    : "border-border text-foreground/80 hover:border-[#16a34a]/50 hover:text-[#16a34a] bg-card"
                               }`}
                             >
                               {h}
@@ -1298,7 +1298,7 @@ function CanchasContent() {
             {/* Botón filtros — solo en md-lg (768-1023px) */}
             <button
               onClick={() => setShowFiltersSheet(true)}
-              className="lg:hidden relative flex items-center gap-1.5 px-3 py-2.5 rounded-md transition-all bg-white border border-gray-200 shrink-0"
+              className="lg:hidden relative flex items-center gap-1.5 px-3 py-2.5 rounded-md transition-all bg-card border border-border shrink-0"
             >
               <SlidersHorizontal className="h-5 w-5 text-gray-600" />
               {activeFilterCount > 0 && (
@@ -1313,11 +1313,11 @@ function CanchasContent() {
           <div className="md:hidden flex items-center gap-2">
             <button
               onClick={() => openSearchModal("fecha")}
-              className="flex-1 flex items-center gap-3 bg-white border border-gray-200 hover:border-gray-400 rounded-md px-4 py-2.5 shadow-sm hover:shadow-md transition-all text-left"
+              className="flex-1 flex items-center gap-3 bg-card border border-border hover:border-gray-400 rounded-md px-4 py-2.5 shadow-sm hover:shadow-md transition-all text-left"
             >
               <Search className="h-4 w-4 text-gray-400 shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-800 truncate">
+                <p className="text-sm font-semibold text-foreground truncate">
                   {searchParams.get("ubicacion") || "Piura, Perú"}
                 </p>
                 <p className="text-xs text-gray-400 truncate">
@@ -1346,7 +1346,7 @@ function CanchasContent() {
             </button>
             <button
               onClick={() => setShowFiltersSheet(true)}
-              className="relative flex items-center gap-1.5 px-3 py-2.5 rounded-md transition-all bg-white border border-gray-200 shrink-0"
+              className="relative flex items-center gap-1.5 px-3 py-2.5 rounded-md transition-all bg-card border border-border shrink-0"
             >
               <SlidersHorizontal className="h-5 w-5 text-gray-600" />
               {activeFilterCount > 0 && (
@@ -1365,7 +1365,7 @@ function CanchasContent() {
           side="right"
           className="p-0 flex flex-col sm:max-w-md w-full"
         >
-          <div className="sticky top-0 z-10 bg-white border-b border-border px-6 py-4 flex items-center justify-between">
+          <div className="sticky top-0 z-10 bg-card border-b border-border px-6 py-4 flex items-center justify-between">
             <SheetTitle className="text-lg font-semibold">Filtros</SheetTitle>
           </div>
           <div className="px-6 pb-3 pt-0 border-b border-border flex justify-end">
@@ -1409,7 +1409,7 @@ function CanchasContent() {
               onUbicacionLimpiada={handleUbicacionLimpiada}
             />
           </div>
-          <div className="sticky bottom-0 z-10 bg-white border-t border-border px-6 py-4">
+          <div className="sticky bottom-0 z-10 bg-card border-t border-border px-6 py-4">
             <button
               onClick={() => {
                 setShowFiltersSheet(false);
@@ -1424,8 +1424,8 @@ function CanchasContent() {
         </SheetContent>
       </Sheet>
 
-      <div className="flex flex-1 bg-[#eef3ee] pb-6">
-        <div className="container mx-auto px-4 flex bg-[#eef3ee]">
+      <div className="flex flex-1 bg-background pb-6">
+        <div className="container mx-auto px-4 flex bg-background">
           {/* ── COL 1: Filtros (lg+, ≥1024px) ────────────────────── */}
           <aside className="hidden lg:block w-[280px] xl:w-[300px] shrink-0 pr-3 pt-4">
             <div
@@ -1433,7 +1433,7 @@ function CanchasContent() {
               style={{ scrollbarGutter: "stable" }}
             >
               <div className="flex items-center justify-between">
-                <h2 className="text-base font-bold text-gray-900">Filtros</h2>
+                <h2 className="text-base font-bold text-foreground">Filtros</h2>
                 <button
                   onClick={() => handleClearAll()}
                   className="text-xs text-[#16a34a] hover:text-[#15803d] font-medium transition-colors"
@@ -1462,7 +1462,7 @@ function CanchasContent() {
           <main className="flex-1 min-w-0 pt-4 lg:px-3">
             {/* Contador siempre visible */}
             <div className="flex items-center justify-between mb-3">
-              <p className="text-sm font-semibold text-gray-800">
+              <p className="text-sm font-semibold text-foreground">
                 {loading ? (
                   <span className="flex items-center gap-0.5">
                     Cargando
@@ -1482,37 +1482,24 @@ function CanchasContent() {
                       setShowMobileMap(true);
                       setMobileMapSelectedId(null);
                     }}
-                    className="xl:hidden flex items-center gap-1.5 rounded-md border border-[#16a34a] text-[#16a34a] text-sm font-semibold px-2 sm:px-4 py-1.5 hover:bg-green-50 transition-colors"
+                    className="xl:hidden flex items-center gap-1.5 rounded-md border border-[#16a34a] text-[#16a34a] text-sm font-semibold px-2 sm:px-4 py-1.5 hover:bg-green-500/100/10 transition-colors"
                   >
                     <Map className="h-5 w-5" />
                     <span className="hidden sm:inline">Ver mapa</span>
                   </button>
                 )}
-                <div className="relative flex items-center">
-                  <div className="flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-2 sm:px-3 py-1.5 pointer-events-none">
-                    <SlidersHorizontal className="h-4 w-4 text-gray-500 shrink-0" />
-                    <span className="hidden sm:inline text-sm font-semibold text-gray-700">
-                      {sortBy === "relevancia"
-                        ? ubicacion ? "Más cercanas" : "Relevancia"
-                        : sortBy === "precio-asc" ? "Menor precio"
-                        : sortBy === "precio-desc" ? "Mayor precio"
-                        : sortBy === "rating" ? "Mejor puntuación"
-                        : "Nombre (A-Z)"}
-                    </span>
-                    <ArrowUpDown className="hidden sm:block h-3 w-3 text-gray-400 shrink-0" />
-                  </div>
-                  <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value as SortOption)}
-                    className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
-                  >
-                    <option value="relevancia">{ubicacion ? "Más cercanas" : "Relevancia"}</option>
-                    <option value="precio-asc">Menor precio</option>
-                    <option value="precio-desc">Mayor precio</option>
-                    <option value="rating">Mejor puntuación</option>
-                    <option value="nombre">Nombre (A-Z)</option>
-                  </select>
-                </div>
+                <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
+                  <SelectTrigger className="w-auto">
+                    <SlidersHorizontal className="h-4 w-4 shrink-0" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="relevancia">{ubicacion ? "Más cercanas" : "Relevancia"}</SelectItem>
+                    <SelectItem value="precio-asc">Menor precio</SelectItem>
+                    <SelectItem value="precio-desc">Mayor precio</SelectItem>
+                    <SelectItem value="rating">Mejor puntuación</SelectItem>
+                    <SelectItem value="nombre">Nombre (A-Z)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             {/* Cards */}
@@ -1684,7 +1671,7 @@ function CanchasContent() {
                   <div className="flex justify-center pt-6 pb-8">
                     <button
                       onClick={handleVerMas}
-                      className="flex items-center gap-2 border border-gray-300 hover:border-gray-500 bg-white hover:bg-gray-50 text-gray-800 font-semibold px-8 py-3 rounded-xl transition-all active:scale-95 shadow-sm"
+                      className="flex items-center gap-2 border border-border hover:border-gray-500 bg-card hover:bg-muted/50 text-foreground font-semibold px-8 py-3 rounded-xl transition-all active:scale-95 shadow-sm"
                     >
                       Ver más ({restantes} restante{restantes !== 1 ? "s" : ""})
                     </button>
@@ -1696,7 +1683,7 @@ function CanchasContent() {
                 <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-gray-100">
                   <SlidersHorizontal className="h-9 w-9 text-gray-400" />
                 </div>
-                <h3 className="mb-1 text-lg font-bold text-gray-800">
+                <h3 className="mb-1 text-lg font-bold text-foreground">
                   Sin resultados
                 </h3>
                 <p className="text-sm text-gray-500 max-w-xs leading-relaxed mb-1">
@@ -1723,12 +1710,12 @@ function CanchasContent() {
 
           {/* ── Modal mapa full-screen mobile ─────────────────────── */}
           {showMobileMap && (
-            <div className="xl:hidden fixed inset-0 z-[100] bg-white flex flex-col">
+            <div className="xl:hidden fixed inset-0 z-[100] bg-card flex flex-col">
               {/* Header */}
-              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-white shrink-0">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card shrink-0">
                 <button
                   onClick={() => setShowMobileMap(false)}
-                  className="flex items-center gap-1.5 text-gray-700 font-semibold text-sm"
+                  className="flex items-center gap-1.5 text-foreground/80 font-semibold text-sm"
                 >
                   <List className="h-4 w-4" />
                   Ver lista
@@ -1770,9 +1757,9 @@ function CanchasContent() {
                     );
                     if (!c) return null;
                     return (
-                      <div className="absolute bottom-4 left-4 right-4 z-[200] bg-white rounded-xl shadow-2xl border border-gray-100 p-4 flex items-center gap-3">
+                      <div className="absolute bottom-4 left-4 right-4 z-[200] bg-card rounded-xl shadow-2xl border border-border p-4 flex items-center gap-3">
                         <div className="flex-1 min-w-0">
-                          <p className="font-bold text-gray-900 text-sm truncate">
+                          <p className="font-bold text-foreground text-sm truncate">
                             {c.name}
                           </p>
                           <div className="flex items-center gap-1 text-gray-400 mt-0.5">
@@ -1783,7 +1770,7 @@ function CanchasContent() {
                           </div>
                         </div>
                         <div className="shrink-0 text-right mr-1">
-                          <p className="text-lg font-bold text-gray-900 leading-none">
+                          <p className="text-lg font-bold text-foreground leading-none">
                             S/ {c.pricePerHour}
                           </p>
                           <p className="text-[10px] text-gray-400">por hora</p>
@@ -1813,7 +1800,7 @@ function CanchasContent() {
             {/* Mapa sticky */}
             <div className="sticky top-40">
               <div
-                className="rounded-xl overflow-hidden border border-gray-100 shadow-sm"
+                className="rounded-xl overflow-hidden border border-border shadow-sm"
                 style={{ height: "calc(100vh - 180px)" }}
               >
                 <CanchasMap
@@ -1849,11 +1836,11 @@ export default function CanchasPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex flex-col flex-1 bg-white">
+        <div className="flex flex-col flex-1 bg-card">
           <Header />
 
           {/* Barra de búsqueda skeleton */}
-          <div className="bg-white border-b border-gray-100 py-3 sticky top-16 z-30">
+          <div className="bg-card border-b border-border py-3 sticky top-16 z-30">
             <div className="container mx-auto px-4">
               {/* Mobile */}
               <div className="md:hidden flex items-center gap-2">
@@ -1869,8 +1856,8 @@ export default function CanchasPage() {
           </div>
 
           {/* Contenido */}
-          <div className="flex flex-1 bg-[#eef3ee] pb-6">
-            <div className="container mx-auto px-4 flex bg-[#eef3ee]">
+          <div className="flex flex-1 bg-background pb-6">
+            <div className="container mx-auto px-4 flex bg-background">
 
               {/* Sidebar filtros (lg+) */}
               <aside className="hidden lg:block w-[280px] xl:w-[300px] shrink-0 pr-3 pt-4">
@@ -1893,7 +1880,7 @@ export default function CanchasPage() {
                 {/* Cards mobile (< xl) */}
                 <div className="xl:hidden grid gap-4 grid-cols-1 sm:grid-cols-2">
                   {[1, 2, 3, 4].map((i) => (
-                    <div key={i} className="rounded-xl border border-gray-100 overflow-hidden animate-pulse bg-white">
+                    <div key={i} className="rounded-xl border border-border overflow-hidden animate-pulse bg-card">
                       <div className="aspect-[2/1] bg-gray-200" />
                       <div className="p-4 space-y-3">
                         <div className="space-y-1.5">
@@ -1918,7 +1905,7 @@ export default function CanchasPage() {
                 {/* Cards desktop (xl+) */}
                 <div className="hidden xl:flex flex-col gap-3">
                   {[1, 2, 3, 4].map((i) => (
-                    <div key={i} className="flex rounded-xl border border-gray-100 overflow-hidden animate-pulse bg-white h-[210px] md:h-[270px]">
+                    <div key={i} className="flex rounded-xl border border-border overflow-hidden animate-pulse bg-card h-[210px] md:h-[270px]">
                       <div className="w-[200px] shrink-0 bg-gray-200" />
                       <div className="flex-1 p-4 flex flex-col gap-2.5">
                         <div className="flex items-center gap-2">
