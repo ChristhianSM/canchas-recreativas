@@ -26,18 +26,21 @@ function ResetPasswordContent() {
   );
 
   useEffect(() => {
-    // Debug: mostrar todos los parámetros de la URL
+    // Leer parámetros tanto de query string como del hash (#)
+    // Los emails modernos usan hash para evitar que los escáneres de seguridad consuman el token
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+
     const allParams = Array.from(searchParams.entries());
-    const debugMsg = `URL params: ${JSON.stringify(allParams)}`;
+    const debugMsg = `URL params: ${JSON.stringify(allParams)}, hash: ${window.location.hash.substring(0, 40)}`;
     setDebugInfo(debugMsg);
     console.log(debugMsg);
 
     // Nuevo flujo PKCE: el code viene como query param ?code=xxx
     const code = searchParams.get('code');
-    const accessToken = searchParams.get('access_token');
-    const refreshToken = searchParams.get('refresh_token');
-    const error_code = searchParams.get('error_code');
-    const error_description = searchParams.get('error_description');
+    const accessToken = searchParams.get('access_token') || hashParams.get('access_token');
+    const refreshToken = searchParams.get('refresh_token') || hashParams.get('refresh_token');
+    const error_code = searchParams.get('error_code') || hashParams.get('error_code');
+    const error_description = searchParams.get('error_description') || hashParams.get('error_description');
 
     // Verificar si hay error en los parámetros
     if (error_code) {
