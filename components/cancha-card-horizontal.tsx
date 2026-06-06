@@ -530,7 +530,7 @@ export function CanchaCardHorizontal({
                         onClick={(e) => handleSlotClick(slot, e)}
                         className={`rounded-lg border px-3 py-1 text-sm font-semibold transition-all ${
                           isSelected
-                            ? 'bg-brand-black border-brand-black text-primary-foreground'
+                            ? 'bg-foreground border-foreground text-background'
                             : 'border-border text-foreground hover:border-primary hover:text-primary'
                         }`}
                       >

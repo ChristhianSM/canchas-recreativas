@@ -1304,7 +1304,7 @@ export default function PartidosPage() {
       <Header />
 
       {/* Hero + filtros */}
-      <div className="bg-white border-b border-border">
+      <div className="bg-card border-b border-border">
         <div className="container mx-auto px-4 md:px-8 lg:px-12 pt-6 pb-4">
           <h1 className="text-2xl font-bold text-foreground">
             Partidos abiertos
@@ -1376,7 +1376,7 @@ export default function PartidosPage() {
       </div>
 
       {/* Contenido */}
-      <div className="flex-1 bg-[#eef3ee]">
+      <div className="flex-1 bg-background">
         <div className="container mx-auto px-4 md:px-8 lg:px-12 py-5">
 
           {/* Alerta de error inline */}

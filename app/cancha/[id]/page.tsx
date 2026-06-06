@@ -1009,7 +1009,7 @@ export default function CanchaDetailPage() {
                         slot.status === "disponible" &&
                           !pasado &&
                           sel &&
-                          "border-brand-black bg-brand-black text-primary-foreground",
+                          "border-foreground bg-foreground text-background",
                         slot.status === "reservado" &&
                           "cursor-not-allowed border-transparent bg-muted opacity-50",
                         slot.status === "en_proceso" &&
@@ -1029,7 +1029,7 @@ export default function CanchaDetailPage() {
                       <span
                         className={cn(
                           "text-[11px] leading-tight mt-0.5",
-                          sel && "text-primary-foreground/80",
+                          sel && "text-background/80",
                           !sel &&
                             !pasado &&
                             slot.status === "disponible" &&

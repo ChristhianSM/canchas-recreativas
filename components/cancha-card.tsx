@@ -721,7 +721,7 @@ export function CanchaCard({
                       aria-label={`Seleccionar horario ${slot.time}`}
                       className={`flex-1 min-w-0 rounded-lg border px-2 py-2 text-sm font-medium transition-all text-center ${
                         isSelected
-                          ? "bg-brand-black  text-primary-foreground"
+                          ? "border-foreground bg-foreground text-background"
                           : "border-border bg-background text-foreground hover:border-primary/50"
                       }`}
                     >

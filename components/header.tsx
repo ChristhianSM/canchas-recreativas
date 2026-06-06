@@ -41,6 +41,7 @@ import {
   isTokenLikelyExpired,
 } from "@/lib/api";
 import { NotificationBell } from "@/components/notification-bell";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export function Header() {
   const router = useRouter();
@@ -183,6 +184,7 @@ export function Header() {
           <div className="w-px h-5 bg-border mx-4" />
           <div className="flex items-center gap-2">
           <NotificationBell />
+          <ThemeToggle />
           {!hydrated ? (
             <div className="h-8 w-8 animate-pulse rounded-full bg-muted lg:w-32 lg:rounded-lg" />
           ) : user?.name ? (
@@ -234,6 +236,7 @@ export function Header() {
 
         {/* Mobile Navigation */}
         <div className="flex items-center gap-1 md:hidden">
+          <ThemeToggle />
           <NotificationBell />
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
