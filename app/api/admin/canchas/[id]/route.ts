@@ -14,12 +14,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     descripcion, telefono, precioHora, amenidades, imagenes, horariosRestringidos,
     lat, lng, direccion, distrito,
     preciosPorHora, balonDisponible, balonPrecio, chalecosDisponible, chalecosPrecio,
-    superficie, maxJugadores,
+    superficie, maxJugadores, horaApertura, horaCierre, activa,
   } = body;
 
-  const updateData: Record<string, any> = {
-    descripcion, telefono, precio_por_hora: precioHora, amenidades, imagenes,
-  };
+  const updateData: Record<string, any> = {};
+  if (descripcion !== undefined) updateData.descripcion = descripcion;
+  if (telefono !== undefined) updateData.telefono = telefono;
+  if (precioHora !== undefined) updateData.precio_por_hora = precioHora;
+  if (amenidades !== undefined) updateData.amenidades = amenidades;
+  if (imagenes !== undefined) updateData.imagenes = imagenes;
   if (lat !== undefined) updateData.lat = lat;
   if (lng !== undefined) updateData.lng = lng;
   if (direccion !== undefined) updateData.direccion = direccion;
@@ -31,6 +34,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (chalecosPrecio !== undefined) updateData.chalecos_precio = chalecosPrecio;
   if (superficie !== undefined) updateData.superficie = superficie;
   if (maxJugadores !== undefined) updateData.max_jugadores = maxJugadores;
+  if (horaApertura !== undefined) updateData.hora_apertura = horaApertura;
+  if (horaCierre !== undefined) updateData.hora_cierre = horaCierre;
+  if (activa !== undefined) updateData.activa = activa;
 
   const { error: canchaError } = await sb
     .from('canchas')

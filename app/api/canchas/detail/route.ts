@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
 import { getLocalDateString, addDaysToDateString } from '@/lib/date-utils';
-import { horasBloqueadasEnFecha, BloqueoAdmin, HORAS_APP } from '@/lib/bloqueos-utils';
+import { horasBloqueadasEnFecha, BloqueoAdmin, HORAS_APP, getHorasOperacion } from '@/lib/bloqueos-utils';
 
 // GET /api/canchas/detail?id=xxx
 export async function GET(req: NextRequest) {
@@ -80,11 +80,13 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  const horasOperacion = getHorasOperacion(data.hora_apertura ?? '06:00', data.hora_cierre ?? '23:00');
+
   return NextResponse.json({
     ...data,
-    // horariosRestringidos = permanentes legacy (todos los días)
     horariosRestringidos: permanentesLegacy,
     horariosOcupados,
+    horasOperacion,
   }, {
     headers: {
       'Cache-Control': 'no-store, no-cache, must-revalidate',

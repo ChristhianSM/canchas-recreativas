@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await sb
     .from('resenas')
-    .select('id, estrellas, creado_en, usuario_id')
+    .select('id, estrellas, comentario, creado_en, usuario_id, usuario_nombre')
     .eq('cancha_id', canchaId)
     .order('creado_en', { ascending: false });
 
@@ -28,16 +28,20 @@ export async function GET(req: NextRequest) {
 
   // Verificar si el usuario autenticado ya calificó
   let miCalificacion: number | null = null;
+  let miComentario: string | null = null;
   const token = req.headers.get('authorization')?.replace('Bearer ', '');
   if (token) {
     const { data: { user } } = await sb.auth.getUser(token);
     if (user) {
       const miResena = data?.find(r => r.usuario_id === user.id);
-      if (miResena) miCalificacion = miResena.estrellas;
+      if (miResena) {
+        miCalificacion = miResena.estrellas;
+        miComentario = miResena.comentario ?? null;
+      }
     }
   }
 
-  return NextResponse.json({ resenas: data ?? [], total, promedio, distribucion, miCalificacion });
+  return NextResponse.json({ resenas: data ?? [], total, promedio, distribucion, miCalificacion, miComentario });
 }
 
 // POST — crear o actualizar reseña (solo usuarios con reserva confirmada)
@@ -54,7 +58,7 @@ export async function POST(req: NextRequest) {
     }, { status: 401 });
   }
 
-  const { canchaId, estrellas } = await req.json();
+  const { canchaId, estrellas, comentario } = await req.json();
 
   if (!canchaId || !estrellas || estrellas < 1 || estrellas > 5) {
     return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 });
@@ -92,14 +96,22 @@ export async function POST(req: NextRequest) {
     }, { status: 400 });
   }
 
+  const { data: perfil } = await sb
+    .from('usuarios')
+    .select('nombre')
+    .eq('id', user.id)
+    .single();
+
   // Insertar nueva reseña (sin upsert — ya verificamos que no existe)
   const { data: resena, error } = await sb
     .from('resenas')
     .insert({
-      cancha_id:  canchaId,
-      usuario_id: user.id,
-      reserva_id: reserva.id,
+      cancha_id:     canchaId,
+      usuario_id:    user.id,
+      reserva_id:    reserva.id,
       estrellas,
+      comentario:    comentario?.trim() || null,
+      usuario_nombre: perfil?.nombre ?? null,
     })
     .select()
     .single();

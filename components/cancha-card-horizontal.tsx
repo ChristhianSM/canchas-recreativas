@@ -224,7 +224,12 @@ export function CanchaCardHorizontal({
 
   // Badge de disponibilidad
   const now = new Date();
-  const isToday = date === getLocalDateString();
+  const isToday = displayDate === getLocalDateString();
+  const isTomorrow = (() => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return displayDate === getLocalDateString(tomorrow);
+  })();
   let badge: { text: string; dot: string; textColor: string } | null = null;
   if (visibleSlots.length > 0) {
     if (isToday) {
@@ -236,6 +241,8 @@ export function CanchaCardHorizontal({
       if (hasNear) badge = { text: 'Disponible ahora', dot: 'bg-green-500', textColor: 'text-green-700' };
       else if (visibleSlots.length <= 2) badge = { text: '¡Últimos horarios!', dot: 'bg-red-500', textColor: 'text-red-700' };
       else badge = { text: 'Disponible hoy', dot: 'bg-green-500', textColor: 'text-green-700' };
+    } else if (isTomorrow) {
+      badge = { text: 'Disponible mañana', dot: 'bg-blue-500', textColor: 'text-blue-600' };
     } else {
       badge = { text: 'Disponible', dot: 'bg-green-500', textColor: 'text-green-700' };
     }
@@ -520,7 +527,13 @@ export function CanchaCardHorizontal({
           <div className="mt-3">
             {visibleSlotsFiltered.length > 0 ? (
               <>
-                <p className="text-xs font-medium text-foreground mb-1.5">Horarios libres hoy</p>
+                <p className="text-xs font-medium text-foreground mb-1.5">
+                  {displayDate === getLocalDateString()
+                    ? 'Horarios libres hoy'
+                    : isTomorrow
+                      ? 'Horarios libres mañana'
+                      : `Horarios libres el ${new Date(displayDate + 'T00:00:00').toLocaleDateString('es-PE', { weekday: 'short', day: 'numeric', month: 'short' })}`}
+                </p>
                 <div className="flex items-center gap-1.5 flex-wrap">
                   {visibleSlotsFiltered.map((slot) => {
                     const isSelected = selectedSlots.some((s) => s.id === slot.id);

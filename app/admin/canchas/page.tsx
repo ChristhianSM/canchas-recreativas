@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Plus, Pencil, Star, User, MapPin } from 'lucide-react';
+import { Plus, Pencil, Star, User, MapPin, Search } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,7 +16,7 @@ import { getAdminTokenFresh } from '@/lib/supabase-browser';
 type CanchaAdmin = {
   id: string; nombre: string; tipo: string; direccion: string;
   distrito: string; precio_por_hora: number; imagenes: string[];
-  rating: number; destacada: boolean;
+  rating: number; destacada: boolean; activa: boolean;
   dueno: { id: string; nombre: string; email: string } | null;
 };
 
@@ -30,6 +31,8 @@ export default function AdminCanchasPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving]       = useState(false);
   const [error, setError]         = useState('');
+  const [toggling, setToggling]   = useState<string | null>(null);
+  const [busqueda, setBusqueda]   = useState('');
   const [form, setForm] = useState({
     nombre: '', tipo: 'futbol', direccion: '', distrito: 'Piura',
     descripcion: '', precio_por_hora: '', telefono: '', dueno_id: '',
@@ -50,6 +53,18 @@ export default function AdminCanchasPage() {
   };
 
   useEffect(() => { reload(); }, []);
+
+  const handleToggleActiva = async (id: string, actual: boolean) => {
+    setToggling(id);
+    const token = await getAdminTokenFresh();
+    await fetch(`/api/admin/canchas/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ activa: !actual }),
+    });
+    setCanchas(prev => prev.map(c => c.id === id ? { ...c, activa: !actual } : c));
+    setToggling(null);
+  };
 
   const handleCrear = async () => {
     if (!form.nombre || !form.tipo || !form.precio_por_hora) {
@@ -72,6 +87,10 @@ export default function AdminCanchasPage() {
     reload();
   };
 
+  const canchasFiltradas = canchas.filter(c =>
+    c.nombre.toLowerCase().includes(busqueda.toLowerCase())
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -85,19 +104,29 @@ export default function AdminCanchasPage() {
         </Button>
       </div>
 
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          placeholder="Buscar por nombre..."
+          className="pl-9"
+          value={busqueda}
+          onChange={e => setBusqueda(e.target.value)}
+        />
+      </div>
+
       {loading ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {[1,2,3].map(i => <div key={i} className="h-64 animate-pulse rounded-xl bg-muted" />)}
         </div>
-      ) : canchas.length === 0 ? (
+      ) : canchasFiltradas.length === 0 ? (
         <Card className="border-border p-12 text-center">
           <MapPin className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
-          <p className="font-medium text-foreground">No hay canchas registradas</p>
+          <p className="font-medium text-foreground">{busqueda ? 'Sin resultados para esa búsqueda' : 'No hay canchas registradas'}</p>
         </Card>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {canchas.map(cancha => (
-            <Card key={cancha.id} className="overflow-hidden border-border">
+          {canchasFiltradas.map(cancha => (
+            <Card key={cancha.id} className={`overflow-hidden border-border transition-opacity ${cancha.activa ? '' : 'opacity-60'}`}>
               <div className="relative aspect-video bg-muted">
                 {cancha.imagenes?.[0] ? (
                   <Image src={cancha.imagenes[0]} alt={cancha.nombre} fill className="object-cover" />
@@ -106,10 +135,13 @@ export default function AdminCanchasPage() {
                     {cancha.tipo === 'futbol' || cancha.tipo === 'futsal' ? '⚽' : cancha.tipo === 'voley' ? '🏐' : cancha.tipo === 'basquet' ? '🏀' : '🎾'}
                   </div>
                 )}
-                <div className="absolute left-2 top-2">
+                <div className="absolute left-2 top-2 flex gap-1.5">
                   <Badge className="bg-primary text-primary-foreground text-xs capitalize">
                     {sportLabels[cancha.tipo as keyof typeof sportLabels] ?? cancha.tipo}
                   </Badge>
+                  {!cancha.activa && (
+                    <Badge variant="destructive" className="text-xs">Deshabilitada</Badge>
+                  )}
                 </div>
               </div>
               <div className="p-4 space-y-3">
@@ -132,11 +164,21 @@ export default function AdminCanchasPage() {
 
                 <div className="flex items-center justify-between pt-1">
                   <span className="font-bold text-primary">S/ {cancha.precio_por_hora}/h</span>
-                  <Button size="sm" asChild>
-                    <Link href={`/admin/canchas/${cancha.id}`}>
-                      <Pencil className="mr-1.5 h-3.5 w-3.5" />Editar
-                    </Link>
-                  </Button>
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        checked={cancha.activa}
+                        disabled={toggling === cancha.id}
+                        onCheckedChange={() => handleToggleActiva(cancha.id, cancha.activa)}
+                      />
+                      <span className="text-xs text-muted-foreground">{cancha.activa ? 'Activa' : 'Inactiva'}</span>
+                    </div>
+                    <Button size="sm" asChild>
+                      <Link href={`/admin/canchas/${cancha.id}`}>
+                        <Pencil className="mr-1.5 h-3.5 w-3.5" />Editar
+                      </Link>
+                    </Button>
+                  </div>
                 </div>
               </div>
             </Card>

@@ -1,40 +1,285 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useRef } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import Image from 'next/image';
-import { ArrowLeft, Save, Trash2, Plus, MapPin } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Checkbox } from '@/components/ui/checkbox';
-import { cn } from '@/lib/utils';
-import { BloqueosAdminPanel } from '@/components/bloqueos-admin-panel';
-
-const HORAS = [
-  '06:00','07:00','08:00','09:00','10:00','11:00',
-  '12:00','13:00','14:00','15:00','16:00','17:00',
-  '18:00','19:00','20:00','21:00','22:00','23:00',
-];
+import { useState, useEffect, useRef } from "react";
+import { useParams, useRouter } from "next/navigation";
+import Image from "next/image";
+import {
+  ArrowLeft,
+  Save,
+  Trash2,
+  Plus,
+  MapPin,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
+import { cn } from "@/lib/utils";
+import { BloqueosAdminPanel } from "@/components/bloqueos-admin-panel";
+import {
+  estaBloquedoPor,
+  HORAS_APP,
+  getHorasOperacion,
+  type BloqueoAdmin,
+} from "@/lib/bloqueos-utils";
 
 type Cancha = {
-  id: string; nombre: string; descripcion: string; telefono: string;
-  precio_por_hora: number; amenidades: string[]; imagenes: string[];
-  lat: number; lng: number; direccion: string;
-  yape_numero?: string; plin_numero?: string;
+  id: string;
+  nombre: string;
+  descripcion: string;
+  telefono: string;
+  precio_por_hora: number;
+  amenidades: string[];
+  imagenes: string[];
+  lat: number;
+  lng: number;
+  direccion: string;
+  yape_numero?: string;
+  plin_numero?: string;
 };
 
 function getOwnerToken() {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem('cp_owner_token');
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("cp_owner_token");
+}
+
+// ── Pestaña de horario ─────────────────────────────────────────
+const DIAS_LABEL = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+
+function getLunesDeSemana(base = new Date()): Date {
+  const d = new Date(base);
+  const dia = d.getDay();
+  d.setDate(d.getDate() + (dia === 0 ? -6 : 1 - dia));
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function HorarioTab({ canchaId, horasOperacion = HORAS_APP }: { canchaId: string; horasOperacion?: string[] }) {
+  const [reservas, setReservas] = useState<any[]>([]);
+  const [bloqueos, setBloqueos] = useState<BloqueoAdmin[]>([]);
+  const [cargando, setCargando] = useState(true);
+  const [semana, setSemana] = useState<Date>(getLunesDeSemana);
+
+  useEffect(() => {
+    const token = getOwnerToken();
+    if (!token) return;
+    Promise.all([
+      fetch("/api/admin-cancha/reservas", {
+        headers: { Authorization: `Bearer ${token}` },
+      }).then((r) => r.json()),
+      fetch(`/api/admin-cancha/bloqueos?canchaId=${canchaId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      }).then((r) => r.json()),
+    ])
+      .then(([resData, bloqData]) => {
+        setReservas(
+          Array.isArray(resData)
+            ? resData.filter((r: any) => r.cancha_id === canchaId)
+            : [],
+        );
+        setBloqueos(Array.isArray(bloqData) ? bloqData : []);
+        setCargando(false);
+      })
+      .catch(() => setCargando(false));
+  }, [canchaId]);
+
+  const dias = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(semana);
+    d.setDate(semana.getDate() + i);
+    return d;
+  });
+
+  const toFecha = (d: Date) => d.toISOString().split("T")[0];
+  const hoy = toFecha(new Date());
+
+  const getReserva = (dia: Date, hora: string) => {
+    const fecha = toFecha(dia);
+    return reservas.find(
+      (r) =>
+        r.fecha === fecha &&
+        r.hora === hora &&
+        r.estado !== "cancelada" &&
+        r.estado !== "rechazada",
+    );
+  };
+
+  const esBloqueado = (dia: Date, hora: string) =>
+    bloqueos.some((b) => estaBloquedoPor(b, toFecha(dia), hora));
+
+  const navSemana = (dir: -1 | 1) => {
+    const s = new Date(semana);
+    s.setDate(s.getDate() + dir * 7);
+    setSemana(s);
+  };
+
+  if (cargando) {
+    return (
+      <div className="flex items-center justify-center py-16 text-muted-foreground gap-2">
+        <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        <span className="text-sm">Cargando horario...</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Navegación de semana */}
+      <div className="flex items-center justify-between">
+        <Button variant="outline" size="icon" onClick={() => navSemana(-1)}>
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <p className="text-sm font-semibold text-foreground">
+          {dias[0].toLocaleDateString("es-PE", {
+            day: "numeric",
+            month: "long",
+          })}
+          {" – "}
+          {dias[6].toLocaleDateString("es-PE", {
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          })}
+        </p>
+        <Button variant="outline" size="icon" onClick={() => navSemana(1)}>
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+
+      {/* Leyenda */}
+      <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+        {[
+          {
+            cls: "bg-green-100 border-green-300 dark:bg-green-950/40 dark:border-green-800",
+            label: "Libre",
+          },
+          {
+            cls: "bg-yellow-100 border-yellow-300 dark:bg-yellow-950/40 dark:border-yellow-700",
+            label: "Pendiente",
+          },
+          { cls: "bg-primary/20 border-primary/40", label: "Confirmada" },
+          { cls: "bg-muted border-border", label: "Bloqueado" },
+        ].map(({ cls, label }) => (
+          <span key={label} className="flex items-center gap-1.5">
+            <span className={cn("h-3 w-3 rounded-sm border", cls)} />
+            {label}
+          </span>
+        ))}
+      </div>
+
+      {/* Grilla */}
+      <div className="overflow-x-auto rounded-xl border border-border">
+        <table className="w-full border-collapse text-xs">
+          <thead>
+            <tr className="bg-muted/50">
+              <th className="sticky left-0 z-10 bg-muted/50 px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground w-14">
+                Hora
+              </th>
+              {dias.map((d, i) => (
+                <th
+                  key={i}
+                  className={cn(
+                    "min-w-[88px] px-2 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide",
+                    toFecha(d) === hoy
+                      ? "text-primary"
+                      : "text-muted-foreground",
+                  )}
+                >
+                  {DIAS_LABEL[i]}
+                  <p className="mt-0.5 text-[10px] font-normal">
+                    {d.toLocaleDateString("es-PE", {
+                      day: "numeric",
+                      month: "short",
+                    })}
+                  </p>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {horasOperacion.map((hora) => (
+              <tr key={hora} className="border-t border-border">
+                <td className="sticky left-0 z-10 bg-background px-3 py-2 font-mono text-[11px] text-muted-foreground">
+                  {hora}
+                </td>
+                {dias.map((d, i) => {
+                  const reserva = getReserva(d, hora);
+                  const bloqueado = !reserva && esBloqueado(d, hora);
+
+                  if (bloqueado)
+                    return (
+                      <td key={i} className="px-2 py-2 text-center bg-muted/60">
+                        <span className="text-[9px] text-muted-foreground">
+                          Bloq.
+                        </span>
+                      </td>
+                    );
+
+                  if (reserva) {
+                    const isPendiente = reserva.estado === "pendiente";
+                    return (
+                      <td
+                        key={i}
+                        className={cn(
+                          "px-1 py-1.5 text-center",
+                          isPendiente
+                            ? "bg-yellow-50 dark:bg-yellow-950/30"
+                            : "bg-primary/10",
+                        )}
+                      >
+                        <p
+                          className={cn(
+                            "truncate text-[10px] font-semibold",
+                            isPendiente
+                              ? "text-yellow-700 dark:text-yellow-400"
+                              : "text-primary",
+                          )}
+                        >
+                          {(reserva.usuario_nombre ?? "Cliente").split(" ")[0]}
+                        </p>
+                        <p
+                          className={cn(
+                            "text-[9px]",
+                            isPendiente
+                              ? "text-yellow-600 dark:text-yellow-500"
+                              : "text-primary/70",
+                          )}
+                        >
+                          {isPendiente ? "Pendiente" : "Confirmada"}
+                        </p>
+                      </td>
+                    );
+                  }
+
+                  return (
+                    <td
+                      key={i}
+                      className="px-2 py-2 bg-green-50/60 dark:bg-green-950/10"
+                    />
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
 }
 
 // ── Pestaña de ubicación ────────────────────────────────────────
 function UbicacionTab({
-  direccion, lat, lng, onDireccionChange, onCoordsChange, distrito, onDistritoChange,
+  direccion,
+  lat,
+  lng,
+  onDireccionChange,
+  onCoordsChange,
+  distrito,
+  onDistritoChange,
 }: {
   direccion: string;
   lat: string;
@@ -45,36 +290,40 @@ function UbicacionTab({
   onDistritoChange: (v: string) => void;
 }) {
   const [buscando, setBuscando] = useState(false);
-  const [error, setError]       = useState('');
+  const [error, setError] = useState("");
   const [MapPicker, setMapPicker] = useState<React.ComponentType<{
-    lat: number; lng: number; onChange: (lat: number, lng: number) => void;
+    lat: number;
+    lng: number;
+    onChange: (lat: number, lng: number) => void;
   }> | null>(null);
 
   // Cargar MapPicker solo en cliente
   useEffect(() => {
-    import('@/components/map-picker').then(m => setMapPicker(() => m.MapPicker));
+    import("@/components/map-picker").then((m) =>
+      setMapPicker(() => m.MapPicker),
+    );
   }, []);
 
   const buscarDireccion = async () => {
     if (!direccion.trim()) return;
     setBuscando(true);
-    setError('');
+    setError("");
     try {
       const query = encodeURIComponent(direccion);
       const res = await fetch(
         `https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1`,
-        { headers: { 'Accept-Language': 'es' } }
+        { headers: { "Accept-Language": "es" } },
       );
       const data = await res.json();
       if (data.length === 0) {
-        setError('No se encontró la dirección. Intenta ser más específico.');
+        setError("No se encontró la dirección. Intenta ser más específico.");
       } else {
         const lat = data[0].lat;
         const lon = data[0].lon;
         onCoordsChange(lat, lon);
       }
     } catch {
-      setError('Error al buscar la dirección. Verifica tu conexión.');
+      setError("Error al buscar la dirección. Verifica tu conexión.");
     } finally {
       setBuscando(false);
     }
@@ -90,7 +339,8 @@ function UbicacionTab({
       <div>
         <p className="font-medium text-foreground">Ubicación de la cancha</p>
         <p className="text-sm text-muted-foreground">
-          Busca la dirección y luego arrastra el pin o haz clic en el mapa para ajustar la ubicación exacta.
+          Busca la dirección y luego arrastra el pin o haz clic en el mapa para
+          ajustar la ubicación exacta.
         </p>
       </div>
 
@@ -100,9 +350,11 @@ function UbicacionTab({
         <div className="flex gap-2">
           <Input
             value={direccion}
-            onChange={e => onDireccionChange(e.target.value)}
+            onChange={(e) => onDireccionChange(e.target.value)}
             placeholder="Ej: Av. Los Algarrobos 1250, Chiclayo"
-            onKeyDown={e => { if (e.key === 'Enter') buscarDireccion(); }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") buscarDireccion();
+            }}
             className="flex-1"
           />
           <Button
@@ -113,7 +365,7 @@ function UbicacionTab({
             className="shrink-0 gap-2"
           >
             <MapPin className="h-4 w-4" />
-            {buscando ? 'Buscando...' : 'Buscar'}
+            {buscando ? "Buscando..." : "Buscar"}
           </Button>
         </div>
         {error && <p className="text-sm text-destructive">{error}</p>}
@@ -124,7 +376,7 @@ function UbicacionTab({
         <label className="text-sm font-medium text-foreground">Distrito</label>
         <Input
           value={distrito}
-          onChange={e => onDistritoChange(e.target.value)}
+          onChange={(e) => onDistritoChange(e.target.value)}
           placeholder="Ej: Chiclayo, Piura, Tambogrande..."
           className="bg-blue-500/5 border-blue-500/20"
         />
@@ -150,7 +402,11 @@ function UbicacionTab({
           <MapPicker
             lat={mapLat}
             lng={mapLng}
-            onChange={(newLat: number, newLng: number, newDireccion?: string) => {
+            onChange={(
+              newLat: number,
+              newLng: number,
+              newDireccion?: string,
+            ) => {
               onCoordsChange(String(newLat), String(newLng));
               if (newDireccion) onDireccionChange(newDireccion);
             }}
@@ -160,7 +416,8 @@ function UbicacionTab({
         )}
 
         <p className="text-xs text-muted-foreground flex items-center gap-1">
-          💡 Haz clic en el mapa o arrastra el marcador para ajustar la posición exacta
+          💡 Haz clic en el mapa o arrastra el marcador para ajustar la posición
+          exacta
         </p>
       </div>
 
@@ -188,54 +445,65 @@ export default function OwnerEditarCanchaPage() {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const [cancha, setCancha]         = useState<Cancha | null>(null);
-  const [loading, setLoading]       = useState(true);
-  const [saving, setSaving]         = useState(false);
-  const [saved, setSaved]           = useState(false);
-  const [saveError, setSaveError]   = useState('');
-  const [uploading, setUploading]   = useState(false);
-  const [uploadError, setUploadError] = useState('');
-  const [description, setDescription] = useState('');
-  const [phone, setPhone]           = useState('');
-  const [price, setPrice]           = useState(0);
-  const [amenities, setAmenities]   = useState<string[]>([]);
-  const [newAmenity, setNewAmenity] = useState('');
-  const [images, setImages]         = useState<string[]>([]);
-  const [activeTab, setActiveTab]   = useState('info');
-  const [preciosPorHora, setPreciosPorHora] = useState<Record<string, number>>({});
-  const [balonPrecio, setBalonPrecio]             = useState<number | null>(null);
-  const [chalecosPrecio, setChalecosPrecio]       = useState<number | null>(null);
-  const [balonDisponible, setBalonDisponible]     = useState(false);
+  const [cancha, setCancha] = useState<Cancha | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const [description, setDescription] = useState("");
+  const [phone, setPhone] = useState("");
+  const [price, setPrice] = useState(0);
+  const [amenities, setAmenities] = useState<string[]>([]);
+  const [newAmenity, setNewAmenity] = useState("");
+  const [images, setImages] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState("info");
+  const [preciosPorHora, setPreciosPorHora] = useState<Record<string, number>>(
+    {},
+  );
+  const [balonPrecio, setBalonPrecio] = useState<number | null>(null);
+  const [chalecosPrecio, setChalecosPrecio] = useState<number | null>(null);
+  const [balonDisponible, setBalonDisponible] = useState(false);
   const [chalecosDisponible, setChalecosDisponible] = useState(false);
-  const [superficie, setSuperficie]               = useState<string>('grass_sintetico');
-  const [maxJugadores, setMaxJugadores]           = useState<number | null>(null);
-  const [lat, setLat]               = useState('');
-  const [lng, setLng]               = useState('');
-  const [direccion, setDireccion]   = useState('');
-  const [distrito, setDistrito]     = useState('');
-  const [yapeNumero, setYapeNumero] = useState('');
-  const [plinNumero, setPlinNumero] = useState('');
-  const [yapeError, setYapeError]   = useState('');
-  const [plinError, setPlinError]   = useState('');
+  const [superficie, setSuperficie] = useState<string>("grass_sintetico");
+  const [maxJugadores, setMaxJugadores] = useState<number | null>(null);
+  const [lat, setLat] = useState("");
+  const [lng, setLng] = useState("");
+  const [direccion, setDireccion] = useState("");
+  const [distrito, setDistrito] = useState("");
+  const [yapeNumero, setYapeNumero] = useState("");
+  const [plinNumero, setPlinNumero] = useState("");
+  const [yapeError, setYapeError] = useState("");
+  const [plinError, setPlinError] = useState("");
+  const [horaApertura, setHoraApertura] = useState("06:00");
+  const [horaCierre, setHoraCierre]     = useState("23:00");
 
   useEffect(() => {
     const token = getOwnerToken();
-    if (!token) { router.replace('/admin-cancha/login'); return; }
+    if (!token) {
+      router.replace("/admin-cancha/login");
+      return;
+    }
 
     // Cargar cancha desde BD
     fetch(`/api/admin-cancha/cancha?id=${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then(r => r.json())
-      .then(canchaData => {
+      .then((r) => r.json())
+      .then((canchaData) => {
         if (canchaData.error) {
-          console.error('Error cargando cancha:', canchaData.error, canchaData.debug);
-          router.replace('/admin-cancha/canchas');
+          console.error(
+            "Error cargando cancha:",
+            canchaData.error,
+            canchaData.debug,
+          );
+          router.replace("/admin-cancha/canchas");
           return;
         }
         setCancha(canchaData);
-        setDescription(canchaData.descripcion ?? '');
-        setPhone(canchaData.telefono ?? '');
+        setDescription(canchaData.descripcion ?? "");
+        setPhone(canchaData.telefono ?? "");
         setPrice(canchaData.precio_por_hora ?? 0);
         setAmenities(canchaData.amenidades ?? []);
         setImages(canchaData.imagenes ?? []);
@@ -244,25 +512,26 @@ export default function OwnerEditarCanchaPage() {
         setBalonPrecio(canchaData.balon_precio ?? null);
         setChalecosDisponible(canchaData.chalecos_disponible ?? false);
         setChalecosPrecio(canchaData.chalecos_precio ?? null);
-        setSuperficie(canchaData.superficie ?? 'grass_sintetico');
+        setSuperficie(canchaData.superficie ?? "grass_sintetico");
         setMaxJugadores(canchaData.max_jugadores ?? null);
         setLoading(false);
 
-        setLat(String(canchaData.lat ?? ''));
-        setLng(String(canchaData.lng ?? ''));
-        setDireccion(canchaData.direccion ?? '');
-        setDistrito(canchaData.distrito ?? '');
-        setYapeNumero(canchaData.yape_numero ?? '');
-        setPlinNumero(canchaData.plin_numero ?? '');
+        setLat(String(canchaData.lat ?? ""));
+        setLng(String(canchaData.lng ?? ""));
+        setDireccion(canchaData.direccion ?? "");
+        setDistrito(canchaData.distrito ?? "");
+        setYapeNumero(canchaData.yape_numero ?? "");
+        setPlinNumero(canchaData.plin_numero ?? "");
+        setHoraApertura(canchaData.hora_apertura ?? "06:00");
+        setHoraCierre(canchaData.hora_cierre ?? "23:00");
       })
-      .catch(err => {
-        console.error('Error de red:', err);
+      .catch((err) => {
+        console.error("Error de red:", err);
         setLoading(false);
       });
   }, [id, router]);
 
-  const validarNumero = (num: string) =>
-    num === '' || /^9\d{8}$/.test(num);
+  const validarNumero = (num: string) => num === "" || /^9\d{8}$/.test(num);
 
   const handleSave = async () => {
     const token = getOwnerToken();
@@ -271,25 +540,36 @@ export default function OwnerEditarCanchaPage() {
     // Validar números de pago antes de guardar
     const yapeOk = validarNumero(yapeNumero);
     const plinOk = validarNumero(plinNumero);
-    setYapeError(yapeOk ? '' : 'Debe ser un número peruano válido (9 dígitos, empieza con 9)');
-    setPlinError(plinOk ? '' : 'Debe ser un número peruano válido (9 dígitos, empieza con 9)');
+    setYapeError(
+      yapeOk
+        ? ""
+        : "Debe ser un número peruano válido (9 dígitos, empieza con 9)",
+    );
+    setPlinError(
+      plinOk
+        ? ""
+        : "Debe ser un número peruano válido (9 dígitos, empieza con 9)",
+    );
     if (!yapeOk || !plinOk) return;
 
     setSaving(true);
-    setSaveError('');
+    setSaveError("");
 
-    console.log('🔍 handleSave - Valores a enviar:');
-    console.log('  descripcion:', description);
-    console.log('  telefono:', phone);
-    console.log('  precioHora:', price);
-    console.log('  lat:', lat);
-    console.log('  lng:', lng);
-    console.log('  direccion:', direccion);
-    console.log('  distrito:', distrito);
+    console.log("🔍 handleSave - Valores a enviar:");
+    console.log("  descripcion:", description);
+    console.log("  telefono:", phone);
+    console.log("  precioHora:", price);
+    console.log("  lat:", lat);
+    console.log("  lng:", lng);
+    console.log("  direccion:", direccion);
+    console.log("  distrito:", distrito);
 
     const res = await fetch(`/api/admin-cancha/cancha?id=${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify({
         descripcion: description,
         telefono: phone,
@@ -297,18 +577,20 @@ export default function OwnerEditarCanchaPage() {
         amenidades: amenities,
         imagenes: images,
         preciosPorHora,
-        balonPrecio:         balonPrecio,
-        chalecosPrecio:      chalecosPrecio,
-        balonDisponible:     balonDisponible,
-        chalecosDisponible:  chalecosDisponible,
-        superficie:          superficie,
-        maxJugadores:        maxJugadores,
+        balonPrecio: balonPrecio,
+        chalecosPrecio: chalecosPrecio,
+        balonDisponible: balonDisponible,
+        chalecosDisponible: chalecosDisponible,
+        superficie: superficie,
+        maxJugadores: maxJugadores,
         lat: lat ? Number(lat) : undefined,
         lng: lng ? Number(lng) : undefined,
         direccion: direccion || undefined,
         distrito: distrito || undefined,
         yapeNumero: yapeNumero || null,
         plinNumero: plinNumero || null,
+        horaApertura,
+        horaCierre,
       }),
     });
 
@@ -318,11 +600,12 @@ export default function OwnerEditarCanchaPage() {
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } else {
-      setSaveError(data.error ?? 'Error al guardar');
+      setSaveError(data.error ?? "Error al guardar");
     }
   };
 
-  const removeImage = (idx: number) => setImages(prev => prev.filter((_, i) => i !== idx));
+  const removeImage = (idx: number) =>
+    setImages((prev) => prev.filter((_, i) => i !== idx));
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const token = getOwnerToken();
@@ -331,14 +614,14 @@ export default function OwnerEditarCanchaPage() {
     if (!files.length) return;
 
     setUploading(true);
-    setUploadError('');
+    setUploadError("");
 
     for (const file of files) {
       const form = new FormData();
-      form.append('file', file);
-      form.append('canchaId', id);
-      const res = await fetch('/api/upload', {
-        method: 'POST',
+      form.append("file", file);
+      form.append("canchaId", id);
+      const res = await fetch("/api/upload", {
+        method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: form,
       });
@@ -346,12 +629,12 @@ export default function OwnerEditarCanchaPage() {
       if (data.error) {
         setUploadError(data.error);
       } else if (data.url) {
-        setImages(prev => [...prev, data.url]);
+        setImages((prev) => [...prev, data.url]);
       }
     }
     setUploading(false);
     // Limpiar el input para permitir subir el mismo archivo de nuevo
-    if (fileRef.current) fileRef.current.value = '';
+    if (fileRef.current) fileRef.current.value = "";
   };
 
   const addImageUrl = () => {}; // ya no se usa
@@ -368,431 +651,691 @@ export default function OwnerEditarCanchaPage() {
   if (!cancha) return null;
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => router.back()}>
+    <div>
+      {/* Header — sticky para que el botón siempre sea accesible al hacer scroll */}
+      <div className="sticky top-0 z-20 -mx-4 -mt-4 flex items-center justify-between gap-2 border-b border-border bg-background/95 px-4 py-3 backdrop-blur-sm lg:-mx-6 lg:px-6">
+        <div className="flex flex-1 items-center gap-2 min-w-0">
+          <Button variant="ghost" size="icon" className="shrink-0" onClick={() => router.back()}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <div>
-            <h1 className="text-xl font-bold text-foreground line-clamp-1">{cancha.nombre}</h1>
-            <p className="text-sm text-muted-foreground">Editar mi cancha</p>
+          <div className="min-w-0">
+            <h1 className="text-lg font-bold text-foreground truncate">
+              {cancha.nombre}
+            </h1>
+            <p className="text-xs text-muted-foreground">Editar mi cancha</p>
           </div>
         </div>
-        <Button onClick={handleSave} disabled={saving} className={cn("gap-2 shrink-0", activeTab === 'bloqueos' && "invisible")}>
+        <Button
+          onClick={handleSave}
+          disabled={saving}
+          className={cn(
+            "gap-2 shrink-0",
+            activeTab === "bloqueos" && "invisible",
+          )}
+        >
           <Save className="h-4 w-4" />
-          {saving ? 'Guardando...' : saved ? '¡Guardado! ✓' : 'Guardar cambios'}
+          <span className="hidden sm:inline">
+            {saving ? "Guardando..." : saved ? "¡Guardado! ✓" : "Guardar cambios"}
+          </span>
         </Button>
       </div>
-      {saveError && (
-        <div className="rounded-xl bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive">
-          {saveError}
-        </div>
-      )}
 
-      <Tabs defaultValue="info" onValueChange={setActiveTab}>
-        <div className="overflow-x-auto scrollbar-none -mx-1 px-1">
-          <TabsList className="w-max min-w-full sm:w-auto">
-            <TabsTrigger value="info">Información</TabsTrigger>
-            <TabsTrigger value="fotos">Fotos</TabsTrigger>
-            <TabsTrigger value="bloqueos">Bloqueos</TabsTrigger>
-            <TabsTrigger value="ubicacion">Ubicación</TabsTrigger>
-            <TabsTrigger value="servicios">Servicios</TabsTrigger>
-          </TabsList>
-        </div>
+      <div className="space-y-4 pt-6">
+        {saveError && (
+          <div className="rounded-xl bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive">
+            {saveError}
+          </div>
+        )}
 
-        {/* ── Información ── */}
-        <TabsContent value="info" className="space-y-4 pt-4">
-          <Card className="border-border p-5 space-y-4">
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground">Descripción</label>
-              <textarea
-                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring min-h-[120px] resize-none"
-                value={description}
-                onChange={e => setDescription(e.target.value)}
-                placeholder="Describe tu cancha..."
-              />
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">Teléfono de contacto</label>
-                <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+51 999 999 999" />
+        <Tabs defaultValue="info" onValueChange={setActiveTab}>
+          <div className="overflow-x-auto scrollbar-none -mx-1 px-1">
+            <TabsList className="w-max min-w-full sm:w-auto">
+              <TabsTrigger value="horario">Horario</TabsTrigger>
+              <TabsTrigger value="info">Información</TabsTrigger>
+              <TabsTrigger value="fotos">Fotos</TabsTrigger>
+              <TabsTrigger value="bloqueos">Bloqueos</TabsTrigger>
+              <TabsTrigger value="ubicacion">Ubicación</TabsTrigger>
+              <TabsTrigger value="servicios">Servicios</TabsTrigger>
+            </TabsList>
+          </div>
+
+          {/* ── Horario ── */}
+          <TabsContent value="horario" className="pt-4 space-y-4">
+            {/* Configuración de horario de operación */}
+            <Card className="border-border p-5 space-y-4">
+              <div>
+                <p className="font-medium text-foreground">Horario de operación</p>
+                <p className="text-sm text-muted-foreground">Define las horas en que tu cancha está disponible para reservas.</p>
               </div>
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">Precio base por hora (S/)</label>
-                <Input type="number" min={0} value={price} onChange={e => setPrice(Number(e.target.value))} />
-                <p className="text-xs text-muted-foreground">Se aplica a las horas que no tengan precio personalizado.</p>
-              </div>
-            </div>
-
-            {/* Superficie */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Tipo de superficie</label>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                {([
-                  { value: 'grass',           label: 'Grass natural',   icon: '🌿' },
-                  { value: 'grass_sintetico',  label: 'Grass sintético', icon: '🟩' },
-                  { value: 'loza',             label: 'Loza',            icon: '🏗️' },
-                  { value: 'cemento',          label: 'Cemento',         icon: '⬜' },
-                ] as const).map(({ value, label, icon }) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => setSuperficie(value)}
-                    className={cn(
-                      'flex flex-col items-center gap-1.5 rounded-xl border-2 px-3 py-3 text-center transition-all',
-                      superficie === value
-                        ? 'border-primary bg-primary/5 text-primary'
-                        : 'border-border bg-card text-muted-foreground hover:border-primary/30'
-                    )}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-foreground">Apertura</label>
+                  <select
+                    value={horaApertura}
+                    onChange={e => setHoraApertura(e.target.value)}
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   >
-                    <span className="text-xl">{icon}</span>
-                    <span className="text-xs font-medium leading-tight">{label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Máximo de jugadores */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Máximo de jugadores</label>
-              <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
-                {[null, 8, 10, 12, 14, 16, 20, 22].map(n => (
-                  <button
-                    key={n ?? 'none'}
-                    type="button"
-                    onClick={() => setMaxJugadores(n)}
-                    className={cn(
-                      'rounded-xl border-2 py-2.5 text-sm font-medium transition-all',
-                      maxJugadores === n
-                        ? 'border-primary bg-primary text-primary-foreground'
-                        : 'border-border bg-card text-foreground hover:border-primary/40'
-                    )}
+                    {HORAS_APP.filter(h => h < horaCierre).map(h => (
+                      <option key={h} value={h}>{h}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-foreground">Cierre</label>
+                  <select
+                    value={horaCierre}
+                    onChange={e => setHoraCierre(e.target.value)}
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   >
-                    {n ?? '—'}
-                  </button>
-                ))}
+                    {HORAS_APP.filter(h => h > horaApertura).map(h => (
+                      <option key={h} value={h}>{h}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
               <p className="text-xs text-muted-foreground">
-                {maxJugadores ? `Máximo ${maxJugadores} jugadores por partido` : 'Sin límite definido'}
+                Los usuarios solo verán horas entre <span className="font-medium text-foreground">{horaApertura}</span> y <span className="font-medium text-foreground">{horaCierre}</span>.
               </p>
-            </div>
+            </Card>
 
-            {/* Métodos de pago */}
-            <div className="space-y-3 pt-1">
-              <div>
-                <label className="text-sm font-medium text-foreground">Métodos de pago aceptados</label>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Ingresa el número de cada billetera. Déjalo vacío si no aceptas ese método.
-                </p>
+            <Card className="border-border p-5">
+              <HorarioTab canchaId={id as string} horasOperacion={getHorasOperacion(horaApertura, horaCierre)} />
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="info" className="space-y-4 pt-4">
+            <Card className="border-border p-5 space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-foreground">
+                  Descripción
+                </label>
+                <textarea
+                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring min-h-[120px] resize-none"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Describe tu cancha..."
+                />
               </div>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-6 w-6 items-center justify-center rounded-md bg-[#6C1FC6]/10">
-                      <span className="text-xs font-bold text-[#6C1FC6]">Y</span>
-                    </div>
-                    <label className="text-sm font-medium text-foreground">Número Yape</label>
-                  </div>
+                  <label className="text-sm font-medium text-foreground">
+                    Teléfono de contacto
+                  </label>
                   <Input
-                    type="tel"
-                    placeholder="Ej: 987654321 (vacío = no aceptas Yape)"
-                    value={yapeNumero}
-                    onChange={e => { setYapeNumero(e.target.value); setYapeError(''); }}
-                    className={cn(yapeError && 'border-destructive focus-visible:ring-destructive')}
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+51 999 999 999"
                   />
-                  {yapeError && <p className="text-xs text-destructive">{yapeError}</p>}
                 </div>
                 <div className="space-y-1.5">
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-6 w-6 items-center justify-center rounded-md bg-[#00C2CB]/10">
-                      <span className="text-xs font-bold text-[#00A0A8]">P</span>
-                    </div>
-                    <label className="text-sm font-medium text-foreground">Número Plin</label>
-                  </div>
+                  <label className="text-sm font-medium text-foreground">
+                    Precio base por hora (S/)
+                  </label>
                   <Input
-                    type="tel"
-                    placeholder="Ej: 987654321 (vacío = no aceptas Plin)"
-                    value={plinNumero}
-                    onChange={e => { setPlinNumero(e.target.value); setPlinError(''); }}
-                    className={cn(plinError && 'border-destructive focus-visible:ring-destructive')}
+                    type="number"
+                    min={0}
+                    value={price}
+                    onChange={(e) => setPrice(Number(e.target.value))}
                   />
-                  {plinError && <p className="text-xs text-destructive">{plinError}</p>}
+                  <p className="text-xs text-muted-foreground">
+                    Se aplica a las horas que no tengan precio personalizado.
+                  </p>
                 </div>
               </div>
-              <div className={cn(
-                'flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-medium',
-                !yapeNumero && !plinNumero
-                  ? 'bg-amber-500/10 border border-amber-500/20 text-amber-700'
-                  : 'bg-primary/5 border border-primary/20 text-primary'
-              )}>
-                {!yapeNumero && !plinNumero ? (
-                  <>⚠️ Sin Yape ni Plin configurado — los clientes pagarán en <strong className="ml-1">efectivo en cancha</strong></>
-                ) : (
-                  <>✓ Acepta: {[yapeNumero && 'Yape', plinNumero && 'Plin'].filter(Boolean).join(' y ')}</>
-                )}
-              </div>
-            </div>
-          </Card>
 
-          {/* Precios por hora */}
-          <Card className="border-border p-5 space-y-4">
-            <div>
-              <p className="font-medium text-foreground">Precios por hora</p>
-              <p className="text-sm text-muted-foreground">
-                Personaliza el precio de cada horario. Las horas sin precio usarán el precio base (S/ {price}).
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {['06:00','07:00','08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00','22:00','23:00'].map(hora => {
-                const valorActual = preciosPorHora[hora];
-                const tienePersonalizado = valorActual !== undefined;
-                return (
-                  <div key={hora} className={`rounded-xl border p-3 space-y-1.5 transition-colors ${tienePersonalizado ? 'border-primary/40 bg-primary/5' : 'border-border bg-card'}`}>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-foreground">{hora}</span>
-                      {tienePersonalizado && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const next = { ...preciosPorHora };
-                            delete next[hora];
-                            setPreciosPorHora(next);
-                          }}
-                          className="text-xs text-muted-foreground hover:text-destructive"
-                        >
-                          ✕
-                        </button>
+              {/* Superficie */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">
+                  Tipo de superficie
+                </label>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {(
+                    [
+                      { value: "grass", label: "Grass natural", icon: "🌿" },
+                      {
+                        value: "grass_sintetico",
+                        label: "Grass sintético",
+                        icon: "🟩",
+                      },
+                      { value: "loza", label: "Loza", icon: "🏗️" },
+                      { value: "cemento", label: "Cemento", icon: "⬜" },
+                    ] as const
+                  ).map(({ value, label, icon }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setSuperficie(value)}
+                      className={cn(
+                        "flex flex-col items-center gap-1.5 rounded-xl border-2 px-3 py-3 text-center transition-all",
+                        superficie === value
+                          ? "border-primary bg-primary/5 text-primary"
+                          : "border-border bg-card text-muted-foreground hover:border-primary/30",
                       )}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <span className="text-xs text-muted-foreground">S/</span>
-                      <Input
-                        type="number"
-                        min={0}
-                        placeholder={String(price)}
-                        value={valorActual ?? ''}
-                        onChange={e => {
-                          const val = e.target.value;
-                          if (val === '') {
-                            const next = { ...preciosPorHora };
-                            delete next[hora];
-                            setPreciosPorHora(next);
-                          } else {
-                            setPreciosPorHora(prev => ({ ...prev, [hora]: Number(val) }));
-                          }
-                        }}
-                        className="h-8 text-sm px-2"
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            {Object.keys(preciosPorHora).length > 0 && (
-              <div className="flex items-center justify-between rounded-xl bg-primary/5 border border-primary/20 px-4 py-2.5">
-                <p className="text-sm text-primary">
-                  {Object.keys(preciosPorHora).length} hora{Object.keys(preciosPorHora).length > 1 ? 's' : ''} con precio personalizado
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setPreciosPorHora({})}
-                  className="text-xs text-muted-foreground hover:text-destructive"
-                >
-                  Limpiar todo
-                </button>
-              </div>
-            )}
-          </Card>
-
-          {/* Extras: balón y chalecos */}
-          <Card className="border-border p-5 space-y-4">
-            <div>
-              <p className="font-medium text-foreground">Extras disponibles</p>
-              <p className="text-sm text-muted-foreground">
-                Indica si ofreces balón y/o chalecos. Puedes cobrar un precio o incluirlos gratis.
-              </p>
-            </div>
-            <div className="grid gap-5 sm:grid-cols-2">
-
-              {/* Balón */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="balon-disponible"
-                    checked={balonDisponible}
-                    onCheckedChange={v => {
-                      setBalonDisponible(v as boolean);
-                      if (!v) setBalonPrecio(null);
-                    }}
-                  />
-                  <label htmlFor="balon-disponible" className="text-sm font-medium text-foreground cursor-pointer flex items-center gap-1.5">
-                    ⚽ Ofrezco balón
-                  </label>
-                </div>
-                {balonDisponible && (
-                  <div className="ml-6 space-y-2">
-                    <p className="text-xs text-muted-foreground">¿Tiene costo adicional?</p>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground shrink-0">S/</span>
-                      <Input
-                        type="number"
-                        min={0}
-                        placeholder="Gratis (dejar vacío)"
-                        value={balonPrecio ?? ''}
-                        onChange={e => setBalonPrecio(e.target.value === '' ? null : Number(e.target.value))}
-                        className="h-8 text-sm"
-                      />
-                      {balonPrecio != null && (
-                        <button type="button" onClick={() => setBalonPrecio(null)}
-                          className="text-xs text-muted-foreground hover:text-destructive shrink-0">✕</button>
-                      )}
-                    </div>
-                    <p className="text-xs text-primary font-medium">
-                      {balonPrecio != null ? `Cobrarás S/ ${balonPrecio} por reserva` : '✓ Incluido gratis'}
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Chalecos */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="chalecos-disponible"
-                    checked={chalecosDisponible}
-                    onCheckedChange={v => {
-                      setChalecosDisponible(v as boolean);
-                      if (!v) setChalecosPrecio(null);
-                    }}
-                  />
-                  <label htmlFor="chalecos-disponible" className="text-sm font-medium text-foreground cursor-pointer flex items-center gap-1.5">
-                    🎽 Ofrezco chalecos
-                  </label>
-                </div>
-                {chalecosDisponible && (
-                  <div className="ml-6 space-y-2">
-                    <p className="text-xs text-muted-foreground">¿Tiene costo adicional?</p>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground shrink-0">S/</span>
-                      <Input
-                        type="number"
-                        min={0}
-                        placeholder="Gratis (dejar vacío)"
-                        value={chalecosPrecio ?? ''}
-                        onChange={e => setChalecosPrecio(e.target.value === '' ? null : Number(e.target.value))}
-                        className="h-8 text-sm"
-                      />
-                      {chalecosPrecio != null && (
-                        <button type="button" onClick={() => setChalecosPrecio(null)}
-                          className="text-xs text-muted-foreground hover:text-destructive shrink-0">✕</button>
-                      )}
-                    </div>
-                    <p className="text-xs text-primary font-medium">
-                      {chalecosPrecio != null ? `Cobrarás S/ ${chalecosPrecio} por reserva` : '✓ Incluidos gratis'}
-                    </p>
-                  </div>
-                )}
-              </div>
-
-            </div>
-          </Card>
-        </TabsContent>
-
-        {/* ── Fotos ── */}
-        <TabsContent value="fotos" className="space-y-4 pt-4">
-          <Card className="border-border p-5 space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-foreground">{images.length} de {6} foto{images.length !== 1 ? 's' : ''}</p>
-                <p className="text-xs text-muted-foreground">Máximo 6 imágenes por cancha</p>
-              </div>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => fileRef.current?.click()} 
-                disabled={uploading || images.length >= 6}
-              >
-                <Plus className="mr-1.5 h-3.5 w-3.5" />
-                {uploading ? 'Subiendo...' : images.length >= 6 ? 'Límite alcanzado' : 'Subir foto'}
-              </Button>
-              <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFileUpload} />
-            </div>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              {images.map((img, i) => (
-                <div key={i} className="group relative aspect-video overflow-hidden rounded-xl border border-border">
-                  <Image src={img} alt={`Foto ${i + 1}`} fill className="object-cover" />
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
-                    <button onClick={() => removeImage(i)}
-                      className="flex h-8 w-8 items-center justify-center rounded-full bg-destructive text-white">
-                      <Trash2 className="h-4 w-4" />
+                    >
+                      <span className="text-xl">{icon}</span>
+                      <span className="text-xs font-medium leading-tight">
+                        {label}
+                      </span>
                     </button>
-                  </div>
-                  {i === 0 && <Badge className="absolute left-2 top-2 bg-primary text-primary-foreground text-xs">Principal</Badge>}
+                  ))}
                 </div>
-              ))}
-            </div>
-            {uploadError && (
-              <p className="text-sm text-destructive">{uploadError}</p>
-            )}
-          </Card>
-        </TabsContent>
+              </div>
 
-        {/* ── Bloqueos avanzados ── */}
-        <TabsContent value="bloqueos" className="space-y-4 pt-4">
-          <div className="rounded-xl border border-border bg-card px-4 py-3 mb-2">
-            <p className="text-sm font-medium text-foreground">Bloqueos por fecha o recurrentes</p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Bloquea horarios para un día específico, de forma recurrente cada semana, o de forma permanente.
-              Los horarios bloqueados no estarán disponibles para reservas.
-            </p>
-          </div>
-          <BloqueosAdminPanel canchaId={id} token={getOwnerToken() ?? ''} />
-        </TabsContent>
+              {/* Máximo de jugadores */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">
+                  Máximo de jugadores
+                </label>
+                <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
+                  {[null, 8, 10, 12, 14, 16, 20, 22].map((n) => (
+                    <button
+                      key={n ?? "none"}
+                      type="button"
+                      onClick={() => setMaxJugadores(n)}
+                      className={cn(
+                        "rounded-xl border-2 py-2.5 text-sm font-medium transition-all",
+                        maxJugadores === n
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-card text-foreground hover:border-primary/40",
+                      )}
+                    >
+                      {n ?? "—"}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {maxJugadores
+                    ? `Máximo ${maxJugadores} jugadores por partido`
+                    : "Sin límite definido"}
+                </p>
+              </div>
 
-        {/* ── Ubicación ── */}
-        <TabsContent value="ubicacion" className="space-y-4 pt-4">          <UbicacionTab
-            direccion={direccion}
-            lat={lat}
-            lng={lng}
-            distrito={distrito}
-            onDireccionChange={setDireccion}
-            onDistritoChange={setDistrito}
-            onCoordsChange={(newLat, newLng, newDistrito) => { 
-              setLat(newLat); 
-              setLng(newLng);
-              if (newDistrito) setDistrito(newDistrito);
-            }}
-          />
-        </TabsContent>
+              {/* Métodos de pago */}
+              <div className="space-y-3 pt-1">
+                <div>
+                  <label className="text-sm font-medium text-foreground">
+                    Métodos de pago aceptados
+                  </label>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Ingresa el número de cada billetera. Déjalo vacío si no
+                    aceptas ese método.
+                  </p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-6 w-6 items-center justify-center rounded-md bg-[#6C1FC6]/10">
+                        <span className="text-xs font-bold text-[#6C1FC6]">
+                          Y
+                        </span>
+                      </div>
+                      <label className="text-sm font-medium text-foreground">
+                        Número Yape
+                      </label>
+                    </div>
+                    <Input
+                      type="tel"
+                      placeholder="Ej: 987654321 (vacío = no aceptas Yape)"
+                      value={yapeNumero}
+                      onChange={(e) => {
+                        setYapeNumero(e.target.value);
+                        setYapeError("");
+                      }}
+                      className={cn(
+                        yapeError &&
+                          "border-destructive focus-visible:ring-destructive",
+                      )}
+                    />
+                    {yapeError && (
+                      <p className="text-xs text-destructive">{yapeError}</p>
+                    )}
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-6 w-6 items-center justify-center rounded-md bg-[#00C2CB]/10">
+                        <span className="text-xs font-bold text-[#00A0A8]">
+                          P
+                        </span>
+                      </div>
+                      <label className="text-sm font-medium text-foreground">
+                        Número Plin
+                      </label>
+                    </div>
+                    <Input
+                      type="tel"
+                      placeholder="Ej: 987654321 (vacío = no aceptas Plin)"
+                      value={plinNumero}
+                      onChange={(e) => {
+                        setPlinNumero(e.target.value);
+                        setPlinError("");
+                      }}
+                      className={cn(
+                        plinError &&
+                          "border-destructive focus-visible:ring-destructive",
+                      )}
+                    />
+                    {plinError && (
+                      <p className="text-xs text-destructive">{plinError}</p>
+                    )}
+                  </div>
+                </div>
+                <div
+                  className={cn(
+                    "flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-medium",
+                    !yapeNumero && !plinNumero
+                      ? "bg-amber-500/10 border border-amber-500/20 text-amber-700"
+                      : "bg-primary/5 border border-primary/20 text-primary",
+                  )}
+                >
+                  {!yapeNumero && !plinNumero ? (
+                    <>
+                      ⚠️ Sin Yape ni Plin configurado — los clientes pagarán en{" "}
+                      <strong className="ml-1">efectivo en cancha</strong>
+                    </>
+                  ) : (
+                    <>
+                      ✓ Acepta:{" "}
+                      {[yapeNumero && "Yape", plinNumero && "Plin"]
+                        .filter(Boolean)
+                        .join(" y ")}
+                    </>
+                  )}
+                </div>
+              </div>
+            </Card>
 
-        {/* ── Servicios ── */}
-        <TabsContent value="servicios" className="space-y-4 pt-4">
-          <Card className="border-border p-5 space-y-4">
-            <p className="font-medium text-foreground">Servicios y amenidades</p>
-            <div className="flex flex-wrap gap-2">
-              {amenities.map(a => (
-                <div key={a} className="flex items-center gap-1.5 rounded-full border border-border bg-secondary px-3 py-1.5 text-sm">
-                  <span className="text-foreground">{a}</span>
-                  <button onClick={() => setAmenities(prev => prev.filter(x => x !== a))}
-                    className="text-muted-foreground hover:text-destructive">
-                    <Trash2 className="h-3.5 w-3.5" />
+            {/* Precios por hora */}
+            <Card className="border-border p-5 space-y-4">
+              <div>
+                <p className="font-medium text-foreground">Precios por hora</p>
+                <p className="text-sm text-muted-foreground">
+                  Personaliza el precio de cada horario. Las horas sin precio
+                  usarán el precio base (S/ {price}).
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {[
+                  "06:00",
+                  "07:00",
+                  "08:00",
+                  "09:00",
+                  "10:00",
+                  "11:00",
+                  "12:00",
+                  "13:00",
+                  "14:00",
+                  "15:00",
+                  "16:00",
+                  "17:00",
+                  "18:00",
+                  "19:00",
+                  "20:00",
+                  "21:00",
+                  "22:00",
+                  "23:00",
+                ].map((hora) => {
+                  const valorActual = preciosPorHora[hora];
+                  const tienePersonalizado = valorActual !== undefined;
+                  return (
+                    <div
+                      key={hora}
+                      className={`rounded-xl border p-3 space-y-1.5 transition-colors ${tienePersonalizado ? "border-primary/40 bg-primary/5" : "border-border bg-card"}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-foreground">
+                          {hora}
+                        </span>
+                        {tienePersonalizado && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const next = { ...preciosPorHora };
+                              delete next[hora];
+                              setPreciosPorHora(next);
+                            }}
+                            className="text-xs text-muted-foreground hover:text-destructive"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-muted-foreground">
+                          S/
+                        </span>
+                        <Input
+                          type="number"
+                          min={0}
+                          placeholder={String(price)}
+                          value={valorActual ?? ""}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === "") {
+                              const next = { ...preciosPorHora };
+                              delete next[hora];
+                              setPreciosPorHora(next);
+                            } else {
+                              setPreciosPorHora((prev) => ({
+                                ...prev,
+                                [hora]: Number(val),
+                              }));
+                            }
+                          }}
+                          className="h-8 text-sm px-2"
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {Object.keys(preciosPorHora).length > 0 && (
+                <div className="flex items-center justify-between rounded-xl bg-primary/5 border border-primary/20 px-4 py-2.5">
+                  <p className="text-sm text-primary">
+                    {Object.keys(preciosPorHora).length} hora
+                    {Object.keys(preciosPorHora).length > 1 ? "s" : ""} con
+                    precio personalizado
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setPreciosPorHora({})}
+                    className="text-xs text-muted-foreground hover:text-destructive"
+                  >
+                    Limpiar todo
                   </button>
                 </div>
-              ))}
+              )}
+            </Card>
+
+            {/* Extras: balón y chalecos */}
+            <Card className="border-border p-5 space-y-4">
+              <div>
+                <p className="font-medium text-foreground">
+                  Extras disponibles
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Indica si ofreces balón y/o chalecos. Puedes cobrar un precio
+                  o incluirlos gratis.
+                </p>
+              </div>
+              <div className="grid gap-5 sm:grid-cols-2">
+                {/* Balón */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="balon-disponible"
+                      checked={balonDisponible}
+                      onCheckedChange={(v) => {
+                        setBalonDisponible(v as boolean);
+                        if (!v) setBalonPrecio(null);
+                      }}
+                    />
+                    <label
+                      htmlFor="balon-disponible"
+                      className="text-sm font-medium text-foreground cursor-pointer flex items-center gap-1.5"
+                    >
+                      ⚽ Ofrezco balón
+                    </label>
+                  </div>
+                  {balonDisponible && (
+                    <div className="ml-6 space-y-2">
+                      <p className="text-xs text-muted-foreground">
+                        ¿Tiene costo adicional?
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground shrink-0">
+                          S/
+                        </span>
+                        <Input
+                          type="number"
+                          min={0}
+                          placeholder="Gratis (dejar vacío)"
+                          value={balonPrecio ?? ""}
+                          onChange={(e) =>
+                            setBalonPrecio(
+                              e.target.value === ""
+                                ? null
+                                : Number(e.target.value),
+                            )
+                          }
+                          className="h-8 text-sm"
+                        />
+                        {balonPrecio != null && (
+                          <button
+                            type="button"
+                            onClick={() => setBalonPrecio(null)}
+                            className="text-xs text-muted-foreground hover:text-destructive shrink-0"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-xs text-primary font-medium">
+                        {balonPrecio != null
+                          ? `Cobrarás S/ ${balonPrecio} por reserva`
+                          : "✓ Incluido gratis"}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Chalecos */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="chalecos-disponible"
+                      checked={chalecosDisponible}
+                      onCheckedChange={(v) => {
+                        setChalecosDisponible(v as boolean);
+                        if (!v) setChalecosPrecio(null);
+                      }}
+                    />
+                    <label
+                      htmlFor="chalecos-disponible"
+                      className="text-sm font-medium text-foreground cursor-pointer flex items-center gap-1.5"
+                    >
+                      🎽 Ofrezco chalecos
+                    </label>
+                  </div>
+                  {chalecosDisponible && (
+                    <div className="ml-6 space-y-2">
+                      <p className="text-xs text-muted-foreground">
+                        ¿Tiene costo adicional?
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground shrink-0">
+                          S/
+                        </span>
+                        <Input
+                          type="number"
+                          min={0}
+                          placeholder="Gratis (dejar vacío)"
+                          value={chalecosPrecio ?? ""}
+                          onChange={(e) =>
+                            setChalecosPrecio(
+                              e.target.value === ""
+                                ? null
+                                : Number(e.target.value),
+                            )
+                          }
+                          className="h-8 text-sm"
+                        />
+                        {chalecosPrecio != null && (
+                          <button
+                            type="button"
+                            onClick={() => setChalecosPrecio(null)}
+                            className="text-xs text-muted-foreground hover:text-destructive shrink-0"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-xs text-primary font-medium">
+                        {chalecosPrecio != null
+                          ? `Cobrarás S/ ${chalecosPrecio} por reserva`
+                          : "✓ Incluidos gratis"}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </Card>
+          </TabsContent>
+
+          {/* ── Fotos ── */}
+          <TabsContent value="fotos" className="space-y-4 pt-4">
+            <Card className="border-border p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-foreground">
+                    {images.length} de {6} foto{images.length !== 1 ? "s" : ""}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Máximo 6 imágenes por cancha
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileRef.current?.click()}
+                  disabled={uploading || images.length >= 6}
+                >
+                  <Plus className="mr-1.5 h-3.5 w-3.5" />
+                  {uploading
+                    ? "Subiendo..."
+                    : images.length >= 6
+                      ? "Límite alcanzado"
+                      : "Subir foto"}
+                </Button>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={handleFileUpload}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {images.map((img, i) => (
+                  <div
+                    key={i}
+                    className="group relative aspect-video overflow-hidden rounded-xl border border-border"
+                  >
+                    <Image
+                      src={img}
+                      alt={`Foto ${i + 1}`}
+                      fill
+                      className="object-cover"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
+                      <button
+                        onClick={() => removeImage(i)}
+                        className="flex h-8 w-8 items-center justify-center rounded-full bg-destructive text-white"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                    {i === 0 && (
+                      <Badge className="absolute left-2 top-2 bg-primary text-primary-foreground text-xs">
+                        Principal
+                      </Badge>
+                    )}
+                  </div>
+                ))}
+              </div>
+              {uploadError && (
+                <p className="text-sm text-destructive">{uploadError}</p>
+              )}
+            </Card>
+          </TabsContent>
+
+          {/* ── Bloqueos avanzados ── */}
+          <TabsContent value="bloqueos" className="space-y-4 pt-4">
+            <div className="rounded-xl border border-border bg-card px-4 py-3 mb-2">
+              <p className="text-sm font-medium text-foreground">
+                Bloqueos por fecha o recurrentes
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Bloquea horarios para un día específico, de forma recurrente
+                cada semana, o de forma permanente. Los horarios bloqueados no
+                estarán disponibles para reservas.
+              </p>
             </div>
-            <div className="flex gap-2">
-              <Input placeholder="Ej: Estacionamiento, WiFi..."
-                value={newAmenity} onChange={e => setNewAmenity(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') { if (newAmenity.trim()) { setAmenities(prev => [...prev, newAmenity.trim()]); setNewAmenity(''); } } }} />
-              <Button variant="outline" onClick={() => { if (newAmenity.trim()) { setAmenities(prev => [...prev, newAmenity.trim()]); setNewAmenity(''); } }}>
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            <BloqueosAdminPanel canchaId={id} token={getOwnerToken() ?? ""} horasOperacion={getHorasOperacion(horaApertura, horaCierre)} />
+          </TabsContent>
+
+          {/* ── Ubicación ── */}
+          <TabsContent value="ubicacion" className="space-y-4 pt-4">
+            {" "}
+            <UbicacionTab
+              direccion={direccion}
+              lat={lat}
+              lng={lng}
+              distrito={distrito}
+              onDireccionChange={setDireccion}
+              onDistritoChange={setDistrito}
+              onCoordsChange={(newLat, newLng, newDistrito) => {
+                setLat(newLat);
+                setLng(newLng);
+                if (newDistrito) setDistrito(newDistrito);
+              }}
+            />
+          </TabsContent>
+
+          {/* ── Servicios ── */}
+          <TabsContent value="servicios" className="space-y-4 pt-4">
+            <Card className="border-border p-5 space-y-4">
+              <p className="font-medium text-foreground">
+                Servicios y amenidades
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {amenities.map((a) => (
+                  <div
+                    key={a}
+                    className="flex items-center gap-1.5 rounded-full border border-border bg-secondary px-3 py-1.5 text-sm"
+                  >
+                    <span className="text-foreground">{a}</span>
+                    <button
+                      onClick={() =>
+                        setAmenities((prev) => prev.filter((x) => x !== a))
+                      }
+                      className="text-muted-foreground hover:text-destructive"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Ej: Estacionamiento, WiFi..."
+                  value={newAmenity}
+                  onChange={(e) => setNewAmenity(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      if (newAmenity.trim()) {
+                        setAmenities((prev) => [...prev, newAmenity.trim()]);
+                        setNewAmenity("");
+                      }
+                    }
+                  }}
+                />
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (newAmenity.trim()) {
+                      setAmenities((prev) => [...prev, newAmenity.trim()]);
+                      setNewAmenity("");
+                    }
+                  }}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 }

@@ -76,6 +76,7 @@ export default function OwnerReservasPage() {
   const [procesando, setProcesando]     = useState(false);
   const [confirmando, setConfirmando]   = useState(false);
   const [rechazando, setRechazando]     = useState(false);
+  const [cancelando, setCancelando]     = useState(false);
   const [marcandoSaldo, setMarcandoSaldo] = useState(false);
   const [filtroFecha, setFiltroFecha]   = useState('');
   const [filtroEmail, setFiltroEmail]   = useState('');
@@ -178,6 +179,27 @@ export default function OwnerReservasPage() {
     }
   };
 
+  const cancelar = async (id: string) => {
+    if (!confirm('¿Cancelar esta reserva? El usuario recibirá una notificación.')) return;
+    setCancelando(true);
+    setReservas(prev => prev.map(r =>
+      r.id === id ? { ...r, estado: 'cancelada' as ReservaEstado } : r
+    ));
+    setSelected(null);
+    const token = getOwnerToken();
+    try {
+      await fetch('/api/admin-cancha/reservas/cancelar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ reservaId: id }),
+      });
+    } catch {
+      reload();
+    } finally {
+      setCancelando(false);
+    }
+  };
+
   const marcarDevolucionRealizada = async (id: string) => {
     setProcesando(true);
     
@@ -262,6 +284,10 @@ export default function OwnerReservasPage() {
         {new Date(r.fecha + 'T00:00:00').toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: 'numeric' })}
       </td>
       <td className="px-4 py-3 text-sm text-muted-foreground">{r.hora}</td>
+      <td className="px-4 py-3 text-sm text-muted-foreground">
+        {new Date(r.creado_en).toLocaleDateString('es-PE', { day: 'numeric', month: 'short' })}
+        <span className="block text-xs">{new Date(r.creado_en).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}</span>
+      </td>
       <td className="px-4 py-3 text-sm font-semibold text-primary">S/ {r.precio}</td>
       <td className="px-4 py-3">
         {r.modo_pago === 'parcial' && !r.saldo_cobrado ? (
@@ -314,7 +340,7 @@ export default function OwnerReservasPage() {
         <table className="w-full text-sm">
           <thead className="border-b border-border bg-muted/40">
             <tr>
-              {['Cliente', 'Cancha', 'Fecha', 'Hora', 'Monto', 'Saldo', 'Método', 'Estado', 'Devolución', ''].map(h => (
+              {['Cliente', 'Cancha', 'Fecha juego', 'Hora', 'Reservado', 'Monto', 'Saldo', 'Método', 'Estado', 'Devolución', ''].map(h => (
                 <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">{h}</th>
               ))}
             </tr>
@@ -709,6 +735,22 @@ export default function OwnerReservasPage() {
                   >
                     <CheckCircle2 className="mr-2 h-4 w-4" />Confirmar
                   </LoadingButton>
+                </div>
+              ) : selected.estado === 'confirmada' ? (
+                <div className="flex gap-3">
+                  <div className="flex-1 flex justify-center">{estadoBadge(selected.estado)}</div>
+                  {new Date(`${selected.fecha}T${selected.hora}`) > new Date() && (
+                    <LoadingButton
+                      variant="outline"
+                      className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                      onClick={() => cancelar(selected.id)}
+                      isLoading={cancelando}
+                      loadingText="Cancelando"
+                      loadingVariant="spinner"
+                    >
+                      <XCircle className="mr-2 h-4 w-4" />Cancelar reserva
+                    </LoadingButton>
+                  )}
                 </div>
               ) : (
                 selected.estado !== 'cancelada' && (

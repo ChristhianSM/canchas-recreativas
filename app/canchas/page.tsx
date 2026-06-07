@@ -54,6 +54,7 @@ import {
   guardarUbicacion,
   guardarCiudad,
   obtenerCiudadGuardada,
+  refrescarUbicacionEnBackground,
   type Coordenadas,
 } from "@/lib/geolocation-utils";
 
@@ -75,6 +76,7 @@ type Cancha = {
   destacada: boolean;
   horariosOcupados?: Record<string, "reservado" | "en_proceso">;
   horariosRestringidos?: string[];
+  horasOperacion?: string[];
   balon_disponible?: boolean;
   balon_precio?: number | null;
   chalecos_disponible?: boolean;
@@ -123,7 +125,7 @@ function adaptCancha(c: Cancha) {
     date.setDate(date.getDate() + i);
     const dateStr = getLocalDateString(date); // ✅ Usar función local en lugar de toISOString
 
-    schedule[dateStr] = HORAS.map((hora) => {
+    schedule[dateStr] = (c.horasOperacion ?? HORAS).map((hora) => {
       const key = `${dateStr}|${hora}`;
       const horariosOcupados = c.horariosOcupados || {};
       const horariosRestringidos = c.horariosRestringidos || [];
@@ -238,11 +240,14 @@ function CanchasContent() {
   useEffect(() => {
     loadCanchas();
 
-    // Cargar ubicación guardada si existe
+    // Cargar ubicación guardada si existe, luego refrescar en background
     const ubicacionGuardada = obtenerUbicacionGuardada();
     if (ubicacionGuardada) {
       setUbicacion(ubicacionGuardada);
     }
+    refrescarUbicacionEnBackground((nuevaCoords) => {
+      setUbicacion(nuevaCoords);
+    });
 
     // Una sola llamada a favoritos para toda la página
     const token = getToken();
@@ -401,34 +406,19 @@ function CanchasContent() {
     setLoadingHours(true);
     try {
       const dateStr = getLocalDateString(date);
+      const hoy = getLocalDateString();
+      const esHoy = dateStr === hoy;
+      const horaActual = esHoy
+        ? `${String(new Date().getHours()).padStart(2, '0')}:00`
+        : null;
       const hoursSet = new Set<string>();
 
       canchas.forEach((cancha) => {
         const horariosOcupados = cancha.horariosOcupados || {};
         const horariosRestringidos = cancha.horariosRestringidos || [];
 
-        const HORAS = [
-          "06:00",
-          "07:00",
-          "08:00",
-          "09:00",
-          "10:00",
-          "11:00",
-          "12:00",
-          "13:00",
-          "14:00",
-          "15:00",
-          "16:00",
-          "17:00",
-          "18:00",
-          "19:00",
-          "20:00",
-          "21:00",
-          "22:00",
-          "23:00",
-        ];
-
-        HORAS.forEach((hora) => {
+        (cancha.horasOperacion ?? HORAS).forEach((hora) => {
+          if (horaActual && hora <= horaActual) return;
           if (!horariosRestringidos.includes(hora)) {
             const key = `${dateStr}|${hora}`;
             if (!horariosOcupados[key]) {
@@ -570,14 +560,43 @@ function CanchasContent() {
     return days;
   };
 
-  // Horarios disponibles para la fecha del modal
-  const modalAvailableHours = useMemo(() => {
-    const dateStr = getLocalDateString(modalDate);
+  // Horarios disponibles para el picker desktop
+  const desktopAvailableHours = useMemo(() => {
+    const dateStr = desktopFecha ? getLocalDateString(desktopFecha) : getLocalDateString();
+    const hoy = getLocalDateString();
+    const esHoy = dateStr === hoy;
+    const horaActual = esHoy
+      ? `${String(new Date().getHours()).padStart(2, '0')}:00`
+      : null;
     const hoursSet = new Set<string>();
     canchas.forEach((cancha) => {
       const horariosOcupados = cancha.horariosOcupados || {};
       const horariosRestringidos = cancha.horariosRestringidos || [];
-      HORAS.forEach((hora) => {
+      (cancha.horasOperacion ?? HORAS).forEach((hora) => {
+        if (horaActual && hora <= horaActual) return;
+        if (!horariosRestringidos.includes(hora)) {
+          const key = `${dateStr}|${hora}`;
+          if (!horariosOcupados[key]) hoursSet.add(hora);
+        }
+      });
+    });
+    return Array.from(hoursSet).sort();
+  }, [canchas, desktopFecha]);
+
+  // Horarios disponibles para la fecha del modal
+  const modalAvailableHours = useMemo(() => {
+    const dateStr = getLocalDateString(modalDate);
+    const hoy = getLocalDateString();
+    const esHoy = dateStr === hoy;
+    const horaActual = esHoy
+      ? `${String(new Date().getHours()).padStart(2, '0')}:00`
+      : null;
+    const hoursSet = new Set<string>();
+    canchas.forEach((cancha) => {
+      const horariosOcupados = cancha.horariosOcupados || {};
+      const horariosRestringidos = cancha.horariosRestringidos || [];
+      (cancha.horasOperacion ?? HORAS).forEach((hora) => {
+        if (horaActual && hora <= horaActual) return;
         if (!horariosRestringidos.includes(hora)) {
           const key = `${dateStr}|${hora}`;
           if (!horariosOcupados[key]) hoursSet.add(hora);
@@ -1246,40 +1265,30 @@ function CanchasContent() {
                       <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-3">
                         Horarios disponibles
                       </p>
-                      <div className="grid grid-cols-3 gap-1.5">
-                        {HORAS.map((h) => {
-                          const isToday = desktopFecha
-                            ? getLocalDateString(desktopFecha) ===
-                              getLocalDateString()
-                            : true;
-                          const now = new Date();
-                          const [hh] = h.split(":").map(Number);
-                          const isPast = isToday && hh <= now.getHours();
-                          const isSelected = desktopHora === h;
-                          return (
-                            <button
-                              key={h}
-                              disabled={isPast}
-                              onClick={() => {
-                                if (!isPast) {
-                                  setDesktopHora(h);
-                                  setActiveField(null);
-                                }
-                              }}
-                              className={`py-2.5 rounded-lg text-xs font-semibold border transition-all
-                              ${
-                                isPast
-                                  ? "bg-gray-100 border-border text-gray-300 cursor-not-allowed"
-                                  : isSelected
+                      {desktopAvailableHours.length === 0 ? (
+                        <p className="text-xs text-muted-foreground text-center py-2">
+                          No hay horarios disponibles para esta fecha
+                        </p>
+                      ) : (
+                        <div className="grid grid-cols-3 gap-1.5">
+                          {desktopAvailableHours.map((h) => {
+                            const isSelected = desktopHora === h;
+                            return (
+                              <button
+                                key={h}
+                                onClick={() => { setDesktopHora(h); setActiveField(null); }}
+                                className={`py-2.5 rounded-lg text-xs font-semibold border transition-all ${
+                                  isSelected
                                     ? "bg-[#16a34a] border-[#16a34a] text-white"
                                     : "border-border text-foreground/80 hover:border-[#16a34a]/50 hover:text-[#16a34a] bg-card"
-                              }`}
-                            >
-                              {h}
-                            </button>
-                          );
-                        })}
-                      </div>
+                                }`}
+                              >
+                                {h}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   </>
                 )}

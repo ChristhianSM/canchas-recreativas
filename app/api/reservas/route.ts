@@ -18,17 +18,26 @@ export async function GET(req: NextRequest) {
   const tipo  = req.nextUrl.searchParams.get('tipo');
   const page  = Math.max(0, parseInt(req.nextUrl.searchParams.get('page')  ?? '0'));
   const limit = Math.min(50, parseInt(req.nextUrl.searchParams.get('limit') ?? '10'));
-  const hoy   = new Date().toISOString().split('T')[0];
+  const ahora  = new Date();
+  const hoy    = ahora.toISOString().split('T')[0];
+  const horaActual = `${String(ahora.getHours()).padStart(2, '0')}:00`;
 
   if (tipo === 'historial') {
     const from = page * limit;
     const to   = from + limit - 1;
 
+    // Incluye: rechazada/cancelada siempre · confirmada de días pasados ·
+    // confirmada de hoy con hora ya pasada · pendiente de días pasados ·
+    // pendiente de hoy con hora ya pasada
     const { data, error, count } = await sb
       .from('reservas')
       .select('*', { count: 'exact' })
       .eq('usuario_id', user.id)
-      .or(`estado.in.(rechazada,cancelada),and(estado.eq.confirmada,fecha.lt.${hoy})`)
+      .or(
+        `estado.in.(rechazada,cancelada),` +
+        `and(estado.in.(confirmada,pendiente),fecha.lt.${hoy}),` +
+        `and(estado.in.(confirmada,pendiente),fecha.eq.${hoy},hora.lte.${horaActual})`
+      )
       .order('creado_en', { ascending: false })
       .order('id',        { ascending: false })
       .range(from, to);
@@ -37,12 +46,17 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ items: data ?? [], total: count ?? 0, page, limit });
   }
 
-  // Próximas: pendientes + confirmadas futuras
+  // Próximas: pendientes o confirmadas con hora aún futura
+  // - pendiente de hoy con hora futura, o cualquier pendiente de fecha futura
+  // - confirmada de hoy con hora futura, o cualquier confirmada de fecha futura
   const { data, error } = await sb
     .from('reservas')
     .select('*')
     .eq('usuario_id', user.id)
-    .or(`estado.eq.pendiente,and(estado.eq.confirmada,fecha.gte.${hoy})`)
+    .or(
+      `and(estado.in.(pendiente,confirmada),fecha.gt.${hoy}),` +
+      `and(estado.in.(pendiente,confirmada),fecha.eq.${hoy},hora.gt.${horaActual})`
+    )
     .order('creado_en', { ascending: false });
 
   if (error) return NextResponse.json([]);
@@ -228,10 +242,10 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // Notificar al dueño de la cancha
+  // Notificar al dueño de la cancha (WhatsApp + in-app)
   const { data: dueno } = await sb
     .from('duenos_canchas')
-    .select('usuarios(telefono)')
+    .select('usuario_id, usuarios(telefono)')
     .eq('cancha_id', canchaId)
     .maybeSingle();
 
@@ -248,6 +262,17 @@ export async function POST(req: NextRequest) {
       clienteTelefono: usuarioTelefono,
       reservaId:       reserva.id,
       comprobanteUrl:  comprobanteUrl ?? null,
+    });
+  }
+
+  // Notificación in-app al dueño
+  if (dueno?.usuario_id) {
+    const fechaLabel = new Date(fecha).toLocaleDateString('es-PE', { day: 'numeric', month: 'long' });
+    await sb.from('notificaciones').insert({
+      usuario_id: dueno.usuario_id,
+      reserva_id: reserva.id,
+      mensaje:    `Nueva reserva: ${usuarioNombre} reservó ${canchaNombre} el ${fechaLabel} a las ${horaDisplay}. S/ ${precio} vía ${metodoPago}.`,
+      tipo:       'nueva_reserva',
     });
   }
 

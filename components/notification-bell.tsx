@@ -1,20 +1,27 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Bell, CheckCircle2, XCircle, Heart, X } from "lucide-react";
+import { Bell, CheckCircle2, XCircle, Heart, X, Clock } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle, SheetClose } from "@/components/ui/sheet";
-import { getToken, apiGetNotificaciones, apiMarcarNotifLeida } from "@/lib/api";
+import { getToken } from "@/lib/api";
 import type { Notificacion } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
-export function NotificationBell() {
+export function NotificationBell({ token: externalToken }: { token?: string } = {}) {
   const [open, setOpen] = useState(false);
   const [notifs, setNotifs] = useState<Notificacion[]>([]);
   const [hydrated, setHydrated] = useState(false);
 
+  const getEffectiveToken = useCallback(
+    () => externalToken ?? getToken(),
+    [externalToken],
+  );
+
   const cargar = useCallback(async () => {
-    if (!getToken()) return;
-    const data = await apiGetNotificaciones();
+    const token = getEffectiveToken();
+    if (!token) return;
+    const res = await fetch('/api/notificaciones', { headers: { Authorization: `Bearer ${token}` } });
+    const data = await res.json();
     if (!Array.isArray(data)) return;
     setNotifs(
       data.map((n: any) => ({
@@ -41,19 +48,33 @@ export function NotificationBell() {
   }, [open, cargar]);
 
   const marcarLeida = async (id: string) => {
-    await apiMarcarNotifLeida(id);
+    const token = getEffectiveToken();
+    if (!token) return;
+    await fetch('/api/notificaciones', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ id }),
+    });
     setNotifs((prev) => prev.map((n) => (n.id === id ? { ...n, leida: true } : n)));
   };
 
   const marcarTodas = async () => {
+    const token = getEffectiveToken();
+    if (!token) return;
     const noLeidas = notifs.filter((n) => !n.leida);
-    await Promise.all(noLeidas.map((n) => apiMarcarNotifLeida(n.id)));
+    await Promise.all(noLeidas.map((n) =>
+      fetch('/api/notificaciones', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ id: n.id }),
+      })
+    ));
     setNotifs((prev) => prev.map((n) => ({ ...n, leida: true })));
   };
 
   const noLeidas = notifs.filter((n) => !n.leida).length;
 
-  if (!hydrated || !getToken()) return null;
+  if (!hydrated || !getEffectiveToken()) return null;
 
   return (
     <>
@@ -105,17 +126,15 @@ export function NotificationBell() {
               <div className="divide-y divide-border">
                 {notifs.map((n) => {
                   const Icon =
-                    n.tipo === "confirmada"
-                      ? CheckCircle2
-                      : n.tipo === "favorito"
-                      ? Heart
-                      : XCircle;
+                    n.tipo === "confirmada"  ? CheckCircle2
+                    : n.tipo === "favorito"  ? Heart
+                    : n.tipo === "nueva_reserva" ? Clock
+                    : XCircle;
                   const iconCls =
-                    n.tipo === "confirmada"
-                      ? "text-primary"
-                      : n.tipo === "favorito"
-                      ? "text-pink-500"
-                      : "text-destructive";
+                    n.tipo === "confirmada"  ? "text-primary"
+                    : n.tipo === "favorito"  ? "text-pink-500"
+                    : n.tipo === "nueva_reserva" ? "text-blue-500"
+                    : "text-destructive";
 
                   return (
                     <button

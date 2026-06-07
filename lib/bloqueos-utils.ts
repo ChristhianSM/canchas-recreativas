@@ -27,6 +27,11 @@ export const HORAS_APP = [
   '18:00','19:00','20:00','21:00','22:00','23:00',
 ];
 
+/** Filtra HORAS_APP según el horario de operación de la cancha */
+export function getHorasOperacion(horaApertura = '06:00', horaCierre = '23:00'): string[] {
+  return HORAS_APP.filter(h => h >= horaApertura && h <= horaCierre);
+}
+
 /**
  * Dado un bloqueo y una fecha+hora, determina si ese slot está bloqueado.
  * @param bloqueo  Registro de bloqueo_admin

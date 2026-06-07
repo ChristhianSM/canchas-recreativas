@@ -97,10 +97,10 @@ export function hasAvailabilityAtHour(cancha: Cancha, hour: string, date?: strin
   if (!daySchedule) return true; // Si no hay datos para ese día, asumir disponible
 
   const slot = daySchedule.find(s => s.time === hour);
-  
-  // 2. Verificar si el slot existe y está disponible
+
+  // 2. Si no existe el slot, la cancha no opera a esa hora
   if (!slot) {
-    return true; // Si no hay slot, asumir disponible
+    return false;
   }
 
   // 3. Retornar la disponibilidad del slot (considera reservas y horarios bloqueados)

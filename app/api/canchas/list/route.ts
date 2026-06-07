@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
 import { getLocalDateString, addDaysToDateString } from '@/lib/date-utils';
-import { horasBloqueadasEnFecha, BloqueoAdmin } from '@/lib/bloqueos-utils';
+import { horasBloqueadasEnFecha, BloqueoAdmin, getHorasOperacion } from '@/lib/bloqueos-utils';
 
 // GET — listar todas las canchas activas con horarios ocupados
 export async function GET(req: NextRequest) {
@@ -106,6 +106,7 @@ export async function GET(req: NextRequest) {
     ...cancha,
     horariosOcupados: horariosOcupadosPorCancha[cancha.id] || {},
     horariosRestringidos: horariosRestringidosPorCancha[cancha.id] || [],
+    horasOperacion: getHorasOperacion(cancha.hora_apertura ?? '06:00', cancha.hora_cierre ?? '23:00'),
   }));
 
   return NextResponse.json(canchasConHorarios, {

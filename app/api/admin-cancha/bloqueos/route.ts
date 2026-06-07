@@ -1,6 +1,45 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
 import { verifyToken } from '@/lib/admin-auth';
+import { HORAS_APP } from '@/lib/bloqueos-utils';
+
+// Horas cubiertas por el bloqueo (rango [inicio, fin) o solo inicio si no hay fin)
+function getHorasAfectadas(horaInicio: string, horaFin?: string | null): string[] {
+  const inicio = horaInicio.substring(0, 5);
+  if (!horaFin) return [inicio];
+  const fin = horaFin.substring(0, 5);
+  return HORAS_APP.filter(h => h >= inicio && h < fin);
+}
+
+// Fechas concretas a verificar según el tipo de bloqueo (próximos 60 días)
+function getFechasAChequear(
+  tipo: string,
+  fecha?: string | null,
+  diaSemana?: number | null,
+  fechaDesde?: string | null,
+  fechaHasta?: string | null,
+): string[] {
+  if (tipo === 'fecha_especifica') return fecha ? [fecha] : [];
+
+  const fechas: string[] = [];
+  const hoy = new Date();
+
+  for (let i = 0; i < 60; i++) {
+    const d = new Date(hoy);
+    d.setDate(hoy.getDate() + i);
+    const fechaStr = d.toISOString().split('T')[0];
+
+    if (tipo === 'permanente') {
+      fechas.push(fechaStr);
+    } else if (tipo === 'recurrente_semanal' && diaSemana !== null && diaSemana !== undefined) {
+      if (d.getDay() !== diaSemana) continue;
+      if (fechaDesde && fechaStr < fechaDesde) continue;
+      if (fechaHasta && fechaStr > fechaHasta) continue;
+      fechas.push(fechaStr);
+    }
+  }
+  return fechas;
+}
 
 async function verificarDueno(sb: ReturnType<typeof createServiceClient>, token: string, canchaId: string) {
   const user = await verifyToken(token);
@@ -68,6 +107,65 @@ export async function POST(req: NextRequest) {
   const sb = createServiceClient();
   const user = await verificarDueno(sb, token, canchaId);
   if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+
+  // ── Verificar conflictos antes de crear el bloqueo ──────────────────────────
+  const horasAfectadas  = getHorasAfectadas(hora_inicio, hora_fin);
+  const fechasAChequear = getFechasAChequear(tipo, fecha, dia_semana, fecha_desde, fecha_hasta);
+
+  if (fechasAChequear.length > 0 && horasAfectadas.length > 0) {
+    // 1. Reservas confirmadas o pendientes en ese slot (todas)
+    const { data: conflictos } = await sb
+      .from('reservas')
+      .select('id, fecha, hora, usuario_nombre')
+      .eq('cancha_id', canchaId)
+      .in('fecha', fechasAChequear)
+      .in('hora', horasAfectadas)
+      .in('estado', ['pendiente', 'confirmada'])
+      .order('fecha', { ascending: true })
+      .order('hora',  { ascending: true });
+
+    // Descartar reservas cuyo slot ya pasó (no impiden el bloqueo futuro)
+    const ahoraISO = new Date().toISOString();
+    const hoyStr   = ahoraISO.split('T')[0];
+    const ahoraH   = ahoraISO.substring(11, 16); // "HH:MM"
+    const conflictosFuturos = (conflictos ?? []).filter(r =>
+      r.fecha > hoyStr || (r.fecha === hoyStr && r.hora.substring(0, 5) > ahoraH)
+    );
+
+    if (conflictosFuturos.length > 0) {
+      const lista = conflictosFuturos.map(r => {
+        const fechaLabel = new Date(r.fecha + 'T00:00:00')
+          .toLocaleDateString('es-PE', { day: 'numeric', month: 'short' });
+        const cliente = r.usuario_nombre ? ` (${r.usuario_nombre.split(' ')[0]})` : '';
+        return `${fechaLabel} ${r.hora}${cliente}`;
+      }).join(', ');
+
+      const n      = conflictosFuturos.length;
+      const plural = n > 1 ? 'reservas activas' : 'reserva activa';
+      return NextResponse.json({
+        error: `Hay ${n} ${plural} en ese horario: ${lista}. Cancélalas antes de crear el bloqueo.`,
+        conflictos: conflictosFuturos,
+      }, { status: 409 });
+    }
+
+    // 2. Usuario procesando el pago en ese slot (bloqueo temporal activo)
+    const { data: bloqTemp } = await sb
+      .from('bloqueos_temporales')
+      .select('id')
+      .eq('cancha_id', canchaId)
+      .in('fecha', fechasAChequear)
+      .in('hora', horasAfectadas)
+      .gt('expira_en', new Date().toISOString())
+      .limit(1)
+      .maybeSingle();
+
+    if (bloqTemp) {
+      return NextResponse.json({
+        error: 'Un usuario está completando el pago de ese horario ahora mismo. Intenta en unos minutos.',
+      }, { status: 409 });
+    }
+  }
+  // ────────────────────────────────────────────────────────────────────────────
 
   const { data, error } = await sb
     .from('bloqueos_admin')
