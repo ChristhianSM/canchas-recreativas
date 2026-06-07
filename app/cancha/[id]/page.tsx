@@ -78,8 +78,9 @@ const HORAS_OPERACION = [
   "23:00",
 ];
 
-function getOperatingHours(horariosRestringidos: string[]): string {
-  const open = HORAS_OPERACION.filter((h) => !horariosRestringidos.includes(h));
+function getOperatingHours(horariosRestringidos: string[], horasOperacion?: string[]): string {
+  const horas = horasOperacion ?? HORAS_OPERACION;
+  const open = horas.filter((h) => !horariosRestringidos.includes(h));
   if (!open.length) return "6:00 AM – 11:00 PM";
   return `${formatTo12Hour(open[0])} – ${formatTo12Hour(open[open.length - 1])}`;
 }
@@ -103,6 +104,7 @@ type CanchaDB = {
   destacada: boolean;
   horariosRestringidos: string[];
   horariosOcupados: Record<string, "reservado" | "en_proceso">;
+  horasOperacion?: string[];
   balon_disponible: boolean;
   balon_precio: number | null;
   chalecos_disponible: boolean;
@@ -118,29 +120,10 @@ function buildSchedule(
   horariosOcupados: Record<string, "reservado" | "en_proceso">,
   precioBase: number,
   preciosPorHora: Record<string, number> = {},
+  horasOperacion: string[] = HORAS_OPERACION,
 ) {
   const schedule: Record<string, TimeSlot[]> = {};
   const today = new Date();
-  const HORAS = [
-    "06:00",
-    "07:00",
-    "08:00",
-    "09:00",
-    "10:00",
-    "11:00",
-    "12:00",
-    "13:00",
-    "14:00",
-    "15:00",
-    "16:00",
-    "17:00",
-    "18:00",
-    "19:00",
-    "20:00",
-    "21:00",
-    "22:00",
-    "23:00",
-  ];
 
   for (let i = 0; i < 30; i++) {
     const d = new Date(today);
@@ -149,7 +132,7 @@ function buildSchedule(
     const month = String(d.getMonth() + 1).padStart(2, "0");
     const day = String(d.getDate()).padStart(2, "0");
     const dateStr = `${year}-${month}-${day}`;
-    schedule[dateStr] = HORAS.map((time, idx) => {
+    schedule[dateStr] = horasOperacion.map((time, idx) => {
       const key = `${dateStr}|${time}`;
       const ocupado = horariosOcupados[key];
       const bloqueado = horariosRestringidos.includes(time);
@@ -597,6 +580,7 @@ export default function CanchaDetailPage() {
     cancha.horariosOcupados ?? {},
     cancha.precio_por_hora,
     cancha.precios_por_hora ?? {},
+    cancha.horasOperacion ?? HORAS_OPERACION,
   );
 
   // ── Inline picker helpers (mobile) ──────────────────────────────────────
@@ -881,7 +865,7 @@ export default function CanchaDetailPage() {
               <div className="flex-1 text-center">
                 <p className="text-xs text-muted-foreground">Horario</p>
                 <p className="text-sm font-medium text-foreground">
-                  {getOperatingHours(cancha.horariosRestringidos)}
+                  {getOperatingHours(cancha.horariosRestringidos, cancha.horasOperacion)}
                 </p>
               </div>
               {cancha.max_jugadores && (
@@ -1285,7 +1269,7 @@ export default function CanchaDetailPage() {
                 <div className="flex items-center gap-2 text-sm">
                   <Clock className="h-4 w-4 text-muted-foreground" />
                   <span className="text-foreground">
-                    Horario: {getOperatingHours(cancha.horariosRestringidos)}
+                    Horario: {getOperatingHours(cancha.horariosRestringidos, cancha.horasOperacion)}
                   </span>
                 </div>
                 {cancha.max_jugadores && (

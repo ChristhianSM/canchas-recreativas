@@ -76,6 +76,7 @@ type Cancha = {
   destacada: boolean;
   horariosOcupados?: Record<string, "reservado" | "en_proceso">;
   horariosRestringidos?: string[];
+  horasOperacion?: string[];
   balon_disponible?: boolean;
   balon_precio?: number | null;
   chalecos_disponible?: boolean;
@@ -124,7 +125,7 @@ function adaptCancha(c: Cancha) {
     date.setDate(date.getDate() + i);
     const dateStr = getLocalDateString(date); // ✅ Usar función local en lugar de toISOString
 
-    schedule[dateStr] = HORAS.map((hora) => {
+    schedule[dateStr] = (c.horasOperacion ?? HORAS).map((hora) => {
       const key = `${dateStr}|${hora}`;
       const horariosOcupados = c.horariosOcupados || {};
       const horariosRestringidos = c.horariosRestringidos || [];
@@ -411,28 +412,7 @@ function CanchasContent() {
         const horariosOcupados = cancha.horariosOcupados || {};
         const horariosRestringidos = cancha.horariosRestringidos || [];
 
-        const HORAS = [
-          "06:00",
-          "07:00",
-          "08:00",
-          "09:00",
-          "10:00",
-          "11:00",
-          "12:00",
-          "13:00",
-          "14:00",
-          "15:00",
-          "16:00",
-          "17:00",
-          "18:00",
-          "19:00",
-          "20:00",
-          "21:00",
-          "22:00",
-          "23:00",
-        ];
-
-        HORAS.forEach((hora) => {
+        (cancha.horasOperacion ?? HORAS).forEach((hora) => {
           if (!horariosRestringidos.includes(hora)) {
             const key = `${dateStr}|${hora}`;
             if (!horariosOcupados[key]) {
@@ -581,7 +561,7 @@ function CanchasContent() {
     canchas.forEach((cancha) => {
       const horariosOcupados = cancha.horariosOcupados || {};
       const horariosRestringidos = cancha.horariosRestringidos || [];
-      HORAS.forEach((hora) => {
+      (cancha.horasOperacion ?? HORAS).forEach((hora) => {
         if (!horariosRestringidos.includes(hora)) {
           const key = `${dateStr}|${hora}`;
           if (!horariosOcupados[key]) hoursSet.add(hora);

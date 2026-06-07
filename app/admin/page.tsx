@@ -7,22 +7,27 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import ReservasAnalytics from '@/components/reservas-analytics';
 import { type Reserva } from '@/lib/store';
-import { canchas } from '@/lib/data';
 import { getAdminTokenFresh } from '@/lib/supabase-browser';
+
+type CanchaResumen = { id: string; nombre: string; tipo: string; distrito: string; precio_por_hora: number };
 
 export default function AdminDashboard() {
   const [reservas, setReservas] = useState<Reserva[]>([]);
   const [rawReservas, setRawReservas] = useState<any[]>([]);
+  const [canchas, setCanchas] = useState<CanchaResumen[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       const token = await getAdminTokenFresh();
-      const r = await fetch('/api/reservas/all', { headers: { Authorization: `Bearer ${token}` } });
-      const data = await r.json();
-      if (Array.isArray(data)) {
-        setRawReservas(data);
-        setReservas(data.map((r: any) => ({
+      const headers = { Authorization: `Bearer ${token}` };
+      const [resData, canchasData] = await Promise.all([
+        fetch('/api/reservas/all', { headers }).then(r => r.json()),
+        fetch('/api/admin/canchas', { headers }).then(r => r.json()),
+      ]);
+      if (Array.isArray(resData)) {
+        setRawReservas(resData);
+        setReservas(resData.map((r: any) => ({
           id: r.id, canchaId: r.cancha_id, canchaName: r.cancha_nombre,
           usuarioNombre: r.usuario_nombre, usuarioEmail: r.usuario_email,
           usuarioPhone: r.usuario_telefono, fecha: r.fecha, hora: r.hora,
@@ -30,6 +35,7 @@ export default function AdminDashboard() {
           estado: r.estado, creadaEn: r.creado_en, notificado: true,
         })));
       }
+      if (Array.isArray(canchasData)) setCanchas(canchasData);
       setLoading(false);
     })();
   }, []);
@@ -131,16 +137,16 @@ export default function AdminDashboard() {
 
       {/* Canchas */}
       <div>
-        <h2 className="mb-3 font-semibold text-foreground">Tus canchas</h2>
+        <h2 className="mb-3 font-semibold text-foreground">Canchas registradas ({canchas.length})</h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {canchas.slice(0, 3).map(c => (
             <Card key={c.id} className="flex items-center gap-3 border-border p-4">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-xl">
-                {c.type === 'futbol' ? '⚽' : c.type === 'voley' ? '🏐' : c.type === 'basquet' ? '🏀' : c.type === 'tenis' ? '🎾' : '⚽'}
+                {c.tipo === 'futbol' || c.tipo === 'futsal' ? '⚽' : c.tipo === 'voley' ? '🏐' : c.tipo === 'basquet' ? '🏀' : c.tipo === 'tenis' ? '🎾' : '⚽'}
               </div>
               <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-foreground">{c.name}</p>
-                <p className="text-xs text-muted-foreground">{c.district} · S/ {c.pricePerHour}/h</p>
+                <p className="truncate text-sm font-medium text-foreground">{c.nombre}</p>
+                <p className="text-xs text-muted-foreground">{c.distrito} · S/ {c.precio_por_hora}/h</p>
               </div>
             </Card>
           ))}

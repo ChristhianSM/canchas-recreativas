@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Lock, Mail, Store } from 'lucide-react';
+import { Lock, Mail } from 'lucide-react';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -53,8 +54,8 @@ export default function OwnerLoginPage() {
     <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
       <Card className="w-full max-w-sm border-border p-8">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-primary">
-            <Store className="h-7 w-7 text-primary-foreground" />
+          <div className="mb-4 flex justify-center">
+            <Image src="/images/logo.png" alt="CanchaGo" width={120} height={40} className="object-contain" />
           </div>
           <h1 className="text-xl font-bold text-foreground">Panel de tu Cancha</h1>
           <p className="mt-1 text-sm text-muted-foreground">CanchaGo — Administrador</p>

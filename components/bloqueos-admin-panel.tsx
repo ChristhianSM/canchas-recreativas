@@ -18,6 +18,7 @@ import {
   DIAS_SEMANA,
   HORAS_APP,
   labelBloqueo,
+  getHorasOperacion,
 } from '@/lib/bloqueos-utils';
 
 // ── Tipos ────────────────────────────────────────────────────────────────────
@@ -45,6 +46,7 @@ interface Props {
   canchaId: string;
   token: string;
   cancelEndpoint?: string;
+  horasOperacion?: string[];
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -189,10 +191,12 @@ function HorasSelector({
   selected,
   onChange,
   bloqueadas = [],
+  horas = HORAS_APP,
 }: {
   selected: string[];
   onChange: (horas: string[]) => void;
   bloqueadas?: string[];
+  horas?: string[];
 }) {
   const toggle = (h: string) => {
     if (bloqueadas.includes(h)) return;
@@ -201,7 +205,7 @@ function HorasSelector({
 
   return (
     <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 lg:grid-cols-6">
-      {HORAS_APP.map(hora => {
+      {horas.map(hora => {
         const activo = selected.includes(hora);
         const yaBloqueada = bloqueadas.includes(hora);
         return (
@@ -237,12 +241,14 @@ function FormNuevoBloqueo({
   cancelEndpoint,
   onCreado,
   bloqueosExistentes,
+  horasOperacion = HORAS_APP,
 }: {
   canchaId: string;
   token: string;
   cancelEndpoint: string;
   onCreado: () => void;
   bloqueosExistentes: BloqueoAdmin[];
+  horasOperacion?: string[];
 }) {
   const [modo, setModo]             = useState<Modo>('fecha_especifica');
   const [horas, setHoras]           = useState<string[]>([]);
@@ -464,7 +470,7 @@ function FormNuevoBloqueo({
               <span className="ml-2 text-xs text-muted-foreground">({horas.length} seleccionada{horas.length > 1 ? 's' : ''})</span>
             )}
           </label>
-          <HorasSelector selected={horas} onChange={setHoras} bloqueadas={horasBloqueadas} />
+          <HorasSelector selected={horas} onChange={setHoras} bloqueadas={horasBloqueadas} horas={horasOperacion} />
           {horasBloqueadas.length > 0 && (
             <div className="flex items-start gap-2 rounded-lg bg-orange-500/5 border border-orange-500/20 px-3 py-2">
               <span className="h-1.5 w-1.5 rounded-full bg-orange-500 mt-1.5 shrink-0" />
@@ -582,7 +588,7 @@ function ListaBloqueos({
 
 // ── Panel principal ──────────────────────────────────────────────────────────
 
-export function BloqueosAdminPanel({ canchaId, token, cancelEndpoint = '/api/admin-cancha/reservas/cancelar' }: Props) {
+export function BloqueosAdminPanel({ canchaId, token, cancelEndpoint = '/api/admin-cancha/reservas/cancelar', horasOperacion }: Props) {
   const [bloqueos, setBloqueos] = useState<BloqueoAdmin[]>([]);
   const [cargando, setCargando] = useState(true);
 
@@ -600,7 +606,7 @@ export function BloqueosAdminPanel({ canchaId, token, cancelEndpoint = '/api/adm
 
   return (
     <div className="space-y-6">
-      <FormNuevoBloqueo canchaId={canchaId} token={token} cancelEndpoint={cancelEndpoint} onCreado={cargar} bloqueosExistentes={bloqueos} />
+      <FormNuevoBloqueo canchaId={canchaId} token={token} cancelEndpoint={cancelEndpoint} onCreado={cargar} bloqueosExistentes={bloqueos} horasOperacion={horasOperacion} />
 
       <div className="space-y-3">
         <div className="flex items-center justify-between">

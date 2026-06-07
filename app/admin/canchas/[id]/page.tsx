@@ -24,6 +24,7 @@ import { BloqueosAdminPanel } from "@/components/bloqueos-admin-panel";
 import {
   estaBloquedoPor,
   HORAS_APP,
+  getHorasOperacion,
   type BloqueoAdmin,
 } from "@/lib/bloqueos-utils";
 
@@ -54,7 +55,7 @@ function getLunesDeSemanaAdmin(base = new Date()): Date {
   return d;
 }
 
-function HorarioTab({ canchaId }: { canchaId: string }) {
+function HorarioTab({ canchaId, horasOperacion = HORAS_APP }: { canchaId: string; horasOperacion?: string[] }) {
   const [reservas, setReservas] = useState<any[]>([]);
   const [bloqueos, setBloqueos] = useState<BloqueoAdmin[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -198,7 +199,7 @@ function HorarioTab({ canchaId }: { canchaId: string }) {
             </tr>
           </thead>
           <tbody>
-            {HORAS_APP.map((hora) => (
+            {horasOperacion.map((hora) => (
               <tr key={hora} className="border-t border-border">
                 <td className="sticky left-0 z-10 bg-background px-3 py-2 font-mono text-[11px] text-muted-foreground">
                   {hora}
@@ -456,6 +457,8 @@ export default function AdminEditarCanchaPage() {
   const [chalecosPrecio, setChalecosPrecio] = useState<number | null>(null);
   const [superficie, setSuperficie] = useState<string>("grass_sintetico");
   const [maxJugadores, setMaxJugadores] = useState<number | null>(null);
+  const [horaApertura, setHoraApertura] = useState("06:00");
+  const [horaCierre, setHoraCierre]     = useState("23:00");
 
   useEffect(() => {
     getAdminTokenFresh().then((token) => {
@@ -489,6 +492,8 @@ export default function AdminEditarCanchaPage() {
           setChalecosPrecio(canchaData.chalecos_precio ?? null);
           setSuperficie(canchaData.superficie ?? "grass_sintetico");
           setMaxJugadores(canchaData.max_jugadores ?? null);
+          setHoraApertura(canchaData.hora_apertura ?? "06:00");
+          setHoraCierre(canchaData.hora_cierre ?? "23:00");
 
           const usuarios = Array.isArray(usuariosData) ? usuariosData : [];
           setDuenos(usuarios.filter((u: Usuario) => u.rol === "dueno"));
@@ -534,6 +539,8 @@ export default function AdminEditarCanchaPage() {
         lng: lng ? Number(lng) : undefined,
         direccion: direccion || undefined,
         distrito: distrito || undefined,
+        horaApertura,
+        horaCierre,
       }),
     });
     if (duenoId) {
@@ -601,8 +608,7 @@ export default function AdminEditarCanchaPage() {
           disabled={saving}
           className={cn(
             "gap-2 shrink-0",
-            (activeTab === "bloqueos" || activeTab === "horario") &&
-              "invisible",
+            activeTab === "bloqueos" && "invisible",
           )}
         >
           <Save className="h-4 w-4" />
@@ -632,10 +638,45 @@ export default function AdminEditarCanchaPage() {
             </TabsList>
           </div>
 
-          {/* ── Información ── */}
-          <TabsContent value="horario" className="pt-4">
+          {/* ── Horario ── */}
+          <TabsContent value="horario" className="pt-4 space-y-4">
+            <Card className="border-border p-5 space-y-4">
+              <div>
+                <p className="font-medium text-foreground">Horario de operación</p>
+                <p className="text-sm text-muted-foreground">Define las horas en que esta cancha está disponible para reservas.</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-foreground">Apertura</label>
+                  <select
+                    value={horaApertura}
+                    onChange={e => setHoraApertura(e.target.value)}
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    {HORAS_APP.filter(h => h < horaCierre).map(h => (
+                      <option key={h} value={h}>{h}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-foreground">Cierre</label>
+                  <select
+                    value={horaCierre}
+                    onChange={e => setHoraCierre(e.target.value)}
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    {HORAS_APP.filter(h => h > horaApertura).map(h => (
+                      <option key={h} value={h}>{h}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Los usuarios solo verán horas entre <span className="font-medium text-foreground">{horaApertura}</span> y <span className="font-medium text-foreground">{horaCierre}</span>.
+              </p>
+            </Card>
             <Card className="border-border p-5">
-              <HorarioTab canchaId={id} />
+              <HorarioTab canchaId={id} horasOperacion={getHorasOperacion(horaApertura, horaCierre)} />
             </Card>
           </TabsContent>
 
@@ -1058,7 +1099,7 @@ export default function AdminEditarCanchaPage() {
                 cada semana, o de forma permanente.
               </p>
             </div>
-            <BloqueosAdminPanel canchaId={id} token={adminToken} cancelEndpoint="/api/admin/reservas/cancelar" />
+            <BloqueosAdminPanel canchaId={id} token={adminToken} cancelEndpoint="/api/admin/reservas/cancelar" horasOperacion={getHorasOperacion(horaApertura, horaCierre)} />
           </TabsContent>
 
           {/* ── Ubicación ── */}

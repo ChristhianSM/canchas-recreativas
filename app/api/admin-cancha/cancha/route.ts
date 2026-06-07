@@ -58,7 +58,7 @@ export async function PATCH(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { descripcion, telefono, precioHora, amenidades, imagenes, lat, lng, direccion, distrito, preciosPorHora, balonPrecio, chalecosPrecio, balonDisponible, chalecosDisponible, superficie, maxJugadores, yapeNumero, plinNumero } = body;
+  const { descripcion, telefono, precioHora, amenidades, imagenes, lat, lng, direccion, distrito, preciosPorHora, balonPrecio, chalecosPrecio, balonDisponible, chalecosDisponible, superficie, maxJugadores, yapeNumero, plinNumero, horaApertura, horaCierre } = body;
 
   console.log('📍 PATCH /api/admin-cancha/cancha');
 
@@ -90,6 +90,8 @@ export async function PATCH(req: NextRequest) {
 
   if (yapeNumero !== undefined) updateData.yape_numero = yapeNumero || null;
   if (plinNumero !== undefined) updateData.plin_numero = plinNumero || null;
+  if (horaApertura !== undefined) updateData.hora_apertura = horaApertura;
+  if (horaCierre   !== undefined) updateData.hora_cierre   = horaCierre;
 
   console.log('UpdateData:', JSON.stringify(updateData));
 
