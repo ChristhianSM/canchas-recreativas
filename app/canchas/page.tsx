@@ -406,6 +406,11 @@ function CanchasContent() {
     setLoadingHours(true);
     try {
       const dateStr = getLocalDateString(date);
+      const hoy = getLocalDateString();
+      const esHoy = dateStr === hoy;
+      const horaActual = esHoy
+        ? `${String(new Date().getHours()).padStart(2, '0')}:00`
+        : null;
       const hoursSet = new Set<string>();
 
       canchas.forEach((cancha) => {
@@ -413,6 +418,7 @@ function CanchasContent() {
         const horariosRestringidos = cancha.horariosRestringidos || [];
 
         (cancha.horasOperacion ?? HORAS).forEach((hora) => {
+          if (horaActual && hora <= horaActual) return;
           if (!horariosRestringidos.includes(hora)) {
             const key = `${dateStr}|${hora}`;
             if (!horariosOcupados[key]) {
@@ -554,14 +560,43 @@ function CanchasContent() {
     return days;
   };
 
-  // Horarios disponibles para la fecha del modal
-  const modalAvailableHours = useMemo(() => {
-    const dateStr = getLocalDateString(modalDate);
+  // Horarios disponibles para el picker desktop
+  const desktopAvailableHours = useMemo(() => {
+    const dateStr = desktopFecha ? getLocalDateString(desktopFecha) : getLocalDateString();
+    const hoy = getLocalDateString();
+    const esHoy = dateStr === hoy;
+    const horaActual = esHoy
+      ? `${String(new Date().getHours()).padStart(2, '0')}:00`
+      : null;
     const hoursSet = new Set<string>();
     canchas.forEach((cancha) => {
       const horariosOcupados = cancha.horariosOcupados || {};
       const horariosRestringidos = cancha.horariosRestringidos || [];
       (cancha.horasOperacion ?? HORAS).forEach((hora) => {
+        if (horaActual && hora <= horaActual) return;
+        if (!horariosRestringidos.includes(hora)) {
+          const key = `${dateStr}|${hora}`;
+          if (!horariosOcupados[key]) hoursSet.add(hora);
+        }
+      });
+    });
+    return Array.from(hoursSet).sort();
+  }, [canchas, desktopFecha]);
+
+  // Horarios disponibles para la fecha del modal
+  const modalAvailableHours = useMemo(() => {
+    const dateStr = getLocalDateString(modalDate);
+    const hoy = getLocalDateString();
+    const esHoy = dateStr === hoy;
+    const horaActual = esHoy
+      ? `${String(new Date().getHours()).padStart(2, '0')}:00`
+      : null;
+    const hoursSet = new Set<string>();
+    canchas.forEach((cancha) => {
+      const horariosOcupados = cancha.horariosOcupados || {};
+      const horariosRestringidos = cancha.horariosRestringidos || [];
+      (cancha.horasOperacion ?? HORAS).forEach((hora) => {
+        if (horaActual && hora <= horaActual) return;
         if (!horariosRestringidos.includes(hora)) {
           const key = `${dateStr}|${hora}`;
           if (!horariosOcupados[key]) hoursSet.add(hora);
@@ -1230,40 +1265,30 @@ function CanchasContent() {
                       <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-3">
                         Horarios disponibles
                       </p>
-                      <div className="grid grid-cols-3 gap-1.5">
-                        {HORAS.map((h) => {
-                          const isToday = desktopFecha
-                            ? getLocalDateString(desktopFecha) ===
-                              getLocalDateString()
-                            : true;
-                          const now = new Date();
-                          const [hh] = h.split(":").map(Number);
-                          const isPast = isToday && hh <= now.getHours();
-                          const isSelected = desktopHora === h;
-                          return (
-                            <button
-                              key={h}
-                              disabled={isPast}
-                              onClick={() => {
-                                if (!isPast) {
-                                  setDesktopHora(h);
-                                  setActiveField(null);
-                                }
-                              }}
-                              className={`py-2.5 rounded-lg text-xs font-semibold border transition-all
-                              ${
-                                isPast
-                                  ? "bg-gray-100 border-border text-gray-300 cursor-not-allowed"
-                                  : isSelected
+                      {desktopAvailableHours.length === 0 ? (
+                        <p className="text-xs text-muted-foreground text-center py-2">
+                          No hay horarios disponibles para esta fecha
+                        </p>
+                      ) : (
+                        <div className="grid grid-cols-3 gap-1.5">
+                          {desktopAvailableHours.map((h) => {
+                            const isSelected = desktopHora === h;
+                            return (
+                              <button
+                                key={h}
+                                onClick={() => { setDesktopHora(h); setActiveField(null); }}
+                                className={`py-2.5 rounded-lg text-xs font-semibold border transition-all ${
+                                  isSelected
                                     ? "bg-[#16a34a] border-[#16a34a] text-white"
                                     : "border-border text-foreground/80 hover:border-[#16a34a]/50 hover:text-[#16a34a] bg-card"
-                              }`}
-                            >
-                              {h}
-                            </button>
-                          );
-                        })}
-                      </div>
+                                }`}
+                              >
+                                {h}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   </>
                 )}

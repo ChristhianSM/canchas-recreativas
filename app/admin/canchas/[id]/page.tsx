@@ -12,6 +12,7 @@ import {
   MapPin,
   ChevronLeft,
   ChevronRight,
+  Star,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -433,6 +434,11 @@ export default function AdminEditarCanchaPage() {
   const [uploading, setUploading] = useState(false);
   const [activeTab, setActiveTab] = useState("info");
 
+  type Resena = { id: string; estrellas: number; comentario: string | null; usuario_nombre: string | null; creado_en: string };
+  const [resenas, setResenas]           = useState<Resena[]>([]);
+  const [loadingResenas, setLoadingResenas] = useState(false);
+  const [eliminando, setEliminando]     = useState<string | null>(null);
+
   const [description, setDescription] = useState("");
   const [phone, setPhone] = useState("");
   const [price, setPrice] = useState(0);
@@ -608,7 +614,7 @@ export default function AdminEditarCanchaPage() {
           disabled={saving}
           className={cn(
             "gap-2 shrink-0",
-            activeTab === "bloqueos" && "invisible",
+            (activeTab === "bloqueos" || activeTab === "resenas") && "invisible",
           )}
         >
           <Save className="h-4 w-4" />
@@ -635,6 +641,16 @@ export default function AdminEditarCanchaPage() {
               <TabsTrigger value="ubicacion">Ubicación</TabsTrigger>
               <TabsTrigger value="servicios">Servicios</TabsTrigger>
               <TabsTrigger value="dueno">Dueño</TabsTrigger>
+              <TabsTrigger value="resenas" onClick={() => {
+                if (resenas.length === 0 && !loadingResenas) {
+                  setLoadingResenas(true);
+                  getAdminTokenFresh().then(token =>
+                    fetch(`/api/resenas?cancha_id=${id}`, { headers: { Authorization: `Bearer ${token}` } })
+                      .then(r => r.json())
+                      .then(d => { setResenas(d.resenas ?? []); setLoadingResenas(false); })
+                  );
+                }
+              }}>Reseñas</TabsTrigger>
             </TabsList>
           </div>
 
@@ -1197,6 +1213,59 @@ export default function AdminEditarCanchaPage() {
                 </select>
               </div>
             </Card>
+          </TabsContent>
+
+          {/* ── Reseñas ── */}
+          <TabsContent value="resenas" className="space-y-3 pt-4">
+            {loadingResenas ? (
+              <div className="space-y-3">
+                {[1,2,3].map(i => <div key={i} className="h-20 animate-pulse rounded-xl bg-muted" />)}
+              </div>
+            ) : resenas.length === 0 ? (
+              <Card className="border-border p-10 text-center">
+                <Star className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />
+                <p className="text-muted-foreground">Esta cancha aún no tiene reseñas</p>
+              </Card>
+            ) : (
+              resenas.map(r => (
+                <Card key={r.id} className="border-border p-4 flex items-start gap-4">
+                  <div className="flex-1 space-y-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <div className="flex gap-0.5">
+                        {[1,2,3,4,5].map(n => (
+                          <Star key={n} className={`h-3.5 w-3.5 ${n <= r.estrellas ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`} />
+                        ))}
+                      </div>
+                      <span className="text-sm font-medium text-foreground">{r.usuario_nombre ?? 'Usuario'}</span>
+                      <span className="text-xs text-muted-foreground ml-auto">
+                        {new Date(r.creado_en).toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </span>
+                    </div>
+                    {r.comentario && (
+                      <p className="text-sm text-muted-foreground">{r.comentario}</p>
+                    )}
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={eliminando === r.id}
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
+                    onClick={async () => {
+                      setEliminando(r.id);
+                      const token = await getAdminTokenFresh();
+                      await fetch(`/api/admin/resenas/${r.id}`, {
+                        method: 'DELETE',
+                        headers: { Authorization: `Bearer ${token}` },
+                      });
+                      setResenas(prev => prev.filter(x => x.id !== r.id));
+                      setEliminando(null);
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </Card>
+              ))
+            )}
           </TabsContent>
         </Tabs>
       </div>
