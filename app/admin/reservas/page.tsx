@@ -22,7 +22,7 @@ export default function AdminReservasPage() {
   const [filtroEmail, setFiltroEmail]       = useState('');
   const [filtroCancha, setFiltroCancha]     = useState('');
   const [loading, setLoading]       = useState(true);
-  const [accion, setAccion]         = useState<'confirmando' | 'rechazando' | null>(null);
+  const [accion, setAccion]         = useState<'confirmando' | 'rechazando' | 'cancelando' | null>(null);
   const [procesando, setProcesando] = useState(false);
   const [page, setPage]             = useState(1);
   const [total, setTotal]           = useState(0);
@@ -125,6 +125,23 @@ export default function AdminReservasPage() {
     reload(false, page);
   };
 
+  const cancelar = async (id: string) => {
+    if (!confirm('¿Cancelar esta reserva? El usuario recibirá una notificación.')) return;
+    setAccion('cancelando');
+    const token = await getAdminToken();
+    const res = await fetch('/api/admin/reservas/cancelar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ reservaId: id }),
+    });
+    if (res.ok) {
+      setReservas(prev => prev.map(r => r.id === id ? { ...r, estado: 'cancelada' as const } : r));
+      setSelected(null);
+    }
+    setAccion(null);
+    reload(false, page);
+  };
+
   // Contenido de la tab: filtro local sobre la página actual
   const byEstado = (estado: Reserva['estado']) =>
     aplicarFiltros(reservas.filter(r => r.estado === estado));
@@ -185,6 +202,10 @@ export default function AdminReservasPage() {
         {new Date(r.fecha + 'T00:00:00').toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: 'numeric' })}
       </td>
       <td className="px-4 py-3 text-sm text-muted-foreground">{r.hora}</td>
+      <td className="px-4 py-3 text-sm text-muted-foreground">
+        {new Date(r.creadaEn).toLocaleDateString('es-PE', { day: 'numeric', month: 'short' })}
+        <span className="block text-xs">{new Date(r.creadaEn).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}</span>
+      </td>
       <td className="px-4 py-3 text-sm font-semibold text-primary">S/ {r.precio}</td>
       <td className="px-4 py-3">{modoPagoBadge(r.modoPago ?? 'completo')}</td>
       <td className="px-4 py-3 text-sm capitalize text-muted-foreground">{r.metodoPago}</td>
@@ -210,7 +231,7 @@ export default function AdminReservasPage() {
         <table className="w-full text-sm">
           <thead className="border-b border-border bg-muted/40">
             <tr>
-              {['Usuario', 'Cancha', 'Fecha', 'Hora', 'Monto', 'Modo', 'Método', 'Estado', ''].map(h => (
+              {['Usuario', 'Cancha', 'Fecha juego', 'Hora', 'Reservado', 'Monto', 'Modo', 'Método', 'Estado', ''].map(h => (
                 <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">{h}</th>
               ))}
             </tr>
@@ -540,7 +561,25 @@ export default function AdminReservasPage() {
                   </Button>
                 </div>
               )}
-              {selected.estado !== 'pendiente' && selected.estado !== 'cancelada' && (
+              {selected.estado === 'confirmada' && (
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 flex justify-center">{estadoBadge(selected.estado)}</div>
+                  {new Date(`${selected.fecha}T${selected.hora}`) > new Date() && (
+                    <Button
+                      variant="outline"
+                      className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                      onClick={() => cancelar(selected.id)}
+                      disabled={accion !== null}
+                    >
+                      {accion === 'cancelando'
+                        ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        : <XCircle className="mr-2 h-4 w-4" />}
+                      {accion === 'cancelando' ? 'Cancelando...' : 'Cancelar reserva'}
+                    </Button>
+                  )}
+                </div>
+              )}
+              {selected.estado === 'rechazada' && (
                 <div className="flex justify-center">
                   {estadoBadge(selected.estado)}
                 </div>

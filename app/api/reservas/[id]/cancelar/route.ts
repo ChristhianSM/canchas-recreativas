@@ -165,6 +165,22 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       });
     }
 
+    // Notificar al dueño de la cancha
+    const { data: duenoCuenta } = await sb
+      .from('duenos_canchas')
+      .select('usuario_id')
+      .eq('cancha_id', reserva.cancha_id)
+      .maybeSingle();
+
+    if (duenoCuenta?.usuario_id) {
+      await sb.from('notificaciones').insert({
+        usuario_id: duenoCuenta.usuario_id,
+        reserva_id: id,
+        mensaje:    `Cancelación: ${reserva.usuario_nombre} canceló su reserva en ${reserva.cancha_nombre} del ${fechaLabel} a las ${reserva.hora}.`,
+        tipo:       'cancelada',
+      });
+    }
+
     // Notificar a admins si hay devolución
     if (resultado.devolucion > 0) {
       const { data: admins } = await sb

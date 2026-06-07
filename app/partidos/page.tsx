@@ -34,6 +34,7 @@ import {
   guardarUbicacion,
   limpiarUbicacion,
   obtenerUbicacionGuardada,
+  refrescarUbicacionEnBackground,
   soportaGeolocalizacion,
   type Coordenadas,
 } from "@/lib/geolocation-utils";
@@ -1162,6 +1163,9 @@ export default function PartidosPage() {
   useEffect(() => {
     const guardada = obtenerUbicacionGuardada();
     if (guardada) setUbicacion(guardada);
+    refrescarUbicacionEnBackground((nuevaCoords) => {
+      setUbicacion(nuevaCoords);
+    });
   }, []);
 
   const handleObtenerUbicacion = async () => {

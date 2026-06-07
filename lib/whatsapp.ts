@@ -214,7 +214,7 @@ export async function notificarEstadoReserva(data: {
   fecha:        string;
   hora:         string;
   precio:       number;
-  estado:       'confirmada' | 'rechazada';
+  estado:       'confirmada' | 'rechazada' | 'cancelada';
   reservaId:    string;
 }) {
   const client = getClient();
@@ -233,6 +233,14 @@ export async function notificarEstadoReserva(data: {
         `💰 S/ ${data.precio}`,
         ``,
         `Preséntate puntualmente. ¡Que disfrutes el partido! ⚽`,
+      ].join('\n')
+    : data.estado === 'cancelada'
+    ? [
+        `⚠️ *Tu reserva fue cancelada* — #${codigo}`,
+        `🏟️ ${data.canchaNombre}`,
+        `📅 ${data.fecha}   🕐 ${data.hora}`,
+        ``,
+        `La cancela o el administrador canceló tu reserva. Puedes reservar otro horario en CanchaGo.`,
       ].join('\n')
     : [
         `❌ *Tu reserva fue rechazada* — #${codigo}`,

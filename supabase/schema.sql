@@ -79,7 +79,7 @@ create table public.notificaciones (
   usuario_id  uuid references public.usuarios(id) on delete cascade,
   reserva_id  uuid references public.reservas(id) on delete cascade,
   mensaje     text not null,
-  tipo        text check (tipo in ('confirmada','rechazada','cancelada','favorito')),
+  tipo        text check (tipo in ('confirmada','rechazada','cancelada','favorito','nueva_reserva')),
   leida       boolean default false,
   creado_en   timestamptz default now()
 );

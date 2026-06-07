@@ -35,7 +35,7 @@ export interface Notificacion {
   id: string;
   reservaId: string;
   mensaje: string;
-  tipo: 'confirmada' | 'rechazada' | 'cancelada' | 'favorito';
+  tipo: 'confirmada' | 'rechazada' | 'cancelada' | 'favorito' | 'nueva_reserva';
   leida: boolean;
   creadaEn: string;
 }

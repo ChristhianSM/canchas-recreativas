@@ -54,6 +54,7 @@ import {
   guardarUbicacion,
   guardarCiudad,
   obtenerCiudadGuardada,
+  refrescarUbicacionEnBackground,
   type Coordenadas,
 } from "@/lib/geolocation-utils";
 
@@ -238,11 +239,14 @@ function CanchasContent() {
   useEffect(() => {
     loadCanchas();
 
-    // Cargar ubicación guardada si existe
+    // Cargar ubicación guardada si existe, luego refrescar en background
     const ubicacionGuardada = obtenerUbicacionGuardada();
     if (ubicacionGuardada) {
       setUbicacion(ubicacionGuardada);
     }
+    refrescarUbicacionEnBackground((nuevaCoords) => {
+      setUbicacion(nuevaCoords);
+    });
 
     // Una sola llamada a favoritos para toda la página
     const token = getToken();

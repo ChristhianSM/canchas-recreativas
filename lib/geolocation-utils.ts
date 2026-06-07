@@ -79,9 +79,9 @@ export async function obtenerUbicacionActual(): Promise<Coordenadas> {
         reject(new Error(mensaje));
       },
       {
-        enableHighAccuracy: true, // Usar GPS si está disponible
-        timeout: 10000, // 10 segundos
-        maximumAge: 300000, // Cache de 5 minutos
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0, // Siempre GPS fresco
       }
     );
   });
@@ -203,4 +203,58 @@ export function getCentroPiura(): Coordenadas {
  */
 export function soportaGeolocalizacion(): boolean {
   return typeof navigator !== 'undefined' && 'geolocation' in navigator;
+}
+
+/**
+ * Refresca la ubicación en background sin molestar al usuario.
+ * Solo actúa si el permiso ya fue concedido previamente.
+ * Si la nueva posición difiere >500m de la guardada, actualiza y llama al callback.
+ */
+export async function refrescarUbicacionEnBackground(
+  onActualizada: (coords: Coordenadas) => void
+): Promise<void> {
+  if (typeof navigator === 'undefined' || !('geolocation' in navigator)) return;
+
+  try {
+    // Solo refrescar si el permiso ya fue concedido (sin pedir al usuario)
+    if ('permissions' in navigator) {
+      const perm = await navigator.permissions.query({ name: 'geolocation' });
+      if (perm.state !== 'granted') return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const nuevaCoords: Coordenadas = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        };
+
+        const guardada = obtenerUbicacionGuardada();
+
+        // Si no había ubicación guardada, guardar la nueva directamente
+        if (!guardada) {
+          guardarUbicacion(nuevaCoords);
+          onActualizada(nuevaCoords);
+          return;
+        }
+
+        // Solo actualizar si el usuario se movió más de 500m
+        const distancia = calcularDistancia(guardada, nuevaCoords);
+        if (distancia > 0.5) {
+          guardarUbicacion(nuevaCoords);
+          onActualizada(nuevaCoords);
+        }
+      },
+      () => {
+        // Fallar silenciosamente
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      }
+    );
+  } catch {
+    // Fallar silenciosamente si el navegador no soporta permissions API
+  }
 }
