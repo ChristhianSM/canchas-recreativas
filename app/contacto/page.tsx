@@ -95,7 +95,7 @@ export default function ContactoPage() {
       <Header />
       {/* ── Hero ── */}
       <section className="bg-brand-black text-white py-20 px-4">
-        <div className="container mx-auto px-8 lg:px-12 text-center">
+        <div className="container mx-auto px-4 lg:px-12 text-center">
           <span className="inline-block text-xs font-semibold uppercase tracking-widest text-primary mb-4">
             Soporte
           </span>
@@ -122,7 +122,7 @@ export default function ContactoPage() {
 
       {/* ── Contenido principal ── */}
       <section className="py-16 bg-background">
-        <div className="container mx-auto px-8 lg:px-12">
+        <div className="container mx-auto px-4 lg:px-12">
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-10">
             {/* Formulario */}
             <div className="bg-card rounded-xl border border-border p-8 shadow-sm">

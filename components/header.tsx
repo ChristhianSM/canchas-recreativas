@@ -48,12 +48,17 @@ export function Header() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
-  const AUTH_PAGES = ['/login', '/registro', '/recuperar-contrasena', '/auth/callback'];
+  const AUTH_PAGES = [
+    "/login",
+    "/registro",
+    "/recuperar-contrasena",
+    "/auth/callback",
+  ];
   const loginHref = AUTH_PAGES.includes(pathname)
-    ? '/login'
+    ? "/login"
     : `/login?redirect=${encodeURIComponent(pathname)}`;
   const registroHref = AUTH_PAGES.includes(pathname)
-    ? '/registro'
+    ? "/registro"
     : `/registro?redirect=${encodeURIComponent(pathname)}`;
   const [user, setUser] = useState<AuthUser | null>(null);
   const [hydrated, setHydrated] = useState(false);
@@ -145,7 +150,7 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-card/95 backdrop-blur supports-backdrop-filter:bg-card/80">
-      <div className="container mx-auto flex h-16 items-center justify-between px-8 lg:px-12 md:gap-8">
+      <div className="container mx-auto flex h-16 items-center justify-between px-4 lg:px-12 md:gap-8">
         <Link href="/" className="flex items-center gap-2 shrink-0">
           <Image
             src="/images/logo-new.svg"
@@ -183,54 +188,56 @@ export function Header() {
         <div className="hidden md:flex items-center shrink-0">
           <div className="w-px h-5 bg-border mx-4" />
           <div className="flex items-center gap-2">
-          <NotificationBell />
-          <ThemeToggle />
-          {!hydrated ? (
-            <div className="h-8 w-8 animate-pulse rounded-full bg-muted lg:w-32 lg:rounded-lg" />
-          ) : user?.name ? (
-            <DropdownMenu modal={false}>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2">
-                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-                    {user.name.charAt(0).toUpperCase()}
-                  </div>
-                  <span className="hidden lg:inline max-w-30 truncate">{user.name}</span>
-                  <ChevronDown className="hidden lg:inline h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem asChild>
-                  <Link
-                    href="/mi-cuenta"
-                    className="flex items-center gap-2 cursor-pointer"
+            <NotificationBell />
+            <ThemeToggle />
+            {!hydrated ? (
+              <div className="h-8 w-8 animate-pulse rounded-full bg-muted lg:w-32 lg:rounded-lg" />
+            ) : user?.name ? (
+              <DropdownMenu modal={false}>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-2">
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+                      {user.name.charAt(0).toUpperCase()}
+                    </div>
+                    <span className="hidden lg:inline max-w-30 truncate">
+                      {user.name}
+                    </span>
+                    <ChevronDown className="hidden lg:inline h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem asChild>
+                    <Link
+                      href="/mi-cuenta"
+                      className="flex items-center gap-2 cursor-pointer"
+                    >
+                      <User className="h-4 w-4" />
+                      Mi Cuenta
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={handleLogout}
+                    className="cursor-pointer text-destructive focus:text-destructive"
                   >
-                    <User className="h-4 w-4" />
-                    Mi Cuenta
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={handleLogout}
-                  className="cursor-pointer text-destructive focus:text-destructive"
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Cerrar Sesión
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <>
+                <Link
+                  href={loginHref}
+                  className="hidden lg:block text-sm font-medium text-foreground hover:text-primary transition-colors"
                 >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Cerrar Sesión
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <>
-              <Link
-                href={loginHref}
-                className="hidden lg:block text-sm font-medium text-foreground hover:text-primary transition-colors"
-              >
-                Iniciar Sesión
-              </Link>
-              <Button size="sm" asChild>
-                <Link href={registroHref}>Registrarse</Link>
-              </Button>
-            </>
-          )}
+                  Iniciar Sesión
+                </Link>
+                <Button size="sm" asChild>
+                  <Link href={registroHref}>Registrarse</Link>
+                </Button>
+              </>
+            )}
           </div>
         </div>
 
@@ -245,7 +252,11 @@ export function Header() {
                 <span className="sr-only">Abrir menú</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-70 bg-card p-0" showCloseButton={false}>
+            <SheetContent
+              side="right"
+              className="w-70 bg-card p-0"
+              showCloseButton={false}
+            >
               {/* Header del sheet con logo y botón cerrar */}
               <div className="flex h-16 items-center justify-between border-b border-border px-4">
                 <SheetTitle className="sr-only">Menú de navegación</SheetTitle>
@@ -280,7 +291,9 @@ export function Header() {
                             : "font-medium text-foreground hover:bg-secondary"
                         }`}
                       >
-                        <item.icon className={`h-4 w-4 shrink-0 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
+                        <item.icon
+                          className={`h-4 w-4 shrink-0 ${isActive ? "text-primary" : "text-muted-foreground"}`}
+                        />
                         {item.label}
                       </Link>
                     );
@@ -299,8 +312,12 @@ export function Header() {
                           {user.name.charAt(0).toUpperCase()}
                         </div>
                         <div className="min-w-0">
-                          <p className="text-sm font-semibold text-foreground truncate">{user.name}</p>
-                          <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                          <p className="text-sm font-semibold text-foreground truncate">
+                            {user.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {user.email}
+                          </p>
                         </div>
                       </div>
                       <Link

@@ -302,7 +302,13 @@ function ReservaCard({
 function EmptyState({
   type,
 }: {
-  type: "proximas" | "historial" | "favorites" | "partidos_activos" | "partidos_cancelados" | "partidos_historial";
+  type:
+    | "proximas"
+    | "historial"
+    | "favorites"
+    | "partidos_activos"
+    | "partidos_cancelados"
+    | "partidos_historial";
 }) {
   const cfg = {
     proximas: {
@@ -394,7 +400,13 @@ function EmptyState({
 }
 
 // ── Tipos ──────────────────────────────────────────────────────────
-type Section = "cuenta" | "reservas" | "sellos" | "favoritos" | "perfil" | "partidos";
+type Section =
+  | "cuenta"
+  | "reservas"
+  | "sellos"
+  | "favoritos"
+  | "perfil"
+  | "partidos";
 
 interface PartidoItem {
   id: string;
@@ -421,14 +433,16 @@ interface PartidoItem {
 export default function MisReservasPage() {
   const router = useRouter();
   const [reservas, setReservas] = useState<Reserva[]>([]);
-  const [historialItems, setHistorialItems]   = useState<Reserva[]>([]);
-  const [historialTotal, setHistorialTotal]   = useState(0);
-  const [historialPage,  setHistorialPage]    = useState(0);
+  const [historialItems, setHistorialItems] = useState<Reserva[]>([]);
+  const [historialTotal, setHistorialTotal] = useState(0);
+  const [historialPage, setHistorialPage] = useState(0);
   const [historialLoading, setHistorialLoading] = useState(false);
   const [misPartidos, setMisPartidos] = useState<PartidoItem[]>([]);
-  const [partHistorialItems, setPartHistorialItems] = useState<PartidoItem[]>([]);
+  const [partHistorialItems, setPartHistorialItems] = useState<PartidoItem[]>(
+    [],
+  );
   const [partHistorialTotal, setPartHistorialTotal] = useState(0);
-  const [partHistorialPage,  setPartHistorialPage]  = useState(0);
+  const [partHistorialPage, setPartHistorialPage] = useState(0);
   const [partHistorialLoading, setPartHistorialLoading] = useState(false);
   const [historialCargado, setHistorialCargado] = useState(false);
   const [partHistorialCargado, setPartHistorialCargado] = useState(false);
@@ -513,7 +527,7 @@ export default function MisReservasPage() {
   const cargarPartidosHistorial = async (page: number) => {
     setPartHistorialLoading(true);
     const { items, total } = await apiGetMisPartidosHistorial(page, 10);
-    setPartHistorialItems((prev) => page === 0 ? items : [...prev, ...items]);
+    setPartHistorialItems((prev) => (page === 0 ? items : [...prev, ...items]));
     setPartHistorialTotal(total);
     setPartHistorialPage(page);
     setPartHistorialLoading(false);
@@ -538,9 +552,12 @@ export default function MisReservasPage() {
                     .map((c) => ({
                       id: c.id,
                       name: c.nombre,
-                      images: (c.imagenes ?? []).length > 0
-                        ? c.imagenes
-                        : ["https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=800&h=600&fit=crop"],
+                      images:
+                        (c.imagenes ?? []).length > 0
+                          ? c.imagenes
+                          : [
+                              "https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=800&h=600&fit=crop",
+                            ],
                       rating: c.rating,
                       address: c.direccion,
                       type: c.tipo,
@@ -552,7 +569,9 @@ export default function MisReservasPage() {
             .catch(() => {});
         }
       });
-      apiGetMisPartidos().then((data) => setMisPartidos(Array.isArray(data) ? data : []));
+      apiGetMisPartidos().then((data) =>
+        setMisPartidos(Array.isArray(data) ? data : []),
+      );
       apiGetLoyalty().then((data) =>
         setLoyalty({
           sellos: data.sellos ?? 0,
@@ -779,7 +798,7 @@ export default function MisReservasPage() {
         </div>
 
         {/* Desktop skeleton */}
-        <div className="hidden lg:grid grid-cols-[2fr_6fr] flex-1 container mx-auto px-8 lg:px-12">
+        <div className="hidden lg:grid grid-cols-[2fr_6fr] flex-1 container mx-auto px-4 lg:px-12">
           {/* Sidebar */}
           <aside className="flex flex-col gap-3 p-4 pl-0 pt-6">
             <div className="bg-card rounded-xl p-4 flex flex-col items-center animate-pulse">
@@ -892,7 +911,9 @@ export default function MisReservasPage() {
         <span
           className={cn(
             "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
-            isActive ? "bg-green-600 text-white" : "bg-muted text-muted-foreground",
+            isActive
+              ? "bg-green-600 text-white"
+              : "bg-muted text-muted-foreground",
           )}
         >
           {icon}
@@ -934,7 +955,8 @@ export default function MisReservasPage() {
       onClick={onClick}
       className={cn(
         "bg-card rounded-xl p-4 flex flex-col gap-3 text-left w-full",
-        onClick && "hover:shadow-md hover:-translate-y-0.5 transition-all duration-150 cursor-pointer active:scale-95",
+        onClick &&
+          "hover:shadow-md hover:-translate-y-0.5 transition-all duration-150 cursor-pointer active:scale-95",
       )}
     >
       <span
@@ -1286,7 +1308,7 @@ export default function MisReservasPage() {
                     icon={<Users className="h-5 w-5 text-orange-500" />}
                     value={`${misPartidos.length} creados`}
                     label="Mis partidos"
-                    sub={`${misPartidos.filter(p => p.estado === 'abierto' || p.estado === 'completo').length} activos`}
+                    sub={`${misPartidos.filter((p) => p.estado === "abierto" || p.estado === "completo").length} activos`}
                     iconBg="bg-orange-500/20"
                     onClick={() => setActiveSection("partidos")}
                   />
@@ -1342,7 +1364,10 @@ export default function MisReservasPage() {
                                 variant="outline"
                                 className="text-xs border-amber-200 text-amber-600 bg-amber-500/10 shrink-0"
                               >
-                                {(() => { const n = partidoReservaIds.has(r.id) ? 2 : 1; return `🎟 +${n} sello${n > 1 ? 's' : ''}`; })()}
+                                {(() => {
+                                  const n = partidoReservaIds.has(r.id) ? 2 : 1;
+                                  return `🎟 +${n} sello${n > 1 ? "s" : ""}`;
+                                })()}
                               </Badge>
                             </div>
                           );
@@ -1380,7 +1405,8 @@ export default function MisReservasPage() {
                           icon: <Phone className="h-4 w-4" />,
                           label: "Ayuda y soporte",
                           sub: "Escríbenos por WhatsApp",
-                          onClick: () => window.open("https://wa.me/51987654321", "_blank"),
+                          onClick: () =>
+                            window.open("https://wa.me/51987654321", "_blank"),
                           danger: false,
                         },
                       ].map(({ icon, label, sub, onClick, danger }) => (
@@ -1389,14 +1415,23 @@ export default function MisReservasPage() {
                           onClick={onClick}
                           className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-muted/50 transition-colors text-left"
                         >
-                          <span className={cn(
-                            "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
-                            danger ? "bg-red-50 text-red-500" : "bg-green-500/10 text-green-600"
-                          )}>
+                          <span
+                            className={cn(
+                              "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
+                              danger
+                                ? "bg-red-50 text-red-500"
+                                : "bg-green-500/10 text-green-600",
+                            )}
+                          >
                             {icon}
                           </span>
                           <div className="flex-1 min-w-0">
-                            <p className={cn("text-sm font-medium", danger ? "text-red-600" : "text-foreground")}>
+                            <p
+                              className={cn(
+                                "text-sm font-medium",
+                                danger ? "text-red-600" : "text-foreground",
+                              )}
+                            >
                               {label}
                             </p>
                             <p className="text-xs text-muted-foreground">
@@ -1437,13 +1472,15 @@ export default function MisReservasPage() {
                       Historial
                       {historialLoading ? (
                         <span className="ml-1 h-3.5 w-3.5 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground" />
-                      ) : historialTotal > 0 && (
-                        <Badge
-                          variant="secondary"
-                          className="ml-1 h-5 min-w-5 px-1.5 text-xs"
-                        >
-                          {historialTotal}
-                        </Badge>
+                      ) : (
+                        historialTotal > 0 && (
+                          <Badge
+                            variant="secondary"
+                            className="ml-1 h-5 min-w-5 px-1.5 text-xs"
+                          >
+                            {historialTotal}
+                          </Badge>
+                        )
                       )}
                     </TabsTrigger>
                   </TabsList>
@@ -1478,12 +1515,16 @@ export default function MisReservasPage() {
                             disabled={historialLoading}
                             className="w-full py-3 text-sm font-medium text-primary border border-primary/30 rounded-xl hover:bg-primary/5 transition-colors disabled:opacity-50"
                           >
-                            {historialLoading ? "Cargando..." : `Ver más (${historialTotal - historialItems.length} restantes)`}
+                            {historialLoading
+                              ? "Cargando..."
+                              : `Ver más (${historialTotal - historialItems.length} restantes)`}
                           </button>
                         )}
                       </>
                     ) : historialLoading ? (
-                      <div className="text-center py-8 text-sm text-muted-foreground">Cargando...</div>
+                      <div className="text-center py-8 text-sm text-muted-foreground">
+                        Cargando...
+                      </div>
                     ) : (
                       <EmptyState type="historial" />
                     )}
@@ -1620,28 +1661,53 @@ export default function MisReservasPage() {
                           </h3>
                           {loyalty.historial.length > 0 ? (
                             <div className="space-y-3">
-                              {(showAllHistorial ? loyalty.historial : loyalty.historial.slice(0, 5)).map((h) => (
-                                <div key={h.id} className="flex items-center gap-3">
+                              {(showAllHistorial
+                                ? loyalty.historial
+                                : loyalty.historial.slice(0, 5)
+                              ).map((h) => (
+                                <div
+                                  key={h.id}
+                                  className="flex items-center gap-3"
+                                >
                                   <span className="text-lg">
-                                    {h.motivo === 'reserva' ? '✅' : h.motivo === 'partido' ? '🏟️' : '⭐'}
+                                    {h.motivo === "reserva"
+                                      ? "✅"
+                                      : h.motivo === "partido"
+                                        ? "🏟️"
+                                        : "⭐"}
                                   </span>
                                   <div className="flex-1 min-w-0">
                                     <p className="text-sm font-medium text-foreground truncate">
-                                      {h.motivo === 'reserva' ? 'Reserva confirmada' : h.motivo === 'partido' ? 'Partido creado' : 'Reseña enviada'}
+                                      {h.motivo === "reserva"
+                                        ? "Reserva confirmada"
+                                        : h.motivo === "partido"
+                                          ? "Partido creado"
+                                          : "Reseña enviada"}
                                     </p>
                                     <p className="text-xs text-muted-foreground">
-                                      {new Date(h.creado_en).toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                      {new Date(h.creado_en).toLocaleDateString(
+                                        "es-PE",
+                                        {
+                                          day: "numeric",
+                                          month: "short",
+                                          year: "numeric",
+                                        },
+                                      )}
                                     </p>
                                   </div>
-                                  <span className="text-xs font-semibold text-amber-600 shrink-0">+{h.cantidad}</span>
+                                  <span className="text-xs font-semibold text-amber-600 shrink-0">
+                                    +{h.cantidad}
+                                  </span>
                                 </div>
                               ))}
                               {loyalty.historial.length > 5 && (
                                 <button
-                                  onClick={() => setShowAllHistorial(v => !v)}
+                                  onClick={() => setShowAllHistorial((v) => !v)}
                                   className="w-full text-xs font-medium text-primary hover:text-primary/80 text-center pt-1 transition-colors"
                                 >
-                                  {showAllHistorial ? 'Ver menos ↑' : `Ver todos (+${loyalty.historial.length - 5}) ↓`}
+                                  {showAllHistorial
+                                    ? "Ver menos ↑"
+                                    : `Ver todos (+${loyalty.historial.length - 5}) ↓`}
                                 </button>
                               )}
                             </div>
@@ -1789,15 +1855,26 @@ export default function MisReservasPage() {
                                 >
                                   {activos.length > 0 ? (
                                     <>
-                                      {(showAllCuponesActivos ? activos : activos.slice(0, 3)).map((c) => (
-                                        <CuponItem key={c.id} cupon={c} disponible={true} />
+                                      {(showAllCuponesActivos
+                                        ? activos
+                                        : activos.slice(0, 3)
+                                      ).map((c) => (
+                                        <CuponItem
+                                          key={c.id}
+                                          cupon={c}
+                                          disponible={true}
+                                        />
                                       ))}
                                       {activos.length > 3 && (
                                         <button
-                                          onClick={() => setShowAllCuponesActivos(v => !v)}
+                                          onClick={() =>
+                                            setShowAllCuponesActivos((v) => !v)
+                                          }
                                           className="w-full text-xs font-medium text-primary hover:text-primary/80 text-center pt-1 transition-colors"
                                         >
-                                          {showAllCuponesActivos ? 'Ver menos ↑' : `Ver todos (+${activos.length - 3}) ↓`}
+                                          {showAllCuponesActivos
+                                            ? "Ver menos ↑"
+                                            : `Ver todos (+${activos.length - 3}) ↓`}
                                         </button>
                                       )}
                                     </>
@@ -1813,15 +1890,26 @@ export default function MisReservasPage() {
                                 >
                                   {usados.length > 0 ? (
                                     <>
-                                      {(showAllCuponesUsados ? usados : usados.slice(0, 3)).map((c) => (
-                                        <CuponItem key={c.id} cupon={c} disponible={false} />
+                                      {(showAllCuponesUsados
+                                        ? usados
+                                        : usados.slice(0, 3)
+                                      ).map((c) => (
+                                        <CuponItem
+                                          key={c.id}
+                                          cupon={c}
+                                          disponible={false}
+                                        />
                                       ))}
                                       {usados.length > 3 && (
                                         <button
-                                          onClick={() => setShowAllCuponesUsados(v => !v)}
+                                          onClick={() =>
+                                            setShowAllCuponesUsados((v) => !v)
+                                          }
                                           className="w-full text-xs font-medium text-primary hover:text-primary/80 text-center pt-1 transition-colors"
                                         >
-                                          {showAllCuponesUsados ? 'Ver menos ↑' : `Ver todos (+${usados.length - 3}) ↓`}
+                                          {showAllCuponesUsados
+                                            ? "Ver menos ↑"
+                                            : `Ver todos (+${usados.length - 3}) ↓`}
                                         </button>
                                       )}
                                     </>
@@ -1844,7 +1932,9 @@ export default function MisReservasPage() {
             {/* ── SECCIÓN: MI PERFIL ── */}
             {activeSection === "perfil" && (
               <div className="">
-                <h1 className="text-2xl font-bold text-foreground">Mi perfil</h1>
+                <h1 className="text-2xl font-bold text-foreground">
+                  Mi perfil
+                </h1>
                 <p className="text-sm text-muted-foreground mt-1 mb-6">
                   Actualiza tu información personal
                 </p>
@@ -1993,154 +2083,230 @@ export default function MisReservasPage() {
             )}
 
             {/* ── SECCIÓN: MIS PARTIDOS ── */}
-            {activeSection === "partidos" && (() => {
-              const deporteEmoji: Record<string, string> = {
-                futbol: "⚽", futsal: "🥅", basquet: "🏀", voley: "🏐", tenis: "🎾",
-              };
-              const estadoConfig: Record<string, { label: string; cls: string }> = {
-                abierto:    { label: "Abierto",    cls: "bg-green-500/100/10 text-green-700 border-green-500/20" },
-                completo:   { label: "Completo",   cls: "bg-blue-500/100/10 text-blue-700 border-blue-500/20" },
-                cancelado:  { label: "Cancelado",  cls: "bg-destructive/10 text-destructive border-destructive/20" },
-                finalizado: { label: "Finalizado", cls: "bg-muted text-muted-foreground" },
-              };
+            {activeSection === "partidos" &&
+              (() => {
+                const deporteEmoji: Record<string, string> = {
+                  futbol: "⚽",
+                  futsal: "🥅",
+                  basquet: "🏀",
+                  voley: "🏐",
+                  tenis: "🎾",
+                };
+                const estadoConfig: Record<
+                  string,
+                  { label: string; cls: string }
+                > = {
+                  abierto: {
+                    label: "Abierto",
+                    cls: "bg-green-500/100/10 text-green-700 border-green-500/20",
+                  },
+                  completo: {
+                    label: "Completo",
+                    cls: "bg-blue-500/100/10 text-blue-700 border-blue-500/20",
+                  },
+                  cancelado: {
+                    label: "Cancelado",
+                    cls: "bg-destructive/10 text-destructive border-destructive/20",
+                  },
+                  finalizado: {
+                    label: "Finalizado",
+                    cls: "bg-muted text-muted-foreground",
+                  },
+                };
 
-              const proximos = misPartidos;
+                const proximos = misPartidos;
 
-              const PartidoCard = ({ p }: { p: PartidoItem }) => {
-                const cfg = estadoConfig[p.estado] ?? estadoConfig.abierto;
-                const esHoy = p.fecha === hoyStr;
-                const fechaLabel = esHoy
-                  ? "Hoy"
-                  : new Date(p.fecha + "T00:00:00").toLocaleDateString("es-PE", {
-                      day: "numeric", month: "long", year: "numeric",
-                    });
-                const horaFin = `${String((parseInt(p.hora.split(":")[0]) + 1) % 24).padStart(2, "0")}:00`;
-                const cuposOcupados = p.jugadores_actuales ?? 0;
-                const canchaLocal = canchas.find((c) => c.id === p.cancha_id);
-                const img = canchaLocal?.images[0] ?? "https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=800&h=600&fit=crop";
+                const PartidoCard = ({ p }: { p: PartidoItem }) => {
+                  const cfg = estadoConfig[p.estado] ?? estadoConfig.abierto;
+                  const esHoy = p.fecha === hoyStr;
+                  const fechaLabel = esHoy
+                    ? "Hoy"
+                    : new Date(p.fecha + "T00:00:00").toLocaleDateString(
+                        "es-PE",
+                        {
+                          day: "numeric",
+                          month: "long",
+                          year: "numeric",
+                        },
+                      );
+                  const horaFin = `${String((parseInt(p.hora.split(":")[0]) + 1) % 24).padStart(2, "0")}:00`;
+                  const cuposOcupados = p.jugadores_actuales ?? 0;
+                  const canchaLocal = canchas.find((c) => c.id === p.cancha_id);
+                  const img =
+                    canchaLocal?.images[0] ??
+                    "https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=800&h=600&fit=crop";
+
+                  return (
+                    <Card className="overflow-hidden border-border">
+                      <div className="flex">
+                        <div className="relative w-36 shrink-0">
+                          <Image
+                            src={img}
+                            alt={p.cancha_nombre}
+                            fill
+                            className="object-cover"
+                          />
+                        </div>
+                        <div className="flex flex-1 flex-col p-4">
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Badge variant="outline" className={cfg.cls}>
+                                {cfg.label}
+                              </Badge>
+                              <Badge
+                                variant="outline"
+                                className="bg-amber-500/10 text-amber-700 border-amber-200"
+                              >
+                                {deporteEmoji[p.deporte] ?? "🏟️"}{" "}
+                                {p.deporte.charAt(0).toUpperCase() +
+                                  p.deporte.slice(1)}
+                              </Badge>
+                            </div>
+                            <p className="text-sm font-bold text-primary shrink-0">
+                              S/ {p.precio_total}
+                            </p>
+                          </div>
+
+                          <p className="font-semibold text-foreground">
+                            {p.cancha_nombre}
+                          </p>
+                          {p.cancha_distrito && (
+                            <p className="text-xs text-muted-foreground">
+                              {p.cancha_distrito}
+                            </p>
+                          )}
+
+                          <div className="mt-2 space-y-1">
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <Calendar className="h-4 w-4" />
+                              <span className="capitalize">{fechaLabel}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <Clock className="h-4 w-4" />
+                              <span>
+                                {p.hora} - {horaFin}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <Users className="h-4 w-4" />
+                              <span>
+                                {cuposOcupados}/{p.jugadores_max} jugadores ·
+                                nivel {p.nivel}
+                              </span>
+                            </div>
+                          </div>
+
+                          {p.descripcion && (
+                            <p className="mt-2 text-xs text-muted-foreground line-clamp-1 italic">
+                              "{p.descripcion}"
+                            </p>
+                          )}
+
+                          <div className="mt-3">
+                            <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                              <span>Cupos</span>
+                              <span>
+                                {cuposOcupados}/{p.jugadores_max}
+                              </span>
+                            </div>
+                            <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                              <div
+                                className="h-full rounded-full bg-green-500/100 transition-all"
+                                style={{
+                                  width: `${Math.min(100, (cuposOcupados / p.jugadores_max) * 100)}%`,
+                                }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  );
+                };
 
                 return (
-                  <Card className="overflow-hidden border-border">
-                    <div className="flex">
-                      <div className="relative w-36 shrink-0">
-                        <Image src={img} alt={p.cancha_nombre} fill className="object-cover" />
-                      </div>
-                      <div className="flex flex-1 flex-col p-4">
-                        <div className="flex items-start justify-between gap-2 mb-2">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Badge variant="outline" className={cfg.cls}>{cfg.label}</Badge>
-                            <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-200">
-                              {deporteEmoji[p.deporte] ?? "🏟️"} {p.deporte.charAt(0).toUpperCase() + p.deporte.slice(1)}
-                            </Badge>
-                          </div>
-                          <p className="text-sm font-bold text-primary shrink-0">S/ {p.precio_total}</p>
-                        </div>
+                  <div className="w-full">
+                    <h1 className="text-2xl font-bold text-foreground">
+                      Mis partidos
+                    </h1>
+                    <p className="text-sm text-muted-foreground mt-1 mb-6">
+                      Partidos que organizaste en CanchaGo
+                    </p>
 
-                        <p className="font-semibold text-foreground">{p.cancha_nombre}</p>
-                        {p.cancha_distrito && (
-                          <p className="text-xs text-muted-foreground">{p.cancha_distrito}</p>
-                        )}
-
-                        <div className="mt-2 space-y-1">
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Calendar className="h-4 w-4" />
-                            <span className="capitalize">{fechaLabel}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    {misPartidos.length === 0 &&
+                    partHistorialTotal === 0 &&
+                    !partHistorialLoading ? (
+                      <EmptyState type="partidos_activos" />
+                    ) : (
+                      <Tabs defaultValue="proximos" className="w-full">
+                        <TabsList className="mb-6">
+                          <TabsTrigger value="proximos" className="gap-1.5">
+                            <CalendarPlus className="h-4 w-4" />
+                            Próximos
+                            {proximos.length > 0 && (
+                              <Badge
+                                variant="secondary"
+                                className="ml-1 h-5 min-w-5 px-1.5 text-xs"
+                              >
+                                {proximos.length}
+                              </Badge>
+                            )}
+                          </TabsTrigger>
+                          <TabsTrigger value="historial" className="gap-1.5">
                             <Clock className="h-4 w-4" />
-                            <span>{p.hora} - {horaFin}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Users className="h-4 w-4" />
-                            <span>{cuposOcupados}/{p.jugadores_max} jugadores · nivel {p.nivel}</span>
-                          </div>
-                        </div>
+                            Historial
+                            {partHistorialLoading ? (
+                              <span className="ml-1 h-3.5 w-3.5 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground" />
+                            ) : (
+                              partHistorialTotal > 0 && (
+                                <Badge
+                                  variant="secondary"
+                                  className="ml-1 h-5 min-w-5 px-1.5 text-xs"
+                                >
+                                  {partHistorialTotal}
+                                </Badge>
+                              )
+                            )}
+                          </TabsTrigger>
+                        </TabsList>
 
-                        {p.descripcion && (
-                          <p className="mt-2 text-xs text-muted-foreground line-clamp-1 italic">
-                            "{p.descripcion}"
-                          </p>
-                        )}
-
-                        <div className="mt-3">
-                          <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-                            <span>Cupos</span>
-                            <span>{cuposOcupados}/{p.jugadores_max}</span>
-                          </div>
-                          <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                            <div
-                              className="h-full rounded-full bg-green-500/100 transition-all"
-                              style={{ width: `${Math.min(100, (cuposOcupados / p.jugadores_max) * 100)}%` }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
+                        <TabsContent value="proximos" className="space-y-4">
+                          {proximos.length > 0 ? (
+                            proximos.map((p) => (
+                              <PartidoCard key={p.id} p={p} />
+                            ))
+                          ) : (
+                            <EmptyState type="partidos_activos" />
+                          )}
+                        </TabsContent>
+                        <TabsContent value="historial" className="space-y-4">
+                          {partHistorialItems.length > 0
+                            ? partHistorialItems.map((p) => (
+                                <PartidoCard key={p.id} p={p} />
+                              ))
+                            : !partHistorialLoading && (
+                                <EmptyState type="partidos_historial" />
+                              )}
+                          {partHistorialItems.length < partHistorialTotal && (
+                            <Button
+                              variant="outline"
+                              className="w-full"
+                              onClick={() =>
+                                cargarPartidosHistorial(partHistorialPage + 1)
+                              }
+                              disabled={partHistorialLoading}
+                            >
+                              {partHistorialLoading
+                                ? "Cargando..."
+                                : `Ver más (${partHistorialTotal - partHistorialItems.length} restantes)`}
+                            </Button>
+                          )}
+                        </TabsContent>
+                      </Tabs>
+                    )}
+                  </div>
                 );
-              };
-
-              return (
-                <div className="w-full">
-                  <h1 className="text-2xl font-bold text-foreground">Mis partidos</h1>
-                  <p className="text-sm text-muted-foreground mt-1 mb-6">
-                    Partidos que organizaste en CanchaGo
-                  </p>
-
-                  {misPartidos.length === 0 && partHistorialTotal === 0 && !partHistorialLoading ? (
-                    <EmptyState type="partidos_activos" />
-                  ) : (
-                    <Tabs defaultValue="proximos" className="w-full">
-                      <TabsList className="mb-6">
-                        <TabsTrigger value="proximos" className="gap-1.5">
-                          <CalendarPlus className="h-4 w-4" />
-                          Próximos
-                          {proximos.length > 0 && (
-                            <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1.5 text-xs">
-                              {proximos.length}
-                            </Badge>
-                          )}
-                        </TabsTrigger>
-                        <TabsTrigger value="historial" className="gap-1.5">
-                          <Clock className="h-4 w-4" />
-                          Historial
-                          {partHistorialLoading ? (
-                            <span className="ml-1 h-3.5 w-3.5 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground" />
-                          ) : partHistorialTotal > 0 && (
-                            <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1.5 text-xs">
-                              {partHistorialTotal}
-                            </Badge>
-                          )}
-                        </TabsTrigger>
-                      </TabsList>
-
-                      <TabsContent value="proximos" className="space-y-4">
-                        {proximos.length > 0
-                          ? proximos.map(p => <PartidoCard key={p.id} p={p} />)
-                          : <EmptyState type="partidos_activos" />}
-                      </TabsContent>
-                      <TabsContent value="historial" className="space-y-4">
-                        {partHistorialItems.length > 0
-                          ? partHistorialItems.map(p => <PartidoCard key={p.id} p={p} />)
-                          : !partHistorialLoading && <EmptyState type="partidos_historial" />}
-                        {partHistorialItems.length < partHistorialTotal && (
-                          <Button
-                            variant="outline"
-                            className="w-full"
-                            onClick={() => cargarPartidosHistorial(partHistorialPage + 1)}
-                            disabled={partHistorialLoading}
-                          >
-                            {partHistorialLoading
-                              ? "Cargando..."
-                              : `Ver más (${partHistorialTotal - partHistorialItems.length} restantes)`}
-                          </Button>
-                        )}
-                      </TabsContent>
-                    </Tabs>
-                  )}
-                </div>
-              );
-            })()}
+              })()}
 
             {/* ── SECCIÓN: FAVORITOS ── */}
             {activeSection === "favoritos" && (
@@ -2191,7 +2357,11 @@ export default function MisReservasPage() {
                           </div>
                           <div className="flex items-center justify-between">
                             <span className="text-sm text-muted-foreground">
-                              {sportLabels[cancha.type as keyof typeof sportLabels]}
+                              {
+                                sportLabels[
+                                  cancha.type as keyof typeof sportLabels
+                                ]
+                              }
                             </span>
                             <span className="font-bold text-primary">
                               S/ {cancha.pricePerHour}/h
@@ -2230,62 +2400,107 @@ export default function MisReservasPage() {
                   <Calendar className="h-8 w-8 text-muted-foreground" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-semibold text-foreground mb-2">Inicia sesión para ver tus reservas</h3>
-                  <p className="text-muted-foreground text-sm">Crea una cuenta o inicia sesión para gestionar tus reservas y acumular recompensas.</p>
+                  <h3 className="text-xl font-semibold text-foreground mb-2">
+                    Inicia sesión para ver tus reservas
+                  </h3>
+                  <p className="text-muted-foreground text-sm">
+                    Crea una cuenta o inicia sesión para gestionar tus reservas
+                    y acumular recompensas.
+                  </p>
                 </div>
                 <div className="flex flex-col gap-3">
-                  <Button size="lg" asChild><Link href="/registro">Crear cuenta</Link></Button>
+                  <Button size="lg" asChild>
+                    <Link href="/registro">Crear cuenta</Link>
+                  </Button>
                   <Button size="lg" variant="outline" asChild>
-                    <Link href="/login"><LogIn className="mr-2 h-4 w-4" />Iniciar sesión</Link>
+                    <Link href="/login">
+                      <LogIn className="mr-2 h-4 w-4" />
+                      Iniciar sesión
+                    </Link>
                   </Button>
                 </div>
                 <Separator />
                 <div className="bg-blue-500/10 border border-blue-200 rounded-xl p-4 text-left">
-                  <p className="text-sm font-medium text-blue-900 mb-1">¿Reservaste como invitado?</p>
-                  <p className="text-sm text-blue-700">Revisa tu correo, te enviamos los detalles con un enlace para ver el estado.</p>
+                  <p className="text-sm font-medium text-blue-900 mb-1">
+                    ¿Reservaste como invitado?
+                  </p>
+                  <p className="text-sm text-blue-700">
+                    Revisa tu correo, te enviamos los detalles con un enlace
+                    para ver el estado.
+                  </p>
                 </div>
               </div>
             </Card>
           </main>
-        ) : activeSection !== 'cuenta' ? (
+        ) : activeSection !== "cuenta" ? (
           /* ── Sección interior (reservas, sellos, favoritos, perfil) ── */
           <main className="flex-1 px-4 py-4">
             <button
-              onClick={() => setActiveSection('cuenta')}
+              onClick={() => setActiveSection("cuenta")}
               className="flex items-center gap-2 text-sm font-medium text-green-700 mb-4"
             >
               <ChevronRight className="h-4 w-4 rotate-180" />
               Volver
             </button>
 
-            {activeSection === 'reservas' && (
+            {activeSection === "reservas" && (
               <div className="space-y-4">
-                <h2 className="text-xl font-bold text-foreground">Mis reservas</h2>
+                <h2 className="text-xl font-bold text-foreground">
+                  Mis reservas
+                </h2>
                 <Tabs defaultValue="proximas">
                   <TabsList className="w-full mb-4">
                     <TabsTrigger value="proximas" className="flex-1 gap-1.5">
                       Próximas
-                      {proximas.length > 0 && <Badge variant="secondary" className="ml-1 h-4 min-w-4 px-1 text-xs">{proximas.length}</Badge>}
+                      {proximas.length > 0 && (
+                        <Badge
+                          variant="secondary"
+                          className="ml-1 h-4 min-w-4 px-1 text-xs"
+                        >
+                          {proximas.length}
+                        </Badge>
+                      )}
                     </TabsTrigger>
                     <TabsTrigger value="historial" className="flex-1 gap-1.5">
                       Historial
                       {historialLoading ? (
                         <span className="ml-1 h-3 w-3 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground" />
-                      ) : historialTotal > 0 && (
-                        <Badge variant="secondary" className="ml-1 h-4 min-w-4 px-1 text-xs">{historialTotal}</Badge>
+                      ) : (
+                        historialTotal > 0 && (
+                          <Badge
+                            variant="secondary"
+                            className="ml-1 h-4 min-w-4 px-1 text-xs"
+                          >
+                            {historialTotal}
+                          </Badge>
+                        )
                       )}
                     </TabsTrigger>
                   </TabsList>
                   <TabsContent value="proximas" className="space-y-3">
-                    {proximas.length > 0
-                      ? proximas.map(r => <ReservaCard key={r.id} r={r} onDetalle={setReservaDetalle} onCancelar={setReservaCancelar} />)
-                      : <EmptyState type="proximas" />}
+                    {proximas.length > 0 ? (
+                      proximas.map((r) => (
+                        <ReservaCard
+                          key={r.id}
+                          r={r}
+                          onDetalle={setReservaDetalle}
+                          onCancelar={setReservaCancelar}
+                        />
+                      ))
+                    ) : (
+                      <EmptyState type="proximas" />
+                    )}
                   </TabsContent>
                   <TabsContent value="historial" className="space-y-3">
                     {historialItems.length > 0 ? (
                       <>
-                        {historialItems.map(r => (
-                          <ReservaCard key={r.id} r={r} onDetalle={setReservaDetalle} onCancelar={setReservaCancelar} />
+                        {historialItems.map((r) => (
+                          <ReservaCard
+                            key={r.id}
+                            r={r}
+                            onDetalle={setReservaDetalle}
+                            onCancelar={setReservaCancelar}
+                          />
                         ))}
                         {historialItems.length < historialTotal && (
                           <button
@@ -2293,12 +2508,16 @@ export default function MisReservasPage() {
                             disabled={historialLoading}
                             className="w-full py-3 text-sm font-medium text-primary border border-primary/30 rounded-xl hover:bg-primary/5 transition-colors disabled:opacity-50"
                           >
-                            {historialLoading ? "Cargando..." : `Ver más (${historialTotal - historialItems.length} restantes)`}
+                            {historialLoading
+                              ? "Cargando..."
+                              : `Ver más (${historialTotal - historialItems.length} restantes)`}
                           </button>
                         )}
                       </>
                     ) : historialLoading ? (
-                      <div className="text-center py-8 text-sm text-muted-foreground">Cargando...</div>
+                      <div className="text-center py-8 text-sm text-muted-foreground">
+                        Cargando...
+                      </div>
                     ) : (
                       <EmptyState type="historial" />
                     )}
@@ -2307,315 +2526,586 @@ export default function MisReservasPage() {
               </div>
             )}
 
-            {activeSection === 'sellos' && (() => {
-              const TOTAL = 8;
-              const sellos = loyalty.sellos;
-              const faltan = Math.max(0, TOTAL - sellos);
-              const activos = loyalty.cupones.filter(c => !c.usado);
-              const usados  = loyalty.cupones.filter(c => c.usado);
-              return (
-                <div className="space-y-4">
-                  <h2 className="text-xl font-bold text-foreground">Mis sellos</h2>
+            {activeSection === "sellos" &&
+              (() => {
+                const TOTAL = 8;
+                const sellos = loyalty.sellos;
+                const faltan = Math.max(0, TOTAL - sellos);
+                const activos = loyalty.cupones.filter((c) => !c.usado);
+                const usados = loyalty.cupones.filter((c) => c.usado);
+                return (
+                  <div className="space-y-4">
+                    <h2 className="text-xl font-bold text-foreground">
+                      Mis sellos
+                    </h2>
 
-                  {/* Banner verde con grid 4×2 */}
-                  <div className="rounded-xl bg-green-600 p-5">
-                    <div className="flex items-start justify-between mb-4">
-                      <div>
-                        <p className="text-xs font-semibold text-green-200 uppercase tracking-widest mb-0.5">Recompensa</p>
-                        <p className="text-2xl font-extrabold text-white leading-tight">1 hora gratis</p>
-                      </div>
-                      <div className="bg-card rounded-xl px-2.5 py-1.5 shrink-0">
-                        <span className="text-green-700 font-extrabold text-xs">CanchaGo</span>
-                      </div>
-                    </div>
-                    {/* Grid 4 columnas × 2 filas */}
-                    <div className="grid grid-cols-4 gap-2 mb-4">
-                      {Array.from({ length: TOTAL }).map((_, i) => (
-                        <div key={i} className={cn(
-                          'aspect-square flex items-center justify-center rounded-xl text-sm font-bold',
-                          i < sellos
-                            ? 'bg-card text-green-600 shadow'
-                            : 'border-2 border-dashed border-white/40 text-white/50'
-                        )}>
-                          {i < sellos
-                            ? <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><polyline points="20 6 9 17 4 12" /></svg>
-                            : <span>{i + 1}</span>}
+                    {/* Banner verde con grid 4×2 */}
+                    <div className="rounded-xl bg-green-600 p-5">
+                      <div className="flex items-start justify-between mb-4">
+                        <div>
+                          <p className="text-xs font-semibold text-green-200 uppercase tracking-widest mb-0.5">
+                            Recompensa
+                          </p>
+                          <p className="text-2xl font-extrabold text-white leading-tight">
+                            1 hora gratis
+                          </p>
                         </div>
-                      ))}
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm text-green-100 font-medium">{sellos} de {TOTAL} sellos</p>
-                      {faltan > 0 && <p className="text-sm text-green-100 font-medium">Faltan {faltan}</p>}
-                    </div>
-                  </div>
-
-                  {/* Cómo ganar sellos */}
-                  <div className="bg-card rounded-xl p-4">
-                    <h3 className="font-semibold text-foreground mb-3">Cómo ganar sellos</h3>
-                    <div className="space-y-2">
-                      {[
-                        { icon: '⚡', label: '1 sello por cada reserva',   sub: 'Cualquier cancha, cualquier deporte.' },
-                        { icon: '👥', label: '2 sellos por crear un partido', sub: 'Abre cupos y completa con la comunidad.' },
-                        { icon: '❤️', label: '1 sello por reseña',          sub: 'Cuenta tu experiencia tras jugar.' },
-                      ].map(({ icon, label, sub }) => (
-                        <div key={label} className="flex items-start gap-3 p-3 rounded-xl bg-amber-500/10">
-                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-lg">{icon}</span>
-                          <div>
-                            <p className="text-sm font-semibold text-foreground">{label}</p>
-                            <p className="text-xs text-muted-foreground">{sub}</p>
-                          </div>
+                        <div className="bg-card rounded-xl px-2.5 py-1.5 shrink-0">
+                          <span className="text-green-700 font-extrabold text-xs">
+                            CanchaGo
+                          </span>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Historial de sellos ganados */}
-                  <div className="bg-card rounded-xl p-4">
-                    <h3 className="font-semibold text-foreground mb-3">Historial de sellos</h3>
-                    {loyalty.historial.length > 0 ? (
-                      <div className="space-y-3">
-                        {(showAllHistorial ? loyalty.historial : loyalty.historial.slice(0, 5)).map(h => (
-                          <div key={h.id} className="flex items-center gap-3">
-                            <span className="text-lg">
-                              {h.motivo === 'reserva' ? '✅' : h.motivo === 'partido' ? '🏟️' : '⭐'}
-                            </span>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-foreground truncate">
-                                {h.motivo === 'reserva' ? 'Reserva confirmada' : h.motivo === 'partido' ? 'Partido creado' : 'Reseña enviada'}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {new Date(h.creado_en).toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: 'numeric' })}
-                              </p>
-                            </div>
-                            <span className="text-xs font-semibold text-amber-600 shrink-0">+{h.cantidad}</span>
+                      </div>
+                      {/* Grid 4 columnas × 2 filas */}
+                      <div className="grid grid-cols-4 gap-2 mb-4">
+                        {Array.from({ length: TOTAL }).map((_, i) => (
+                          <div
+                            key={i}
+                            className={cn(
+                              "aspect-square flex items-center justify-center rounded-xl text-sm font-bold",
+                              i < sellos
+                                ? "bg-card text-green-600 shadow"
+                                : "border-2 border-dashed border-white/40 text-white/50",
+                            )}
+                          >
+                            {i < sellos ? (
+                              <svg
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth={3}
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                className="h-5 w-5"
+                              >
+                                <polyline points="20 6 9 17 4 12" />
+                              </svg>
+                            ) : (
+                              <span>{i + 1}</span>
+                            )}
                           </div>
                         ))}
-                        {loyalty.historial.length > 5 && (
-                          <button
-                            onClick={() => setShowAllHistorial(v => !v)}
-                            className="w-full text-xs font-medium text-primary hover:text-primary/80 text-center pt-1 transition-colors"
-                          >
-                            {showAllHistorial ? 'Ver menos ↑' : `Ver todos (+${loyalty.historial.length - 5}) ↓`}
-                          </button>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm text-green-100 font-medium">
+                          {sellos} de {TOTAL} sellos
+                        </p>
+                        {faltan > 0 && (
+                          <p className="text-sm text-green-100 font-medium">
+                            Faltan {faltan}
+                          </p>
                         )}
                       </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground text-center py-3">Sin historial aún</p>
-                    )}
-                  </div>
+                    </div>
 
-                  {/* Cupones con pestañas */}
-                  <div className="bg-card rounded-xl p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-semibold text-foreground">Tus cupones</h3>
-                      {activos.length > 0 && (
-                        <span className="text-xs font-semibold bg-green-500/100/20 text-green-700 px-2 py-0.5 rounded-full">{activos.length} activos</span>
+                    {/* Cómo ganar sellos */}
+                    <div className="bg-card rounded-xl p-4">
+                      <h3 className="font-semibold text-foreground mb-3">
+                        Cómo ganar sellos
+                      </h3>
+                      <div className="space-y-2">
+                        {[
+                          {
+                            icon: "⚡",
+                            label: "1 sello por cada reserva",
+                            sub: "Cualquier cancha, cualquier deporte.",
+                          },
+                          {
+                            icon: "👥",
+                            label: "2 sellos por crear un partido",
+                            sub: "Abre cupos y completa con la comunidad.",
+                          },
+                          {
+                            icon: "❤️",
+                            label: "1 sello por reseña",
+                            sub: "Cuenta tu experiencia tras jugar.",
+                          },
+                        ].map(({ icon, label, sub }) => (
+                          <div
+                            key={label}
+                            className="flex items-start gap-3 p-3 rounded-xl bg-amber-500/10"
+                          >
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-lg">
+                              {icon}
+                            </span>
+                            <div>
+                              <p className="text-sm font-semibold text-foreground">
+                                {label}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {sub}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Historial de sellos ganados */}
+                    <div className="bg-card rounded-xl p-4">
+                      <h3 className="font-semibold text-foreground mb-3">
+                        Historial de sellos
+                      </h3>
+                      {loyalty.historial.length > 0 ? (
+                        <div className="space-y-3">
+                          {(showAllHistorial
+                            ? loyalty.historial
+                            : loyalty.historial.slice(0, 5)
+                          ).map((h) => (
+                            <div key={h.id} className="flex items-center gap-3">
+                              <span className="text-lg">
+                                {h.motivo === "reserva"
+                                  ? "✅"
+                                  : h.motivo === "partido"
+                                    ? "🏟️"
+                                    : "⭐"}
+                              </span>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-foreground truncate">
+                                  {h.motivo === "reserva"
+                                    ? "Reserva confirmada"
+                                    : h.motivo === "partido"
+                                      ? "Partido creado"
+                                      : "Reseña enviada"}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {new Date(h.creado_en).toLocaleDateString(
+                                    "es-PE",
+                                    {
+                                      day: "numeric",
+                                      month: "short",
+                                      year: "numeric",
+                                    },
+                                  )}
+                                </p>
+                              </div>
+                              <span className="text-xs font-semibold text-amber-600 shrink-0">
+                                +{h.cantidad}
+                              </span>
+                            </div>
+                          ))}
+                          {loyalty.historial.length > 5 && (
+                            <button
+                              onClick={() => setShowAllHistorial((v) => !v)}
+                              className="w-full text-xs font-medium text-primary hover:text-primary/80 text-center pt-1 transition-colors"
+                            >
+                              {showAllHistorial
+                                ? "Ver menos ↑"
+                                : `Ver todos (+${loyalty.historial.length - 5}) ↓`}
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground text-center py-3">
+                          Sin historial aún
+                        </p>
                       )}
                     </div>
-                    {loyalty.cupones.length === 0 ? (
-                      <div className="text-center py-6">
-                        <p className="text-2xl mb-2">🎟️</p>
-                        <p className="text-sm font-medium text-foreground/80">Aún no tienes cupones</p>
-                        <p className="text-xs text-muted-foreground mt-1">Completa {TOTAL} reservas para ganar tu primer cupón</p>
+
+                    {/* Cupones con pestañas */}
+                    <div className="bg-card rounded-xl p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="font-semibold text-foreground">
+                          Tus cupones
+                        </h3>
+                        {activos.length > 0 && (
+                          <span className="text-xs font-semibold bg-green-500/100/20 text-green-700 px-2 py-0.5 rounded-full">
+                            {activos.length} activos
+                          </span>
+                        )}
                       </div>
+                      {loyalty.cupones.length === 0 ? (
+                        <div className="text-center py-6">
+                          <p className="text-2xl mb-2">🎟️</p>
+                          <p className="text-sm font-medium text-foreground/80">
+                            Aún no tienes cupones
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Completa {TOTAL} reservas para ganar tu primer cupón
+                          </p>
+                        </div>
+                      ) : (
+                        <Tabs defaultValue="activos">
+                          <TabsList className="w-full mb-3">
+                            <TabsTrigger
+                              value="activos"
+                              className="flex-1 gap-1.5"
+                            >
+                              Activos{" "}
+                              {activos.length > 0 && (
+                                <Badge
+                                  variant="secondary"
+                                  className="h-4 min-w-4 px-1 text-xs"
+                                >
+                                  {activos.length}
+                                </Badge>
+                              )}
+                            </TabsTrigger>
+                            <TabsTrigger
+                              value="usados"
+                              className="flex-1 gap-1.5"
+                            >
+                              Usados{" "}
+                              {usados.length > 0 && (
+                                <Badge
+                                  variant="secondary"
+                                  className="h-4 min-w-4 px-1 text-xs"
+                                >
+                                  {usados.length}
+                                </Badge>
+                              )}
+                            </TabsTrigger>
+                          </TabsList>
+                          {[
+                            {
+                              key: "activos",
+                              list: activos,
+                              disponible: true,
+                              showAll: showAllCuponesActivos,
+                              setShowAll: setShowAllCuponesActivos,
+                            },
+                            {
+                              key: "usados",
+                              list: usados,
+                              disponible: false,
+                              showAll: showAllCuponesUsados,
+                              setShowAll: setShowAllCuponesUsados,
+                            },
+                          ].map(
+                            ({
+                              key,
+                              list,
+                              disponible,
+                              showAll,
+                              setShowAll,
+                            }) => (
+                              <TabsContent
+                                key={key}
+                                value={key}
+                                className="space-y-2 mt-0"
+                              >
+                                {list.length > 0
+                                  ? (showAll ? list : list.slice(0, 3)).map(
+                                      (cupon) => {
+                                        const fecha = new Date(
+                                          cupon.generadoEn,
+                                        ).toLocaleDateString("es-PE", {
+                                          day: "numeric",
+                                          month: "short",
+                                          year: "numeric",
+                                        });
+                                        return (
+                                          <div
+                                            key={cupon.id}
+                                            className={cn(
+                                              "relative flex items-center gap-3 rounded-xl border-2 border-dashed p-3 overflow-hidden",
+                                              disponible
+                                                ? "border-green-300 bg-green-500/10"
+                                                : "border-gray-200 bg-muted/50 opacity-60",
+                                            )}
+                                          >
+                                            <div className="absolute -left-2 top-1/2 -translate-y-1/2 h-4 w-4 rounded-full bg-background border border-border" />
+                                            <div className="absolute -right-2 top-1/2 -translate-y-1/2 h-4 w-4 rounded-full bg-background border border-border" />
+                                            <div
+                                              className={cn(
+                                                "flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-lg",
+                                                disponible
+                                                  ? "bg-green-600 text-white"
+                                                  : "bg-gray-300 text-gray-500",
+                                              )}
+                                            >
+                                              <span className="text-[10px]">
+                                                S/
+                                              </span>
+                                              <span className="text-xl font-extrabold leading-none">
+                                                {cupon.descuento}
+                                              </span>
+                                              <span className="text-[10px]">
+                                                OFF
+                                              </span>
+                                            </div>
+                                            <div className="flex-1 min-w-0 pl-1">
+                                              <p className="text-sm font-bold text-foreground">
+                                                Descuento en reserva
+                                              </p>
+                                              <p className="text-xs text-muted-foreground">
+                                                Generado el {fecha}
+                                              </p>
+                                              {disponible ? (
+                                                <p className="text-xs text-green-600 font-medium mt-0.5">
+                                                  ✓ Se aplica automáticamente
+                                                </p>
+                                              ) : (
+                                                <p className="text-xs text-gray-400 mt-0.5">
+                                                  Ya utilizado
+                                                </p>
+                                              )}
+                                            </div>
+                                          </div>
+                                        );
+                                      },
+                                    )
+                                  : null}
+                                {list.length > 3 && (
+                                  <button
+                                    onClick={() =>
+                                      setShowAll((v: boolean) => !v)
+                                    }
+                                    className="w-full text-xs font-medium text-primary hover:text-primary/80 text-center pt-1 transition-colors"
+                                  >
+                                    {showAll
+                                      ? "Ver menos ↑"
+                                      : `Ver todos (+${list.length - 3}) ↓`}
+                                  </button>
+                                )}
+                                {list.length === 0 && (
+                                  <p className="text-sm text-muted-foreground text-center py-4">
+                                    {disponible
+                                      ? "No tienes cupones activos"
+                                      : "No has usado cupones aún"}
+                                  </p>
+                                )}
+                              </TabsContent>
+                            ),
+                          )}
+                        </Tabs>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+
+            {activeSection === "partidos" &&
+              (() => {
+                const deporteEmoji: Record<string, string> = {
+                  futbol: "⚽",
+                  futsal: "🥅",
+                  basquet: "🏀",
+                  voley: "🏐",
+                  tenis: "🎾",
+                };
+                const estadoConfig: Record<
+                  string,
+                  { label: string; cls: string }
+                > = {
+                  abierto: {
+                    label: "Abierto",
+                    cls: "bg-green-500/100/10 text-green-700 border-green-500/20",
+                  },
+                  completo: {
+                    label: "Completo",
+                    cls: "bg-blue-500/100/10 text-blue-700 border-blue-500/20",
+                  },
+                  cancelado: {
+                    label: "Cancelado",
+                    cls: "bg-destructive/10 text-destructive border-destructive/20",
+                  },
+                  finalizado: {
+                    label: "Finalizado",
+                    cls: "bg-muted text-muted-foreground",
+                  },
+                };
+
+                const proximos = misPartidos;
+
+                const PartidoCardMobile = ({ p }: { p: PartidoItem }) => {
+                  const cfg = estadoConfig[p.estado] ?? estadoConfig.abierto;
+                  const esHoy = p.fecha === hoyStr;
+                  const fechaLabel = esHoy
+                    ? "Hoy"
+                    : new Date(p.fecha + "T00:00:00").toLocaleDateString(
+                        "es-PE",
+                        { day: "numeric", month: "short" },
+                      );
+                  const horaFin = `${String((parseInt(p.hora.split(":")[0]) + 1) % 24).padStart(2, "0")}:00`;
+                  const cuposOcupados = p.jugadores_actuales ?? 0;
+                  const canchaLocal = canchas.find((c) => c.id === p.cancha_id);
+                  const img =
+                    canchaLocal?.images[0] ??
+                    "https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=800&h=600&fit=crop";
+
+                  return (
+                    <Card className="overflow-hidden">
+                      <div className="flex">
+                        <div className="relative w-24 shrink-0">
+                          <Image
+                            src={img}
+                            alt={p.cancha_nombre}
+                            fill
+                            className="object-cover"
+                          />
+                        </div>
+                        <div className="flex-1 p-3">
+                          <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
+                            <Badge
+                              variant="outline"
+                              className={cn("text-xs", cfg.cls)}
+                            >
+                              {cfg.label}
+                            </Badge>
+                            <span className="text-xs text-muted-foreground">
+                              {deporteEmoji[p.deporte] ?? "🏟️"}
+                            </span>
+                          </div>
+                          <p className="font-semibold text-sm text-foreground line-clamp-1">
+                            {p.cancha_nombre}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {fechaLabel} · {p.hora} - {horaFin}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            <Users className="inline h-3 w-3 mr-0.5" />
+                            {cuposOcupados}/{p.jugadores_max} jugadores
+                          </p>
+                          <div className="mt-2 h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-green-500/100"
+                              style={{
+                                width: `${Math.min(100, (cuposOcupados / p.jugadores_max) * 100)}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  );
+                };
+
+                return (
+                  <div className="space-y-4">
+                    <h2 className="text-xl font-bold text-foreground">
+                      Mis partidos
+                    </h2>
+
+                    {misPartidos.length === 0 &&
+                    partHistorialTotal === 0 &&
+                    !partHistorialLoading ? (
+                      <EmptyState type="partidos_activos" />
                     ) : (
-                      <Tabs defaultValue="activos">
+                      <Tabs defaultValue="proximos">
                         <TabsList className="w-full mb-3">
-                          <TabsTrigger value="activos" className="flex-1 gap-1.5">
-                            Activos {activos.length > 0 && <Badge variant="secondary" className="h-4 min-w-4 px-1 text-xs">{activos.length}</Badge>}
+                          <TabsTrigger
+                            value="proximos"
+                            className="flex-1 gap-1.5"
+                          >
+                            Próximos
+                            {proximos.length > 0 && (
+                              <Badge
+                                variant="secondary"
+                                className="ml-1 h-4 min-w-4 px-1 text-xs"
+                              >
+                                {proximos.length}
+                              </Badge>
+                            )}
                           </TabsTrigger>
-                          <TabsTrigger value="usados" className="flex-1 gap-1.5">
-                            Usados {usados.length > 0 && <Badge variant="secondary" className="h-4 min-w-4 px-1 text-xs">{usados.length}</Badge>}
+                          <TabsTrigger
+                            value="historial"
+                            className="flex-1 gap-1.5"
+                          >
+                            Historial
+                            {partHistorialLoading ? (
+                              <span className="ml-1 h-3 w-3 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground" />
+                            ) : (
+                              partHistorialTotal > 0 && (
+                                <Badge
+                                  variant="secondary"
+                                  className="ml-1 h-4 min-w-4 px-1 text-xs"
+                                >
+                                  {partHistorialTotal}
+                                </Badge>
+                              )
+                            )}
                           </TabsTrigger>
                         </TabsList>
-                        {[
-                          { key: 'activos', list: activos, disponible: true, showAll: showAllCuponesActivos, setShowAll: setShowAllCuponesActivos },
-                          { key: 'usados',  list: usados,  disponible: false, showAll: showAllCuponesUsados,  setShowAll: setShowAllCuponesUsados },
-                        ].map(({ key, list, disponible, showAll, setShowAll }) => (
-                          <TabsContent key={key} value={key} className="space-y-2 mt-0">
-                            {list.length > 0 ? (showAll ? list : list.slice(0, 3)).map(cupon => {
-                              const fecha = new Date(cupon.generadoEn).toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: 'numeric' });
-                              return (
-                                <div key={cupon.id} className={cn(
-                                  'relative flex items-center gap-3 rounded-xl border-2 border-dashed p-3 overflow-hidden',
-                                  disponible ? 'border-green-300 bg-green-500/10' : 'border-gray-200 bg-muted/50 opacity-60'
-                                )}>
-                                  <div className="absolute -left-2 top-1/2 -translate-y-1/2 h-4 w-4 rounded-full bg-background border border-border" />
-                                  <div className="absolute -right-2 top-1/2 -translate-y-1/2 h-4 w-4 rounded-full bg-background border border-border" />
-                                  <div className={cn(
-                                    'flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-lg',
-                                    disponible ? 'bg-green-600 text-white' : 'bg-gray-300 text-gray-500'
-                                  )}>
-                                    <span className="text-[10px]">S/</span>
-                                    <span className="text-xl font-extrabold leading-none">{cupon.descuento}</span>
-                                    <span className="text-[10px]">OFF</span>
-                                  </div>
-                                  <div className="flex-1 min-w-0 pl-1">
-                                    <p className="text-sm font-bold text-foreground">Descuento en reserva</p>
-                                    <p className="text-xs text-muted-foreground">Generado el {fecha}</p>
-                                    {disponible
-                                      ? <p className="text-xs text-green-600 font-medium mt-0.5">✓ Se aplica automáticamente</p>
-                                      : <p className="text-xs text-gray-400 mt-0.5">Ya utilizado</p>}
-                                  </div>
-                                </div>
-                              );
-                            }) : null}
-                            {list.length > 3 && (
-                              <button
-                                onClick={() => setShowAll((v: boolean) => !v)}
-                                className="w-full text-xs font-medium text-primary hover:text-primary/80 text-center pt-1 transition-colors"
-                              >
-                                {showAll ? 'Ver menos ↑' : `Ver todos (+${list.length - 3}) ↓`}
-                              </button>
-                            )}
-                            {list.length === 0 && (
-                              <p className="text-sm text-muted-foreground text-center py-4">
-                                {disponible ? 'No tienes cupones activos' : 'No has usado cupones aún'}
-                              </p>
-                            )}
-                          </TabsContent>
-                        ))}
+                        <TabsContent value="proximos" className="space-y-3">
+                          {proximos.length > 0 ? (
+                            proximos.map((p) => (
+                              <PartidoCardMobile key={p.id} p={p} />
+                            ))
+                          ) : (
+                            <EmptyState type="partidos_activos" />
+                          )}
+                        </TabsContent>
+                        <TabsContent value="historial" className="space-y-3">
+                          {partHistorialItems.length > 0
+                            ? partHistorialItems.map((p) => (
+                                <PartidoCardMobile key={p.id} p={p} />
+                              ))
+                            : !partHistorialLoading && (
+                                <EmptyState type="partidos_historial" />
+                              )}
+                          {partHistorialItems.length < partHistorialTotal && (
+                            <Button
+                              variant="outline"
+                              className="w-full mt-2"
+                              onClick={() =>
+                                cargarPartidosHistorial(partHistorialPage + 1)
+                              }
+                              disabled={partHistorialLoading}
+                            >
+                              {partHistorialLoading
+                                ? "Cargando..."
+                                : `Ver más (${partHistorialTotal - partHistorialItems.length} restantes)`}
+                            </Button>
+                          )}
+                        </TabsContent>
                       </Tabs>
                     )}
                   </div>
-                </div>
-              );
-            })()}
-
-            {activeSection === 'partidos' && (() => {
-              const deporteEmoji: Record<string, string> = {
-                futbol: "⚽", futsal: "🥅", basquet: "🏀", voley: "🏐", tenis: "🎾",
-              };
-              const estadoConfig: Record<string, { label: string; cls: string }> = {
-                abierto:    { label: "Abierto",    cls: "bg-green-500/100/10 text-green-700 border-green-500/20" },
-                completo:   { label: "Completo",   cls: "bg-blue-500/100/10 text-blue-700 border-blue-500/20" },
-                cancelado:  { label: "Cancelado",  cls: "bg-destructive/10 text-destructive border-destructive/20" },
-                finalizado: { label: "Finalizado", cls: "bg-muted text-muted-foreground" },
-              };
-
-              const proximos = misPartidos;
-
-              const PartidoCardMobile = ({ p }: { p: PartidoItem }) => {
-                const cfg = estadoConfig[p.estado] ?? estadoConfig.abierto;
-                const esHoy = p.fecha === hoyStr;
-                const fechaLabel = esHoy
-                  ? "Hoy"
-                  : new Date(p.fecha + "T00:00:00").toLocaleDateString("es-PE", { day: "numeric", month: "short" });
-                const horaFin = `${String((parseInt(p.hora.split(":")[0]) + 1) % 24).padStart(2, "0")}:00`;
-                const cuposOcupados = p.jugadores_actuales ?? 0;
-                const canchaLocal = canchas.find((c) => c.id === p.cancha_id);
-                const img = canchaLocal?.images[0] ?? "https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=800&h=600&fit=crop";
-
-                return (
-                  <Card className="overflow-hidden">
-                    <div className="flex">
-                      <div className="relative w-24 shrink-0">
-                        <Image src={img} alt={p.cancha_nombre} fill className="object-cover" />
-                      </div>
-                      <div className="flex-1 p-3">
-                        <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
-                          <Badge variant="outline" className={cn("text-xs", cfg.cls)}>{cfg.label}</Badge>
-                          <span className="text-xs text-muted-foreground">{deporteEmoji[p.deporte] ?? "🏟️"}</span>
-                        </div>
-                        <p className="font-semibold text-sm text-foreground line-clamp-1">{p.cancha_nombre}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {fechaLabel} · {p.hora} - {horaFin}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          <Users className="inline h-3 w-3 mr-0.5" />{cuposOcupados}/{p.jugadores_max} jugadores
-                        </p>
-                        <div className="mt-2 h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                          <div
-                            className="h-full rounded-full bg-green-500/100"
-                            style={{ width: `${Math.min(100, (cuposOcupados / p.jugadores_max) * 100)}%` }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
                 );
-              };
+              })()}
 
-              return (
-                <div className="space-y-4">
-                  <h2 className="text-xl font-bold text-foreground">Mis partidos</h2>
-
-                  {misPartidos.length === 0 && partHistorialTotal === 0 && !partHistorialLoading ? (
-                    <EmptyState type="partidos_activos" />
-                  ) : (
-                    <Tabs defaultValue="proximos">
-                      <TabsList className="w-full mb-3">
-                        <TabsTrigger value="proximos" className="flex-1 gap-1.5">
-                          Próximos
-                          {proximos.length > 0 && <Badge variant="secondary" className="ml-1 h-4 min-w-4 px-1 text-xs">{proximos.length}</Badge>}
-                        </TabsTrigger>
-                        <TabsTrigger value="historial" className="flex-1 gap-1.5">
-                          Historial
-                          {partHistorialLoading ? (
-                            <span className="ml-1 h-3 w-3 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground" />
-                          ) : partHistorialTotal > 0 && (
-                            <Badge variant="secondary" className="ml-1 h-4 min-w-4 px-1 text-xs">{partHistorialTotal}</Badge>
-                          )}
-                        </TabsTrigger>
-                      </TabsList>
-                      <TabsContent value="proximos" className="space-y-3">
-                        {proximos.length > 0
-                          ? proximos.map(p => <PartidoCardMobile key={p.id} p={p} />)
-                          : <EmptyState type="partidos_activos" />}
-                      </TabsContent>
-                      <TabsContent value="historial" className="space-y-3">
-                        {partHistorialItems.length > 0
-                          ? partHistorialItems.map(p => <PartidoCardMobile key={p.id} p={p} />)
-                          : !partHistorialLoading && <EmptyState type="partidos_historial" />}
-                        {partHistorialItems.length < partHistorialTotal && (
-                          <Button
-                            variant="outline"
-                            className="w-full mt-2"
-                            onClick={() => cargarPartidosHistorial(partHistorialPage + 1)}
-                            disabled={partHistorialLoading}
-                          >
-                            {partHistorialLoading
-                              ? "Cargando..."
-                              : `Ver más (${partHistorialTotal - partHistorialItems.length} restantes)`}
-                          </Button>
-                        )}
-                      </TabsContent>
-                    </Tabs>
-                  )}
-                </div>
-              );
-            })()}
-
-            {activeSection === 'favoritos' && (
+            {activeSection === "favoritos" && (
               <div className="space-y-4">
                 <h2 className="text-xl font-bold text-foreground">Favoritos</h2>
                 {favoriteCanchas.length > 0 ? (
                   <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
-                    {favoriteCanchas.map(cancha => (
+                    {favoriteCanchas.map((cancha) => (
                       <Card key={cancha.id} className="overflow-hidden group">
                         <div className="relative aspect-video">
-                          <Image src={cancha.images[0]} alt={cancha.name} fill className="object-cover" />
-                          <button onClick={() => handleRemoveFavorite(cancha.id)}
-                            className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-card/90 text-destructive shadow">
+                          <Image
+                            src={cancha.images[0]}
+                            alt={cancha.name}
+                            fill
+                            className="object-cover"
+                          />
+                          <button
+                            onClick={() => handleRemoveFavorite(cancha.id)}
+                            className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-card/90 text-destructive shadow"
+                          >
                             <Heart className="h-3.5 w-3.5 fill-destructive" />
                           </button>
                         </div>
                         <div className="p-3">
-                          <p className="font-semibold text-sm text-foreground line-clamp-1">{cancha.name}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">{sportLabels[cancha.type as keyof typeof sportLabels]}</p>
-                          <p className="text-sm font-bold text-primary mt-1">S/ {cancha.pricePerHour}/h</p>
+                          <p className="font-semibold text-sm text-foreground line-clamp-1">
+                            {cancha.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {
+                              sportLabels[
+                                cancha.type as keyof typeof sportLabels
+                              ]
+                            }
+                          </p>
+                          <p className="text-sm font-bold text-primary mt-1">
+                            S/ {cancha.pricePerHour}/h
+                          </p>
                           <Button className="mt-2 w-full" size="sm" asChild>
-                            <Link href={`/cancha/${cancha.id}`}>Ver cancha</Link>
+                            <Link href={`/cancha/${cancha.id}`}>
+                              Ver cancha
+                            </Link>
                           </Button>
                         </div>
                       </Card>
                     ))}
                   </div>
-                ) : <EmptyState type="favorites" />}
+                ) : (
+                  <EmptyState type="favorites" />
+                )}
               </div>
             )}
 
-            {activeSection === 'perfil' && (
+            {activeSection === "perfil" && (
               <div className="space-y-4">
                 <h2 className="text-xl font-bold text-foreground">Mi perfil</h2>
                 {perfilLoading ? (
@@ -2627,52 +3117,117 @@ export default function MisReservasPage() {
                   <div className="space-y-4">
                     <div className="bg-card rounded-xl p-4 flex items-center gap-3">
                       <div className="flex h-14 w-14 items-center justify-center rounded-full bg-green-600 text-xl font-bold text-white shrink-0">
-                        {perfilNombre.charAt(0).toUpperCase() || '?'}
+                        {perfilNombre.charAt(0).toUpperCase() || "?"}
                       </div>
                       <div>
-                        <p className="font-semibold text-foreground">{perfilNombre || 'Sin nombre'}</p>
-                        <p className="text-sm text-muted-foreground">{perfil?.email}</p>
+                        <p className="font-semibold text-foreground">
+                          {perfilNombre || "Sin nombre"}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {perfil?.email}
+                        </p>
                       </div>
                     </div>
                     <div className="bg-card rounded-xl p-4 space-y-4">
-                      <h3 className="font-semibold text-foreground">Información personal</h3>
+                      <h3 className="font-semibold text-foreground">
+                        Información personal
+                      </h3>
                       <div className="space-y-1.5">
-                        <label className="text-sm font-medium text-foreground/80">Nombre completo</label>
+                        <label className="text-sm font-medium text-foreground/80">
+                          Nombre completo
+                        </label>
                         <div className="relative">
                           <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                          <Input type="text" placeholder="Tu nombre completo" value={perfilNombre}
-                            onChange={e => { setPerfilNombre(e.target.value); setPerfilErrores(p => ({ ...p, nombre: undefined })); }}
-                            className={cn('pl-9', perfilErrores.nombre && 'border-destructive')} />
+                          <Input
+                            type="text"
+                            placeholder="Tu nombre completo"
+                            value={perfilNombre}
+                            onChange={(e) => {
+                              setPerfilNombre(e.target.value);
+                              setPerfilErrores((p) => ({
+                                ...p,
+                                nombre: undefined,
+                              }));
+                            }}
+                            className={cn(
+                              "pl-9",
+                              perfilErrores.nombre && "border-destructive",
+                            )}
+                          />
                         </div>
-                        {perfilErrores.nombre && <p className="text-xs text-destructive">{perfilErrores.nombre}</p>}
+                        {perfilErrores.nombre && (
+                          <p className="text-xs text-destructive">
+                            {perfilErrores.nombre}
+                          </p>
+                        )}
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-sm font-medium text-foreground/80">Correo electrónico</label>
+                        <label className="text-sm font-medium text-foreground/80">
+                          Correo electrónico
+                        </label>
                         <div className="relative">
                           <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                          <Input type="email" value={perfil?.email || ''} disabled className="pl-9 bg-muted/50 text-muted-foreground cursor-not-allowed" />
+                          <Input
+                            type="email"
+                            value={perfil?.email || ""}
+                            disabled
+                            className="pl-9 bg-muted/50 text-muted-foreground cursor-not-allowed"
+                          />
                         </div>
-                        <p className="text-xs text-muted-foreground">El correo no se puede cambiar</p>
+                        <p className="text-xs text-muted-foreground">
+                          El correo no se puede cambiar
+                        </p>
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-sm font-medium text-foreground/80">Número de Yape/Plin</label>
+                        <label className="text-sm font-medium text-foreground/80">
+                          Número de Yape/Plin
+                        </label>
                         <div className="relative">
                           <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                          <Input type="tel" placeholder="987654321" value={perfilTelefono}
-                            onChange={e => { setPerfilTelefono(e.target.value); setPerfilErrores(p => ({ ...p, telefono: undefined })); }}
-                            className={cn('pl-9', perfilErrores.telefono && 'border-destructive')} />
+                          <Input
+                            type="tel"
+                            placeholder="987654321"
+                            value={perfilTelefono}
+                            onChange={(e) => {
+                              setPerfilTelefono(e.target.value);
+                              setPerfilErrores((p) => ({
+                                ...p,
+                                telefono: undefined,
+                              }));
+                            }}
+                            className={cn(
+                              "pl-9",
+                              perfilErrores.telefono && "border-destructive",
+                            )}
+                          />
                         </div>
-                        {perfilErrores.telefono
-                          ? <p className="text-xs text-destructive">{perfilErrores.telefono}</p>
-                          : <p className="text-xs text-muted-foreground">Se usa para devoluciones si cancelas</p>}
+                        {perfilErrores.telefono ? (
+                          <p className="text-xs text-destructive">
+                            {perfilErrores.telefono}
+                          </p>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">
+                            Se usa para devoluciones si cancelas
+                          </p>
+                        )}
                       </div>
                       <Separator />
                       {perfilGuardado ? (
-                        <Button className="w-full" disabled><CheckCircle2 className="mr-2 h-4 w-4" />¡Guardado!</Button>
+                        <Button className="w-full" disabled>
+                          <CheckCircle2 className="mr-2 h-4 w-4" />
+                          ¡Guardado!
+                        </Button>
                       ) : (
-                        <LoadingButton onClick={handleGuardarPerfil} disabled={!perfilHayCambios} className="w-full"
-                          isLoading={perfilGuardando} loadingText="Guardando..." loadingVariant="pulse">
-                          <Save className="mr-2 h-4 w-4" />Guardar cambios
+                        <LoadingButton
+                          onClick={handleGuardarPerfil}
+                          disabled={!perfilHayCambios}
+                          className="w-full"
+                          isLoading={perfilGuardando}
+                          loadingText="Guardando..."
+                          loadingVariant="pulse"
+                        >
+                          <Save className="mr-2 h-4 w-4" />
+                          Guardar cambios
                         </LoadingButton>
                       )}
                     </div>
@@ -2684,57 +3239,101 @@ export default function MisReservasPage() {
         ) : (
           /* ── Dashboard mobile (Mi cuenta) ── */
           <main className="flex-1 px-4 py-5 space-y-5">
-
             {/* Saludo + avatar */}
             <div className="bg-card rounded-xl p-4 flex items-center gap-3">
               <div className="relative shrink-0">
                 <div className="h-14 w-14 rounded-full bg-green-600 flex items-center justify-center text-white text-xl font-bold shadow">
-                  {user.name?.charAt(0).toUpperCase() ?? 'U'}
+                  {user.name?.charAt(0).toUpperCase() ?? "U"}
                 </div>
-                <button onClick={() => setActiveSection('perfil')}
-                  className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-card border-2 border-green-600 text-green-600 shadow-sm">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="h-2.5 w-2.5">
+                <button
+                  onClick={() => setActiveSection("perfil")}
+                  className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-card border-2 border-green-600 text-green-600 shadow-sm"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2.5}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="h-2.5 w-2.5"
+                  >
                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                   </svg>
                 </button>
               </div>
               <div>
-                <h1 className="text-lg font-bold text-foreground">¡Hola, {user.name?.split(' ')[0]}!</h1>
-                {user.phone && <p className="text-sm text-muted-foreground">{user.phone}</p>}
+                <h1 className="text-lg font-bold text-foreground">
+                  ¡Hola, {user.name?.split(" ")[0]}!
+                </h1>
+                {user.phone && (
+                  <p className="text-sm text-muted-foreground">{user.phone}</p>
+                )}
               </div>
             </div>
 
             {/* Tu próxima reserva */}
             <div>
-              <p className="text-sm font-semibold text-foreground mb-2">Tu próxima reserva</p>
-              {proximaReserva ? (() => {
-                const cl = canchas.find(c => c.id === proximaReserva.canchaId);
-                const img = cl?.images[0] ?? 'https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=800&h=600&fit=crop';
-                const esHoy = proximaReserva.fecha === hoyStr;
-                const fechaLabel = esHoy ? 'Hoy' : new Date(proximaReserva.fecha + 'T00:00:00').toLocaleDateString('es-PE', { day: 'numeric', month: 'short' });
-                const horaFin = `${String((parseInt(proximaReserva.hora.split(':')[0]) + 1) % 24).padStart(2, '0')}:00`;
-                const codigo = `CG-${proximaReserva.id.slice(0, 4).toUpperCase()}`;
-                return (
-                  <button onClick={() => setActiveSection('reservas')}
-                    className="w-full bg-card rounded-xl p-4 flex items-center gap-3 active:opacity-80 transition-opacity text-left">
-                    <div className="relative h-14 w-14 shrink-0 rounded-xl overflow-hidden bg-green-800">
-                      <Image src={img} alt={proximaReserva.canchaName} fill className="object-cover opacity-90" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-foreground truncate">{proximaReserva.canchaName}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {cl ? `${sportLabels[cl.type]} · ` : ''}{fechaLabel} {proximaReserva.hora} - {horaFin}
-                      </p>
-                      <p className="text-xs text-green-600 font-semibold mt-1">🔖 {codigo}</p>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                  </button>
-                );
-              })() : (
-                <button onClick={() => setActiveSection('reservas')}
-                  className="w-full bg-card rounded-xl p-4 flex items-center justify-between active:opacity-80 transition-opacity">
-                  <p className="text-sm text-muted-foreground">No tienes reservas próximas</p>
+              <p className="text-sm font-semibold text-foreground mb-2">
+                Tu próxima reserva
+              </p>
+              {proximaReserva ? (
+                (() => {
+                  const cl = canchas.find(
+                    (c) => c.id === proximaReserva.canchaId,
+                  );
+                  const img =
+                    cl?.images[0] ??
+                    "https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=800&h=600&fit=crop";
+                  const esHoy = proximaReserva.fecha === hoyStr;
+                  const fechaLabel = esHoy
+                    ? "Hoy"
+                    : new Date(
+                        proximaReserva.fecha + "T00:00:00",
+                      ).toLocaleDateString("es-PE", {
+                        day: "numeric",
+                        month: "short",
+                      });
+                  const horaFin = `${String((parseInt(proximaReserva.hora.split(":")[0]) + 1) % 24).padStart(2, "0")}:00`;
+                  const codigo = `CG-${proximaReserva.id.slice(0, 4).toUpperCase()}`;
+                  return (
+                    <button
+                      onClick={() => setActiveSection("reservas")}
+                      className="w-full bg-card rounded-xl p-4 flex items-center gap-3 active:opacity-80 transition-opacity text-left"
+                    >
+                      <div className="relative h-14 w-14 shrink-0 rounded-xl overflow-hidden bg-green-800">
+                        <Image
+                          src={img}
+                          alt={proximaReserva.canchaName}
+                          fill
+                          className="object-cover opacity-90"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-foreground truncate">
+                          {proximaReserva.canchaName}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {cl ? `${sportLabels[cl.type]} · ` : ""}
+                          {fechaLabel} {proximaReserva.hora} - {horaFin}
+                        </p>
+                        <p className="text-xs text-green-600 font-semibold mt-1">
+                          🔖 {codigo}
+                        </p>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                    </button>
+                  );
+                })()
+              ) : (
+                <button
+                  onClick={() => setActiveSection("reservas")}
+                  className="w-full bg-card rounded-xl p-4 flex items-center justify-between active:opacity-80 transition-opacity"
+                >
+                  <p className="text-sm text-muted-foreground">
+                    No tienes reservas próximas
+                  </p>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </button>
               )}
@@ -2743,25 +3342,61 @@ export default function MisReservasPage() {
             {/* Grid 2x2 de accesos rápidos */}
             <div className="grid grid-cols-2 gap-3">
               {[
-                { icon: <Stamp className="h-5 w-5 text-amber-600" />, iconBg: 'bg-amber-500/20', label: 'Mis sellos', value: `${loyalty.sellos} de 8`, section: 'sellos' as Section },
-                { icon: <Calendar className="h-5 w-5 text-green-600" />, iconBg: 'bg-green-500/100/20', label: 'Mis reservas', value: `${proximas.length} activas`, section: 'reservas' as Section },
-                { icon: <Heart className="h-5 w-5 text-rose-500" />, iconBg: 'bg-rose-500/20', label: 'Favoritos', value: `${favoriteCanchas.length} canchas`, section: 'favoritos' as Section },
-                { icon: <Users className="h-5 w-5 text-orange-500" />, iconBg: 'bg-orange-500/20', label: 'Mis partidos', value: `${misPartidos.length} creados`, section: 'partidos' as Section },
+                {
+                  icon: <Stamp className="h-5 w-5 text-amber-600" />,
+                  iconBg: "bg-amber-500/20",
+                  label: "Mis sellos",
+                  value: `${loyalty.sellos} de 8`,
+                  section: "sellos" as Section,
+                },
+                {
+                  icon: <Calendar className="h-5 w-5 text-green-600" />,
+                  iconBg: "bg-green-500/100/20",
+                  label: "Mis reservas",
+                  value: `${proximas.length} activas`,
+                  section: "reservas" as Section,
+                },
+                {
+                  icon: <Heart className="h-5 w-5 text-rose-500" />,
+                  iconBg: "bg-rose-500/20",
+                  label: "Favoritos",
+                  value: `${favoriteCanchas.length} canchas`,
+                  section: "favoritos" as Section,
+                },
+                {
+                  icon: <Users className="h-5 w-5 text-orange-500" />,
+                  iconBg: "bg-orange-500/20",
+                  label: "Mis partidos",
+                  value: `${misPartidos.length} creados`,
+                  section: "partidos" as Section,
+                },
               ].map(({ icon, iconBg, label, value, section }) => (
-                <button key={label} onClick={() => setActiveSection(section)}
-                  className="bg-card rounded-xl p-4 text-left active:opacity-80 transition-opacity">
-                  <span className={cn("flex h-9 w-9 items-center justify-center rounded-xl mb-3", iconBg)}>
+                <button
+                  key={label}
+                  onClick={() => setActiveSection(section)}
+                  className="bg-card rounded-xl p-4 text-left active:opacity-80 transition-opacity"
+                >
+                  <span
+                    className={cn(
+                      "flex h-9 w-9 items-center justify-center rounded-xl mb-3",
+                      iconBg,
+                    )}
+                  >
                     {icon}
                   </span>
                   <p className="text-xs text-muted-foreground">{label}</p>
-                  <p className="text-base font-bold text-foreground mt-0.5">{value}</p>
+                  <p className="text-base font-bold text-foreground mt-0.5">
+                    {value}
+                  </p>
                 </button>
               ))}
             </div>
 
             {/* CTA buscar cancha */}
-            <Link href="/canchas"
-              className="flex items-center justify-center gap-2 w-full rounded-xl bg-green-600 py-3.5 text-sm font-semibold text-white active:opacity-80 transition-opacity">
+            <Link
+              href="/canchas"
+              className="flex items-center justify-center gap-2 w-full rounded-xl bg-green-600 py-3.5 text-sm font-semibold text-white active:opacity-80 transition-opacity"
+            >
               <Search className="h-4 w-4" />
               Buscar cancha
             </Link>
