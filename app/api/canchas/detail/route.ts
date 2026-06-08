@@ -42,12 +42,12 @@ export async function GET(req: NextRequest) {
     .gte('fecha', hoy)
     .lte('fecha', en30);
 
-  // Bloqueos temporales activos (no expirados)
-  await sb.from('bloqueos_temporales').delete().lt('expira_en', new Date().toISOString());
+  // Bloqueos temporales activos (no expirados) — sin DELETE para no hacer writes en cada lectura
   const { data: bloqueosTmp } = await sb
     .from('bloqueos_temporales')
     .select('fecha, hora')
-    .eq('cancha_id', id);
+    .eq('cancha_id', id)
+    .gt('expira_en', new Date().toISOString());
 
   // Horarios permanentes (legacy)
   const permanentesLegacy = (horariosBloqueados ?? []).map((h: any) => h.hora as string);

@@ -26,11 +26,11 @@ export async function GET(req: NextRequest) {
     .gte('fecha', hoy)
     .lte('fecha', en14);
 
-  // Bloqueos temporales activos (no expirados)
-  await sb.from('bloqueos_temporales').delete().lt('expira_en', new Date().toISOString());
+  // Bloqueos temporales activos (no expirados) — sin DELETE para no hacer writes en cada lectura
   const { data: bloqueos } = await sb
     .from('bloqueos_temporales')
-    .select('cancha_id, fecha, hora');
+    .select('cancha_id, fecha, hora')
+    .gt('expira_en', new Date().toISOString());
 
   // Horarios bloqueados por dueño (legacy)
   const { data: horariosBloqueados } = await sb
