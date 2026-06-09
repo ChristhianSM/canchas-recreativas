@@ -271,13 +271,15 @@ function PagoContent() {
   }, []);
 
   // Saltar paso "datos" solo una vez al cargar, si el usuario ya tiene todos sus datos.
-  // El ref evita que se re-dispare cuando el usuario edita su teléfono manualmente.
+  // El ref se bloquea en cuanto authChecked es true para evitar que el salto
+  // se dispare cuando el usuario empieza a escribir su teléfono manualmente.
   useEffect(() => {
     if (autoSkipRef.current) return;
-    if (authChecked && !esInvitado && emailRegistrado && telefonoRegistrado) {
-      autoSkipRef.current = true;
+    if (!authChecked) return;
+    if (!esInvitado && emailRegistrado && telefonoRegistrado) {
       setPaso("pago");
     }
+    autoSkipRef.current = true;
   }, [authChecked, esInvitado, emailRegistrado, telefonoRegistrado]);
 
   const prevPaso = useRef<Paso>("pago");

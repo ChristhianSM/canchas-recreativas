@@ -17,6 +17,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { LoadingButton } from "@/components/loading-button";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { saveUser } from "@/lib/auth";
 import { apiRegistro, apiLogin, apiLoginWithOAuth } from "@/lib/api";
 
@@ -28,6 +34,8 @@ function RegistroContent() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [registroExitoso, setRegistroExitoso] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -404,19 +412,21 @@ function RegistroContent() {
                 </button>
                 <span className="text-sm text-muted-foreground">
                   Acepto los{" "}
-                  <Link
-                    href="/terminos"
-                    className="text-primary hover:underline"
+                  <button
+                    type="button"
+                    onClick={() => setShowTermsModal(true)}
+                    className="text-primary hover:underline font-medium"
                   >
                     Términos y Condiciones
-                  </Link>{" "}
+                  </button>{" "}
                   y la{" "}
-                  <Link
-                    href="/privacidad"
-                    className="text-primary hover:underline"
+                  <button
+                    type="button"
+                    onClick={() => setShowPrivacyModal(true)}
+                    className="text-primary hover:underline font-medium"
                   >
                     Política de Privacidad
-                  </Link>
+                  </button>
                 </span>
               </label>
               {errors.terms && (
@@ -493,6 +503,304 @@ function RegistroContent() {
           </p>
         </div>
       </main>
+
+      {/* Modal Términos y Condiciones */}
+      <Dialog open={showTermsModal} onOpenChange={setShowTermsModal}>
+        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+          <DialogHeader className="shrink-0">
+            <div className="flex items-center gap-3 mb-1">
+              <Image
+                src="/images/logo.png"
+                alt="CanchaGo"
+                width={120}
+                height={42}
+                className="object-contain"
+              />
+            </div>
+            <DialogTitle className="text-xl font-bold">
+              Términos y Condiciones de Uso
+            </DialogTitle>
+            <p className="text-xs text-muted-foreground">
+              Versión 1.0 — Junio 2025
+            </p>
+          </DialogHeader>
+
+          <div className="overflow-y-auto flex-1 pr-1 space-y-5 text-sm text-muted-foreground">
+            <section>
+              <h3 className="font-semibold text-foreground mb-1">1. ¿Qué es CanchaGo?</h3>
+              <p>CanchaGo es una plataforma digital disponible en tucanchago.com que permite a jugadores buscar, visualizar y reservar canchas deportivas en Piura, Perú.</p>
+              <p className="mt-1">CanchaGo actúa únicamente como intermediario entre los jugadores (usuarios) y los propietarios o administradores de las canchas (establecimientos). CanchaGo no es propietaria, operadora ni responsable de las instalaciones deportivas publicadas en la plataforma.</p>
+              <p className="mt-1">Los establecimientos son responsables de la veracidad de la información publicada (precios, horarios, condiciones de la cancha) y de cumplir con las reservas confirmadas.</p>
+            </section>
+
+            <section>
+              <h3 className="font-semibold text-foreground mb-1">2. Aceptación de estos Términos</h3>
+              <p>Al crear una cuenta en CanchaGo, el usuario declara haber leído, entendido y aceptado estos Términos y Condiciones, así como la Política de Privacidad de la plataforma.</p>
+              <p className="mt-1">Si el usuario no está de acuerdo con alguno de estos términos, debe abstenerse de usar la plataforma.</p>
+              <p className="mt-1">CanchaGo se reserva el derecho de modificar estos términos en cualquier momento. Los cambios serán notificados con al menos 15 días de anticipación mediante el correo electrónico registrado.</p>
+            </section>
+
+            <section>
+              <h3 className="font-semibold text-foreground mb-1">3. Reservas y cuenta de usuario</h3>
+              <p>En CanchaGo es posible realizar reservas de dos formas:</p>
+              <p className="mt-2 font-medium text-foreground">Reserva sin cuenta (usuario invitado)</p>
+              <p className="mt-1">El usuario puede reservar una cancha sin necesidad de crear una cuenta. Se solicitarán correo electrónico y número de teléfono con WhatsApp. Recibirá la confirmación por WhatsApp y podrá cancelar desde el enlace enviado a su correo.</p>
+              <p className="mt-2 font-medium text-foreground">Reserva con cuenta registrada</p>
+              <ul className="mt-1 list-disc list-inside space-y-0.5">
+                <li>Historial de reservas</li>
+                <li>Canchas guardadas como favoritas</li>
+                <li>Datos personales autocompletados al reservar</li>
+                <li>Edición del perfil</li>
+              </ul>
+              <p className="mt-2 font-medium text-foreground">Creación de cuenta</p>
+              <p className="mt-1">Para crear una cuenta se requiere: nombre completo, correo electrónico válido, número de teléfono y contraseña segura. El usuario es responsable de mantener la confidencialidad de sus credenciales.</p>
+            </section>
+
+            <section>
+              <h3 className="font-semibold text-foreground mb-1">4. Proceso de reserva</h3>
+              <p>Al realizar una reserva, el usuario selecciona cancha, fecha y horario disponible. La reserva queda confirmada una vez completado el proceso, y el usuario recibirá una notificación al WhatsApp registrado.</p>
+            </section>
+
+            <section>
+              <h3 className="font-semibold text-foreground mb-1">5. Pagos</h3>
+              <p>El pago se realiza directamente al establecimiento. CanchaGo no procesa ni retiene dinero. Los métodos aceptados son los que indique el establecimiento:</p>
+              <ul className="mt-1 list-disc list-inside space-y-0.5">
+                <li>Yape (al número del administrador de cancha)</li>
+                <li>Plin (al número del administrador de cancha)</li>
+                <li>Efectivo en el local</li>
+              </ul>
+            </section>
+
+            <section>
+              <h3 className="font-semibold text-foreground mb-1">6. Política de cancelaciones y reembolsos</h3>
+              <p className="font-medium text-foreground mt-1">Cancelación por el usuario:</p>
+              <ul className="mt-1 list-disc list-inside space-y-0.5">
+                <li>Más de 4 horas de anticipación: reembolso del 85%</li>
+                <li>Entre 2 y 4 horas: reembolso del 60%</li>
+                <li>Entre 1 y 2 horas: reembolso del 30%</li>
+                <li>Menos de 1 hora: sin reembolso</li>
+              </ul>
+              <p className="font-medium text-foreground mt-2">Cancelación por el establecimiento:</p>
+              <p className="mt-1">El usuario tiene derecho a la devolución total. El reembolso es responsabilidad directa del establecimiento.</p>
+              <p className="font-medium text-foreground mt-2">Fuerza mayor:</p>
+              <p className="mt-1">En casos de fuerza mayor (lluvias, cortes de luz, etc.), la política será definida directamente entre el usuario y el establecimiento.</p>
+            </section>
+
+            <section>
+              <h3 className="font-semibold text-foreground mb-1">7. Responsabilidades del usuario</h3>
+              <p>Al usar CanchaGo, el usuario se compromete a:</p>
+              <ul className="mt-1 list-disc list-inside space-y-0.5">
+                <li>Proporcionar información veraz al registrarse</li>
+                <li>Presentarse puntualmente a las reservas confirmadas</li>
+                <li>Respetar las instalaciones y normas del establecimiento</li>
+                <li>No realizar reservas fraudulentas</li>
+                <li>No revender ni ceder horarios a terceros a cambio de dinero</li>
+                <li>No usar la plataforma para actividades ilegales</li>
+              </ul>
+            </section>
+
+            <section>
+              <h3 className="font-semibold text-foreground mb-1">8. Limitación de responsabilidad</h3>
+              <p>CanchaGo no será responsable por lesiones, daños físicos, pérdida de objetos, diferencias en la información publicada, incumplimientos del establecimiento ni fallas técnicas fuera de su control razonable.</p>
+            </section>
+
+            <section>
+              <h3 className="font-semibold text-foreground mb-1">9. Comunicaciones por WhatsApp</h3>
+              <p>Al registrarse y aceptar estos términos, el usuario autoriza a CanchaGo a enviar notificaciones al número de WhatsApp registrado: confirmaciones, recordatorios y avisos de cancelación.</p>
+            </section>
+
+            <section>
+              <h3 className="font-semibold text-foreground mb-1">10. Privacidad y protección de datos</h3>
+              <p>CanchaGo trata datos personales de conformidad con la Ley N.° 29733 (Ley de Protección de Datos Personales del Perú). Los datos (nombre, correo, teléfono) se usan exclusivamente para gestionar la cuenta, enviar notificaciones y mejorar la plataforma. No se venden a terceros.</p>
+            </section>
+
+            <section>
+              <h3 className="font-semibold text-foreground mb-1">11. Propiedad intelectual</h3>
+              <p>El nombre CanchaGo, logotipo, diseño y contenidos son propiedad exclusiva de sus creadores y están protegidos por las leyes de propiedad intelectual del Perú.</p>
+            </section>
+
+            <section>
+              <h3 className="font-semibold text-foreground mb-1">12. Ley aplicable y jurisdicción</h3>
+              <p>Estos Términos se rigen por las leyes de la República del Perú. Cualquier controversia será sometida a los juzgados y tribunales competentes de la ciudad de Piura.</p>
+            </section>
+
+            <section>
+              <h3 className="font-semibold text-foreground mb-1">13. Contacto</h3>
+              <ul className="mt-1 list-disc list-inside space-y-0.5">
+                <li>Sitio web: tucanchago.com</li>
+                <li>WhatsApp: disponible en la plataforma</li>
+              </ul>
+            </section>
+
+            <p className="text-xs text-muted-foreground border-t pt-3 mt-2">
+              Al crear tu cuenta, confirmas que leíste y aceptas estos Términos y Condiciones.
+            </p>
+          </div>
+
+          <div className="shrink-0 pt-4 border-t flex justify-end">
+            <Button onClick={() => setShowTermsModal(false)}>
+              Cerrar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Política de Privacidad */}
+      <Dialog open={showPrivacyModal} onOpenChange={setShowPrivacyModal}>
+        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+          <DialogHeader className="shrink-0">
+            <div className="flex items-center gap-3 mb-1">
+              <Image
+                src="/images/logo.png"
+                alt="CanchaGo"
+                width={120}
+                height={42}
+                className="object-contain"
+              />
+            </div>
+            <DialogTitle className="text-xl font-bold">
+              Política de Privacidad
+            </DialogTitle>
+            <p className="text-xs text-muted-foreground">
+              Versión 1.0 — Junio 2025
+            </p>
+          </DialogHeader>
+
+          <div className="overflow-y-auto flex-1 pr-1 space-y-5 text-sm text-muted-foreground">
+            <p>En CanchaGo nos tomamos en serio la privacidad de quienes usan nuestra plataforma. Este documento explica qué datos personales recopilamos, para qué los usamos, con quién los compartimos y cuáles son tus derechos sobre ellos.</p>
+            <p>Esta Política se rige por la Ley N.° 29733, Ley de Protección de Datos Personales del Perú, y su reglamento aprobado por Decreto Supremo N.° 003-2013-JUS.</p>
+
+            <section>
+              <h3 className="font-semibold text-foreground mb-1">1. ¿Quién es responsable de tus datos?</h3>
+              <p>El responsable del tratamiento de los datos personales recopilados a través de tucanchago.com es CanchaGo, plataforma operada por su fundador con base en Piura, Perú.</p>
+              <p className="mt-1">Para cualquier consulta puedes contactarnos a través de los canales disponibles en tucanchago.com.</p>
+            </section>
+
+            <section>
+              <h3 className="font-semibold text-foreground mb-1">2. ¿Qué datos recopilamos?</h3>
+              <p className="font-medium text-foreground mt-1">Si reservas sin cuenta:</p>
+              <ul className="mt-1 list-disc list-inside space-y-0.5">
+                <li>Correo electrónico</li>
+                <li>Número de teléfono con WhatsApp</li>
+              </ul>
+              <p className="font-medium text-foreground mt-2">Si creas una cuenta:</p>
+              <ul className="mt-1 list-disc list-inside space-y-0.5">
+                <li>Nombre completo</li>
+                <li>Correo electrónico</li>
+                <li>Número de teléfono</li>
+                <li>Contraseña (almacenada cifrada, nunca en texto plano)</li>
+              </ul>
+              <p className="font-medium text-foreground mt-2">Si te registras con Google:</p>
+              <ul className="mt-1 list-disc list-inside space-y-0.5">
+                <li>Nombre y correo electrónico de tu cuenta de Google</li>
+                <li>No almacenamos tu contraseña de Google</li>
+              </ul>
+              <p className="font-medium text-foreground mt-2">Datos generados por el uso:</p>
+              <ul className="mt-1 list-disc list-inside space-y-0.5">
+                <li>Historial de reservas realizadas</li>
+                <li>Canchas marcadas como favoritas</li>
+                <li>Fecha y hora de las interacciones con la plataforma</li>
+              </ul>
+            </section>
+
+            <section>
+              <h3 className="font-semibold text-foreground mb-1">3. ¿Para qué usamos tus datos?</h3>
+              <ul className="mt-1 list-disc list-inside space-y-0.5">
+                <li>Gestionar y confirmar tus reservas de canchas deportivas</li>
+                <li>Enviarte notificaciones de confirmación por WhatsApp</li>
+                <li>Enviarte el enlace de cancelación a tu correo (reservas sin cuenta)</li>
+                <li>Permitirte acceder a tu historial y gestionar tu cuenta</li>
+                <li>Mejorar el funcionamiento y la experiencia de la plataforma</li>
+              </ul>
+              <p className="mt-2">No usamos tus datos para publicidad de terceros ni para fines distintos a los descritos.</p>
+            </section>
+
+            <section>
+              <h3 className="font-semibold text-foreground mb-1">4. ¿Con quién compartimos tus datos?</h3>
+              <p>CanchaGo no vende ni cede tus datos a terceros. Para operar la plataforma usamos los siguientes servicios:</p>
+              <div className="mt-2 space-y-2">
+                <div>
+                  <p className="font-medium text-foreground">Supabase</p>
+                  <p>Proveedor de base de datos y autenticación. Opera bajo estándares de seguridad internacionales (SOC 2 Tipo II).</p>
+                </div>
+                <div>
+                  <p className="font-medium text-foreground">Twilio</p>
+                  <p>Servicio de mensajería para notificaciones por WhatsApp. Recibe únicamente el número de teléfono y el contenido del mensaje de confirmación.</p>
+                </div>
+                <div>
+                  <p className="font-medium text-foreground">Google (inicio de sesión)</p>
+                  <p>Si te registras con Google, CanchaGo únicamente recibe tu nombre y correo electrónico.</p>
+                </div>
+              </div>
+              <p className="mt-2">También podríamos compartir tus datos ante obligación legal o requerimiento de autoridad competente en el Perú.</p>
+            </section>
+
+            <section>
+              <h3 className="font-semibold text-foreground mb-1">5. ¿Cuánto tiempo guardamos tus datos?</h3>
+              <ul className="mt-1 list-disc list-inside space-y-0.5">
+                <li>Datos de cuenta: mientras la cuenta esté activa. Se eliminan en máximo 30 días tras solicitar la baja.</li>
+                <li>Datos de reservas sin cuenta: 90 días desde la fecha de reserva.</li>
+                <li>Historial de reservas con cuenta: disponible mientras la cuenta esté activa.</li>
+              </ul>
+            </section>
+
+            <section>
+              <h3 className="font-semibold text-foreground mb-1">6. ¿Cómo protegemos tus datos?</h3>
+              <ul className="mt-1 list-disc list-inside space-y-0.5">
+                <li>Contraseñas almacenadas con cifrado seguro; nadie en CanchaGo puede verlas en texto plano</li>
+                <li>Acceso a la base de datos restringido al equipo de CanchaGo</li>
+                <li>Comunicación cifrada mediante HTTPS</li>
+                <li>Supabase aplica Row Level Security para que cada usuario acceda solo a sus datos</li>
+              </ul>
+            </section>
+
+            <section>
+              <h3 className="font-semibold text-foreground mb-1">7. Tus derechos sobre tus datos</h3>
+              <p>De acuerdo con la Ley N.° 29733, tienes derecho a:</p>
+              <ul className="mt-1 list-disc list-inside space-y-0.5">
+                <li><span className="font-medium text-foreground">Acceso:</span> conocer qué datos tuyos tenemos almacenados</li>
+                <li><span className="font-medium text-foreground">Rectificación:</span> corregir datos inexactos o incompletos</li>
+                <li><span className="font-medium text-foreground">Cancelación:</span> solicitar la eliminación de tus datos</li>
+                <li><span className="font-medium text-foreground">Oposición:</span> oponerte al tratamiento para determinados fines</li>
+              </ul>
+              <p className="mt-1">Atenderemos tu solicitud en un plazo máximo de 20 días hábiles.</p>
+            </section>
+
+            <section>
+              <h3 className="font-semibold text-foreground mb-1">8. Cookies y datos de navegación</h3>
+              <p>CanchaGo puede utilizar cookies técnicas necesarias para el funcionamiento de la plataforma (como mantener tu sesión). No usamos cookies de rastreo publicitario.</p>
+            </section>
+
+            <section>
+              <h3 className="font-semibold text-foreground mb-1">9. Menores de edad</h3>
+              <p>CanchaGo no está dirigida a menores de 14 años. Si tienes conocimiento de que un menor ha proporcionado datos sin autorización, contáctanos para proceder a su eliminación.</p>
+            </section>
+
+            <section>
+              <h3 className="font-semibold text-foreground mb-1">10. Cambios a esta Política</h3>
+              <p>CanchaGo puede actualizar esta Política cuando sea necesario. Los cambios relevantes serán notificados con al menos 15 días de anticipación al correo registrado. La versión vigente siempre estará disponible en tucanchago.com.</p>
+            </section>
+
+            <section>
+              <h3 className="font-semibold text-foreground mb-1">11. Contacto</h3>
+              <ul className="mt-1 list-disc list-inside space-y-0.5">
+                <li>Sitio web: tucanchago.com</li>
+                <li>WhatsApp: disponible en la plataforma</li>
+              </ul>
+            </section>
+
+            <p className="text-xs text-muted-foreground border-t pt-3 mt-2">
+              Al usar CanchaGo, confirmas que has leído y comprendido esta Política de Privacidad.
+            </p>
+          </div>
+
+          <div className="shrink-0 pt-4 border-t flex justify-end">
+            <Button onClick={() => setShowPrivacyModal(false)}>
+              Cerrar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
