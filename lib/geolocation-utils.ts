@@ -88,10 +88,23 @@ export async function obtenerUbicacionActual(): Promise<Coordenadas> {
 }
 
 /**
- * Guarda la ubicación en localStorage
+ * Guarda la ubicación en localStorage.
+ * Si las nuevas coords difieren >500m de las guardadas, invalida cp_ciudad
+ * para que no se muestre el nombre de ciudad de la ubicación anterior.
  */
 export function guardarUbicacion(coords: Coordenadas): void {
   if (typeof window === 'undefined') return;
+
+  const oldRaw = localStorage.getItem('cp_ubicacion');
+  if (oldRaw) {
+    try {
+      const oldCoords = JSON.parse(oldRaw) as Coordenadas;
+      if (calcularDistancia(oldCoords, coords) > 0.5) {
+        localStorage.removeItem('cp_ciudad');
+      }
+    } catch {}
+  }
+
   localStorage.setItem('cp_ubicacion', JSON.stringify(coords));
   localStorage.setItem('cp_ubicacion_time', Date.now().toString());
 }

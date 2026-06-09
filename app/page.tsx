@@ -275,7 +275,7 @@ export default function HomePage() {
         const { latitude, longitude } = position.coords;
         const coords = { lat: latitude, lng: longitude };
         setUserCoords(coords);
-        guardarUbicacion(coords);
+        guardarUbicacion(coords); // invalida cp_ciudad si se movió >500m
 
         const cachedCity = obtenerCiudadGuardada();
         if (cachedCity) {
@@ -301,6 +301,7 @@ export default function HomePage() {
         }
       },
       () => {}, // si niega, no hacemos nada
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
     );
   }, []);
 
@@ -478,6 +479,7 @@ export default function HomePage() {
         );
         setLoadingLocation(false);
       },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
     );
   };
 
