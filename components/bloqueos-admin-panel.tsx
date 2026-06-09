@@ -46,6 +46,7 @@ interface Props {
   canchaId: string;
   token: string;
   cancelEndpoint?: string;
+  endpoint?: string;
   horasOperacion?: string[];
 }
 
@@ -239,6 +240,7 @@ function FormNuevoBloqueo({
   canchaId,
   token,
   cancelEndpoint,
+  endpoint,
   onCreado,
   bloqueosExistentes,
   horasOperacion = HORAS_APP,
@@ -246,6 +248,7 @@ function FormNuevoBloqueo({
   canchaId: string;
   token: string;
   cancelEndpoint: string;
+  endpoint: string;
   onCreado: () => void;
   bloqueosExistentes: BloqueoAdmin[];
   horasOperacion?: string[];
@@ -274,7 +277,7 @@ function FormNuevoBloqueo({
 
   const crearBloqueos = async (params: BloqueoParams) => {
     const promesas = params.horas.map(hora =>
-      fetch('/api/admin-cancha/bloqueos', {
+      fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -513,18 +516,20 @@ function ListaBloqueos({
   bloqueos,
   canchaId,
   token,
+  endpoint,
   onEliminado,
 }: {
   bloqueos: BloqueoAdmin[];
   canchaId: string;
   token: string;
+  endpoint: string;
   onEliminado: () => void;
 }) {
   const [eliminando, setEliminando] = useState<string | null>(null);
 
   const handleEliminar = async (id: string) => {
     setEliminando(id);
-    await fetch(`/api/admin-cancha/bloqueos?id=${id}&canchaId=${canchaId}`, {
+    await fetch(`${endpoint}?id=${id}&canchaId=${canchaId}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -588,25 +593,25 @@ function ListaBloqueos({
 
 // ── Panel principal ──────────────────────────────────────────────────────────
 
-export function BloqueosAdminPanel({ canchaId, token, cancelEndpoint = '/api/admin-cancha/reservas/cancelar', horasOperacion }: Props) {
+export function BloqueosAdminPanel({ canchaId, token, cancelEndpoint = '/api/admin-cancha/reservas/cancelar', endpoint = '/api/admin-cancha/bloqueos', horasOperacion }: Props) {
   const [bloqueos, setBloqueos] = useState<BloqueoAdmin[]>([]);
   const [cargando, setCargando] = useState(true);
 
   const cargar = useCallback(async () => {
     setCargando(true);
-    const res = await fetch(`/api/admin-cancha/bloqueos?canchaId=${canchaId}`, {
+    const res = await fetch(`${endpoint}?canchaId=${canchaId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();
     setBloqueos(Array.isArray(data) ? data : []);
     setCargando(false);
-  }, [canchaId, token]);
+  }, [canchaId, token, endpoint]);
 
   useEffect(() => { cargar(); }, [cargar]);
 
   return (
     <div className="space-y-6">
-      <FormNuevoBloqueo canchaId={canchaId} token={token} cancelEndpoint={cancelEndpoint} onCreado={cargar} bloqueosExistentes={bloqueos} horasOperacion={horasOperacion} />
+      <FormNuevoBloqueo canchaId={canchaId} token={token} cancelEndpoint={cancelEndpoint} endpoint={endpoint} onCreado={cargar} bloqueosExistentes={bloqueos} horasOperacion={horasOperacion} />
 
       <div className="space-y-3">
         <div className="flex items-center justify-between">
@@ -629,7 +634,7 @@ export function BloqueosAdminPanel({ canchaId, token, cancelEndpoint = '/api/adm
             ))}
           </div>
         ) : (
-          <ListaBloqueos bloqueos={bloqueos} canchaId={canchaId} token={token} onEliminado={cargar} />
+          <ListaBloqueos bloqueos={bloqueos} canchaId={canchaId} token={token} endpoint={endpoint} onEliminado={cargar} />
         )}
       </div>
     </div>

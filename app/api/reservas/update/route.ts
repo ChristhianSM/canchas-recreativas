@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
 import { sendReservaEmail } from '@/lib/email';
 import { notificarEstadoReserva } from '@/lib/whatsapp';
-import { agregarSellosReserva } from '@/lib/loyalty';
+/* SELLOS CONGELADOS import { agregarSellosReserva } from '@/lib/loyalty'; */
 
 // PATCH /api/reservas/update?id=xxx — actualizar estado de reserva
 export async function PATCH(req: NextRequest) {
@@ -75,10 +75,11 @@ export async function PATCH(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // Sellos de loyalty al confirmar
+  /* SELLOS CONGELADOS — descomentar para reactivar
   if (estado === 'confirmada') {
     await agregarSellosReserva(sb, reserva);
   }
+  */
 
   // Si hay un partido vinculado a esta reserva, actualizar su estado también
   let partido: any = null;

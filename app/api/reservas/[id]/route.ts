@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
 import { sendReservaEmail } from '@/lib/email';
 import { notificarEstadoReserva } from '@/lib/whatsapp';
-import { agregarSellosReserva } from '@/lib/loyalty';
+/* SELLOS CONGELADOS import { agregarSellosReserva } from '@/lib/loyalty'; */
 
 // PATCH — actualizar estado (confirmar, rechazar, cancelar)
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -26,10 +26,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // Sellos de loyalty al confirmar
+  /* SELLOS CONGELADOS — descomentar para reactivar
   if (estado === 'confirmada') {
     await agregarSellosReserva(sb, reserva);
   }
+  */
 
   // Notificación in-app + email
   if (estado === 'confirmada' || estado === 'rechazada') {

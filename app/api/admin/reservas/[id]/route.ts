@@ -3,7 +3,7 @@ import { createServiceClient } from '@/lib/supabase';
 import { sendReservaEmail } from '@/lib/email';
 import { notificarEstadoReserva } from '@/lib/whatsapp';
 import { verifyAdmin } from '@/lib/admin-auth';
-import { agregarSellosReserva } from '@/lib/loyalty';
+/* SELLOS CONGELADOS import { agregarSellosReserva } from '@/lib/loyalty'; */
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -42,10 +42,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // Sellos de loyalty al confirmar
+  /* SELLOS CONGELADOS — descomentar para reactivar
   if (estado === 'confirmada') {
     await agregarSellosReserva(sb, reserva);
   }
+  */
 
   // Si hay un partido vinculado a esta reserva, actualizar su estado también
   const { data: partido } = await sb

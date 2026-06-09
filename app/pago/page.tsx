@@ -28,7 +28,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { type Cupon } from "@/lib/auth";
-import { apiCrearReserva, apiGetLoyalty, getToken } from "@/lib/api";
+import { apiCrearReserva, getToken } from "@/lib/api"; /* apiGetLoyalty — SELLOS CONGELADOS */
 
 type MetodoPago = "yape" | "plin" | "efectivo";
 type Paso = "pago" | "datos" | "metodo" | "confirmar" | "exito";
@@ -84,7 +84,8 @@ function PagoContent() {
   const [metodo, setMetodo] = useState<MetodoPago>("yape");
   const [paso, setPaso] = useState<Paso>("datos");
   const [copiado, setCopiado] = useState(false);
-  const [cupones, setCupones] = useState<Cupon[]>([]);
+  /* SELLOS CONGELADOS const [cupones, setCupones] = useState<Cupon[]>([]); */
+  const cupones: Cupon[] = [];
   const [cuponSeleccionado, setCuponSeleccionado] = useState<string | null>(
     null,
   );
@@ -248,9 +249,11 @@ function PagoContent() {
           return r.json();
         })
         .then((perfil) => {
+          /* SELLOS CONGELADOS — descomentar para reactivar
           apiGetLoyalty().then((data) => {
             setCupones((data.cupones ?? []).filter((c: Cupon) => !c.usado));
           });
+          */
           const tel = perfil?.telefono || "";
           const email = perfil?.email || perfil?.correo || "";
           if (tel) setTelefonoRegistrado(tel);
@@ -554,9 +557,11 @@ function PagoContent() {
       setEsInvitado(false);
       setEmailRegistrado(data.user.email || "");
       setTelefonoRegistrado(data.user.phone || "");
+      /* SELLOS CONGELADOS — descomentar para reactivar
       apiGetLoyalty().then((loyaltyData) => {
         setCupones((loyaltyData.cupones ?? []).filter((c: Cupon) => !c.usado));
       });
+      */
       setLoginModalOpen(false);
       setLoginEmail("");
       setLoginPassword("");
@@ -1351,7 +1356,8 @@ function PagoContent() {
                   </div>
                 </Card>
               )}
-            {!esInvitado && cupones.length > 0 && (
+            {/* SELLOS CONGELADOS — cambiar false por (!esInvitado && cupones.length > 0) para reactivar */}
+            {false && (
               <Card className="border-border p-4">
                 <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Cupones disponibles
@@ -2181,7 +2187,8 @@ function PagoContent() {
                       </div>
                     )}
                   </div>
-                  {!esInvitado && cupones.length > 0 && (
+                  {/* SELLOS CONGELADOS — cambiar false por (!esInvitado && cupones.length > 0) para reactivar */}
+                  {false && (
                     <div className="bg-white dark:bg-card rounded-xl border border-border p-6">
                       <h2 className="text-base font-semibold text-foreground mb-4">
                         Cupones disponibles

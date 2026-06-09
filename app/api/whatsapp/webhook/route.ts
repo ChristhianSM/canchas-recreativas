@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
 import { notificarEstadoReserva } from '@/lib/whatsapp';
-import { agregarSellosReserva } from '@/lib/loyalty';
+/* SELLOS CONGELADOS import { agregarSellosReserva } from '@/lib/loyalty'; */
 
 // Parsear la respuesta del admin
 function parsearRespuesta(body: string): { accion: 'confirmar' | 'rechazar' | null; codigo: string | null } {
@@ -115,10 +115,11 @@ async function procesarReserva(sb: any, reserva: any, accion: 'confirmar' | 'rec
 
   if (error) return twimlResponse('Error al actualizar la reserva. Intenta desde el panel de administración.');
 
-  // Sellos de loyalty al confirmar
+  /* SELLOS CONGELADOS — descomentar para reactivar
   if (accion === 'confirmar') {
     await agregarSellosReserva(sb, reserva);
   }
+  */
 
   // Si la reserva tiene un partido vinculado, actualizar su estado también
   const { data: partido } = await sb

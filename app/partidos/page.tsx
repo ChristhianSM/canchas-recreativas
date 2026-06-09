@@ -90,6 +90,7 @@ interface CanchaSimple {
   plin_numero: string;
   horariosOcupados: Record<string, "reservado" | "en_proceso">;
   horariosRestringidos: string[];
+  horasOperacion: string[];
 }
 
 // ── Constantes ────────────────────────────────────────────────
@@ -463,6 +464,7 @@ function CrearPartidoSheet({
             plin_numero: c.plin_numero ?? "",
             horariosOcupados: c.horariosOcupados ?? {},
             horariosRestringidos: c.horariosRestringidos ?? [],
+            horasOperacion: c.horasOperacion ?? HORAS,
           })),
         );
       })
@@ -482,7 +484,7 @@ function CrearPartidoSheet({
     if (!canchaSeleccionada || !form.fecha) return [];
     const esHoy = form.fecha === getLocalDateString();
     const ahoraHora = new Date().getHours();
-    return HORAS.filter((hora) => {
+    return canchaSeleccionada.horasOperacion.filter((hora) => {
       if (esHoy) {
         const [hh] = hora.split(":").map(Number);
         if (hh <= ahoraHora) return false;

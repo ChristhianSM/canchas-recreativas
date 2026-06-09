@@ -53,7 +53,7 @@ import {
   apiGetHistorial,
   apiGetFavoritos,
   apiToggleFavorito,
-  apiGetLoyalty,
+  // apiGetLoyalty, /* SELLOS CONGELADOS */
   apiGetMisPartidos,
   apiGetMisPartidosHistorial,
   getToken,
@@ -572,6 +572,7 @@ export default function MisReservasPage() {
       apiGetMisPartidos().then((data) =>
         setMisPartidos(Array.isArray(data) ? data : []),
       );
+      /* SELLOS CONGELADOS — descomentar para reactivar
       apiGetLoyalty().then((data) =>
         setLoyalty({
           sellos: data.sellos ?? 0,
@@ -591,6 +592,7 @@ export default function MisReservasPage() {
           })),
         }),
       );
+      */
     }
   }, []);
 
@@ -1018,15 +1020,7 @@ export default function MisReservasPage() {
                   {user.phone}
                 </p>
               )}
-              <div className="mt-3 grid grid-cols-3 gap-1.5 w-full">
-                <div className="flex flex-col items-center rounded-xl bg-amber-500/10 py-1.5 px-1">
-                  <span className="text-base font-bold text-amber-600">
-                    {loyalty.sellos}
-                  </span>
-                  <span className="text-[10px] text-amber-600 font-medium">
-                    Sellos
-                  </span>
-                </div>
+              <div className="mt-3 grid grid-cols-2 gap-1.5 w-full">
                 <div className="flex flex-col items-center rounded-xl bg-green-500/10 py-1.5 px-1">
                   <span className="text-base font-bold text-green-600">
                     {proximas.length}
@@ -1067,12 +1061,14 @@ export default function MisReservasPage() {
                 }
                 section="reservas"
               />
+              {/* SELLOS CONGELADOS — descomentar cuando se reactive
               <NavItem
                 icon={<Stamp className="h-4 w-4" />}
                 label="Mis sellos"
                 count={`${loyalty.sellos}/8`}
                 section="sellos"
               />
+              */}
               <NavItem
                 icon={<Heart className="h-4 w-4" />}
                 label="Favoritos"
@@ -1279,7 +1275,8 @@ export default function MisReservasPage() {
                 )}
 
                 {/* Stats grid */}
-                <div className="grid grid-cols-4 gap-3 mb-6">
+                <div className="grid grid-cols-3 gap-3 mb-6">
+                  {/* SELLOS CONGELADOS — descomentar para reactivar
                   <StatCard
                     icon={<Stamp className="h-5 w-5 text-amber-600" />}
                     value={`${loyalty.sellos} de 8`}
@@ -1288,6 +1285,7 @@ export default function MisReservasPage() {
                     iconBg="bg-amber-500/20"
                     onClick={() => setActiveSection("sellos")}
                   />
+                  */}
                   <StatCard
                     icon={<Calendar className="h-5 w-5 text-green-600" />}
                     value={`${proximas.length} activas`}
@@ -1533,8 +1531,8 @@ export default function MisReservasPage() {
               </div>
             )}
 
-            {/* ── SECCIÓN: MIS SELLOS ── */}
-            {activeSection === "sellos" &&
+            {/* ── SECCIÓN: MIS SELLOS (CONGELADA) — cambiar false por true para reactivar ── */}
+            {false && activeSection === "sellos" &&
               (() => {
                 const TOTAL = 8;
                 const sellos = loyalty.sellos;
@@ -2526,7 +2524,8 @@ export default function MisReservasPage() {
               </div>
             )}
 
-            {activeSection === "sellos" &&
+            {/* SELLOS CONGELADOS — cambiar false por true para reactivar */}
+            {false && activeSection === "sellos" &&
               (() => {
                 const TOTAL = 8;
                 const sellos = loyalty.sellos;
@@ -3342,6 +3341,7 @@ export default function MisReservasPage() {
             {/* Grid 2x2 de accesos rápidos */}
             <div className="grid grid-cols-2 gap-3">
               {[
+                /* SELLOS CONGELADOS — descomentar para reactivar
                 {
                   icon: <Stamp className="h-5 w-5 text-amber-600" />,
                   iconBg: "bg-amber-500/20",
@@ -3349,6 +3349,7 @@ export default function MisReservasPage() {
                   value: `${loyalty.sellos} de 8`,
                   section: "sellos" as Section,
                 },
+                */
                 {
                   icon: <Calendar className="h-5 w-5 text-green-600" />,
                   iconBg: "bg-green-500/100/20",

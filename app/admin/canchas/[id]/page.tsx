@@ -1115,7 +1115,7 @@ export default function AdminEditarCanchaPage() {
                 cada semana, o de forma permanente.
               </p>
             </div>
-            <BloqueosAdminPanel canchaId={id} token={adminToken} cancelEndpoint="/api/admin/reservas/cancelar" horasOperacion={getHorasOperacion(horaApertura, horaCierre)} />
+            <BloqueosAdminPanel canchaId={id} token={adminToken} cancelEndpoint="/api/admin/reservas/cancelar" endpoint="/api/admin/bloqueos" horasOperacion={getHorasOperacion(horaApertura, horaCierre)} />
           </TabsContent>
 
           {/* ── Ubicación ── */}

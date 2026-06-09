@@ -13,6 +13,7 @@ import {
   Package,
   ChevronDown,
   LocateFixed,
+  Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -77,6 +78,14 @@ export function AdvancedFiltersComponent({
   const scrollContainerRef = useRef<HTMLElement | null>(null);
   const isUpdatingRef = useRef<boolean>(false);
 
+  const [localSearch, setLocalSearch] = useState(filters.searchQuery);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Sincronizar si el padre limpia el filtro (ej: "Limpiar todo")
+  useEffect(() => {
+    if (filters.searchQuery === "") setLocalSearch("");
+  }, [filters.searchQuery]);
+
   // Usar estado controlado si se proporciona, sino usar estado interno
   const isOpen =
     controlledIsOpen !== undefined ? controlledIsOpen : internalIsOpen;
@@ -129,9 +138,10 @@ export function AdvancedFiltersComponent({
   const [expandedSections, setExpandedSections] = useState<
     Record<string, boolean>
   >({
-    ubicacion: true, // Expandido por defecto
-    deportes: true, // Expandido por defecto
-    extras: true, // Expandido por defecto
+    nombre: true,
+    ubicacion: true,
+    deportes: true,
+    extras: true,
     superficie: false,
     jugadores: false,
     precio: false,
@@ -253,7 +263,9 @@ export function AdvancedFiltersComponent({
                 {icon}
               </div>
             )}
-            <span className="text-sm font-semibold text-foreground">{title}</span>
+            <span className="text-sm font-semibold text-foreground">
+              {title}
+            </span>
             {badge !== undefined && badge > 0 && (
               <span className="flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
                 {badge}
@@ -313,6 +325,42 @@ export function AdvancedFiltersComponent({
 
   const filterContent = (
     <div className={cn("space-y-2", isSidebar && "space-y-0")}>
+      {/* Buscar por nombre — fuera de AccordionSection para evitar pérdida de foco */}
+      <div className="rounded-xl border border-border bg-card overflow-hidden mb-2">
+        <div className="flex items-center gap-2 px-4 py-3.5">
+          <span className="flex items-center justify-center h-5 w-5 rounded-full bg-blue-100 text-blue-600 shrink-0">
+            <Search className="h-3.5 w-3.5" />
+          </span>
+          <span className="text-sm font-semibold text-foreground">
+            Nombre de cancha
+          </span>
+          {filters.searchQuery.trim() && (
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground shrink-0">
+              1
+            </span>
+          )}
+        </div>
+        <div className="px-4 pb-4 pt-1 border-t border-border">
+          <div className="relative mt-2">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Ej: Arena Sport Center"
+              value={localSearch}
+              onChange={(e) => {
+                const val = e.target.value;
+                setLocalSearch(val);
+                if (debounceRef.current) clearTimeout(debounceRef.current);
+                debounceRef.current = setTimeout(() => {
+                  onFiltersChange({ ...filters, searchQuery: val });
+                }, 300);
+              }}
+              className="w-full pl-8 pr-3 py-2 text-sm rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+          </div>
+        </div>
+      </div>
+
       {/* Ubicación */}
       <AccordionSection
         id="ubicacion"
@@ -380,7 +428,9 @@ export function AdvancedFiltersComponent({
             </div>
             {/* Radio */}
             <div>
-              <p className="text-xs text-muted-foreground mb-2">Radio de búsqueda</p>
+              <p className="text-xs text-muted-foreground mb-2">
+                Radio de búsqueda
+              </p>
               <div className="grid grid-cols-4 gap-1.5">
                 {[
                   { value: undefined, label: "Todas" },
