@@ -232,8 +232,8 @@ function ReservaCard({
               </div>
             )}
           </div>
-          {(r.estado === "pendiente" ||
-            (r.estado === "confirmada" && !fechaHoraPasada)) && (
+          {!fechaHoraPasada &&
+            (r.estado === "pendiente" || r.estado === "confirmada") && (
             <div className="mt-4 flex flex-col sm:flex-row gap-2">
               <Button
                 variant="outline"
@@ -285,7 +285,7 @@ function ReservaCard({
           )}
           {(r.estado === "rechazada" ||
             r.estado === "cancelada" ||
-            (r.estado === "confirmada" && fechaHoraPasada)) && (
+            (fechaHoraPasada && (r.estado === "confirmada" || r.estado === "pendiente"))) && (
             <div className="mt-4">
               <Button variant="outline" size="sm" asChild>
                 <Link href={`/cancha/${r.canchaId}`}>Reservar de nuevo</Link>

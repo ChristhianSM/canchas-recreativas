@@ -79,9 +79,9 @@ export async function obtenerUbicacionActual(): Promise<Coordenadas> {
         reject(new Error(mensaje));
       },
       {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0, // Siempre GPS fresco
+        enableHighAccuracy: false,
+        timeout: 5000,
+        maximumAge: 30000,
       }
     );
   });
@@ -262,8 +262,8 @@ export async function refrescarUbicacionEnBackground(
         // Fallar silenciosamente
       },
       {
-        enableHighAccuracy: true,
-        timeout: 10000,
+        enableHighAccuracy: false,
+        timeout: 5000,
         maximumAge: 0,
       }
     );

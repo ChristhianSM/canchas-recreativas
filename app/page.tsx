@@ -301,7 +301,7 @@ export default function HomePage() {
         }
       },
       () => {}, // si niega, no hacemos nada
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+      { enableHighAccuracy: false, timeout: 5000, maximumAge: 30000 },
     );
   }, []);
 
@@ -479,7 +479,7 @@ export default function HomePage() {
         );
         setLoadingLocation(false);
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+      { enableHighAccuracy: false, timeout: 5000, maximumAge: 30000 },
     );
   };
 
