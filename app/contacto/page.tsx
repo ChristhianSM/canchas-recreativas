@@ -298,6 +298,21 @@ export default function ContactoPage() {
                 </a>
               </div>
 
+              {/* Operador */}
+              <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+                  Sobre la plataforma
+                </p>
+                <p className="text-sm text-foreground font-medium">CanchaGo</p>
+                <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                  Plataforma de reservas deportivas desarrollada y operada por{" "}
+                  <span className="text-foreground font-medium">
+                    Christhian Juan Silupú Moscol
+                  </span>
+                  . Con base en Piura, Perú.
+                </p>
+              </div>
+
               {/* Redes */}
               <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">

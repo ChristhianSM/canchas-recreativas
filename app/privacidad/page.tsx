@@ -52,8 +52,11 @@ export default function PrivacidadPage() {
             </h2>
             <p>
               El responsable del tratamiento de los datos personales recopilados
-              a través de tucanchago.com es CanchaGo, plataforma operada por su
-              fundador con base en Piura, Perú.
+              a través de tucanchago.com es{" "}
+              <strong className="text-foreground">
+                Christhian Juan Silupú Moscol
+              </strong>
+              , desarrollador y operador de CanchaGo, con base en Piura, Perú.
             </p>
             <p className="mt-1">
               Para cualquier consulta puedes contactarnos a través de los

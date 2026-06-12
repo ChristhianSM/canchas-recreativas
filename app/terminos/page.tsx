@@ -41,7 +41,11 @@ export default function TerminosPage() {
             <p>
               CanchaGo es una plataforma digital disponible en tucanchago.com
               que permite a jugadores buscar, visualizar y reservar canchas
-              deportivas en Piura, Perú.
+              deportivas en Piura, Perú. Es desarrollada y operada por{" "}
+              <strong className="text-foreground">
+                Christhian Juan Silupú Moscol
+              </strong>
+              , con base en Piura, Perú.
             </p>
             <p className="mt-1">
               CanchaGo actúa únicamente como intermediario entre los jugadores
