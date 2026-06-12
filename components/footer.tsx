@@ -101,7 +101,7 @@ export function Footer() {
 
           {/* Centro — copyright */}
           <p className="text-white/40">
-            &copy; {new Date().getFullYear()} CanchaGo
+            &copy; {new Date().getFullYear()} SILUPU MOSCOL CHRISTHIAN JUAN
           </p>
 
           {/* Derecha — redes */}
