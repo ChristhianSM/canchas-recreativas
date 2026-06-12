@@ -71,7 +71,7 @@ export function generateOrganizationSchema() {
     url: BASE_URL,
     logo: `${BASE_URL}/images/logo.png`,
     telephone: '+51959686193',
-    email: 'hola@tucanchago.com',
+    email: 'admin@tucanchago.com',
     address: {
       '@type': 'PostalAddress',
       addressLocality: 'Piura',

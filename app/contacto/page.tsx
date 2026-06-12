@@ -34,8 +34,8 @@ const INFO = [
   {
     icon: Mail,
     label: "Correo",
-    value: "hola@tucanchago.com",
-    href: "mailto:hola@tucanchago.com",
+    value: "admin@tucanchago.com",
+    href: "mailto:admin@tucanchago.com",
     iconClass: "bg-primary/10 text-primary",
   },
   {
