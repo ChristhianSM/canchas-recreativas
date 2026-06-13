@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
+import { notificarCancelacionAdmin, notificarPartidoCanceladoJugador } from '@/lib/whatsapp';
 
 function calcularDevolucion(reserva: any) {
   if (reserva.modo_pago === 'parcial') {
@@ -102,10 +103,33 @@ export async function PATCH(
         tipo:       'cancelada',
       });
 
+      // Notificar al admin de la cancha por WhatsApp
+      const { data: dueno } = await sb
+        .from('duenos_canchas')
+        .select('usuario_id, usuarios(telefono)')
+        .eq('cancha_id', reserva.cancha_id)
+        .maybeSingle();
+
+      const adminPhone = (dueno?.usuarios as any)?.telefono ?? process.env.ADMIN_WHATSAPP_NUMBER;
+      if (adminPhone) {
+        await notificarCancelacionAdmin({
+          adminPhone,
+          reservaId:     partido.reserva_id,
+          canchaNombre:  reserva.cancha_nombre,
+          fecha:         reserva.fecha,
+          hora:          reserva.hora,
+          clienteNombre: reserva.usuario_nombre ?? 'Organizador',
+          clientePhone:  reserva.usuario_telefono ?? '',
+          devolucion,
+          metodoPago:    reserva.metodo_pago ?? reserva.metodoPago ?? '',
+          motivo,
+        });
+      }
+
       // Notificar a los jugadores que se habían unido
       const { data: jugadores } = await sb
         .from('partido_jugadores')
-        .select('usuario_id')
+        .select('usuario_id, usuarios(telefono, nombre)')
         .eq('partido_id', id)
         .eq('es_organizador', false);
 
@@ -119,6 +143,21 @@ export async function PATCH(
             tipo:       'cancelada',
           }))
         );
+
+        // WhatsApp a cada jugador que tenga teléfono
+        for (const j of jugadores) {
+          const tel = (j.usuarios as any)?.telefono;
+          if (tel) {
+            await notificarPartidoCanceladoJugador({
+              jugadorPhone:      tel,
+              reservaId:         partido.reserva_id,
+              canchaNombre:      reserva.cancha_nombre,
+              fecha:             reserva.fecha,
+              hora:              reserva.hora,
+              organizadorNombre: reserva.usuario_nombre ?? 'El organizador',
+            });
+          }
+        }
       }
 
       // Notificar a superadmins si hay devolución pendiente

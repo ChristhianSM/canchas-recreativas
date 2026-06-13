@@ -131,6 +131,13 @@ async function procesarReserva(sb: any, reserva: any, accion: 'confirmar' | 'rec
     return;
   }
 
+  // Coordenadas de la cancha para link de Google Maps
+  const { data: cancha } = await sb
+    .from('canchas')
+    .select('lat, lng')
+    .eq('id', reserva.cancha_id)
+    .maybeSingle();
+
   // Partido vinculado
   const { data: partido } = await sb
     .from('partidos')
@@ -180,6 +187,8 @@ async function procesarReserva(sb: any, reserva: any, accion: 'confirmar' | 'rec
       precio:       reserva.precio,
       estado,
       reservaId:    reserva.id,
+      lat:          cancha?.lat ?? null,
+      lng:          cancha?.lng ?? null,
     });
   }
 

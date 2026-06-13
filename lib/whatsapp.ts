@@ -11,6 +11,8 @@ const TPL = {
   reservaRechazadaUsuario:  process.env.WHATSAPP_TPL_RECHAZADA_USUARIO          ?? 'reservation_rejected_user',
   reservaConfirmadaAdmin:   process.env.WHATSAPP_TPL_CONFIRMADA_ADMIN           ?? 'reservation_confirmed_admin',
   reservaRechazadaAdmin:    process.env.WHATSAPP_TPL_RECHAZADA_ADMIN            ?? 'reservation_rejected_admin',
+  reservaCanceladaAdmin:    process.env.WHATSAPP_TPL_CANCELADA_ADMIN            ?? 'reservation_cancelled_admin',
+  partidoCanceladoJugador:  process.env.WHATSAPP_TPL_PARTIDO_CANCELADO_JUGADOR  ?? 'partido_cancelado_jugador',
 };
 
 export function toWaNumber(phone: string): string | null {
@@ -213,16 +215,22 @@ export async function notificarEstadoReserva(data: {
   precio:       number;
   estado:       'confirmada' | 'rechazada' | 'cancelada';
   reservaId:    string;
+  lat?:         number | null;
+  lng?:         number | null;
 }) {
   const codigo = data.reservaId.slice(-6).toUpperCase();
 
   if (data.estado === 'confirmada') {
+    const mapsLink = data.lat && data.lng
+      ? `https://maps.google.com/?q=${data.lat},${data.lng}`
+      : '';
     await sendTemplate(data.clientePhone, TPL.reservaConfirmadaUsuario, [
       codigo,
       data.canchaNombre,
       data.fecha,
       data.hora,
       String(data.precio),
+      mapsLink,
     ]);
   } else {
     await sendTemplate(data.clientePhone, TPL.reservaRechazadaUsuario, [
@@ -232,4 +240,55 @@ export async function notificarEstadoReserva(data: {
       data.hora,
     ]);
   }
+}
+
+// Notificación al admin cuando un usuario cancela una reserva
+export async function notificarCancelacionAdmin(data: {
+  adminPhone:     string;
+  reservaId:      string;
+  canchaNombre:   string;
+  fecha:          string;
+  hora:           string;
+  clienteNombre:  string;
+  clientePhone:   string;
+  devolucion:     number;
+  metodoPago:     string;
+  motivo:         string;
+}) {
+  const codigo      = data.reservaId.slice(-6).toUpperCase();
+  const metodoLabel = data.metodoPago === 'yape' ? 'Yape'
+    : data.metodoPago === 'plin' ? 'Plin'
+    : data.metodoPago === 'efectivo' ? 'Efectivo'
+    : data.metodoPago;
+
+  await sendTemplate(data.adminPhone, TPL.reservaCanceladaAdmin, [
+    codigo,
+    data.canchaNombre,
+    data.fecha,
+    data.hora,
+    data.clienteNombre,
+    data.clientePhone,
+    String(data.devolucion),
+    metodoLabel,
+    data.motivo,
+  ]);
+}
+
+// Notificación a jugadores cuando el organizador cancela el partido
+export async function notificarPartidoCanceladoJugador(data: {
+  jugadorPhone:      string;
+  reservaId:         string;
+  canchaNombre:      string;
+  fecha:             string;
+  hora:              string;
+  organizadorNombre: string;
+}) {
+  const codigo = data.reservaId.slice(-6).toUpperCase();
+  await sendTemplate(data.jugadorPhone, TPL.partidoCanceladoJugador, [
+    codigo,
+    data.canchaNombre,
+    data.fecha,
+    data.hora,
+    data.organizadorNombre,
+  ]);
 }

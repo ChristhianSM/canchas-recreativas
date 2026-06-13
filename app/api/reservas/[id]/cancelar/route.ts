@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
+import { notificarCancelacionAdmin } from '@/lib/whatsapp';
 
 interface CancelacionResult {
   success: boolean;
@@ -168,7 +169,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     // Notificar al dueño de la cancha
     const { data: duenoCuenta } = await sb
       .from('duenos_canchas')
-      .select('usuario_id')
+      .select('usuario_id, usuarios(telefono)')
       .eq('cancha_id', reserva.cancha_id)
       .maybeSingle();
 
@@ -179,6 +180,22 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         mensaje:    `Cancelación: ${reserva.usuario_nombre} canceló su reserva en ${reserva.cancha_nombre} del ${fechaLabel} a las ${reserva.hora}.`,
         tipo:       'cancelada',
       });
+
+      const adminPhone = (duenoCuenta.usuarios as any)?.telefono ?? process.env.ADMIN_WHATSAPP_NUMBER;
+      if (adminPhone) {
+        await notificarCancelacionAdmin({
+          adminPhone,
+          reservaId:     id,
+          canchaNombre:  reserva.cancha_nombre,
+          fecha:         reserva.fecha,
+          hora:          reserva.hora,
+          clienteNombre: reserva.usuario_nombre ?? 'Cliente',
+          clientePhone:  reserva.usuario_telefono ?? '',
+          devolucion:    resultado.devolucion,
+          metodoPago:    reserva.metodo_pago ?? reserva.metodoPago ?? '',
+          motivo:        resultado.motivo,
+        });
+      }
     }
 
     // Notificar a admins si hay devolución
