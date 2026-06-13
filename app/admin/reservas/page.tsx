@@ -68,7 +68,26 @@ export default function AdminReservasPage() {
     devolucionCalculada: r.devolucion_calculada ?? null,
     devolucionProcesada: r.devolucion_procesada ?? null,
     penalidadAplicada: r.penalidad_aplicada ?? null,
+    grupoReservaId: r.grupo_reserva_id ?? null,
   });
+
+  // Agrupa reservas multi-hora: muestra solo el slot principal con rango "12:00 - 15:00"
+  const agruparReservas = (lista: Reserva[]): Reserva[] => {
+    const grupos = new Map<string, Reserva[]>();
+    const resultado: Reserva[] = [];
+    for (const r of lista) {
+      if (!r.grupoReservaId) { resultado.push(r); continue; }
+      if (!grupos.has(r.grupoReservaId)) grupos.set(r.grupoReservaId, []);
+      grupos.get(r.grupoReservaId)!.push(r);
+    }
+    for (const [gid, slots] of grupos) {
+      const principal = slots.find(s => s.id === gid) ?? slots[0];
+      const horas = slots.map(s => s.hora).sort();
+      const horaFin = `${String(parseInt(horas[horas.length - 1].split(':')[0]) + 1).padStart(2, '0')}:00`;
+      resultado.push({ ...principal, hora: horas.length > 1 ? `${horas[0]} - ${horaFin}` : principal.hora });
+    }
+    return resultado;
+  };
 
   const reload = async (showLoading = false, targetPage = page) => {
     if (showLoading) setLoading(true);
@@ -142,14 +161,16 @@ export default function AdminReservasPage() {
     reload(false, page);
   };
 
-  // Contenido de la tab: filtro local sobre la página actual
-  const byEstado = (estado: Reserva['estado']) =>
-    aplicarFiltros(reservas.filter(r => r.estado === estado));
+  // Lista sin slots duplicados (multi-hora → 1 fila con rango "12:00 - 15:00")
+  const reservasDisplay = useMemo(() => agruparReservas(reservas), [reservas]);
 
-  // Badge de la tab: conteo global del servidor (preciso aunque haya más páginas)
+  // Contenido de la tab: filtro local sobre la lista agrupada
+  const byEstado = (estado: Reserva['estado']) =>
+    aplicarFiltros(reservasDisplay.filter(r => r.estado === estado));
+
   const countEstado = (estado: string) => counts[estado] ?? 0;
 
-  const allFiltered = () => aplicarFiltros(reservas);
+  const allFiltered = () => aplicarFiltros(reservasDisplay);
 
   const totalPages = Math.ceil(total / LIMIT);
 

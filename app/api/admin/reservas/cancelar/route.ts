@@ -33,13 +33,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No se puede cancelar una reserva cuyo horario ya pasó' }, { status: 400 });
   }
 
-  // Cancelar la reserva
+  // Cancelar la reserva y cascada al grupo multi-hora
+  const canceladoEn = new Date().toISOString();
   const { error: updateError } = await sb
     .from('reservas')
-    .update({ estado: 'cancelada', cancelado_en: new Date().toISOString() })
+    .update({ estado: 'cancelada', cancelado_en: canceladoEn })
     .eq('id', reservaId);
 
   if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 });
+
+  if (reserva.grupo_reserva_id) {
+    await sb.from('reservas')
+      .update({ estado: 'cancelada', cancelado_en: canceladoEn })
+      .eq('grupo_reserva_id', reserva.grupo_reserva_id)
+      .neq('id', reservaId);
+  }
 
   const fechaLabel = new Date(reserva.fecha + 'T00:00:00')
     .toLocaleDateString('es-PE', { day: 'numeric', month: 'long' });

@@ -42,6 +42,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  // Cascada: si pertenece a un grupo multi-hora, actualizar todos los slots hermanos
+  if (reserva.grupo_reserva_id) {
+    await sb.from('reservas')
+      .update({ estado })
+      .eq('grupo_reserva_id', reserva.grupo_reserva_id)
+      .neq('id', id);
+  }
+
   /* SELLOS CONGELADOS — descomentar para reactivar
   if (estado === 'confirmada') {
     await agregarSellosReserva(sb, reserva);
@@ -94,6 +102,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     });
   }
 
+  // Calcular rango de hora para notificación (ej: "12:00 - 15:00" en reservas multi-hora)
+  let horaNotificacion = reserva.hora;
+  if (reserva.grupo_reserva_id) {
+    const { data: slots } = await sb
+      .from('reservas')
+      .select('hora')
+      .eq('grupo_reserva_id', reserva.grupo_reserva_id)
+      .order('hora', { ascending: true });
+    if (slots && slots.length > 1) {
+      const horaFin = `${String(parseInt(slots[slots.length - 1].hora.split(':')[0]) + 1).padStart(2, '0')}:00`;
+      horaNotificacion = `${slots[0].hora} - ${horaFin}`;
+    }
+  }
+
   // Notificar al cliente por WhatsApp si tiene teléfono
   console.log('[admin] usuario_telefono en reserva:', reserva.usuario_telefono);
   if (reserva.usuario_telefono) {
@@ -101,7 +123,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       clientePhone: reserva.usuario_telefono,
       canchaNombre: reserva.cancha_nombre,
       fecha:        reserva.fecha,
-      hora:         reserva.hora,
+      hora:         horaNotificacion,
       precio:       reserva.precio,
       estado,
       reservaId:    reserva.id,

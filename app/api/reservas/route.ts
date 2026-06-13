@@ -159,6 +159,7 @@ export async function POST(req: NextRequest) {
 
   // Insertar una reserva por cada hora seleccionada
   let reservaPrincipal: any = null;
+  const todasReservaIds: string[] = [];
 
   for (let i = 0; i < slotsAReservar.length; i++) {
     const slotHora    = slotsAReservar[i];
@@ -197,6 +198,14 @@ export async function POST(req: NextRequest) {
     }
 
     if (esPrincipal) reservaPrincipal = reserva;
+    todasReservaIds.push(reserva.id);
+  }
+
+  // Para reservas multi-hora: vincular todos los slots con grupo_reserva_id = ID del principal
+  if (horas > 1 && reservaPrincipal) {
+    await sb.from('reservas')
+      .update({ grupo_reserva_id: reservaPrincipal.id })
+      .in('id', todasReservaIds);
   }
 
   const reserva = reservaPrincipal;

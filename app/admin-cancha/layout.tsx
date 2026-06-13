@@ -71,9 +71,13 @@ export default function OwnerLayout({
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data)) {
-          setPendientes(
-            data.filter((r: any) => r.estado === "pendiente").length,
-          );
+          const vistos = new Set<string>();
+          let count = 0;
+          for (const r of data.filter((r: any) => r.estado === "pendiente")) {
+            const key = r.grupo_reserva_id ?? r.id;
+            if (!vistos.has(key)) { vistos.add(key); count++; }
+          }
+          setPendientes(count);
         }
       })
       .catch(() => {});
