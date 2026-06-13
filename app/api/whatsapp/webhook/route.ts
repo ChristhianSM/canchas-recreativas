@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
-import { notificarEstadoReserva } from '@/lib/whatsapp';
+import { notificarEstadoReserva, notificarEstadoReservaAdmin } from '@/lib/whatsapp';
 
 // GET: Meta verifica el webhook al guardarlo en el portal
 export async function GET(req: NextRequest) {
@@ -44,16 +44,30 @@ function parsearRespuesta(body: string): { accion: 'confirmar' | 'rechazar' | nu
 
 async function processWebhook(payload: any) {
   const message = payload?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
-  if (!message || message.type !== 'text') return;
+  if (!message) return;
 
-  const from    = message.from as string;   // e.g. "51959686193"
-  const msgBody = message.text?.body ?? '';
+  const from = message.from as string;   // e.g. "51959686193"
 
   const phoneMatch = from.match(/51(9\d{8})/);
   if (!phoneMatch) return;
 
-  const adminPhone        = phoneMatch[1];
-  const { accion, codigo } = parsearRespuesta(msgBody);
+  const adminPhone = phoneMatch[1];
+  let accion: 'confirmar' | 'rechazar' | null = null;
+  let codigo: string | null = null;
+
+  if (message.type === 'text') {
+    const parsed = parsearRespuesta(message.text?.body ?? '');
+    accion = parsed.accion;
+    codigo = parsed.codigo;
+  } else if (message.type === 'interactive' && message.interactive?.type === 'button_reply') {
+    const buttonId: string = message.interactive.button_reply?.id ?? '';
+    const match = buttonId.match(/^(CONFIRMAR|RECHAZAR)_([A-Z0-9]{4,8})$/);
+    if (match) {
+      accion  = match[1] === 'CONFIRMAR' ? 'confirmar' : 'rechazar';
+      codigo  = match[2];
+    }
+  }
+
   if (!accion) return;
 
   const sb = createServiceClient();
@@ -100,10 +114,10 @@ async function processWebhook(payload: any) {
     reserva = reciente;
   }
 
-  await procesarReserva(sb, reserva, accion);
+  await procesarReserva(sb, reserva, accion, adminPhone);
 }
 
-async function procesarReserva(sb: any, reserva: any, accion: 'confirmar' | 'rechazar') {
+async function procesarReserva(sb: any, reserva: any, accion: 'confirmar' | 'rechazar', adminPhone: string) {
   const estado = accion === 'confirmar' ? 'confirmada' : 'rechazada';
   const codigo = reserva.id.slice(-6).toUpperCase();
 
@@ -168,6 +182,12 @@ async function procesarReserva(sb: any, reserva: any, accion: 'confirmar' | 'rec
       reservaId:    reserva.id,
     });
   }
+
+  await notificarEstadoReservaAdmin({
+    adminPhone,
+    reservaId: reserva.id,
+    estado,
+  });
 
   console.log(`[webhook] ✅ Reserva #${codigo} ${estado}`);
 }

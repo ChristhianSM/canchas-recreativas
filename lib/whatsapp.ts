@@ -4,10 +4,13 @@ const PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID;
 // Nombres de plantillas — configurables desde Vercel sin tocar el código
 const TPL = {
   reservaIniciadaUsuario:   process.env.WHATSAPP_TPL_RESERVA_INICIADA_USUARIO   ?? 'reservation_initiated_user',
+  nuevaReservaAdmin:        process.env.WHATSAPP_TPL_NUEVA_RESERVA_ADMIN        ?? 'nueva_reservacion_notificacion_para_admin',
   nuevaReservaConComp:      process.env.WHATSAPP_TPL_NUEVA_RESERVA_CON_COMP     ?? 'new_reserve_with_comprobante_admin',
   nuevaReservaSinComp:      process.env.WHATSAPP_TPL_NUEVA_RESERVA_SIN_COMP     ?? 'new_reserve_cash_payment_admin',
   reservaConfirmadaUsuario: process.env.WHATSAPP_TPL_CONFIRMADA_USUARIO         ?? 'reservation_confirmed_user',
   reservaRechazadaUsuario:  process.env.WHATSAPP_TPL_RECHAZADA_USUARIO          ?? 'reservation_rejected_user',
+  reservaConfirmadaAdmin:   process.env.WHATSAPP_TPL_CONFIRMADA_ADMIN           ?? 'reservation_confirmed_admin',
+  reservaRechazadaAdmin:    process.env.WHATSAPP_TPL_RECHAZADA_ADMIN            ?? 'reservation_rejected_admin',
 };
 
 export function toWaNumber(phone: string): string | null {
@@ -16,7 +19,7 @@ export function toWaNumber(phone: string): string | null {
   return `51${match[0]}`;
 }
 
-async function sendTemplate(to: string, templateName: string, params: string[]) {
+async function callMetaApi(to: string, templateName: string, components: object[]) {
   if (!TOKEN || !PHONE_NUMBER_ID) {
     console.warn('[whatsapp] Faltan WHATSAPP_TOKEN o WHATSAPP_PHONE_NUMBER_ID');
     return;
@@ -34,10 +37,7 @@ async function sendTemplate(to: string, templateName: string, params: string[]) 
     template: {
       name: templateName,
       language: { code: 'es' },
-      components: [{
-        type: 'body',
-        parameters: params.map(text => ({ type: 'text', text: String(text) })),
-      }],
+      components,
     },
   };
 
@@ -62,6 +62,13 @@ async function sendTemplate(to: string, templateName: string, params: string[]) 
   }
 }
 
+async function sendTemplate(to: string, templateName: string, params: string[]) {
+  await callMetaApi(to, templateName, [{
+    type: 'body',
+    parameters: params.map(text => ({ type: 'text', text: String(text) })),
+  }]);
+}
+
 // Mensaje 2: usuario recibe "reserva pendiente"
 export async function notificarReservaRecibida(data: {
   clientePhone: string;
@@ -84,6 +91,9 @@ export async function notificarReservaRecibida(data: {
 }
 
 // Mensaje 1: admin recibe "nueva reserva"
+// Usa plantilla con texto (SI/NO) mientras nueva_reservacion_notificacion_para_admin está en revisión.
+// Cuando se apruebe con botones, pasar WHATSAPP_TPL_USA_BOTONES=true en Vercel y
+// el código cambia automáticamente al flujo de componentes interactivos.
 export async function notificarNuevaReserva(data: {
   adminPhone:      string;
   canchaNombre:    string;
@@ -101,6 +111,32 @@ export async function notificarNuevaReserva(data: {
     : data.metodoPago === 'plin' ? 'Plin'
     : data.metodoPago;
 
+  const usarBotones = process.env.WHATSAPP_TPL_USA_BOTONES === 'true';
+
+  if (usarBotones) {
+    const components: object[] = [];
+    if (data.comprobanteUrl) {
+      components.push({
+        type: 'header',
+        parameters: [{ type: 'image', image: { link: data.comprobanteUrl } }],
+      });
+    }
+    components.push({
+      type: 'body',
+      parameters: [
+        codigo, data.canchaNombre, data.fecha, data.hora,
+        String(data.precio), metodoLabel, data.clienteNombre, data.clienteTelefono,
+      ].map(text => ({ type: 'text', text: String(text) })),
+    });
+    components.push(
+      { type: 'button', sub_type: 'quick_reply', index: '0', parameters: [{ type: 'payload', payload: `CONFIRMAR_${codigo}` }] },
+      { type: 'button', sub_type: 'quick_reply', index: '1', parameters: [{ type: 'payload', payload: `RECHAZAR_${codigo}` }] },
+    );
+    await callMetaApi(data.adminPhone, TPL.nuevaReservaAdmin, components);
+    return;
+  }
+
+  // Plantilla de texto aprobada (SI/NO manual)
   if (data.comprobanteUrl) {
     await sendTemplate(data.adminPhone, TPL.nuevaReservaConComp, [
       codigo,
@@ -111,7 +147,7 @@ export async function notificarNuevaReserva(data: {
       metodoLabel,
       data.clienteNombre,
       data.clienteTelefono,
-      'Sí',
+      data.comprobanteUrl,
     ]);
   } else {
     await sendTemplate(data.adminPhone, TPL.nuevaReservaSinComp, [
@@ -157,7 +193,18 @@ export async function notificarNuevoPartido(data: {
   });
 }
 
-// Mensaje 4: usuario recibe confirmación o rechazo
+// Mensaje 4b: admin recibe feedback de que su acción fue procesada
+export async function notificarEstadoReservaAdmin(data: {
+  adminPhone: string;
+  reservaId:  string;
+  estado:     'confirmada' | 'rechazada';
+}) {
+  const codigo = data.reservaId.slice(-6).toUpperCase();
+  const tpl    = data.estado === 'confirmada' ? TPL.reservaConfirmadaAdmin : TPL.reservaRechazadaAdmin;
+  await sendTemplate(data.adminPhone, tpl, [codigo]);
+}
+
+// Mensaje 4a: usuario recibe confirmación o rechazo
 export async function notificarEstadoReserva(data: {
   clientePhone: string;
   canchaNombre: string;
