@@ -5,8 +5,6 @@ const PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID;
 const TPL = {
   reservaIniciadaUsuario:   process.env.WHATSAPP_TPL_RESERVA_INICIADA_USUARIO   ?? 'reservation_initiated_user',
   nuevaReservaAdmin:        process.env.WHATSAPP_TPL_NUEVA_RESERVA_ADMIN        ?? 'nueva_reservacion_notificacion_para_admin',
-  nuevaReservaConComp:      process.env.WHATSAPP_TPL_NUEVA_RESERVA_CON_COMP     ?? 'new_reserve_with_comprobante_admin',
-  nuevaReservaSinComp:      process.env.WHATSAPP_TPL_NUEVA_RESERVA_SIN_COMP     ?? 'new_reserve_cash_payment_admin',
   reservaConfirmadaUsuario: process.env.WHATSAPP_TPL_CONFIRMADA_USUARIO         ?? 'reservation_confirmed_user',
   reservaRechazadaUsuario:  process.env.WHATSAPP_TPL_RECHAZADA_USUARIO          ?? 'reservation_rejected_user',
   reservaConfirmadaAdmin:   process.env.WHATSAPP_TPL_CONFIRMADA_ADMIN           ?? 'reservation_confirmed_admin',
@@ -32,36 +30,47 @@ async function callMetaApi(to: string, templateName: string, components: object[
     return;
   }
 
-  const body = {
-    messaging_product: 'whatsapp',
-    to: waNumber,
-    type: 'template',
-    template: {
-      name: templateName,
-      language: { code: 'es' },
-      components,
-    },
-  };
-
-  try {
-    const res = await fetch(`https://graph.facebook.com/v21.0/${PHONE_NUMBER_ID}/messages`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${TOKEN}`,
-        'Content-Type': 'application/json',
+  for (const langCode of ['en', 'es']) {
+    const body = {
+      messaging_product: 'whatsapp',
+      to: waNumber,
+      type: 'template',
+      template: {
+        name: templateName,
+        language: { code: langCode },
+        components,
       },
-      body: JSON.stringify(body),
-    });
+    };
 
-    if (!res.ok) {
-      const err = await res.json();
-      console.error('[whatsapp] ❌ Error Meta API:', JSON.stringify(err));
-    } else {
-      console.log(`[whatsapp] ✅ Enviado a ${to} — plantilla: ${templateName}`);
+    try {
+      const res = await fetch(`https://graph.facebook.com/v21.0/${PHONE_NUMBER_ID}/messages`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        if (err?.error?.code === 132001) {
+          console.warn(`[whatsapp] Plantilla '${templateName}' no existe en '${langCode}', probando siguiente idioma...`);
+          continue;
+        }
+        console.error('[whatsapp] ❌ Error Meta API:', JSON.stringify(err));
+        return;
+      }
+
+      console.log(`[whatsapp] ✅ Enviado a ${to} — plantilla: ${templateName} (${langCode})`);
+      return;
+    } catch (err: any) {
+      console.error('[whatsapp] ❌ Error fetch:', err?.message);
+      return;
     }
-  } catch (err: any) {
-    console.error('[whatsapp] ❌ Error fetch:', err?.message);
   }
+
+  console.error(`[whatsapp] ❌ Plantilla '${templateName}' no encontrada en ningún idioma`);
 }
 
 async function sendTemplate(to: string, templateName: string, params: string[]) {
@@ -92,10 +101,7 @@ export async function notificarReservaRecibida(data: {
   ]);
 }
 
-// Mensaje 1: admin recibe "nueva reserva"
-// Usa plantilla con texto (SI/NO) mientras nueva_reservacion_notificacion_para_admin está en revisión.
-// Cuando se apruebe con botones, pasar WHATSAPP_TPL_USA_BOTONES=true en Vercel y
-// el código cambia automáticamente al flujo de componentes interactivos.
+// Mensaje 1: admin recibe "nueva reserva" con botones Aceptar/Rechazar
 export async function notificarNuevaReserva(data: {
   adminPhone:      string;
   canchaNombre:    string;
@@ -113,56 +119,28 @@ export async function notificarNuevaReserva(data: {
     : data.metodoPago === 'plin' ? 'Plin'
     : data.metodoPago;
 
-  const usarBotones = process.env.WHATSAPP_TPL_USA_BOTONES === 'true';
+  const components: object[] = [];
 
-  if (usarBotones) {
-    const components: object[] = [];
-    if (data.comprobanteUrl) {
-      components.push({
-        type: 'header',
-        parameters: [{ type: 'image', image: { link: data.comprobanteUrl } }],
-      });
-    }
+  if (data.comprobanteUrl) {
     components.push({
+      type: 'header',
+      parameters: [{ type: 'image', image: { link: data.comprobanteUrl } }],
+    });
+  }
+
+  components.push(
+    {
       type: 'body',
       parameters: [
         codigo, data.canchaNombre, data.fecha, data.hora,
         String(data.precio), metodoLabel, data.clienteNombre, data.clienteTelefono,
       ].map(text => ({ type: 'text', text: String(text) })),
-    });
-    components.push(
-      { type: 'button', sub_type: 'quick_reply', index: '0', parameters: [{ type: 'payload', payload: `CONFIRMAR_${codigo}` }] },
-      { type: 'button', sub_type: 'quick_reply', index: '1', parameters: [{ type: 'payload', payload: `RECHAZAR_${codigo}` }] },
-    );
-    await callMetaApi(data.adminPhone, TPL.nuevaReservaAdmin, components);
-    return;
-  }
+    },
+    { type: 'button', sub_type: 'quick_reply', index: '0', parameters: [{ type: 'payload', payload: `CONFIRMAR_${codigo}` }] },
+    { type: 'button', sub_type: 'quick_reply', index: '1', parameters: [{ type: 'payload', payload: `RECHAZAR_${codigo}` }] },
+  );
 
-  // Plantilla de texto aprobada (SI/NO manual)
-  if (data.comprobanteUrl) {
-    await sendTemplate(data.adminPhone, TPL.nuevaReservaConComp, [
-      codigo,
-      data.canchaNombre,
-      data.fecha,
-      data.hora,
-      String(data.precio),
-      metodoLabel,
-      data.clienteNombre,
-      data.clienteTelefono,
-      data.comprobanteUrl,
-    ]);
-  } else {
-    await sendTemplate(data.adminPhone, TPL.nuevaReservaSinComp, [
-      codigo,
-      data.canchaNombre,
-      data.fecha,
-      data.hora,
-      String(data.precio),
-      metodoLabel,
-      data.clienteNombre,
-      data.clienteTelefono,
-    ]);
-  }
+  await callMetaApi(data.adminPhone, TPL.nuevaReservaAdmin, components);
 }
 
 // Reutiliza la misma plantilla de nueva reserva para partidos
