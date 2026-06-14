@@ -1,7 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { Newspaper, Plus } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Archive, Loader2, Newspaper, Plus, Send } from 'lucide-react';
 import { CrearPublicacionDialog } from '@/components/publicaciones/crear-publicacion-dialog';
 import { PublicacionCard } from '@/components/publicaciones/publicacion-card';
 import { PublicacionDetalleModal } from '@/components/publicaciones/publicacion-detalle-modal';
@@ -12,13 +13,24 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { apiOwnerGetNoticiaPorSlug, apiOwnerGetNoticias } from '@/lib/api';
+import {
+  apiOwnerActualizarEstadoNoticia,
+  apiOwnerGetNoticiaPorSlug,
+  apiOwnerGetNoticias,
+} from '@/lib/api';
 import {
   PUBLICACION_DEPORTES,
   PUBLICACION_TIPOS,
@@ -29,6 +41,9 @@ import {
 } from '@/lib/publicaciones';
 
 export default function OwnerNoticiasPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const processedSlugRef = useRef<string | null>(null);
   const [publicaciones, setPublicaciones] = useState<Publicacion[]>([]);
   const [publicacionSeleccionada, setPublicacionSeleccionada] = useState<Publicacion | null>(null);
   const [loading, setLoading] = useState(true);
@@ -37,6 +52,8 @@ export default function OwnerNoticiasPage() {
   const [detalleLoading, setDetalleLoading] = useState(false);
   const [detalleError, setDetalleError] = useState('');
   const [crearOpen, setCrearOpen] = useState(false);
+  const [actualizandoEstadoSlug, setActualizandoEstadoSlug] = useState<string | null>(null);
+  const [publicacionCambioEstado, setPublicacionCambioEstado] = useState<Publicacion | null>(null);
   const [estadoFiltro, setEstadoFiltro] = useState<'todos' | PublicacionEstado>('todos');
   const [tipoFiltro, setTipoFiltro] = useState<'todos' | PublicacionTipo>('todos');
   const [deporteFiltro, setDeporteFiltro] = useState<'todos' | PublicacionDeporte>('todos');
@@ -73,14 +90,14 @@ export default function OwnerNoticiasPage() {
     return true;
   });
 
-  const handleOpenDetalle = async (publicacion: Publicacion) => {
+  const openDetalleBySlug = useCallback(async (slug: string) => {
     setPublicacionSeleccionada(null);
     setDetalleError('');
     setDetalleOpen(true);
     setDetalleLoading(true);
 
     try {
-      const data = await apiOwnerGetNoticiaPorSlug(publicacion.slug);
+      const data = await apiOwnerGetNoticiaPorSlug(slug);
 
       if (data?.error) {
         setDetalleError(data.error ?? 'No se pudo cargar el detalle');
@@ -93,6 +110,60 @@ export default function OwnerNoticiasPage() {
     } finally {
       setDetalleLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    const slug = searchParams.get('slug');
+    if (!slug || processedSlugRef.current === slug) return;
+
+    processedSlugRef.current = slug;
+    void openDetalleBySlug(slug);
+  }, [openDetalleBySlug, searchParams]);
+
+  const handleOpenDetalle = (publicacion: Publicacion) => {
+    processedSlugRef.current = publicacion.slug;
+    router.replace(`/admin-cancha/noticias?slug=${encodeURIComponent(publicacion.slug)}`);
+    void openDetalleBySlug(publicacion.slug);
+  };
+
+  const handleToggleEstado = async (publicacion: Publicacion) => {
+    if (actualizandoEstadoSlug) return;
+
+    const nuevoEstado: PublicacionEstado =
+      publicacion.estado === 'publicado' ? 'borrador' : 'publicado';
+
+    setActualizandoEstadoSlug(publicacion.slug);
+    setError('');
+
+    try {
+      const data = await apiOwnerActualizarEstadoNoticia(publicacion.slug, nuevoEstado);
+
+      if (data?.error || !data?.publicacion) {
+        setError(data?.error ?? 'No se pudo actualizar el estado');
+        return;
+      }
+
+      setPublicaciones(prev =>
+        prev.map(item =>
+          item.id === data.publicacion.id ? data.publicacion : item
+        )
+      );
+
+      setPublicacionSeleccionada(prev =>
+        prev?.id === data.publicacion.id ? data.publicacion : prev
+      );
+
+      setPublicacionCambioEstado(null);
+    } catch {
+      setError('No se pudo actualizar el estado');
+    } finally {
+      setActualizandoEstadoSlug(null);
+    }
+  };
+
+  const handleSolicitarCambioEstado = (publicacion: Publicacion) => {
+    setError('');
+    setPublicacionCambioEstado(publicacion);
   };
 
   if (loading) {
@@ -110,6 +181,11 @@ export default function OwnerNoticiasPage() {
       </div>
     );
   }
+
+  const esArchivando = publicacionCambioEstado?.estado === 'publicado';
+  const ConfirmacionEstadoIcon = esArchivando ? Archive : Send;
+  const confirmacionEstadoLabel = esArchivando ? 'Archivar' : 'Publicar';
+  const confirmacionLoading = actualizandoEstadoSlug === publicacionCambioEstado?.slug;
 
   return (
     <div className="space-y-6">
@@ -190,10 +266,70 @@ export default function OwnerNoticiasPage() {
               publicacion={publicacion}
               variant="admin"
               onOpenDetail={handleOpenDetalle}
+              onToggleEstado={handleSolicitarCambioEstado}
             />
           ))}
         </div>
       )}
+
+      <Dialog
+        open={!!publicacionCambioEstado}
+        onOpenChange={open => {
+          if (!open && !actualizandoEstadoSlug) {
+            setPublicacionCambioEstado(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ConfirmacionEstadoIcon className="h-5 w-5 text-primary" />
+              ¿{confirmacionEstadoLabel} publicación?
+            </DialogTitle>
+            <DialogDescription>
+              {esArchivando
+                ? 'Esta publicación dejará de mostrarse en la página pública de noticias.'
+                : 'Esta publicación será visible en la página pública de noticias.'}
+            </DialogDescription>
+          </DialogHeader>
+
+          {publicacionCambioEstado ? (
+            <div className="space-y-4">
+              <div className="space-y-1 rounded-xl bg-muted/50 p-4 text-sm">
+                <p className="font-medium text-foreground">
+                  {publicacionCambioEstado.titulo}
+                </p>
+                <p className="line-clamp-2 text-muted-foreground">
+                  {publicacionCambioEstado.resumen}
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  disabled={confirmacionLoading}
+                  onClick={() => setPublicacionCambioEstado(null)}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  className="flex-1"
+                  onClick={() => handleToggleEstado(publicacionCambioEstado)}
+                  disabled={confirmacionLoading}
+                >
+                  {confirmacionLoading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <ConfirmacionEstadoIcon className="mr-2 h-4 w-4" />
+                  )}
+                  {confirmacionLoading ? 'Actualizando...' : confirmacionEstadoLabel}
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
 
       <PublicacionDetalleModal
         publicacion={publicacionSeleccionada}
@@ -204,6 +340,8 @@ export default function OwnerNoticiasPage() {
             setPublicacionSeleccionada(null);
             setDetalleError('');
             setDetalleLoading(false);
+            processedSlugRef.current = null;
+            if (searchParams.get('slug')) router.replace('/admin-cancha/noticias');
           }
         }}
         variant="admin"

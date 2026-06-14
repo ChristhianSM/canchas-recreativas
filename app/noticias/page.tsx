@@ -145,6 +145,7 @@ export default function NoticiasPage() {
 
   const handleOpenDetalle = (publicacion: Publicacion) => {
     processedSlugRef.current = publicacion.slug;
+    router.replace(`/noticias?slug=${encodeURIComponent(publicacion.slug)}`);
     void openDetalleBySlug(publicacion.slug);
   };
 

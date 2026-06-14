@@ -3,6 +3,7 @@
 import type {
   CrearPublicacionBody,
   NoticiasQueryParams,
+  PublicacionEstado,
 } from '@/lib/publicaciones';
 
 // ── Helper para obtener el token guardado ──────────────────────
@@ -290,6 +291,18 @@ export async function apiOwnerCrearNoticia(data: CrearPublicacionBody) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...ownerAuthHeaders() },
     body: JSON.stringify(data),
+  });
+  return res.json();
+}
+
+export async function apiOwnerActualizarEstadoNoticia(
+  slug: string,
+  estado: PublicacionEstado
+) {
+  const res = await fetch(`/api/admin-cancha/noticias/${slug}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...ownerAuthHeaders() },
+    body: JSON.stringify({ estado }),
   });
   return res.json();
 }

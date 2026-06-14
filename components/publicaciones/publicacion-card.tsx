@@ -56,9 +56,10 @@ export function PublicacionCard({
       : fechaInicio;
   const accionEstado =
     publicacion.estado === 'publicado'
-      ? { label: 'Despublicar', icon: Archive }
+      ? { label: 'Archivar', icon: Archive }
       : { label: 'Publicar', icon: Send };
   const AccionEstadoIcon = accionEstado.icon;
+  const esPublicada = publicacion.estado === 'publicado';
 
   return (
     <Card className="flex flex-col overflow-hidden border-border">
@@ -177,8 +178,13 @@ export function PublicacionCard({
           {variant === 'admin' ? (
             <Button
               size="sm"
+              variant={esPublicada ? 'outline' : 'default'}
               disabled={!onToggleEstado}
-              className="w-full"
+              className={
+                esPublicada
+                  ? 'w-full border-amber-500 bg-amber-50 text-amber-700 hover:bg-amber-100 hover:text-amber-800'
+                  : 'w-full'
+              }
               onClick={() => onToggleEstado?.(publicacion)}
             >
               <AccionEstadoIcon className="mr-1.5 h-4 w-4" />
