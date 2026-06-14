@@ -1,9 +1,20 @@
 'use client';
 
+import type {
+  CrearPublicacionBody,
+  NoticiasQueryParams,
+  PublicacionEstado,
+} from '@/lib/publicaciones';
+
 // ── Helper para obtener el token guardado ──────────────────────
 export function getToken(): string | null {
   if (typeof window === 'undefined') return null;
   return localStorage.getItem('cp_token');
+}
+
+export function getOwnerToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('cp_owner_token');
 }
 
 export function saveToken(token: string) {
@@ -73,6 +84,11 @@ export async function validateToken(): Promise<boolean> {
 
 function authHeaders(): Record<string, string> {
   const token = getToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+function ownerAuthHeaders(): Record<string, string> {
+  const token = getOwnerToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
@@ -257,5 +273,65 @@ export async function apiOwnerEditarCancha(id: string, data: object) {
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify(data),
   });
+  return res.json();
+}
+
+export async function apiOwnerGetNoticias() {
+  const res = await fetch('/api/admin-cancha/noticias', { headers: ownerAuthHeaders() });
+  return res.json();
+}
+
+export async function apiOwnerGetNoticiaPorSlug(slug: string) {
+  const res = await fetch(`/api/admin-cancha/noticias/${slug}`, { headers: ownerAuthHeaders() });
+  return res.json();
+}
+
+export async function apiOwnerCrearNoticia(data: CrearPublicacionBody) {
+  const res = await fetch('/api/admin-cancha/noticias', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...ownerAuthHeaders() },
+    body: JSON.stringify(data),
+  });
+  return res.json();
+}
+
+export async function apiOwnerActualizarEstadoNoticia(
+  slug: string,
+  estado: PublicacionEstado
+) {
+  const res = await fetch(`/api/admin-cancha/noticias/${slug}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...ownerAuthHeaders() },
+    body: JSON.stringify({ estado }),
+  });
+  return res.json();
+}
+
+export async function apiOwnerUploadPublicacionImage(file: File) {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const res = await fetch('/api/admin-cancha/noticias/upload', {
+    method: 'POST',
+    headers: ownerAuthHeaders(),
+    body: formData,
+  });
+  return res.json();
+}
+
+// ── Noticias públicas ───────────────────────────────────────────
+
+export async function apiGetNoticias(params: NoticiasQueryParams = {}) {
+  const search = new URLSearchParams();
+  if (params.tipo) search.set('tipo', params.tipo);
+  if (params.deporte) search.set('deporte', params.deporte);
+
+  const query = search.toString();
+  const res = await fetch(`/api/noticias${query ? `?${query}` : ''}`);
+  return res.json();
+}
+
+export async function apiGetNoticiaPorSlug(slug: string) {
+  const res = await fetch(`/api/noticias/${slug}`);
   return res.json();
 }
