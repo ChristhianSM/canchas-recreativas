@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   CalendarCheck,
   Store,
+  Newspaper,
   LogOut,
   Menu,
   X,
@@ -21,6 +22,7 @@ const navItems = [
   { href: "/admin-cancha", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin-cancha/reservas", label: "Reservas", icon: CalendarCheck },
   { href: "/admin-cancha/canchas", label: "Mis Canchas", icon: Store },
+  { href: "/admin-cancha/noticias", label: "Publicaciones", icon: Newspaper },
 ];
 
 function getOwnerToken() {
