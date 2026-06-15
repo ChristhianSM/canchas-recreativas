@@ -1,13 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
-import { notificarEstadoReserva } from '@/lib/whatsapp';
-/* SELLOS CONGELADOS import { agregarSellosReserva } from '@/lib/loyalty'; */
+import { notificarEstadoReserva, notificarEstadoReservaAdmin } from '@/lib/whatsapp';
 
-// Parsear la respuesta del admin
+// GET: Meta verifica el webhook al guardarlo en el portal
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const mode      = searchParams.get('hub.mode');
+  const token     = searchParams.get('hub.verify_token');
+  const challenge = searchParams.get('hub.challenge');
+
+  if (mode === 'subscribe' && token === process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN) {
+    return new NextResponse(challenge, { status: 200 });
+  }
+  return new NextResponse('Forbidden', { status: 403 });
+}
+
+// POST: Meta envía los mensajes entrantes (respuestas del admin)
+export async function POST(req: NextRequest) {
+  try {
+    const payload = await req.json();
+    await processWebhook(payload);
+  } catch (err) {
+    console.error('[webhook] Error procesando mensaje:', err);
+  }
+  // Meta requiere siempre 200 OK
+  return new NextResponse('OK', { status: 200 });
+}
+
 function parsearRespuesta(body: string): { accion: 'confirmar' | 'rechazar' | null; codigo: string | null } {
   const texto = body.trim().toUpperCase();
 
-  // Formato "SI ABC123" o "NO ABC123"
   const conCodigo = texto.match(/^(SI|S|CONFIRMAR|NO|N|RECHAZAR)\s+([A-Z0-9]{4,8})$/);
   if (conCodigo) {
     const accion = ['SI', 'S', 'CONFIRMAR'].includes(conCodigo[1]) ? 'confirmar' : 'rechazar';
@@ -20,63 +42,55 @@ function parsearRespuesta(body: string): { accion: 'confirmar' | 'rechazar' | nu
   return { accion: null, codigo: null };
 }
 
-function twimlResponse(message: string) {
-  const escaped = message
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-  const twiml = `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escaped}</Message></Response>`;
-  return new NextResponse(twiml, { headers: { 'Content-Type': 'text/xml' } });
-}
+async function processWebhook(payload: any) {
+  const message = payload?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
+  if (!message) return;
 
-export async function POST(req: NextRequest) {
-  // Twilio envía form-urlencoded
-  const text   = await req.text();
-  const params = new URLSearchParams(text);
+  const from = message.from as string;   // e.g. "51959686193"
 
-  const msgBody = params.get('Body') ?? '';
-  const from    = params.get('From') ?? ''; // 'whatsapp:+51959686193'
-
-  // Extraer número peruano (9 dígitos empezando en 9)
   const phoneMatch = from.match(/51(9\d{8})/);
-  if (!phoneMatch) return twimlResponse('No pude identificar tu número.');
+  if (!phoneMatch) return;
 
   const adminPhone = phoneMatch[1];
-  const { accion, codigo } = parsearRespuesta(msgBody);
+  let accion: 'confirmar' | 'rechazar' | null = null;
+  let codigo: string | null = null;
 
-  if (!accion) {
-    return twimlResponse(
-      'No entendí tu respuesta. Responde SI para confirmar o NO para rechazar.'
-    );
+  if (message.type === 'text') {
+    const parsed = parsearRespuesta(message.text?.body ?? '');
+    accion = parsed.accion;
+    codigo = parsed.codigo;
+  } else if (message.type === 'interactive' && message.interactive?.type === 'button_reply') {
+    const buttonId: string = message.interactive.button_reply?.id ?? '';
+    const match = buttonId.match(/^(CONFIRMAR|RECHAZAR)_([A-Z0-9]{4,8})$/);
+    if (match) {
+      accion  = match[1] === 'CONFIRMAR' ? 'confirmar' : 'rechazar';
+      codigo  = match[2];
+    }
   }
+
+  if (!accion) return;
 
   const sb = createServiceClient();
 
-  // Buscar el usuario por teléfono
   const { data: usuario } = await sb
     .from('usuarios')
     .select('id')
     .eq('telefono', adminPhone)
     .maybeSingle();
 
-  if (!usuario) {
-    return twimlResponse('No encontré tu cuenta. Verifica que tu teléfono esté guardado en el perfil de CanchaGo.');
-  }
+  if (!usuario) return;
 
-  // Obtener las canchas que administra
   const { data: relaciones } = await sb
     .from('duenos_canchas')
     .select('cancha_id')
     .eq('usuario_id', usuario.id);
 
   const canchaIds = (relaciones ?? []).map((r: any) => r.cancha_id).filter(Boolean);
-  if (!canchaIds.length) return twimlResponse('No tienes canchas asignadas a tu cuenta.');
+  if (!canchaIds.length) return;
 
-  // Buscar reserva pendiente
   let reserva: any = null;
 
   if (codigo) {
-    // Buscar por código específico (últimos 6 chars del ID en mayúsculas)
     const { data: todas } = await sb
       .from('reservas')
       .select('*')
@@ -85,9 +99,8 @@ export async function POST(req: NextRequest) {
       .order('creado_en', { ascending: false });
 
     reserva = (todas ?? []).find((r: any) => r.id.slice(-6).toUpperCase() === codigo);
-    if (!reserva) return twimlResponse(`No encontré una reserva pendiente con código ${codigo}.`);
+    if (!reserva) return;
   } else {
-    // La más reciente pendiente
     const { data: reciente } = await sb
       .from('reservas')
       .select('*')
@@ -97,14 +110,14 @@ export async function POST(req: NextRequest) {
       .limit(1)
       .maybeSingle();
 
-    if (!reciente) return twimlResponse('No tienes reservas pendientes en este momento.');
+    if (!reciente) return;
     reserva = reciente;
   }
 
-  return await procesarReserva(sb, reserva, accion);
+  await procesarReserva(sb, reserva, accion, adminPhone);
 }
 
-async function procesarReserva(sb: any, reserva: any, accion: 'confirmar' | 'rechazar') {
+async function procesarReserva(sb: any, reserva: any, accion: 'confirmar' | 'rechazar', adminPhone: string) {
   const estado = accion === 'confirmar' ? 'confirmada' : 'rechazada';
   const codigo = reserva.id.slice(-6).toUpperCase();
 
@@ -113,15 +126,19 @@ async function procesarReserva(sb: any, reserva: any, accion: 'confirmar' | 'rec
     .update({ estado })
     .eq('id', reserva.id);
 
-  if (error) return twimlResponse('Error al actualizar la reserva. Intenta desde el panel de administración.');
-
-  /* SELLOS CONGELADOS — descomentar para reactivar
-  if (accion === 'confirmar') {
-    await agregarSellosReserva(sb, reserva);
+  if (error) {
+    console.error('[webhook] Error actualizando reserva:', error.message);
+    return;
   }
-  */
 
-  // Si la reserva tiene un partido vinculado, actualizar su estado también
+  // Coordenadas de la cancha para link de Google Maps
+  const { data: cancha } = await sb
+    .from('canchas')
+    .select('lat, lng')
+    .eq('id', reserva.cancha_id)
+    .maybeSingle();
+
+  // Partido vinculado
   const { data: partido } = await sb
     .from('partidos')
     .select('id, organizador_id')
@@ -132,7 +149,6 @@ async function procesarReserva(sb: any, reserva: any, accion: 'confirmar' | 'rec
     const estadoPartido = accion === 'confirmar' ? 'abierto' : 'cancelado';
     await sb.from('partidos').update({ estado: estadoPartido }).eq('id', partido.id);
 
-    // Notificación in-app al organizador del partido
     if (partido.organizador_id) {
       const fechaLabel = new Date(reserva.fecha).toLocaleDateString('es-PE', { day: 'numeric', month: 'long' });
       const msgPartido = accion === 'confirmar'
@@ -148,7 +164,6 @@ async function procesarReserva(sb: any, reserva: any, accion: 'confirmar' | 'rec
     }
   }
 
-  // Notificación in-app para usuarios registrados (reserva normal)
   if (reserva.usuario_id && !partido) {
     const fechaLabel = new Date(reserva.fecha).toLocaleDateString('es-PE', { day: 'numeric', month: 'long' });
     const msg = estado === 'confirmada'
@@ -163,7 +178,6 @@ async function procesarReserva(sb: any, reserva: any, accion: 'confirmar' | 'rec
     });
   }
 
-  // WhatsApp al cliente si tiene teléfono
   if (reserva.usuario_telefono) {
     await notificarEstadoReserva({
       clientePhone: reserva.usuario_telefono,
@@ -173,12 +187,16 @@ async function procesarReserva(sb: any, reserva: any, accion: 'confirmar' | 'rec
       precio:       reserva.precio,
       estado,
       reservaId:    reserva.id,
+      lat:          cancha?.lat ?? null,
+      lng:          cancha?.lng ?? null,
     });
   }
 
-  const emoji      = estado === 'confirmada' ? '✅' : '❌';
-  const textoEstado = estado === 'confirmada' ? 'confirmada' : 'rechazada';
-  const avisoCliente = reserva.usuario_telefono ? ' El cliente fue notificado por WhatsApp.' : '';
-  const avisoPartido = partido ? (accion === 'confirmar' ? ' El partido ya está visible para jugadores.' : ' El partido fue cancelado.') : '';
-  return twimlResponse(`${emoji} Reserva #${codigo} ${textoEstado}.${avisoCliente}${avisoPartido}`);
+  await notificarEstadoReservaAdmin({
+    adminPhone,
+    reservaId: reserva.id,
+    estado,
+  });
+
+  console.log(`[webhook] ✅ Reserva #${codigo} ${estado}`);
 }

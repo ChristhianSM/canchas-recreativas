@@ -37,6 +37,7 @@ type Reserva = {
   saldo_pendiente?: number;
   saldo_cobrado?: boolean;
   saldo_cobrado_en?: string | null;
+  grupo_reserva_id?: string | null;
 };
 
 function getOwnerToken() {
@@ -119,6 +120,7 @@ export default function OwnerReservasPage() {
       saldo_pendiente: r.saldo_pendiente ?? 0,
       saldo_cobrado: r.saldo_cobrado ?? false,
       saldo_cobrado_en: r.saldo_cobrado_en ?? null,
+      grupo_reserva_id: r.grupo_reserva_id ?? null,
     })) : []);
     setLoading(false);
   };
@@ -254,8 +256,26 @@ export default function OwnerReservasPage() {
     }
   };
 
-  const byEstado = (e: ReservaEstado) => aplicarFiltros(reservas.filter(r => r.estado === e));
-  const todasFiltradas = () => aplicarFiltros(reservas);
+  // Agrupa reservas multi-hora: muestra solo el slot principal con rango "12:00 - 15:00"
+  const reservasDisplay = useMemo(() => {
+    const grupos = new Map<string, Reserva[]>();
+    const resultado: Reserva[] = [];
+    for (const r of reservas) {
+      if (!r.grupo_reserva_id) { resultado.push(r); continue; }
+      if (!grupos.has(r.grupo_reserva_id)) grupos.set(r.grupo_reserva_id, []);
+      grupos.get(r.grupo_reserva_id)!.push(r);
+    }
+    for (const [gid, slots] of grupos) {
+      const principal = slots.find(s => s.id === gid) ?? slots[0];
+      const horas = slots.map(s => s.hora).sort();
+      const horaFin = `${String(parseInt(horas[horas.length - 1].split(':')[0]) + 1).padStart(2, '0')}:00`;
+      resultado.push({ ...principal, hora: horas.length > 1 ? `${horas[0]} - ${horaFin}` : principal.hora });
+    }
+    return resultado;
+  }, [reservas]);
+
+  const byEstado = (e: ReservaEstado) => aplicarFiltros(reservasDisplay.filter(r => r.estado === e));
+  const todasFiltradas = () => aplicarFiltros(reservasDisplay);
 
   // Solo las canceladas con devolución pendiente (monto > 0 y aún no procesada)
   const devolucionesPendientes = byEstado('cancelada').filter(

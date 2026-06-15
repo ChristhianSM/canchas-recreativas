@@ -67,10 +67,15 @@ export default function AdminLayout({
       })
         .then((r) => (r.ok ? r.json() : []))
         .then((data) => {
-          if (Array.isArray(data))
-            setPendientes(
-              data.filter((r: any) => r.estado === "pendiente").length,
-            );
+          if (Array.isArray(data)) {
+            const vistos = new Set<string>();
+            let count = 0;
+            for (const r of data.filter((r: any) => r.estado === "pendiente")) {
+              const key = r.grupo_reserva_id ?? r.id;
+              if (!vistos.has(key)) { vistos.add(key); count++; }
+            }
+            setPendientes(count);
+          }
         })
         .catch(() => {});
     });

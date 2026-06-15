@@ -138,7 +138,8 @@ function ReservaCard({
 
   const fechaHoraPasada = (() => {
     const [year, month, day] = r.fecha.split("-").map(Number);
-    const [horaNum, minNum] = r.hora.split(":").map(Number);
+    const horaInicio = r.hora.includes(' - ') ? r.hora.split(' - ')[0] : r.hora;
+    const [horaNum, minNum] = horaInicio.split(":").map(Number);
     return new Date(year, month - 1, day, horaNum, minNum, 0) < new Date();
   })();
 
@@ -221,8 +222,10 @@ function ReservaCard({
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Clock className="h-4 w-4" />
               <span>
-                {r.hora} -{" "}
-                {`${String((parseInt(r.hora.split(":")[0]) + 1) % 24).padStart(2, "0")}:00`}
+                {r.hora.includes(' - ')
+                  ? r.hora
+                  : `${r.hora} - ${String((parseInt(r.hora.split(':')[0]) + 1) % 24).padStart(2, '0')}:00`
+                }
               </span>
             </div>
             {direccion && (
@@ -502,11 +505,30 @@ export default function MisReservasPage() {
     montoAdelanto: r.monto_adelanto,
     saldoPendiente: r.saldo_pendiente ?? 0,
     saldoCobrado: r.saldo_cobrado ?? false,
+    grupoReservaId: r.grupo_reserva_id ?? null,
   });
+
+  // Agrupa reservas multi-hora: muestra solo 1 card con rango "14:00 - 16:00"
+  const agruparReservas = (lista: Reserva[]): Reserva[] => {
+    const grupos = new Map<string, Reserva[]>();
+    const resultado: Reserva[] = [];
+    for (const r of lista) {
+      if (!r.grupoReservaId) { resultado.push(r); continue; }
+      if (!grupos.has(r.grupoReservaId)) grupos.set(r.grupoReservaId, []);
+      grupos.get(r.grupoReservaId)!.push(r);
+    }
+    for (const [gid, slots] of grupos) {
+      const principal = slots.find(s => s.id === gid) ?? slots[0];
+      const horas = slots.map(s => s.hora).sort();
+      const horaFin = `${String(parseInt(horas[horas.length - 1].split(':')[0]) + 1).padStart(2, '0')}:00`;
+      resultado.push({ ...principal, hora: horas.length > 1 ? `${horas[0]} - ${horaFin}` : principal.hora });
+    }
+    return resultado;
+  };
 
   const reload = async () => {
     const data = await apiGetReservas();
-    setReservas(Array.isArray(data) ? data.map(mapReserva) : []);
+    setReservas(agruparReservas(Array.isArray(data) ? data.map(mapReserva) : []));
     setLoading(false);
   };
 
@@ -514,7 +536,7 @@ export default function MisReservasPage() {
     setHistorialLoading(true);
     const { items, total } = await apiGetHistorial(page, 10);
     setHistorialItems((prev) => {
-      const nuevos: Reserva[] = items.map(mapReserva);
+      const nuevos: Reserva[] = agruparReservas(items.map(mapReserva));
       if (page === 0) return nuevos;
       const ids = new Set(prev.map((r: Reserva) => r.id));
       return [...prev, ...nuevos.filter((r: Reserva) => !ids.has(r.id))];
@@ -719,7 +741,8 @@ export default function MisReservasPage() {
 
   const fechaHoraPasada = (fecha: string, hora: string): boolean => {
     const [year, month, day] = fecha.split("-").map(Number);
-    const [horaNum, minNum] = hora.split(":").map(Number);
+    const horaInicio = hora.includes(' - ') ? hora.split(' - ')[0] : hora;
+    const [horaNum, minNum] = horaInicio.split(":").map(Number);
     return new Date(year, month - 1, day, horaNum, minNum, 0) < new Date();
   };
 
@@ -1133,7 +1156,9 @@ export default function MisReservasPage() {
                     const img =
                       cl?.images[0] ??
                       "https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=800&h=600&fit=crop";
-                    const horaFin = `${String((parseInt(proximaReserva.hora.split(":")[0]) + 1) % 24).padStart(2, "0")}:00`;
+                    const horaFin = proximaReserva.hora.includes(' - ')
+                      ? proximaReserva.hora.split(' - ')[1]
+                      : `${String((parseInt(proximaReserva.hora.split(":")[0]) + 1) % 24).padStart(2, "0")}:00`;
                     const esHoy = proximaReserva.fecha === hoyStr;
                     const fechaLabel = esHoy
                       ? "Hoy"

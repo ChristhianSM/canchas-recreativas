@@ -29,6 +29,7 @@ export interface Reserva {
   devolucionCalculada?: number | null;
   devolucionProcesada?: boolean | null;
   penalidadAplicada?: number | null;
+  grupoReservaId?: string | null;
 }
 
 export interface Notificacion {

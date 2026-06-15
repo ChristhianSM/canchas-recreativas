@@ -108,6 +108,34 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Si el comprobante es base64, subirlo a Supabase Storage y obtener URL pública
+  let comprobantePublicUrl: string | null = comprobanteUrl ?? null;
+  if (comprobanteUrl?.startsWith('data:')) {
+    try {
+      const base64Data = comprobanteUrl.split(',')[1];
+      const buffer = Buffer.from(base64Data, 'base64');
+      const mimeMatch = comprobanteUrl.match(/data:([^;]+);/);
+      const mimeType = mimeMatch?.[1] ?? 'image/jpeg';
+      const ext = mimeType === 'image/jpeg' ? 'jpg' : mimeType.split('/')[1] ?? 'jpg';
+      const fileName = `comprobantes/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+
+      const { error: uploadError } = await sb.storage
+        .from('imagenes')
+        .upload(fileName, buffer, { contentType: mimeType });
+
+      if (!uploadError) {
+        const { data: { publicUrl } } = sb.storage.from('imagenes').getPublicUrl(fileName);
+        comprobantePublicUrl = publicUrl;
+      } else {
+        console.error('[reservas] Error subiendo comprobante:', uploadError.message);
+        comprobantePublicUrl = null;
+      }
+    } catch (e) {
+      console.error('[reservas] Error procesando comprobante base64:', e);
+      comprobantePublicUrl = null;
+    }
+  }
+
   // Validar datos requeridos
   if (!canchaId || !canchaNombre || !fecha || !hora || !precio || !metodoPago) {
     return NextResponse.json({ error: 'Faltan datos requeridos' }, { status: 400 });
@@ -159,6 +187,7 @@ export async function POST(req: NextRequest) {
 
   // Insertar una reserva por cada hora seleccionada
   let reservaPrincipal: any = null;
+  const todasReservaIds: string[] = [];
 
   for (let i = 0; i < slotsAReservar.length; i++) {
     const slotHora    = slotsAReservar[i];
@@ -181,7 +210,7 @@ export async function POST(req: NextRequest) {
       precio_original:  esPrincipal ? (precioOriginal ?? precio) : precioPorHora,
       cupon_aplicado:   esPrincipal ? !!cuponId : false,
       metodo_pago:      metodoPago,
-      comprobante_url:  esPrincipal ? comprobanteUrl : null,
+      comprobante_url:  esPrincipal ? comprobantePublicUrl : null,
       estado:           'pendiente',
       balon_incluido:   esPrincipal ? (balonIncluido ?? false) : false,
       chalecos_incluido: esPrincipal ? (chalecosIncluido ?? false) : false,
@@ -197,6 +226,14 @@ export async function POST(req: NextRequest) {
     }
 
     if (esPrincipal) reservaPrincipal = reserva;
+    todasReservaIds.push(reserva.id);
+  }
+
+  // Para reservas multi-hora: vincular todos los slots con grupo_reserva_id = ID del principal
+  if (horas > 1 && reservaPrincipal) {
+    await sb.from('reservas')
+      .update({ grupo_reserva_id: reservaPrincipal.id })
+      .in('id', todasReservaIds);
   }
 
   const reserva = reservaPrincipal;
@@ -261,7 +298,7 @@ export async function POST(req: NextRequest) {
       clienteNombre:   usuarioNombre,
       clienteTelefono: usuarioTelefono,
       reservaId:       reserva.id,
-      comprobanteUrl:  comprobanteUrl ?? null,
+      comprobanteUrl:  comprobantePublicUrl,
     });
   }
 

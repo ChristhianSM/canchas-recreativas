@@ -1,48 +1,86 @@
-import twilio from 'twilio';
-import { createServiceClient } from '@/lib/supabase';
+const TOKEN          = process.env.WHATSAPP_TOKEN;
+const PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID;
 
-const accountSid = process.env.TWILIO_ACCOUNT_SID;
-const authToken  = process.env.TWILIO_AUTH_TOKEN;
-const fromNumber = process.env.TWILIO_WHATSAPP_FROM ?? 'whatsapp:+14155238886';
-
-function getClient() {
-  if (!accountSid || !authToken) return null;
-  return twilio(accountSid, authToken);
-}
+// Nombres de plantillas — configurables desde Vercel sin tocar el código
+const TPL = {
+  reservaIniciadaUsuario:   process.env.WHATSAPP_TPL_RESERVA_INICIADA_USUARIO   ?? 'reservation_initiated_user',
+  nuevaReservaAdmin:        process.env.WHATSAPP_TPL_NUEVA_RESERVA_ADMIN        ?? 'nueva_reservacion_notificacion_para_admin',
+  reservaConfirmadaUsuario: process.env.WHATSAPP_TPL_CONFIRMADA_USUARIO         ?? 'reservation_confirmed_user',
+  reservaRechazadaUsuario:  process.env.WHATSAPP_TPL_RECHAZADA_USUARIO          ?? 'reservation_rejected_user',
+  reservaConfirmadaAdmin:   process.env.WHATSAPP_TPL_CONFIRMADA_ADMIN           ?? 'reservation_confirmed_admin',
+  reservaRechazadaAdmin:    process.env.WHATSAPP_TPL_RECHAZADA_ADMIN            ?? 'reservation_rejected_admin',
+  reservaCanceladaAdmin:    process.env.WHATSAPP_TPL_CANCELADA_ADMIN            ?? 'reservation_cancelled_admin',
+  partidoCanceladoJugador:  process.env.WHATSAPP_TPL_PARTIDO_CANCELADO_JUGADOR  ?? 'partido_cancelado_jugador',
+};
 
 export function toWaNumber(phone: string): string | null {
   const match = phone.match(/9\d{8}/);
   if (!match) return null;
-  return `whatsapp:+51${match[0]}`;
+  return `51${match[0]}`;
 }
 
-async function uploadBase64Comprobante(base64: string, reservaId: string): Promise<string | null> {
-  try {
-    const matches = base64.match(/^data:([^;]+);base64,(.+)$/);
-    if (!matches) return null;
-    const mimeType = matches[1];
-    const data     = Buffer.from(matches[2], 'base64');
-    const ext      = mimeType.includes('png') ? 'png' : 'jpg';
-    const fileName = `${reservaId}.${ext}`;
-
-    const sb = createServiceClient();
-    const { error } = await sb.storage
-      .from('imagenes')
-      .upload(`comprobantes/${fileName}`, data, { contentType: mimeType, upsert: true });
-
-    if (error) {
-      console.error('[whatsapp] Error subiendo comprobante:', error.message);
-      return null;
-    }
-
-    const { data: urlData } = sb.storage.from('imagenes').getPublicUrl(`comprobantes/${fileName}`);
-    return urlData.publicUrl;
-  } catch (err: any) {
-    console.error('[whatsapp] Error upload comprobante:', err?.message);
-    return null;
+async function callMetaApi(to: string, templateName: string, components: object[]) {
+  if (!TOKEN || !PHONE_NUMBER_ID) {
+    console.warn('[whatsapp] Faltan WHATSAPP_TOKEN o WHATSAPP_PHONE_NUMBER_ID');
+    return;
   }
+  const waNumber = toWaNumber(to);
+  if (!waNumber) {
+    console.warn('[whatsapp] Número inválido:', to);
+    return;
+  }
+
+  for (const langCode of ['en', 'es']) {
+    const body = {
+      messaging_product: 'whatsapp',
+      to: waNumber,
+      type: 'template',
+      template: {
+        name: templateName,
+        language: { code: langCode },
+        components,
+      },
+    };
+
+    try {
+      const res = await fetch(`https://graph.facebook.com/v21.0/${PHONE_NUMBER_ID}/messages`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        if (err?.error?.code === 132001) {
+          console.warn(`[whatsapp] Plantilla '${templateName}' no existe en '${langCode}', probando siguiente idioma...`);
+          continue;
+        }
+        console.error('[whatsapp] ❌ Error Meta API:', JSON.stringify(err));
+        return;
+      }
+
+      console.log(`[whatsapp] ✅ Enviado a ${to} — plantilla: ${templateName} (${langCode})`);
+      return;
+    } catch (err: any) {
+      console.error('[whatsapp] ❌ Error fetch:', err?.message);
+      return;
+    }
+  }
+
+  console.error(`[whatsapp] ❌ Plantilla '${templateName}' no encontrada en ningún idioma`);
 }
 
+async function sendTemplate(to: string, templateName: string, params: string[]) {
+  await callMetaApi(to, templateName, [{
+    type: 'body',
+    parameters: params.map(text => ({ type: 'text', text: String(text) })),
+  }]);
+}
+
+// Mensaje 2: usuario recibe "reserva pendiente"
 export async function notificarReservaRecibida(data: {
   clientePhone: string;
   canchaNombre: string;
@@ -52,30 +90,18 @@ export async function notificarReservaRecibida(data: {
   metodoPago:   string;
   reservaId:    string;
 }) {
-  const client = getClient();
-  if (!client) return;
-
-  const to = toWaNumber(data.clientePhone);
-  if (!to) return;
-
   const codigo = data.reservaId.slice(-6).toUpperCase();
-  const body = [
-    `⏳ *Reserva recibida* — #${codigo}`,
-    `🏟️ ${data.canchaNombre}`,
-    `📅 ${data.fecha}   🕐 ${data.hora}`,
-    `💰 S/ ${data.precio}   💳 ${data.metodoPago}`,
-    ``,
-    `Pendiente de confirmación. Te avisaremos pronto.`,
-  ].join('\n');
-
-  try {
-    await client.messages.create({ from: fromNumber, to, body });
-    console.log('[whatsapp] ✅ Cliente notificado (recibida):', data.clientePhone);
-  } catch (err: any) {
-    console.error('[whatsapp] ❌ Error al notificar cliente (recibida):', err?.message ?? err);
-  }
+  await sendTemplate(data.clientePhone, TPL.reservaIniciadaUsuario, [
+    codigo,
+    data.canchaNombre,
+    data.fecha,
+    data.hora,
+    String(data.precio),
+    data.metodoPago,
+  ]);
 }
 
+// Mensaje 1: admin recibe "nueva reserva" con botones Aceptar/Rechazar
 export async function notificarNuevaReserva(data: {
   adminPhone:      string;
   canchaNombre:    string;
@@ -88,57 +114,36 @@ export async function notificarNuevaReserva(data: {
   reservaId:       string;
   comprobanteUrl?: string | null;
 }) {
-  const client = getClient();
-  if (!client) return;
-
-  const to = toWaNumber(data.adminPhone);
-  if (!to) return;
-
-  const codigo = data.reservaId.slice(-6).toUpperCase();
+  const codigo      = data.reservaId.slice(-6).toUpperCase();
   const metodoLabel = data.metodoPago === 'yape' ? 'Yape'
     : data.metodoPago === 'plin' ? 'Plin'
     : data.metodoPago;
 
-  // Subir comprobante a Storage si es base64
-  let mediaUrl: string | null = null;
+  const components: object[] = [];
+
   if (data.comprobanteUrl) {
-    if (data.comprobanteUrl.startsWith('data:')) {
-      mediaUrl = await uploadBase64Comprobante(data.comprobanteUrl, data.reservaId);
-    } else if (data.comprobanteUrl.startsWith('http')) {
-      mediaUrl = data.comprobanteUrl;
-    }
+    components.push({
+      type: 'header',
+      parameters: [{ type: 'image', image: { link: data.comprobanteUrl } }],
+    });
   }
 
-  const body = [
-    `📋 *Nueva reserva* — #${codigo}`,
-    `🏟️ ${data.canchaNombre}`,
-    `📅 ${data.fecha}   🕐 ${data.hora}`,
-    `💰 S/ ${data.precio}   💳 ${metodoLabel}`,
-    `👤 ${data.clienteNombre}`,
-    data.clienteTelefono ? `📱 ${data.clienteTelefono}` : null,
-    ``,
-    mediaUrl
-      ? `✅ Envió comprobante (ver foto)`
-      : `⚠️ No envió comprobante — revisa tu ${metodoLabel} para verificar si llegó el pago.`,
-    ``,
-    `Responde *SI* para confirmar o *NO* para rechazar.`,
-    `(Si tienes varias pendientes, responde *SI ${codigo}* o *NO ${codigo}*)`,
-  ].filter(Boolean).join('\n');
+  components.push(
+    {
+      type: 'body',
+      parameters: [
+        codigo, data.canchaNombre, data.fecha, data.hora,
+        String(data.precio), metodoLabel, data.clienteNombre, data.clienteTelefono,
+      ].map(text => ({ type: 'text', text: String(text) })),
+    },
+    { type: 'button', sub_type: 'quick_reply', index: '0', parameters: [{ type: 'payload', payload: `CONFIRMAR_${codigo}` }] },
+    { type: 'button', sub_type: 'quick_reply', index: '1', parameters: [{ type: 'payload', payload: `RECHAZAR_${codigo}` }] },
+  );
 
-  try {
-    const msgParams: Parameters<typeof client.messages.create>[0] = {
-      from: fromNumber,
-      to,
-      body,
-      ...(mediaUrl ? { mediaUrl: [mediaUrl] } : {}),
-    };
-    await client.messages.create(msgParams);
-    console.log('[whatsapp] ✅ Admin notificado:', data.adminPhone);
-  } catch (err: any) {
-    console.error('[whatsapp] ❌ Error al notificar admin:', err?.message ?? err);
-  }
+  await callMetaApi(data.adminPhone, TPL.nuevaReservaAdmin, components);
 }
 
+// Reutiliza la misma plantilla de nueva reserva para partidos
 export async function notificarNuevoPartido(data: {
   adminPhone:          string;
   canchaNombre:        string;
@@ -154,60 +159,32 @@ export async function notificarNuevoPartido(data: {
   jugadoresMax:        number;
   comprobanteUrl?:     string | null;
 }) {
-  const client = getClient();
-  if (!client) return;
-
-  const to = toWaNumber(data.adminPhone);
-  if (!to) return;
-
-  const codigo = data.reservaId.slice(-6).toUpperCase();
-  const metodoLabel = data.metodoPago === 'yape' ? 'Yape'
-    : data.metodoPago === 'plin' ? 'Plin'
-    : data.metodoPago;
-
-  const deporteLabel = data.deporte.charAt(0).toUpperCase() + data.deporte.slice(1);
-  const nivelLabel   = data.nivel.charAt(0).toUpperCase() + data.nivel.slice(1);
-
-  let mediaUrl: string | null = null;
-  if (data.comprobanteUrl) {
-    if (data.comprobanteUrl.startsWith('data:')) {
-      mediaUrl = await uploadBase64Comprobante(data.comprobanteUrl, data.reservaId);
-    } else if (data.comprobanteUrl.startsWith('http')) {
-      mediaUrl = data.comprobanteUrl;
-    }
-  }
-
-  const body = [
-    `⚽ *Nuevo partido abierto* — #${codigo}`,
-    `🏟️ ${data.canchaNombre}`,
-    `📅 ${data.fecha}   🕐 ${data.hora}`,
-    `🎮 ${deporteLabel} · ${nivelLabel} · ${data.jugadoresMax} cupos disponibles`,
-    `💰 S/ ${data.precio}   💳 ${metodoLabel}`,
-    `👤 ${data.organizadorNombre}`,
-    data.organizadorTelefono ? `📱 ${data.organizadorTelefono}` : null,
-    ``,
-    mediaUrl
-      ? `✅ Envió comprobante (ver foto)`
-      : `⚠️ No envió comprobante — revisa tu ${metodoLabel} para verificar si llegó el pago.`,
-    ``,
-    `Responde *SI* para confirmar o *NO* para rechazar.`,
-    `(Si tienes varias pendientes, responde *SI ${codigo}* o *NO ${codigo}*)`,
-  ].filter(Boolean).join('\n');
-
-  try {
-    const msgParams: Parameters<typeof client.messages.create>[0] = {
-      from: fromNumber,
-      to,
-      body,
-      ...(mediaUrl ? { mediaUrl: [mediaUrl] } : {}),
-    };
-    await client.messages.create(msgParams);
-    console.log('[whatsapp] ✅ Admin notificado (partido):', data.adminPhone);
-  } catch (err: any) {
-    console.error('[whatsapp] ❌ Error al notificar admin (partido):', err?.message ?? err);
-  }
+  await notificarNuevaReserva({
+    adminPhone:      data.adminPhone,
+    canchaNombre:    data.canchaNombre,
+    fecha:           data.fecha,
+    hora:            data.hora,
+    precio:          data.precio,
+    metodoPago:      data.metodoPago,
+    clienteNombre:   data.organizadorNombre,
+    clienteTelefono: data.organizadorTelefono,
+    reservaId:       data.reservaId,
+    comprobanteUrl:  data.comprobanteUrl,
+  });
 }
 
+// Mensaje 4b: admin recibe feedback de que su acción fue procesada
+export async function notificarEstadoReservaAdmin(data: {
+  adminPhone: string;
+  reservaId:  string;
+  estado:     'confirmada' | 'rechazada';
+}) {
+  const codigo = data.reservaId.slice(-6).toUpperCase();
+  const tpl    = data.estado === 'confirmada' ? TPL.reservaConfirmadaAdmin : TPL.reservaRechazadaAdmin;
+  await sendTemplate(data.adminPhone, tpl, [codigo]);
+}
+
+// Mensaje 4a: usuario recibe confirmación o rechazo
 export async function notificarEstadoReserva(data: {
   clientePhone: string;
   canchaNombre: string;
@@ -216,44 +193,80 @@ export async function notificarEstadoReserva(data: {
   precio:       number;
   estado:       'confirmada' | 'rechazada' | 'cancelada';
   reservaId:    string;
+  lat?:         number | null;
+  lng?:         number | null;
 }) {
-  const client = getClient();
-  if (!client) return;
-
-  const to = toWaNumber(data.clientePhone);
-  if (!to) return;
-
   const codigo = data.reservaId.slice(-6).toUpperCase();
 
-  const body = data.estado === 'confirmada'
-    ? [
-        `✅ *¡Tu reserva fue confirmada!* — #${codigo}`,
-        `🏟️ ${data.canchaNombre}`,
-        `📅 ${data.fecha}   🕐 ${data.hora}`,
-        `💰 S/ ${data.precio}`,
-        ``,
-        `Preséntate puntualmente. ¡Que disfrutes el partido! ⚽`,
-      ].join('\n')
-    : data.estado === 'cancelada'
-    ? [
-        `⚠️ *Tu reserva fue cancelada* — #${codigo}`,
-        `🏟️ ${data.canchaNombre}`,
-        `📅 ${data.fecha}   🕐 ${data.hora}`,
-        ``,
-        `La cancela o el administrador canceló tu reserva. Puedes reservar otro horario en CanchaGo.`,
-      ].join('\n')
-    : [
-        `❌ *Tu reserva fue rechazada* — #${codigo}`,
-        `🏟️ ${data.canchaNombre}`,
-        `📅 ${data.fecha}   🕐 ${data.hora}`,
-        ``,
-        `Puedes reservar otro horario disponible en CanchaGo.`,
-      ].join('\n');
-
-  try {
-    await client.messages.create({ from: fromNumber, to, body });
-    console.log('[whatsapp] ✅ Cliente notificado:', data.clientePhone);
-  } catch (err: any) {
-    console.error('[whatsapp] ❌ Error al notificar cliente:', err?.message ?? err);
+  if (data.estado === 'confirmada') {
+    const mapsLink = data.lat && data.lng
+      ? `https://maps.google.com/?q=${data.lat},${data.lng}`
+      : '';
+    await sendTemplate(data.clientePhone, TPL.reservaConfirmadaUsuario, [
+      codigo,
+      data.canchaNombre,
+      data.fecha,
+      data.hora,
+      String(data.precio),
+      mapsLink,
+    ]);
+  } else {
+    await sendTemplate(data.clientePhone, TPL.reservaRechazadaUsuario, [
+      codigo,
+      data.canchaNombre,
+      data.fecha,
+      data.hora,
+    ]);
   }
+}
+
+// Notificación al admin cuando un usuario cancela una reserva
+export async function notificarCancelacionAdmin(data: {
+  adminPhone:     string;
+  reservaId:      string;
+  canchaNombre:   string;
+  fecha:          string;
+  hora:           string;
+  clienteNombre:  string;
+  clientePhone:   string;
+  devolucion:     number;
+  metodoPago:     string;
+  motivo:         string;
+}) {
+  const codigo      = data.reservaId.slice(-6).toUpperCase();
+  const metodoLabel = data.metodoPago === 'yape' ? 'Yape'
+    : data.metodoPago === 'plin' ? 'Plin'
+    : data.metodoPago === 'efectivo' ? 'Efectivo'
+    : data.metodoPago;
+
+  await sendTemplate(data.adminPhone, TPL.reservaCanceladaAdmin, [
+    codigo,
+    data.canchaNombre,
+    data.fecha,
+    data.hora,
+    data.clienteNombre,
+    data.clientePhone,
+    String(data.devolucion),
+    metodoLabel,
+    data.motivo,
+  ]);
+}
+
+// Notificación a jugadores cuando el organizador cancela el partido
+export async function notificarPartidoCanceladoJugador(data: {
+  jugadorPhone:      string;
+  reservaId:         string;
+  canchaNombre:      string;
+  fecha:             string;
+  hora:              string;
+  organizadorNombre: string;
+}) {
+  const codigo = data.reservaId.slice(-6).toUpperCase();
+  await sendTemplate(data.jugadorPhone, TPL.partidoCanceladoJugador, [
+    codigo,
+    data.canchaNombre,
+    data.fecha,
+    data.hora,
+    data.organizadorNombre,
+  ]);
 }

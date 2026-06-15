@@ -75,6 +75,14 @@ export async function PATCH(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  // Cascada: si pertenece a un grupo multi-hora, actualizar todos los slots hermanos
+  if (reserva.grupo_reserva_id && (estado === 'confirmada' || estado === 'rechazada')) {
+    await sb.from('reservas')
+      .update({ estado })
+      .eq('grupo_reserva_id', reserva.grupo_reserva_id)
+      .neq('id', reservaId);
+  }
+
   /* SELLOS CONGELADOS — descomentar para reactivar
   if (estado === 'confirmada') {
     await agregarSellosReserva(sb, reserva);
@@ -136,11 +144,23 @@ export async function PATCH(req: NextRequest) {
 
     // WhatsApp al cliente si tiene teléfono
     if (reserva.usuario_telefono) {
+      let horaNotificacion = reserva.hora;
+      if (reserva.grupo_reserva_id) {
+        const { data: slots } = await sb
+          .from('reservas')
+          .select('hora')
+          .eq('grupo_reserva_id', reserva.grupo_reserva_id)
+          .order('hora', { ascending: true });
+        if (slots && slots.length > 1) {
+          const horaFin = `${String(parseInt(slots[slots.length - 1].hora.split(':')[0]) + 1).padStart(2, '0')}:00`;
+          horaNotificacion = `${slots[0].hora} - ${horaFin}`;
+        }
+      }
       await notificarEstadoReserva({
         clientePhone: reserva.usuario_telefono,
         canchaNombre: reserva.cancha_nombre,
         fecha:        reserva.fecha,
-        hora:         reserva.hora,
+        hora:         horaNotificacion,
         precio:       reserva.precio,
         estado,
         reservaId:    reserva.id,
