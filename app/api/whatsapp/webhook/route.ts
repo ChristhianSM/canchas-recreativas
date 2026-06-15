@@ -46,8 +46,7 @@ async function processWebhook(payload: any) {
   const message = payload?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
   if (!message) return;
 
-  const from = message.from as string;   // e.g. "51959686193"
-
+  const from = message.from as string;
   const phoneMatch = from.match(/51(9\d{8})/);
   if (!phoneMatch) return;
 
@@ -62,6 +61,14 @@ async function processWebhook(payload: any) {
   } else if (message.type === 'interactive' && message.interactive?.type === 'button_reply') {
     const buttonId: string = message.interactive.button_reply?.id ?? '';
     const match = buttonId.match(/^(CONFIRMAR|RECHAZAR)_([A-Z0-9]{4,8})$/);
+    if (match) {
+      accion  = match[1] === 'CONFIRMAR' ? 'confirmar' : 'rechazar';
+      codigo  = match[2];
+    }
+  } else if (message.type === 'button') {
+    // Meta envía clicks de botones de plantilla como tipo 'button'
+    const buttonPayload: string = message.button?.payload ?? '';
+    const match = buttonPayload.match(/^(CONFIRMAR|RECHAZAR)_([A-Z0-9]{4,8})$/);
     if (match) {
       accion  = match[1] === 'CONFIRMAR' ? 'confirmar' : 'rechazar';
       codigo  = match[2];

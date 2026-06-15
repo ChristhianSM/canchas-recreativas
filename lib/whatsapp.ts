@@ -216,6 +216,7 @@ export async function notificarEstadoReserva(data: {
       data.canchaNombre,
       data.fecha,
       data.hora,
+      String(data.precio),
     ]);
   }
 }
