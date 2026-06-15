@@ -10,6 +10,7 @@ const TPL = {
   reservaConfirmadaAdmin:   process.env.WHATSAPP_TPL_CONFIRMADA_ADMIN           ?? 'reservation_confirmed_admin',
   reservaRechazadaAdmin:    process.env.WHATSAPP_TPL_RECHAZADA_ADMIN            ?? 'reservation_rejected_admin',
   reservaCanceladaAdmin:    process.env.WHATSAPP_TPL_CANCELADA_ADMIN            ?? 'reservation_cancelled_admin',
+  reservaCanceladaUsuario:  process.env.WHATSAPP_TPL_CANCELADA_USUARIO          ?? 'reservation_cancelled_user',
   partidoCanceladoJugador:  process.env.WHATSAPP_TPL_PARTIDO_CANCELADO_JUGADOR  ?? 'partido_cancelado_jugador',
 };
 
@@ -219,6 +220,36 @@ export async function notificarEstadoReserva(data: {
       String(data.precio),
     ]);
   }
+}
+
+// Notificación al usuario cuando cancela su propia reserva
+export async function notificarCancelacionUsuario(data: {
+  clientePhone: string;
+  reservaId:    string;
+  canchaNombre: string;
+  fecha:        string;
+  hora:         string;
+  precio:       number;
+  devolucion:   number;
+  porcentaje:   number;
+  motivo:       string;
+}) {
+  const codigo  = data.reservaId.slice(-6).toUpperCase();
+  const mensaje = data.devolucion > 0
+    ? `Recibirás S/ ${data.devolucion} en 24-48 horas.`
+    : 'No aplica devolución por política de cancelación tardía.';
+
+  await sendTemplate(data.clientePhone, TPL.reservaCanceladaUsuario, [
+    codigo,
+    data.canchaNombre,
+    data.fecha,
+    data.hora,
+    String(data.precio),
+    String(data.devolucion),
+    String(data.porcentaje),
+    data.motivo,
+    mensaje,
+  ]);
 }
 
 // Notificación al admin cuando un usuario cancela una reserva

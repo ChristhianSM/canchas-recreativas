@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
-import { notificarCancelacionAdmin } from '@/lib/whatsapp';
+import { notificarCancelacionAdmin, notificarCancelacionUsuario } from '@/lib/whatsapp';
 
 interface CancelacionResult {
   success: boolean;
@@ -196,6 +196,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           motivo:        resultado.motivo,
         });
       }
+    }
+
+    if (reserva.usuario_telefono) {
+      await notificarCancelacionUsuario({
+        clientePhone: reserva.usuario_telefono,
+        reservaId:    id,
+        canchaNombre: reserva.cancha_nombre,
+        fecha:        reserva.fecha,
+        hora:         reserva.hora,
+        precio:       reserva.precio,
+        devolucion:   resultado.devolucion,
+        porcentaje:   resultado.porcentaje_devolucion,
+        motivo:       resultado.motivo,
+      });
     }
 
     // Notificar a admins si hay devolución
