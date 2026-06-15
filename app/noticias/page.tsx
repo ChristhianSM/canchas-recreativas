@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Newspaper } from 'lucide-react';
 import { PublicacionCard } from '@/components/publicaciones/publicacion-card';
@@ -66,7 +66,7 @@ function PublicacionCardSkeleton() {
   );
 }
 
-export default function NoticiasPage() {
+function NoticiasPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const processedSlugRef = useRef<string | null>(null);
@@ -264,5 +264,13 @@ export default function NoticiasPage() {
         error={detalleError}
       />
     </div>
+  );
+}
+
+export default function NoticiasPage() {
+  return (
+    <Suspense>
+      <NoticiasPageInner />
+    </Suspense>
   );
 }
