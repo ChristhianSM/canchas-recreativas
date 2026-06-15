@@ -5,6 +5,7 @@ const PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID;
 const TPL = {
   reservaIniciadaUsuario:   process.env.WHATSAPP_TPL_RESERVA_INICIADA_USUARIO   ?? 'reservation_initiated_user',
   nuevaReservaAdmin:        process.env.WHATSAPP_TPL_NUEVA_RESERVA_ADMIN        ?? 'nueva_reservacion_notificacion_para_admin',
+  nuevaReservaAdminSinFoto: process.env.WHATSAPP_TPL_NUEVA_RESERVA_ADMIN_SIN_FOTO ?? 'new_reservation_notification_for_admin_no_photo',
   reservaConfirmadaUsuario: process.env.WHATSAPP_TPL_CONFIRMADA_USUARIO         ?? 'reservation_confirmed_user',
   reservaRechazadaUsuario:  process.env.WHATSAPP_TPL_RECHAZADA_USUARIO          ?? 'reservation_rejected_user',
   reservaConfirmadaAdmin:   process.env.WHATSAPP_TPL_CONFIRMADA_ADMIN           ?? 'reservation_confirmed_admin',
@@ -116,32 +117,46 @@ export async function notificarNuevaReserva(data: {
   comprobanteUrl?: string | null;
 }) {
   const codigo      = data.reservaId.slice(-6).toUpperCase();
-  const metodoLabel = data.metodoPago === 'yape' ? 'Yape'
-    : data.metodoPago === 'plin' ? 'Plin'
-    : data.metodoPago;
+  const tieneComprobante = !!(data.comprobanteUrl?.startsWith('https://'));
 
-  const components: object[] = [];
-
-  if (data.comprobanteUrl) {
-    components.push({
-      type: 'header',
-      parameters: [{ type: 'image', image: { link: data.comprobanteUrl } }],
-    });
+  let metodoLabel: string;
+  if (tieneComprobante) {
+    metodoLabel = data.metodoPago === 'yape' ? 'Yape' : data.metodoPago === 'plin' ? 'Plin' : data.metodoPago;
+  } else if (data.metodoPago === 'efectivo') {
+    metodoLabel = 'Efectivo (pago en cancha)';
+  } else {
+    const base = data.metodoPago === 'yape' ? 'Yape' : data.metodoPago === 'plin' ? 'Plin' : data.metodoPago;
+    metodoLabel = `${base} (sin comprobante)`;
   }
 
-  components.push(
-    {
-      type: 'body',
-      parameters: [
-        codigo, data.canchaNombre, data.fecha, data.hora,
-        String(data.precio), metodoLabel, data.clienteNombre, data.clienteTelefono,
-      ].map(text => ({ type: 'text', text: String(text) })),
-    },
+  const bodyParams = [
+    codigo,
+    data.canchaNombre,
+    data.fecha,
+    data.hora,
+    String(data.precio),
+    metodoLabel,
+    data.clienteNombre  || 'Cliente',
+    data.clienteTelefono || 'No proporcionado',
+  ].map(text => ({ type: 'text', text: String(text) }));
+
+  const buttons = [
     { type: 'button', sub_type: 'quick_reply', index: '0', parameters: [{ type: 'payload', payload: `CONFIRMAR_${codigo}` }] },
     { type: 'button', sub_type: 'quick_reply', index: '1', parameters: [{ type: 'payload', payload: `RECHAZAR_${codigo}` }] },
-  );
+  ];
 
-  await callMetaApi(data.adminPhone, TPL.nuevaReservaAdmin, components);
+  if (tieneComprobante) {
+    await callMetaApi(data.adminPhone, TPL.nuevaReservaAdmin, [
+      { type: 'header', parameters: [{ type: 'image', image: { link: data.comprobanteUrl } }] },
+      { type: 'body', parameters: bodyParams },
+      ...buttons,
+    ]);
+  } else {
+    await callMetaApi(data.adminPhone, TPL.nuevaReservaAdminSinFoto, [
+      { type: 'body', parameters: bodyParams },
+      ...buttons,
+    ]);
+  }
 }
 
 // Reutiliza la misma plantilla de nueva reserva para partidos
@@ -269,7 +284,7 @@ export async function notificarCancelacionAdmin(data: {
   const metodoLabel = data.metodoPago === 'yape' ? 'Yape'
     : data.metodoPago === 'plin' ? 'Plin'
     : data.metodoPago === 'efectivo' ? 'Efectivo'
-    : data.metodoPago;
+    : data.metodoPago || 'No especificado';
 
   await sendTemplate(data.adminPhone, TPL.reservaCanceladaAdmin, [
     codigo,

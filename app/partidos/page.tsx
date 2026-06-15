@@ -430,6 +430,7 @@ function CrearPartidoSheet({
   const [paso, setPaso] = useState<"form" | "pago">("form");
   const [metodo, setMetodo] = useState<MetodoPago>("yape");
   const [comprobante, setComprobante] = useState<string | null>(null);
+  const [telefonoInput, setTelefonoInput] = useState("");
 
   const [form, setForm] = useState({
     cancha_id: "",
@@ -531,6 +532,9 @@ function CrearPartidoSheet({
     setError("");
     const token = getToken();
     if (!token) { setError("Debes iniciar sesión."); return; }
+    if (!getStoredUser()?.telefono && telefonoInput && !/^9\d{8}$/.test(telefonoInput)) {
+      setError("El número de WhatsApp debe tener 9 dígitos y empezar con 9."); return;
+    }
     setSubmitting(true);
     try {
       const res = await fetch("/api/partidos", {
@@ -553,7 +557,7 @@ function CrearPartidoSheet({
           metodo_pago: metodo,
           comprobante_url: comprobante,
           organizador_nombre: getStoredUser()?.nombre ?? null,
-          organizador_telefono: getStoredUser()?.telefono ?? null,
+          organizador_telefono: getStoredUser()?.telefono || telefonoInput || null,
         }),
       });
       const data = await res.json();
@@ -1007,6 +1011,25 @@ function CrearPartidoSheet({
                   </div>
                 </div>
               ) : null}
+
+              {/* Teléfono WhatsApp — solo si no está en el perfil */}
+              {!getStoredUser()?.telefono && (
+                <div>
+                  <p className="text-xs font-semibold text-foreground mb-2 uppercase tracking-wide">
+                    Tu número de WhatsApp
+                  </p>
+                  <input
+                    type="tel"
+                    placeholder="Ej: 987654321"
+                    value={telefonoInput}
+                    onChange={e => setTelefonoInput(e.target.value.replace(/\D/g, '').slice(0, 9))}
+                    className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                  <p className="mt-1.5 text-[11px] text-muted-foreground">
+                    Para notificarte sobre tu partido por WhatsApp.
+                  </p>
+                </div>
+              )}
 
               {/* Upload comprobante */}
               <div>

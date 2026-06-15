@@ -29,6 +29,13 @@ export function removeToken() {
   localStorage.removeItem('cp_token_time');
 }
 
+export function signalUnauthorized() {
+  removeToken();
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('user-login'));
+  }
+}
+
 /**
  * Verifica si el token probablemente expiró basándose en el tiempo
  * Supabase tokens expiran en 1 hora por defecto
@@ -149,12 +156,14 @@ export function getStoredUser() {
 
 export async function apiGetReservas() {
   const res = await fetch('/api/reservas', { headers: authHeaders() });
+  if (res.status === 401) { signalUnauthorized(); return []; }
   const data = await res.json();
   return Array.isArray(data) ? data : [];
 }
 
 export async function apiGetHistorial(page = 0, limit = 10) {
   const res = await fetch(`/api/reservas?tipo=historial&page=${page}&limit=${limit}`, { headers: authHeaders() });
+  if (res.status === 401) { signalUnauthorized(); return { items: [], total: 0 }; }
   const data = await res.json();
   return { items: data.items ?? [], total: data.total ?? 0 };
 }

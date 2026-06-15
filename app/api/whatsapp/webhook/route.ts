@@ -44,11 +44,19 @@ function parsearRespuesta(body: string): { accion: 'confirmar' | 'rechazar' | nu
 
 async function processWebhook(payload: any) {
   const message = payload?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
-  if (!message) return;
+  if (!message) {
+    console.log('[webhook] 🔍 Sin message en payload');
+    return;
+  }
+
+  console.log('[webhook] 🔍 message.type:', message.type, '| from:', message.from);
 
   const from = message.from as string;
   const phoneMatch = from.match(/51(9\d{8})/);
-  if (!phoneMatch) return;
+  if (!phoneMatch) {
+    console.log('[webhook] 🔍 phoneMatch falló para:', from);
+    return;
+  }
 
   const adminPhone = phoneMatch[1];
   let accion: 'confirmar' | 'rechazar' | null = null;
@@ -68,13 +76,17 @@ async function processWebhook(payload: any) {
   } else if (message.type === 'button') {
     // Meta envía clicks de botones de plantilla como tipo 'button'
     const buttonPayload: string = message.button?.payload ?? '';
+    console.log('[webhook] 🔍 button.payload:', buttonPayload);
     const match = buttonPayload.match(/^(CONFIRMAR|RECHAZAR)_([A-Z0-9]{4,8})$/);
     if (match) {
       accion  = match[1] === 'CONFIRMAR' ? 'confirmar' : 'rechazar';
       codigo  = match[2];
+    } else {
+      console.log('[webhook] 🔍 regex no coincide con payload:', buttonPayload);
     }
   }
 
+  console.log('[webhook] 🔍 accion:', accion, '| codigo:', codigo);
   if (!accion) return;
 
   const sb = createServiceClient();
@@ -85,7 +97,10 @@ async function processWebhook(payload: any) {
     .eq('telefono', adminPhone)
     .maybeSingle();
 
-  if (!usuario) return;
+  if (!usuario) {
+    console.log('[webhook] 🔍 No se encontró usuario con teléfono:', adminPhone);
+    return;
+  }
 
   const { data: relaciones } = await sb
     .from('duenos_canchas')
@@ -93,7 +108,10 @@ async function processWebhook(payload: any) {
     .eq('usuario_id', usuario.id);
 
   const canchaIds = (relaciones ?? []).map((r: any) => r.cancha_id).filter(Boolean);
-  if (!canchaIds.length) return;
+  if (!canchaIds.length) {
+    console.log('[webhook] 🔍 Usuario', usuario.id, 'no tiene canchas asignadas');
+    return;
+  }
 
   let reserva: any = null;
 
@@ -106,7 +124,10 @@ async function processWebhook(payload: any) {
       .order('creado_en', { ascending: false });
 
     reserva = (todas ?? []).find((r: any) => r.id.slice(-6).toUpperCase() === codigo);
-    if (!reserva) return;
+    if (!reserva) {
+      console.log('[webhook] 🔍 No se encontró reserva pendiente con código:', codigo, '| Canchas:', canchaIds, '| Pendientes:', (todas ?? []).map((r: any) => r.id.slice(-6).toUpperCase()));
+      return;
+    }
   } else {
     const { data: reciente } = await sb
       .from('reservas')

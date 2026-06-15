@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
-import { notificarCancelacionAdmin, notificarPartidoCanceladoJugador } from '@/lib/whatsapp';
+import { notificarCancelacionAdmin, notificarPartidoCanceladoJugador, notificarCancelacionUsuario } from '@/lib/whatsapp';
 
 function calcularDevolucion(reserva: any) {
   if (reserva.modo_pago === 'parcial') {
@@ -119,9 +119,24 @@ export async function PATCH(
           fecha:         reserva.fecha,
           hora:          reserva.hora,
           clienteNombre: reserva.usuario_nombre ?? 'Organizador',
-          clientePhone:  reserva.usuario_telefono ?? '',
+          clientePhone:  reserva.usuario_telefono || 'No proporcionado',
           devolucion,
-          metodoPago:    reserva.metodo_pago ?? reserva.metodoPago ?? '',
+          metodoPago:    reserva.metodo_pago || reserva.metodoPago || 'No especificado',
+          motivo,
+        });
+      }
+
+      // Notificar al organizador por WhatsApp
+      if (reserva.usuario_telefono) {
+        await notificarCancelacionUsuario({
+          clientePhone: reserva.usuario_telefono,
+          reservaId:    partido.reserva_id,
+          canchaNombre: reserva.cancha_nombre,
+          fecha:        reserva.fecha,
+          hora:         reserva.hora,
+          precio:       reserva.precio,
+          devolucion,
+          porcentaje,
           motivo,
         });
       }

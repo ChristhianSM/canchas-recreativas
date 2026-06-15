@@ -18,9 +18,11 @@ export async function GET(req: NextRequest) {
   const tipo  = req.nextUrl.searchParams.get('tipo');
   const page  = Math.max(0, parseInt(req.nextUrl.searchParams.get('page')  ?? '0'));
   const limit = Math.min(50, parseInt(req.nextUrl.searchParams.get('limit') ?? '10'));
-  const ahora  = new Date();
-  const hoy    = ahora.toISOString().split('T')[0];
-  const horaActual = `${String(ahora.getHours()).padStart(2, '0')}:00`;
+  // Usar zona horaria de Perú (UTC-5) para que el corte de día sea correcto
+  const ahora = new Date();
+  const ahoraEnPeru = new Date(ahora.getTime() - 5 * 60 * 60 * 1000);
+  const hoy         = ahoraEnPeru.toISOString().split('T')[0];
+  const horaActual  = `${String(ahoraEnPeru.getUTCHours()).padStart(2, '0')}:00`;
 
   if (tipo === 'historial') {
     const from = page * limit;

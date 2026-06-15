@@ -32,7 +32,8 @@ interface CancelarReservaSimpleProps {
 function calcularDevolucionEstimada(reserva: Reserva): { porcentaje: number; monto: number; descripcion: string; color: string } {
   if (!reserva) return { porcentaje: 0, monto: 0, descripcion: '', color: '' };
 
-  const fechaReserva = new Date(`${reserva.fecha}T${reserva.hora}`);
+  const horaInicio = reserva.hora.includes(' - ') ? reserva.hora.split(' - ')[0] : reserva.hora;
+  const fechaReserva = new Date(`${reserva.fecha}T${horaInicio}`);
   const ahora = new Date();
   const horasRestantes = (fechaReserva.getTime() - ahora.getTime()) / (1000 * 60 * 60);
 
@@ -87,8 +88,9 @@ export default function CancelarReservaSimple({ reserva, onClose, onConfirm }: C
 
   const devolucion = calcularDevolucionEstimada(reserva);
   const esParcial = reserva.modoPago === 'parcial';
-  const fechaLabel = new Date(reserva.fecha).toLocaleDateString('es-PE', { 
-    day: 'numeric', 
+  const [fYear, fMonth, fDay] = reserva.fecha.split('-').map(Number);
+  const fechaLabel = new Date(fYear, fMonth - 1, fDay).toLocaleDateString('es-PE', {
+    day: 'numeric',
     month: 'long',
     year: 'numeric'
   });

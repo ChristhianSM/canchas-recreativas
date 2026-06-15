@@ -58,6 +58,7 @@ import {
   apiGetMisPartidosHistorial,
   getToken,
   getStoredUser,
+  signalUnauthorized,
 } from "@/lib/api";
 
 // ── Helpers ────────────────────────────────────────────────────────
@@ -555,12 +556,27 @@ export default function MisReservasPage() {
     setPartHistorialLoading(false);
   };
 
+  // Redirigir a home si el evento user-login indica que se cerró sesión
+  useEffect(() => {
+    const handleAuthChange = () => {
+      if (!getToken()) router.replace('/');
+    };
+    window.addEventListener('user-login', handleAuthChange);
+    return () => window.removeEventListener('user-login', handleAuthChange);
+  }, [router]);
+
   useEffect(() => {
     const storedUser = getStoredUser();
+    const token = getToken();
+
+    if (!storedUser || !token) {
+      router.replace('/');
+      return;
+    }
+
     setUser(storedUser);
     setHydrated(true);
     reload();
-    const token = getToken();
     if (token) {
       apiGetFavoritos().then((ids: string[]) => {
         if (ids.length > 0) {
@@ -663,8 +679,12 @@ export default function MisReservasPage() {
     if (!token) return;
     setPerfilLoading(true);
     fetch("/api/auth/me", { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((r) => {
+        if (r.status === 401) { signalUnauthorized(); router.replace('/'); return null; }
+        return r.ok ? r.json() : Promise.reject();
+      })
       .then((data) => {
+        if (!data) return;
         setPerfil(data);
         setPerfilNombre(data.nombre || "");
         setPerfilTelefono(data.telefono || "");

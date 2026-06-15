@@ -109,6 +109,32 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'El total del partido no puede ser menor que los cupos disponibles' }, { status: 400 });
   }
 
+  // Si el comprobante es base64, subirlo a Supabase Storage y obtener URL pública
+  let comprobantePublicUrl: string | null = comprobante_url || null;
+  if (comprobante_url?.startsWith('data:')) {
+    try {
+      const base64Data = comprobante_url.split(',')[1];
+      const buffer = Buffer.from(base64Data, 'base64');
+      const mimeMatch = comprobante_url.match(/data:([^;]+);/);
+      const mimeType = mimeMatch?.[1] ?? 'image/jpeg';
+      const ext = mimeType === 'image/jpeg' ? 'jpg' : mimeType.split('/')[1] ?? 'jpg';
+      const fileName = `comprobantes/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+
+      const { error: uploadError } = await sb.storage
+        .from('imagenes')
+        .upload(fileName, buffer, { contentType: mimeType });
+
+      if (!uploadError) {
+        const { data: { publicUrl } } = sb.storage.from('imagenes').getPublicUrl(fileName);
+        comprobantePublicUrl = publicUrl;
+      } else {
+        comprobantePublicUrl = null;
+      }
+    } catch {
+      comprobantePublicUrl = null;
+    }
+  }
+
   // Verificar que el slot no esté ya reservado
   const { data: slotOcupado } = await sb
     .from('reservas')
@@ -158,7 +184,7 @@ export async function POST(req: NextRequest) {
       precio:           Number(precio_total),
       precio_original:  Number(precio_total),
       metodo_pago,
-      comprobante_url:  comprobante_url || null,
+      comprobante_url:  comprobantePublicUrl,
       estado:           'pendiente',
       balon_incluido:   false,
       chalecos_incluido: false,
@@ -244,7 +270,7 @@ export async function POST(req: NextRequest) {
       deporte,
       nivel:               nivel ?? 'libre',
       jugadoresMax:        Number(jugadores_max),
-      comprobanteUrl:      comprobante_url ?? null,
+      comprobanteUrl:      comprobantePublicUrl,
     });
   }
 
