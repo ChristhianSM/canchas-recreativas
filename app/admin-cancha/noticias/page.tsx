@@ -1,8 +1,6 @@
 'use client';
 
-export const dynamic = 'force-dynamic';
-
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Archive, Loader2, Newspaper, Plus, Send } from 'lucide-react';
 import { CrearPublicacionDialog } from '@/components/publicaciones/crear-publicacion-dialog';
@@ -42,7 +40,7 @@ import {
   type PublicacionTipo,
 } from '@/lib/publicaciones';
 
-export default function OwnerNoticiasPage() {
+function OwnerNoticiasPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const processedSlugRef = useRef<string | null>(null);
@@ -356,5 +354,13 @@ export default function OwnerNoticiasPage() {
         onCreated={() => loadPublicaciones()}
       />
     </div>
+  );
+}
+
+export default function OwnerNoticiasPage() {
+  return (
+    <Suspense>
+      <OwnerNoticiasPageInner />
+    </Suspense>
   );
 }
