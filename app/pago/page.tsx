@@ -25,15 +25,22 @@ import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { type Cupon } from "@/lib/auth";
-import { apiCrearReserva, getToken } from "@/lib/api"; /* apiGetLoyalty — SELLOS CONGELADOS */
+import {
+  apiCrearReserva,
+  getToken,
+} from "@/lib/api"; /* apiGetLoyalty — SELLOS CONGELADOS */
 
 type MetodoPago = "yape" | "plin" | "efectivo";
 type Paso = "pago" | "datos" | "metodo" | "confirmar" | "exito";
 const TIEMPO_LIMITE = 5 * 60;
-
 
 function bloqueoKey(canchaId: string, fecha: string, hora: string) {
   return `cp_bloqueo_inicio_${canchaId}_${fecha}_${hora.replace(":", "-")}`;
@@ -749,10 +756,14 @@ function PagoContent() {
             href={`https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_BUSINESS_NUMBER}?text=${encodeURIComponent("Hola, acabo de hacer una reserva y quiero recibir mis notificaciones")}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full max-w-sm flex items-start gap-3 rounded-xl border border-[#25D366]/40 bg-[#25D366]/5 px-4 py-3.5 text-left hover:bg-[#25D366]/10 transition-colors"
+            className="w-full max-w-sm flex items-start gap-3 rounded-xl border border-[#25D366]/40 bg-[#25D366]/5 px-4 py-3.5 text-left hover:bg-[#25D366]/10 transition-colors mb-2"
           >
             <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#25D366]/15">
-              <svg className="h-5 w-5 text-[#25D366]" viewBox="0 0 24 24" fill="currentColor">
+              <svg
+                className="h-5 w-5 text-[#25D366]"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
                 <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
               </svg>
             </div>
@@ -761,7 +772,8 @@ function PagoContent() {
                 ¿Quieres recibir notificaciones más rápidas?
               </p>
               <p className="mt-0.5 text-xs text-muted-foreground leading-relaxed">
-                Escríbenos por WhatsApp y te avisamos en cuanto el admin confirme tu reserva.
+                Escríbenos por WhatsApp y te avisamos en cuanto el admin
+                confirme tu reserva.
               </p>
               <p className="mt-1.5 text-xs font-medium text-[#25D366]">
                 Escribir ahora &rarr;
@@ -821,8 +833,18 @@ function PagoContent() {
               )}
             >
               {modoPago === "completo" && (
-                <svg className="h-3 w-3 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                <svg
+                  className="h-3 w-3 text-primary-foreground"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={3}
+                    d="M5 13l4 4L19 7"
+                  />
                 </svg>
               )}
             </div>
@@ -869,8 +891,18 @@ function PagoContent() {
             )}
           >
             {modoPago === "parcial" && total > 0 && (
-              <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+              <svg
+                className="h-3 w-3 text-white"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={3}
+                  d="M5 13l4 4L19 7"
+                />
               </svg>
             )}
           </div>
@@ -879,10 +911,11 @@ function PagoContent() {
           </span>
         </div>
         <p className="mt-2 ml-7 text-sm text-muted-foreground">
-          <span className="font-bold text-foreground">S/ {previewAdelanto}</span>{" "}
-          ahora ·{" "}
-          <span className="font-medium">S/ {previewSaldo}</span>{" "}
-          en cancha
+          <span className="font-bold text-foreground">
+            S/ {previewAdelanto}
+          </span>{" "}
+          ahora · <span className="font-medium">S/ {previewSaldo}</span> en
+          cancha
         </p>
         <div className="mt-2 ml-7">
           <span className="text-xs text-amber-600 font-medium">
@@ -961,10 +994,12 @@ function PagoContent() {
                 <span className="text-foreground">S/ {extraChalecos}</span>
               </div>
             )}
-          <div className={cn(
-            "flex justify-between text-primary overflow-hidden transition-all duration-300",
-            descuento > 0 ? "max-h-8 opacity-100" : "max-h-0 opacity-0"
-          )}>
+          <div
+            className={cn(
+              "flex justify-between text-primary overflow-hidden transition-all duration-300",
+              descuento > 0 ? "max-h-8 opacity-100" : "max-h-0 opacity-0",
+            )}
+          >
             <span>🎟 Descuento cupón</span>
             <span>− S/ {descuento}</span>
           </div>
@@ -983,8 +1018,10 @@ function PagoContent() {
         <div className="rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 px-3 py-2.5">
           <p className="text-xs text-amber-700 dark:text-amber-400">
             {modoPago === "parcial"
-              ? "El adelanto (S/ " + previewAdelanto + ") no se devuelve si cancelas."
-              : "Cancela hasta 2 h antes sin costo. Después, se cobra el 50%."}
+              ? "El adelanto (S/ " +
+                previewAdelanto +
+                ") no se devuelve si cancelas."
+              : "Cancela con +4h de anticipación y recupera hasta el 85% de tu pago."}
           </p>
         </div>
       </div>
@@ -1157,7 +1194,9 @@ function PagoContent() {
         <div className="flex items-start gap-2 rounded-xl bg-muted/60 p-3">
           <Shield className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
           <p className="text-xs text-muted-foreground">
-            Si no tienes el comprobante a mano, puedes enviarlo después. El administrador revisará tu pago y te confirmará la reserva por WhatsApp.
+            Si no tienes el comprobante a mano, puedes enviarlo después. El
+            administrador revisará tu pago y te confirmará la reserva por
+            WhatsApp.
           </p>
         </div>
       </Card>
@@ -1228,9 +1267,7 @@ function PagoContent() {
           </div>
         </div>
         {/* Stepper solo mobile */}
-        <div className="lg:hidden px-4 pb-3 pt-1">
-          {mobileStepperJSX}
-        </div>
+        <div className="lg:hidden px-4 pb-3 pt-1">{mobileStepperJSX}</div>
       </header>
 
       {/* Aviso de urgencia cuando quedan menos de 60 segundos */}
@@ -1238,7 +1275,8 @@ function PagoContent() {
         <div className="fixed bottom-0 left-0 right-0 z-50 bg-destructive px-4 py-3 flex items-center justify-center gap-2 animate-pulse shadow-lg">
           <Timer className="h-4 w-4 text-white shrink-0" />
           <p className="text-white text-sm font-bold">
-            ¡Tu reserva expira en {segundos} {segundos === 1 ? "segundo" : "segundos"}! Completa el pago ahora.
+            ¡Tu reserva expira en {segundos}{" "}
+            {segundos === 1 ? "segundo" : "segundos"}! Completa el pago ahora.
           </p>
         </div>
       )}
@@ -1246,7 +1284,10 @@ function PagoContent() {
       {/* ══════════════════════════════════════════════════════════
           MOBILE: wizard original con pasos
       ══════════════════════════════════════════════════════════ */}
-      <div key={paso} className="lg:hidden container mx-auto max-w-lg px-4 py-6 space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
+      <div
+        key={paso}
+        className="lg:hidden container mx-auto max-w-lg px-4 py-6 space-y-5 animate-in fade-in slide-in-from-right-4 duration-300"
+      >
         {/* PASO 1: TIPO DE PAGO */}
         {paso === "pago" && (
           <>
@@ -1282,22 +1323,29 @@ function PagoContent() {
               {/* Desglose de precio */}
               <div className="mt-3 pt-3 border-t border-border space-y-1 text-sm">
                 <div className="flex justify-between text-muted-foreground">
-                  <span>{horas > 1 ? `${horas}h × S/ ${precioRaw}` : `1h × S/ ${precioRaw}`}</span>
+                  <span>
+                    {horas > 1
+                      ? `${horas}h × S/ ${precioRaw}`
+                      : `1h × S/ ${precioRaw}`}
+                  </span>
                   <span>S/ {precioRaw * horas}</span>
                 </div>
                 {conBalon && extraBalon > 0 && (
                   <div className="flex justify-between text-muted-foreground">
-                    <span>⚽ Balón</span><span>S/ {extraBalon}</span>
+                    <span>⚽ Balón</span>
+                    <span>S/ {extraBalon}</span>
                   </div>
                 )}
                 {conChalecos && extraChalecos > 0 && (
                   <div className="flex justify-between text-muted-foreground">
-                    <span>🎽 Chalecos</span><span>S/ {extraChalecos}</span>
+                    <span>🎽 Chalecos</span>
+                    <span>S/ {extraChalecos}</span>
                   </div>
                 )}
                 {descuento > 0 && (
                   <div className="flex justify-between text-primary">
-                    <span>🎟 Cupón</span><span>− S/ {descuento}</span>
+                    <span>🎟 Cupón</span>
+                    <span>− S/ {descuento}</span>
                   </div>
                 )}
                 <div className="flex justify-between font-bold text-foreground pt-1 border-t border-border">
@@ -1338,9 +1386,7 @@ function PagoContent() {
                           <span
                             className={cn(
                               "inline-block h-5 w-5 rounded-full bg-white shadow transition-transform",
-                              conBalon
-                                ? "translate-x-5.5"
-                                : "translate-x-0.5",
+                              conBalon ? "translate-x-5.5" : "translate-x-0.5",
                             )}
                           />
                         </button>
@@ -1503,7 +1549,9 @@ function PagoContent() {
                 </p>
                 <div className="space-y-3">
                   {(["yape", "plin"] as MetodoPago[])
-                    .filter((m) => m === "yape" ? yapeDisponible : plinDisponible)
+                    .filter((m) =>
+                      m === "yape" ? yapeDisponible : plinDisponible,
+                    )
                     .map((m) => (
                       <button
                         key={m}
@@ -1518,21 +1566,49 @@ function PagoContent() {
                         )}
                       >
                         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl overflow-hidden bg-white border border-border">
-                          <Image src={m === "yape" ? "/images/yape.png" : "/images/plin.png"} alt={m} width={48} height={48} className="object-contain" />
+                          <Image
+                            src={
+                              m === "yape"
+                                ? "/images/yape.png"
+                                : "/images/plin.png"
+                            }
+                            alt={m}
+                            width={48}
+                            height={48}
+                            className="object-contain"
+                          />
                         </div>
                         <div className="flex-1">
-                          <p className="font-semibold text-foreground">{m === "yape" ? "Yape" : "Plin"}</p>
-                          <p className="text-xs text-muted-foreground">Pago móvil instantáneo</p>
+                          <p className="font-semibold text-foreground">
+                            {m === "yape" ? "Yape" : "Plin"}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Pago móvil instantáneo
+                          </p>
                         </div>
-                        <div className={cn(
-                          "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2",
-                          metodo === m
-                            ? m === "yape" ? "border-[#6C1FC6] bg-[#6C1FC6]" : "border-[#00C2CB] bg-[#00C2CB]"
-                            : "border-muted-foreground/40",
-                        )}>
+                        <div
+                          className={cn(
+                            "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2",
+                            metodo === m
+                              ? m === "yape"
+                                ? "border-[#6C1FC6] bg-[#6C1FC6]"
+                                : "border-[#00C2CB] bg-[#00C2CB]"
+                              : "border-muted-foreground/40",
+                          )}
+                        >
                           {metodo === m && (
-                            <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            <svg
+                              className="h-3 w-3 text-white"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={3}
+                                d="M5 13l4 4L19 7"
+                              />
                             </svg>
                           )}
                         </div>
@@ -1545,7 +1621,9 @@ function PagoContent() {
               <Button
                 size="lg"
                 className="w-full"
-                onClick={() => soloEfectivo ? setPaso("metodo") : setPaso("confirmar")}
+                onClick={() =>
+                  soloEfectivo ? setPaso("metodo") : setPaso("confirmar")
+                }
               >
                 {soloEfectivo ? "Continuar" : "Ir a pagar"}
               </Button>
@@ -1587,7 +1665,8 @@ function PagoContent() {
                       onBlur={(e) => {
                         const v = e.target.value.trim();
                         if (!v) setEmailError("Ingresa tu correo");
-                        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) setEmailError("Correo no válido");
+                        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v))
+                          setEmailError("Correo no válido");
                       }}
                       className={cn(
                         "bg-background",
@@ -1642,7 +1721,10 @@ function PagoContent() {
                     onBlur={(e) => {
                       const v = e.target.value.trim();
                       if (!v) setTelefonoError("Ingresa tu número de WhatsApp");
-                      else if (!/^9\d{8}$/.test(v)) setTelefonoError("Número inválido (9 dígitos, empieza en 9)");
+                      else if (!/^9\d{8}$/.test(v))
+                        setTelefonoError(
+                          "Número inválido (9 dígitos, empieza en 9)",
+                        );
                     }}
                     className={cn(
                       "bg-background flex-1",
@@ -1978,35 +2060,75 @@ function PagoContent() {
               {(() => {
                 const done = paso !== "datos";
                 return (
-                  <div className={cn(
-                    "rounded-xl border p-5 transition-all",
-                    done ? "bg-white dark:bg-card border-border" : "bg-white dark:bg-card border-primary shadow-sm ring-1 ring-primary/20"
-                  )}>
+                  <div
+                    className={cn(
+                      "rounded-xl border p-5 transition-all",
+                      done
+                        ? "bg-white dark:bg-card border-border"
+                        : "bg-white dark:bg-card border-primary shadow-sm ring-1 ring-primary/20",
+                    )}
+                  >
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <div className={cn(
-                          "flex h-6 w-6 shrink-0 items-center justify-center rounded-full",
-                          done ? "bg-primary" : "bg-primary ring-4 ring-primary/20"
-                        )}>
+                        <div
+                          className={cn(
+                            "flex h-6 w-6 shrink-0 items-center justify-center rounded-full",
+                            done
+                              ? "bg-primary"
+                              : "bg-primary ring-4 ring-primary/20",
+                          )}
+                        >
                           {done ? (
-                            <svg className="h-3.5 w-3.5 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            <svg
+                              className="h-3.5 w-3.5 text-primary-foreground"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={3}
+                                d="M5 13l4 4L19 7"
+                              />
                             </svg>
-                          ) : <span className="text-xs font-bold text-primary-foreground">1</span>}
+                          ) : (
+                            <span className="text-xs font-bold text-primary-foreground">
+                              1
+                            </span>
+                          )}
                         </div>
-                        <span className="text-sm font-semibold text-foreground">Identificación</span>
+                        <span className="text-sm font-semibold text-foreground">
+                          Identificación
+                        </span>
                       </div>
                       {done && (
-                        <button onClick={() => setPaso("datos")} className="text-xs font-medium text-primary hover:underline">Editar</button>
+                        <button
+                          onClick={() => setPaso("datos")}
+                          className="text-xs font-medium text-primary hover:underline"
+                        >
+                          Editar
+                        </button>
                       )}
                     </div>
                     {done ? (
                       <div className="space-y-0.5 text-sm text-muted-foreground ml-8">
-                        <p className="truncate">{esInvitado ? emailInvitado || "—" : emailRegistrado || "—"}</p>
-                        <p>+51 {esInvitado ? telefonoInvitado || "—" : telefonoRegistrado || "—"}</p>
+                        <p className="truncate">
+                          {esInvitado
+                            ? emailInvitado || "—"
+                            : emailRegistrado || "—"}
+                        </p>
+                        <p>
+                          +51{" "}
+                          {esInvitado
+                            ? telefonoInvitado || "—"
+                            : telefonoRegistrado || "—"}
+                        </p>
                       </div>
                     ) : (
-                      <p className="text-xs text-muted-foreground ml-8">Ingresa tu correo y teléfono</p>
+                      <p className="text-xs text-muted-foreground ml-8">
+                        Ingresa tu correo y teléfono
+                      </p>
                     )}
                   </div>
                 );
@@ -2017,46 +2139,102 @@ function PagoContent() {
                 const done = paso === "confirmar";
                 const pending = paso === "datos";
                 return (
-                  <div className={cn(
-                    "rounded-xl border p-5 transition-all",
-                    done ? "bg-white dark:bg-card border-border"
-                         : paso === "pago" ? "bg-white dark:bg-card border-primary shadow-sm ring-1 ring-primary/20"
-                         : "bg-muted/30 dark:bg-muted/10 border-border opacity-60"
-                  )}>
+                  <div
+                    className={cn(
+                      "rounded-xl border p-5 transition-all",
+                      done
+                        ? "bg-white dark:bg-card border-border"
+                        : paso === "pago"
+                          ? "bg-white dark:bg-card border-primary shadow-sm ring-1 ring-primary/20"
+                          : "bg-muted/30 dark:bg-muted/10 border-border opacity-60",
+                    )}
+                  >
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <div className={cn(
-                          "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold",
-                          done ? "bg-primary"
-                               : paso === "pago" ? "bg-primary ring-4 ring-primary/20"
-                               : "bg-muted text-muted-foreground"
-                        )}>
+                        <div
+                          className={cn(
+                            "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold",
+                            done
+                              ? "bg-primary"
+                              : paso === "pago"
+                                ? "bg-primary ring-4 ring-primary/20"
+                                : "bg-muted text-muted-foreground",
+                          )}
+                        >
                           {done ? (
-                            <svg className="h-3.5 w-3.5 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            <svg
+                              className="h-3.5 w-3.5 text-primary-foreground"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={3}
+                                d="M5 13l4 4L19 7"
+                              />
                             </svg>
-                          ) : <span className={paso === "pago" ? "text-primary-foreground" : ""}>2</span>}
+                          ) : (
+                            <span
+                              className={
+                                paso === "pago" ? "text-primary-foreground" : ""
+                              }
+                            >
+                              2
+                            </span>
+                          )}
                         </div>
-                        <span className={cn("text-sm font-semibold", pending ? "text-muted-foreground" : "text-foreground")}>
+                        <span
+                          className={cn(
+                            "text-sm font-semibold",
+                            pending
+                              ? "text-muted-foreground"
+                              : "text-foreground",
+                          )}
+                        >
                           Pago
                         </span>
                       </div>
                       {done && (
-                        <button onClick={() => setPaso("pago")} className="text-xs font-medium text-primary hover:underline">Editar</button>
+                        <button
+                          onClick={() => setPaso("pago")}
+                          className="text-xs font-medium text-primary hover:underline"
+                        >
+                          Editar
+                        </button>
                       )}
                     </div>
                     {done ? (
                       <div className="space-y-1 ml-8">
-                        <p className="text-sm font-medium text-foreground">{modoPago === "completo" ? "Pago completo" : "Adelanto 20%"}</p>
+                        <p className="text-sm font-medium text-foreground">
+                          {modoPago === "completo"
+                            ? "Pago completo"
+                            : "Adelanto 20%"}
+                        </p>
                         {!soloEfectivo && (
                           <div className="flex items-center gap-1.5">
-                            <Image src={metodo === "yape" ? "/images/yape.png" : "/images/plin.png"} alt={metodo} width={14} height={14} className="rounded object-contain shrink-0" />
-                            <span className="text-xs text-muted-foreground capitalize">{metodo} · S/ {montoAdelanto}</span>
+                            <Image
+                              src={
+                                metodo === "yape"
+                                  ? "/images/yape.png"
+                                  : "/images/plin.png"
+                              }
+                              alt={metodo}
+                              width={14}
+                              height={14}
+                              className="rounded object-contain shrink-0"
+                            />
+                            <span className="text-xs text-muted-foreground capitalize">
+                              {metodo} · S/ {montoAdelanto}
+                            </span>
                           </div>
                         )}
                       </div>
                     ) : (
-                      <p className="text-xs text-muted-foreground ml-8">{paso === "pago" ? "Elige monto y método" : "Pendiente"}</p>
+                      <p className="text-xs text-muted-foreground ml-8">
+                        {paso === "pago" ? "Elige monto y método" : "Pendiente"}
+                      </p>
                     )}
                   </div>
                 );
@@ -2064,7 +2242,10 @@ function PagoContent() {
             </div>
 
             {/* ── Columna central: paso activo ── */}
-            <div key={paso} className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
+            <div
+              key={paso}
+              className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300"
+            >
               {/* PASO 1: Tipo de pago */}
               {paso === "pago" && (
                 <>
@@ -2161,8 +2342,8 @@ function PagoContent() {
                               Esta cancha solo acepta pago en efectivo
                             </p>
                             <p className="text-xs text-amber-600 dark:text-amber-500 mt-1 leading-relaxed">
-                              El pago se realiza directamente en la cancha el día
-                              de tu partido.
+                              El pago se realiza directamente en la cancha el
+                              día de tu partido.
                             </p>
                           </div>
                         </div>
@@ -2177,7 +2358,9 @@ function PagoContent() {
                         </h2>
                         <div className="space-y-3">
                           {(["yape", "plin"] as MetodoPago[])
-                            .filter((m) => m === "yape" ? yapeDisponible : plinDisponible)
+                            .filter((m) =>
+                              m === "yape" ? yapeDisponible : plinDisponible,
+                            )
                             .map((m) => (
                               <button
                                 key={m}
@@ -2185,26 +2368,56 @@ function PagoContent() {
                                 className={cn(
                                   "w-full flex items-center gap-4 rounded-xl border-2 p-4 transition-all text-left",
                                   metodo === m
-                                    ? m === "yape" ? "border-[#6C1FC6] bg-[#6C1FC6]/5" : "border-[#00C2CB] bg-[#00C2CB]/5"
+                                    ? m === "yape"
+                                      ? "border-[#6C1FC6] bg-[#6C1FC6]/5"
+                                      : "border-[#00C2CB] bg-[#00C2CB]/5"
                                     : "border-border hover:border-muted-foreground/40",
                                 )}
                               >
                                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl overflow-hidden bg-white border border-border">
-                                  <Image src={m === "yape" ? "/images/yape.png" : "/images/plin.png"} alt={m} width={48} height={48} className="object-contain" />
+                                  <Image
+                                    src={
+                                      m === "yape"
+                                        ? "/images/yape.png"
+                                        : "/images/plin.png"
+                                    }
+                                    alt={m}
+                                    width={48}
+                                    height={48}
+                                    className="object-contain"
+                                  />
                                 </div>
                                 <div className="flex-1">
-                                  <p className="font-semibold text-foreground">{m === "yape" ? "Yape" : "Plin"}</p>
-                                  <p className="text-xs text-muted-foreground">Pago móvil instantáneo</p>
+                                  <p className="font-semibold text-foreground">
+                                    {m === "yape" ? "Yape" : "Plin"}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    Pago móvil instantáneo
+                                  </p>
                                 </div>
-                                <div className={cn(
-                                  "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2",
-                                  metodo === m
-                                    ? m === "yape" ? "border-[#6C1FC6] bg-[#6C1FC6]" : "border-[#00C2CB] bg-[#00C2CB]"
-                                    : "border-muted-foreground/40",
-                                )}>
+                                <div
+                                  className={cn(
+                                    "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2",
+                                    metodo === m
+                                      ? m === "yape"
+                                        ? "border-[#6C1FC6] bg-[#6C1FC6]"
+                                        : "border-[#00C2CB] bg-[#00C2CB]"
+                                      : "border-muted-foreground/40",
+                                  )}
+                                >
                                   {metodo === m && (
-                                    <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                    <svg
+                                      className="h-3 w-3 text-white"
+                                      fill="none"
+                                      viewBox="0 0 24 24"
+                                      stroke="currentColor"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={3}
+                                        d="M5 13l4 4L19 7"
+                                      />
                                     </svg>
                                   )}
                                 </div>
@@ -2245,7 +2458,9 @@ function PagoContent() {
                               )}
                             >
                               <span>S/5</span>
-                              <span className="text-[10px] font-normal">OFF</span>
+                              <span className="text-[10px] font-normal">
+                                OFF
+                              </span>
                             </div>
                             <div className="flex-1">
                               <p className="text-sm font-medium text-foreground">
@@ -2290,7 +2505,9 @@ function PagoContent() {
                     <Button
                       size="lg"
                       className="w-full"
-                      onClick={() => soloEfectivo ? setPaso("metodo") : setPaso("confirmar")}
+                      onClick={() =>
+                        soloEfectivo ? setPaso("metodo") : setPaso("confirmar")
+                      }
                     >
                       {soloEfectivo ? "Continuar" : "Ir a pagar"}
                     </Button>
@@ -2372,7 +2589,9 @@ function PagoContent() {
                               esInvitado ? telefonoInvitado : telefonoRegistrado
                             }
                             onChange={(e) => {
-                              const val = e.target.value.replace(/\D/g, "").slice(0, 9);
+                              const val = e.target.value
+                                .replace(/\D/g, "")
+                                .slice(0, 9);
                               if (esInvitado) {
                                 setTelefonoInvitado(val);
                                 setTelefonoError("");
@@ -2559,9 +2778,7 @@ function PagoContent() {
             </div>
 
             {/* ── Columna derecha: resumen sticky ── */}
-            <div className="sticky top-20">
-              {resumenReserva}
-            </div>
+            <div className="sticky top-20">{resumenReserva}</div>
           </div>
         </div>
       </div>
@@ -2584,7 +2801,10 @@ function PagoContent() {
                 type="email"
                 placeholder="tu@correo.com"
                 value={loginEmail}
-                onChange={(e) => { setLoginEmail(e.target.value); setLoginError(""); }}
+                onChange={(e) => {
+                  setLoginEmail(e.target.value);
+                  setLoginError("");
+                }}
                 required
                 autoComplete="email"
               />
@@ -2597,7 +2817,10 @@ function PagoContent() {
                 type="password"
                 placeholder="••••••••"
                 value={loginPassword}
-                onChange={(e) => { setLoginPassword(e.target.value); setLoginError(""); }}
+                onChange={(e) => {
+                  setLoginPassword(e.target.value);
+                  setLoginError("");
+                }}
                 required
                 autoComplete="current-password"
               />
