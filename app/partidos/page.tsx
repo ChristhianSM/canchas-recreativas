@@ -431,6 +431,7 @@ function CrearPartidoSheet({
   const [metodo, setMetodo] = useState<MetodoPago>("yape");
   const [comprobante, setComprobante] = useState<string | null>(null);
   const [telefonoInput, setTelefonoInput] = useState("");
+  const [telefonoError, setTelefonoError] = useState("");
 
   const [form, setForm] = useState({
     cancha_id: "",
@@ -1015,20 +1016,38 @@ function CrearPartidoSheet({
 
               {/* Teléfono WhatsApp — solo si no está en el perfil */}
               {!getStoredUser()?.telefono && (
-                <div>
-                  <p className="text-xs font-semibold text-foreground mb-2 uppercase tracking-wide">
-                    Tu número de WhatsApp <span className="text-destructive">*</span>
-                  </p>
-                  <input
-                    type="tel"
-                    placeholder="Ej: 987654321"
-                    value={telefonoInput}
-                    onChange={e => setTelefonoInput(e.target.value.replace(/\D/g, '').slice(0, 9))}
-                    className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-                  />
-                  <p className="mt-1.5 text-[11px] text-muted-foreground">
-                    Para notificarte sobre tu partido por WhatsApp.
-                  </p>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-foreground">
+                    Número de celular <span className="text-destructive">*</span>
+                  </label>
+                  <div className="flex gap-2">
+                    <div className="flex items-center gap-1.5 rounded-lg border border-border bg-muted px-3 py-2 text-sm font-medium text-muted-foreground shrink-0">
+                      +51
+                    </div>
+                    <input
+                      type="tel"
+                      placeholder="987654321"
+                      maxLength={9}
+                      value={telefonoInput}
+                      onChange={e => {
+                        setTelefonoInput(e.target.value.replace(/\D/g, '').slice(0, 9));
+                        setTelefonoError('');
+                      }}
+                      onBlur={e => {
+                        const v = e.target.value.trim();
+                        if (!v) setTelefonoError('Ingresa tu número de WhatsApp');
+                        else if (!/^9\d{8}$/.test(v)) setTelefonoError('Número inválido (9 dígitos, empieza en 9)');
+                      }}
+                      className={`flex-1 rounded-lg border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 ${telefonoError ? 'border-destructive' : 'border-border'}`}
+                    />
+                  </div>
+                  {telefonoError ? (
+                    <p className="text-xs text-destructive">{telefonoError}</p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Te enviaremos la confirmación por WhatsApp a este número
+                    </p>
+                  )}
                 </div>
               )}
 
