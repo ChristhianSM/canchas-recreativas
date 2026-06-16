@@ -64,33 +64,39 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 });
   }
 
-  const hoy = new Date().toISOString().slice(0, 10);
-
-  // Verificar elegibilidad: reserva confirmada pasada O jugador en partido pasado
+  // Verificar elegibilidad: reserva confirmada O jugador en partido confirmado
   const { data: reserva } = await sb
     .from('reservas')
     .select('id')
     .eq('cancha_id', canchaId)
     .eq('usuario_id', user.id)
     .eq('estado', 'confirmada')
-    .lt('fecha', hoy)
     .limit(1)
     .maybeSingle();
 
   let elegible = !!reserva;
 
   if (!elegible) {
-    const { data: participacion } = await sb
-      .from('partido_jugadores')
-      .select('id, partidos!inner(cancha_id, fecha, estado)')
-      .eq('usuario_id', user.id)
-      .eq('partidos.cancha_id', canchaId)
-      .lt('partidos.fecha', hoy)
-      .in('partidos.estado', ['abierto', 'finalizado'])
-      .limit(1)
-      .maybeSingle();
+    // Buscar partidos de esta cancha en los que el usuario participó
+    const { data: partidosCancha } = await sb
+      .from('partidos')
+      .select('id')
+      .eq('cancha_id', canchaId)
+      .in('estado', ['abierto', 'finalizado']);
 
-    elegible = !!participacion;
+    const partidoIds = (partidosCancha ?? []).map((p: any) => p.id);
+
+    if (partidoIds.length > 0) {
+      const { data: participacion } = await sb
+        .from('partido_jugadores')
+        .select('id')
+        .eq('usuario_id', user.id)
+        .in('partido_id', partidoIds)
+        .limit(1)
+        .maybeSingle();
+
+      elegible = !!participacion;
+    }
   }
 
   if (!elegible) {
@@ -127,7 +133,7 @@ export async function POST(req: NextRequest) {
     .insert({
       cancha_id:     canchaId,
       usuario_id:    user.id,
-      reserva_id:    reserva.id,
+      reserva_id:    reserva?.id ?? null,
       estrellas,
       comentario:    comentario?.trim() || null,
       usuario_nombre: perfil?.nombre ?? null,
