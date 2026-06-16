@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
   const sb = createServiceClient();
 
   const body = await req.json();
-  const { canchaId, canchaNombre, fecha, hora, horas = 1, precio, precioOriginal, cuponId, metodoPago, comprobanteUrl, emailInvitado, telefonoInvitado, whatsappInvitado, metodoDevolucion, telefonoDevolucion, actualizarTelefono, nuevoTelefono, balonIncluido, chalecosIncluido, modo_pago, monto_adelanto, saldo_pendiente } = body;
+  const { canchaId, canchaNombre, fecha, hora, horas = 1, precio, precioOriginal, cuponId, metodoPago, comprobanteUrl, emailInvitado, telefonoInvitado, whatsappInvitado, metodoDevolucion, telefonoDevolucion, actualizarTelefono, nuevoTelefono, accesoriosIncluidos, modo_pago, monto_adelanto, saldo_pendiente } = body;
 
   // Precio por hora individual (para multi-hora)
   const precioPorHora = horas > 1 ? Math.round(precio / horas) : precio;
@@ -214,8 +214,7 @@ export async function POST(req: NextRequest) {
       metodo_pago:      metodoPago,
       comprobante_url:  esPrincipal ? comprobantePublicUrl : null,
       estado:           'pendiente',
-      balon_incluido:   esPrincipal ? (balonIncluido ?? false) : false,
-      chalecos_incluido: esPrincipal ? (chalecosIncluido ?? false) : false,
+      accesorios_incluidos: esPrincipal ? (accesoriosIncluidos ?? []) : [],
       modo_pago:        modoPagoFinal,
       monto_adelanto:   adelantoSlot,
       saldo_pendiente:  saldoSlot,

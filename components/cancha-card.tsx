@@ -758,36 +758,40 @@ export function CanchaCard({
             )}
           </div>
 
-          {/* Extras */}
-          <div className="mb-3 flex items-center gap-2 flex-wrap">
-            {/* Balón */}
-            {cancha.balonDisponible ? (
-              <span className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium border bg-brand-yellow/25 border-brand-yellow/50 text-brand-black">
-                ⚽ Balón
-                {cancha.balonPrecio != null
-                  ? ` · S/ ${cancha.balonPrecio}`
-                  : " · Gratis"}
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium border border-border bg-muted/40 text-muted-foreground line-through opacity-60">
-                ⚽ Sin balón
-              </span>
-            )}
-
-            {/* Chalecos */}
-            {cancha.chalecoDisponible ? (
-              <span className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium border bg-brand-yellow/25 border-brand-yellow/50 text-brand-black">
-                🎽 Chalecos
-                {cancha.chalecosPrecio != null
-                  ? ` · S/ ${cancha.chalecosPrecio}`
-                  : " · Gratis"}
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium border border-border bg-muted/40 text-muted-foreground line-through opacity-60">
-                🎽 Sin chalecos
-              </span>
-            )}
-          </div>
+          {/* Accesorios */}
+          {(() => {
+            const OBLIGATORIOS: Record<string, Array<{ nombre: string; icono: string }>> = {
+              futbol:  [{ nombre: 'Balón', icono: '⚽' }, { nombre: 'Chalecos', icono: '🎽' }],
+              futsal:  [{ nombre: 'Balón', icono: '⚽' }, { nombre: 'Chalecos', icono: '🎽' }],
+              voley:   [{ nombre: 'Balón', icono: '🏐' }, { nombre: 'Malla', icono: '🥅' }],
+              basquet: [{ nombre: 'Balón', icono: '🏀' }, { nombre: 'Canasta', icono: '🪣' }],
+              tenis:   [{ nombre: 'Raqueta', icono: '🎾' }, { nombre: 'Pelotas', icono: '🎾' }],
+            };
+            const obligatorios = (OBLIGATORIOS[cancha.type] ?? []).slice(0, 2);
+            if (!obligatorios.length) return null;
+            const accesorios = cancha.accesorios ?? [];
+            return (
+              <div className="mb-3 flex items-center gap-2">
+                {obligatorios.map((ob) => {
+                  const encontrado = accesorios.find(
+                    (a) => a.nombre.toLowerCase() === ob.nombre.toLowerCase()
+                  );
+                  return encontrado ? (
+                    <span key={ob.nombre} className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium border bg-brand-yellow/25 border-brand-yellow/50 text-brand-black">
+                      {ob.icono} {ob.nombre}
+                      {encontrado.modalidad === 'alquilado' && encontrado.precio != null
+                        ? ` · S/ ${encontrado.precio}`
+                        : ' · Gratis'}
+                    </span>
+                  ) : (
+                    <span key={ob.nombre} className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium border border-border bg-muted/40 text-muted-foreground line-through opacity-60">
+                      {ob.icono} Sin {ob.nombre.toLowerCase()}
+                    </span>
+                  );
+                })}
+              </div>
+            );
+          })()}
 
           {/* Botón Reservar + Favorito */}
           <div className="flex items-center gap-2">

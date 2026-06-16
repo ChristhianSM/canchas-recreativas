@@ -201,6 +201,7 @@ function adaptCancha(c: Cancha) {
     balonPrecio: c.balon_precio ?? null,
     chalecoDisponible: c.chalecos_disponible ?? false,
     chalecosPrecio: c.chalecos_precio ?? null,
+    accesorios: c.accesorios ?? [],
   };
 }
 

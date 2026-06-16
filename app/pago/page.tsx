@@ -80,10 +80,10 @@ function PagoContent() {
 
   const horaFin = `${String((parseInt(hora.split(":")[0]) + horas) % 24).padStart(2, "0")}:00`;
 
-  const [conBalon, setConBalon] = useState(params.get("balon") === "1");
-  const [conChalecos, setConChalecos] = useState(
-    params.get("chalecos") === "1",
-  );
+  // Accesorios seleccionados — vienen del sessionStorage, no de la URL
+  const [accesoriosSeleccionados, setAccesoriosSeleccionados] = useState<
+    { id: string; nombre: string; icono: string; precio: number | null }[]
+  >([]);
 
   const [cancha, setCancha] = useState<any>(null);
   const [canchaLoading, setCanchaLoading] = useState(true);
@@ -127,7 +127,11 @@ function PagoContent() {
     const cached = sessionStorage.getItem(`cp_cancha_pago_${canchaId}`);
     if (cached) {
       try {
-        setCancha(JSON.parse(cached));
+        const parsed = JSON.parse(cached);
+        setCancha(parsed);
+        if (parsed.accesoriosSeleccionados) {
+          setAccesoriosSeleccionados(parsed.accesoriosSeleccionados);
+        }
         sessionStorage.removeItem(`cp_cancha_pago_${canchaId}`);
         setCanchaLoading(false);
         return;
@@ -148,8 +152,8 @@ function PagoContent() {
                 ],
             address: data.direccion,
             phone: data.telefono,
-            balonPrecio: data.balon_precio ?? null,
-            chalecosPrecio: data.chalecos_precio ?? null,
+            accesorios: data.accesorios ?? [],
+            accesoriosSeleccionados: [],
             lat: data.latitud ?? null,
             lng: data.longitud ?? null,
             yapeNumero: data.yape_numero ?? "",
@@ -328,13 +332,11 @@ function PagoContent() {
     );
 
   const descuento = cuponSeleccionado ? 5 : 0;
-  const extraBalon =
-    conBalon && cancha?.balonPrecio != null ? cancha.balonPrecio : 0;
-  const extraChalecos =
-    conChalecos && cancha?.chalecosPrecio != null ? cancha.chalecosPrecio : 0;
+  const extraAccesorios = accesoriosSeleccionados
+    .reduce((sum, a) => sum + (a.precio ?? 0), 0);
   const total = Math.max(
     0,
-    precioRaw * horas + extraBalon + extraChalecos - descuento,
+    precioRaw * horas + extraAccesorios - descuento,
   );
   const montoAdelanto =
     modoPago === "parcial" ? Math.round(total * 0.2) : total;
@@ -450,8 +452,7 @@ function PagoContent() {
         precioOriginal: precioRaw,
         cuponId: cuponSeleccionado,
         metodoPago: "efectivo",
-        balonIncluido: conBalon,
-        chalecosIncluido: conChalecos,
+        accesoriosIncluidos: accesoriosSeleccionados,
         modoPago,
         montoAdelanto,
         saldoPendiente,
@@ -495,8 +496,7 @@ function PagoContent() {
       cuponId: cuponSeleccionado,
       metodoPago: metodo,
       comprobanteUrl: comprobante,
-      balonIncluido: conBalon,
-      chalecosIncluido: conChalecos,
+      accesoriosIncluidos: accesoriosSeleccionados,
       modoPago,
       montoAdelanto,
       saldoPendiente,
@@ -980,20 +980,12 @@ function PagoContent() {
             </span>
             <span className="text-foreground">S/ {precioRaw * horas}</span>
           </div>
-          {conBalon && cancha?.balonPrecio != null && extraBalon > 0 && (
-            <div className="flex justify-between text-muted-foreground">
-              <span>⚽ Balón</span>
-              <span className="text-foreground">S/ {extraBalon}</span>
+          {accesoriosSeleccionados.filter(a => (a.precio ?? 0) > 0).map(a => (
+            <div key={a.id} className="flex justify-between text-muted-foreground">
+              <span>{a.icono} {a.nombre}</span>
+              <span className="text-foreground">S/ {a.precio}</span>
             </div>
-          )}
-          {conChalecos &&
-            cancha?.chalecosPrecio != null &&
-            extraChalecos > 0 && (
-              <div className="flex justify-between text-muted-foreground">
-                <span>🎽 Chalecos</span>
-                <span className="text-foreground">S/ {extraChalecos}</span>
-              </div>
-            )}
+          ))}
           <div
             className={cn(
               "flex justify-between text-primary overflow-hidden transition-all duration-300",
@@ -1330,18 +1322,12 @@ function PagoContent() {
                   </span>
                   <span>S/ {precioRaw * horas}</span>
                 </div>
-                {conBalon && extraBalon > 0 && (
-                  <div className="flex justify-between text-muted-foreground">
-                    <span>⚽ Balón</span>
-                    <span>S/ {extraBalon}</span>
+                {accesoriosSeleccionados.filter(a => (a.precio ?? 0) > 0).map(a => (
+                  <div key={a.id} className="flex justify-between text-muted-foreground">
+                    <span>{a.icono} {a.nombre}</span>
+                    <span>S/ {a.precio}</span>
                   </div>
-                )}
-                {conChalecos && extraChalecos > 0 && (
-                  <div className="flex justify-between text-muted-foreground">
-                    <span>🎽 Chalecos</span>
-                    <span>S/ {extraChalecos}</span>
-                  </div>
-                )}
+                ))}
                 {descuento > 0 && (
                   <div className="flex justify-between text-primary">
                     <span>🎟 Cupón</span>
@@ -1354,78 +1340,45 @@ function PagoContent() {
                 </div>
               </div>
             </Card>
-            {fromCard &&
-              cancha &&
-              (cancha.balonPrecio != null || cancha.chalecosPrecio != null) && (
+            {fromCard && cancha && (cancha.accesorios ?? []).length > 0 && (
                 <Card className="border-border p-4">
                   <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    ¿Necesitas extras?
+                    ¿Necesitas accesorios?
                   </p>
                   <div className="space-y-3">
-                    {cancha.balonPrecio != null && (
-                      <label className="flex items-center justify-between gap-3 cursor-pointer">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xl">⚽</span>
-                          <div>
-                            <p className="text-sm font-medium text-foreground">
-                              Balón
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              + S/ {cancha.balonPrecio} por reserva
-                            </p>
+                    {(cancha.accesorios ?? []).map((acc: any) => {
+                      const seleccionado = accesoriosSeleccionados.some(a => a.id === acc.id);
+                      return (
+                        <label key={acc.id} className="flex items-center justify-between gap-3 cursor-pointer">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xl">{acc.icono}</span>
+                            <div>
+                              <p className="text-sm font-medium text-foreground">{acc.nombre}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {acc.modalidad === 'prestado' || acc.precio == null ? 'Gratis' : `+ S/ ${acc.precio} por reserva`}
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setConBalon((v) => !v)}
-                          className={cn(
-                            "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors",
-                            conBalon ? "bg-primary" : "bg-muted-foreground/30",
-                          )}
-                        >
-                          <span
-                            className={cn(
-                              "inline-block h-5 w-5 rounded-full bg-white shadow transition-transform",
-                              conBalon ? "translate-x-5.5" : "translate-x-0.5",
+                          <button
+                            type="button"
+                            onClick={() => setAccesoriosSeleccionados(prev =>
+                              seleccionado
+                                ? prev.filter(a => a.id !== acc.id)
+                                : [...prev, { id: acc.id, nombre: acc.nombre, icono: acc.icono, precio: acc.modalidad === 'prestado' ? null : acc.precio }]
                             )}
-                          />
-                        </button>
-                      </label>
-                    )}
-                    {cancha.chalecosPrecio != null && (
-                      <label className="flex items-center justify-between gap-3 cursor-pointer">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xl">🎽</span>
-                          <div>
-                            <p className="text-sm font-medium text-foreground">
-                              Chalecos
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              + S/ {cancha.chalecosPrecio} por reserva
-                            </p>
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setConChalecos((v) => !v)}
-                          className={cn(
-                            "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors",
-                            conChalecos
-                              ? "bg-primary"
-                              : "bg-muted-foreground/30",
-                          )}
-                        >
-                          <span
                             className={cn(
-                              "inline-block h-5 w-5 rounded-full bg-white shadow transition-transform",
-                              conChalecos
-                                ? "translate-x-5.5"
-                                : "translate-x-0.5",
+                              "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors",
+                              seleccionado ? "bg-primary" : "bg-muted-foreground/30",
                             )}
-                          />
-                        </button>
-                      </label>
-                    )}
+                          >
+                            <span className={cn(
+                              "inline-block h-5 w-5 rounded-full bg-white shadow transition-transform",
+                              seleccionado ? "translate-x-5.5" : "translate-x-0.5",
+                            )} />
+                          </button>
+                        </label>
+                      );
+                    })}
                   </div>
                 </Card>
               )}
@@ -1814,26 +1767,16 @@ function PagoContent() {
                         S/ {precioRaw * horas}
                       </span>
                     </div>
-                    {conBalon && cancha?.balonPrecio != null && (
-                      <div className="flex justify-between">
+                    {accesoriosSeleccionados.map(a => (
+                      <div key={a.id} className="flex justify-between">
                         <span className="text-muted-foreground flex items-center gap-1.5">
-                          ⚽ Balón
+                          {a.icono} {a.nombre}
                         </span>
                         <span className="text-foreground">
-                          {extraBalon > 0 ? `S/ ${extraBalon}` : "Gratis"}
+                          {(a.precio ?? 0) > 0 ? `S/ ${a.precio}` : "Gratis"}
                         </span>
                       </div>
-                    )}
-                    {conChalecos && cancha?.chalecosPrecio != null && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground flex items-center gap-1.5">
-                          🎽 Chalecos
-                        </span>
-                        <span className="text-foreground">
-                          {extraChalecos > 0 ? `S/ ${extraChalecos}` : "Gratis"}
-                        </span>
-                      </div>
-                    )}
+                    ))}
                     {descuento > 0 && (
                       <div className="flex justify-between text-primary">
                         <span>Descuento cupón</span>
@@ -1907,24 +1850,14 @@ function PagoContent() {
                         S/ {precioRaw * horas}
                       </span>
                     </div>
-                    {conBalon && cancha?.balonPrecio != null && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">⚽ Balón</span>
+                    {accesoriosSeleccionados.map(a => (
+                      <div key={a.id} className="flex justify-between">
+                        <span className="text-muted-foreground">{a.icono} {a.nombre}</span>
                         <span className="text-foreground">
-                          {extraBalon > 0 ? `S/ ${extraBalon}` : "Gratis"}
+                          {(a.precio ?? 0) > 0 ? `S/ ${a.precio}` : "Gratis"}
                         </span>
                       </div>
-                    )}
-                    {conChalecos && cancha?.chalecosPrecio != null && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">
-                          🎽 Chalecos
-                        </span>
-                        <span className="text-foreground">
-                          {extraChalecos > 0 ? `S/ ${extraChalecos}` : "Gratis"}
-                        </span>
-                      </div>
-                    )}
+                    ))}
                     {descuento > 0 && (
                       <div className="flex justify-between text-primary">
                         <span>Descuento cupón</span>
@@ -2249,83 +2182,45 @@ function PagoContent() {
               {/* PASO 1: Tipo de pago */}
               {paso === "pago" && (
                 <>
-                  {fromCard &&
-                    cancha &&
-                    (cancha.balonPrecio != null ||
-                      cancha.chalecosPrecio != null) && (
+                  {fromCard && cancha && (cancha.accesorios ?? []).length > 0 && (
                       <div className="bg-white dark:bg-card rounded-xl border border-border p-6">
                         <h2 className="text-base font-semibold text-foreground mb-4">
-                          ¿Necesitas extras?
+                          ¿Necesitas accesorios?
                         </h2>
                         <div className="space-y-3">
-                          {cancha.balonPrecio != null && (
-                            <label className="flex items-center justify-between gap-3 cursor-pointer">
-                              <div className="flex items-center gap-2">
-                                <span className="text-xl">⚽</span>
-                                <div>
-                                  <p className="text-sm font-medium text-foreground">
-                                    Balón
-                                  </p>
-                                  <p className="text-xs text-muted-foreground">
-                                    + S/ {cancha.balonPrecio} por reserva
-                                  </p>
+                          {(cancha.accesorios ?? []).map((acc: any) => {
+                            const seleccionado = accesoriosSeleccionados.some(a => a.id === acc.id);
+                            return (
+                              <label key={acc.id} className="flex items-center justify-between gap-3 cursor-pointer">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xl">{acc.icono}</span>
+                                  <div>
+                                    <p className="text-sm font-medium text-foreground">{acc.nombre}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {acc.modalidad === 'prestado' || acc.precio == null ? 'Gratis' : `+ S/ ${acc.precio} por reserva`}
+                                    </p>
+                                  </div>
                                 </div>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => setConBalon((v) => !v)}
-                                className={cn(
-                                  "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors",
-                                  conBalon
-                                    ? "bg-primary"
-                                    : "bg-muted-foreground/30",
-                                )}
-                              >
-                                <span
-                                  className={cn(
-                                    "inline-block h-5 w-5 rounded-full bg-white shadow transition-transform",
-                                    conBalon
-                                      ? "translate-x-5.5"
-                                      : "translate-x-0.5",
+                                <button
+                                  type="button"
+                                  onClick={() => setAccesoriosSeleccionados(prev =>
+                                    seleccionado
+                                      ? prev.filter(a => a.id !== acc.id)
+                                      : [...prev, { id: acc.id, nombre: acc.nombre, icono: acc.icono, precio: acc.modalidad === 'prestado' ? null : acc.precio }]
                                   )}
-                                />
-                              </button>
-                            </label>
-                          )}
-                          {cancha.chalecosPrecio != null && (
-                            <label className="flex items-center justify-between gap-3 cursor-pointer">
-                              <div className="flex items-center gap-2">
-                                <span className="text-xl">🎽</span>
-                                <div>
-                                  <p className="text-sm font-medium text-foreground">
-                                    Chalecos
-                                  </p>
-                                  <p className="text-xs text-muted-foreground">
-                                    + S/ {cancha.chalecosPrecio} por reserva
-                                  </p>
-                                </div>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => setConChalecos((v) => !v)}
-                                className={cn(
-                                  "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors",
-                                  conChalecos
-                                    ? "bg-primary"
-                                    : "bg-muted-foreground/30",
-                                )}
-                              >
-                                <span
                                   className={cn(
-                                    "inline-block h-5 w-5 rounded-full bg-white shadow transition-transform",
-                                    conChalecos
-                                      ? "translate-x-5.5"
-                                      : "translate-x-0.5",
+                                    "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors",
+                                    seleccionado ? "bg-primary" : "bg-muted-foreground/30",
                                   )}
-                                />
-                              </button>
-                            </label>
-                          )}
+                                >
+                                  <span className={cn(
+                                    "inline-block h-5 w-5 rounded-full bg-white shadow transition-transform",
+                                    seleccionado ? "translate-x-5.5" : "translate-x-0.5",
+                                  )} />
+                                </button>
+                              </label>
+                            );
+                          })}
                         </div>
                       </div>
                     )}

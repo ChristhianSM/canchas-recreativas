@@ -105,10 +105,7 @@ type CanchaDB = {
   horariosRestringidos: string[];
   horariosOcupados: Record<string, "reservado" | "en_proceso">;
   horasOperacion?: string[];
-  balon_disponible: boolean;
-  balon_precio: number | null;
-  chalecos_disponible: boolean;
-  chalecos_precio: number | null;
+  accesorios: { id: string; nombre: string; icono: string; modalidad: 'prestado' | 'alquilado'; precio: number | null }[];
   superficie: string | null;
   max_jugadores: number | null;
   yape_numero?: string;
@@ -176,9 +173,8 @@ export default function CanchaDetailPage() {
   const [countdown, setCountdown] = useState(0);
   const [reservaStep, setReservaStep] = useState(0);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  // Extras seleccionados por el usuario
-  const [quiereBalon, setQuiereBalon] = useState(false);
-  const [quiereChalecos, setQuiereChalecos] = useState(false);
+  // IDs de accesorios seleccionados por el usuario
+  const [accesoriosSeleccionados, setAccesoriosSeleccionados] = useState<string[]>([]);
 
   const sessionId = useRef(
     typeof window !== "undefined"
@@ -285,30 +281,24 @@ export default function CanchaDetailPage() {
     localStorage.setItem(bloqueoKey, String(Date.now()));
 
     // Cachear datos de cancha para que /pago no repita el fetch
+    const accesoriosElegidos = (cancha.accesorios ?? []).filter(a => accesoriosSeleccionados.includes(a.id));
     sessionStorage.setItem(`cp_cancha_pago_${cancha.id}`, JSON.stringify({
       id: cancha.id,
       name: cancha.nombre,
       images: cancha.imagenes?.length ? cancha.imagenes : [],
       address: cancha.direccion,
       phone: cancha.telefono,
-      balonPrecio: cancha.balon_precio ?? null,
-      chalecosPrecio: cancha.chalecos_precio ?? null,
+      accesorios: cancha.accesorios ?? [],
+      accesoriosSeleccionados: accesoriosElegidos,
       yapeNumero: cancha.yape_numero ?? "",
       plinNumero: cancha.plin_numero ?? "",
     }));
 
     setReservaStep(2);
     setTimeout(() => {
-      const extrasParams = [
-        quiereBalon && cancha.balon_disponible ? `balon=1` : "",
-        quiereChalecos && cancha.chalecos_disponible ? `chalecos=1` : "",
-      ]
-        .filter(Boolean)
-        .join("&");
-      const extrasStr = extrasParams ? `&${extrasParams}` : "";
       const firstSlot = selectedSlots[0];
       router.push(
-        `/pago?canchaId=${cancha.id}&fecha=${selectedDate}&hora=${firstSlot.time}&horas=${selectedSlots.length}&precio=${firstSlot.price}&sid=${sessionId.current}${extrasStr}`,
+        `/pago?canchaId=${cancha.id}&fecha=${selectedDate}&hora=${firstSlot.time}&horas=${selectedSlots.length}&precio=${firstSlot.price}&sid=${sessionId.current}`,
       );
     }, 800);
   };
@@ -636,16 +626,12 @@ export default function CanchaDetailPage() {
   };
   // ─────────────────────────────────────────────────────────────────────────
 
-  const extraBalon =
-    quiereBalon && cancha.balon_precio != null ? cancha.balon_precio : 0;
-  const extraChalecos =
-    quiereChalecos && cancha.chalecos_precio != null
-      ? cancha.chalecos_precio
-      : 0;
   const precioBase = selectedSlots.reduce((sum, s) => sum + s.price, 0);
-  const precioConExtras =
-    precioBase > 0 ? precioBase + extraBalon + extraChalecos : 0;
-  const hayExtras = extraBalon > 0 || extraChalecos > 0;
+  const extraAccesorios = (cancha.accesorios ?? [])
+    .filter(a => accesoriosSeleccionados.includes(a.id) && a.precio != null)
+    .reduce((sum, a) => sum + (a.precio ?? 0), 0);
+  const precioConExtras = precioBase > 0 ? precioBase + extraAccesorios : 0;
+  const hayExtras = extraAccesorios > 0;
 
   const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${cancha.lat},${cancha.lng}`;
   const selectedDateLabel = new Date(
@@ -1060,44 +1046,29 @@ export default function CanchaDetailPage() {
             </div>
             {/* ──────────────────────────────────────────────────────────── */}
 
-            {/* Extras mobile — aparece al seleccionar slots si hay extras disponibles */}
-            {selectedSlots.length > 0 && (cancha.balon_disponible || cancha.chalecos_disponible) && (
+            {/* Accesorios mobile — aparece al seleccionar slots */}
+            {selectedSlots.length > 0 && (cancha.accesorios ?? []).length > 0 && (
               <div className="lg:hidden rounded-xl border border-border bg-card p-4 space-y-3">
-                <p className="text-sm font-semibold text-foreground">¿Necesitas extras?</p>
-                {cancha.balon_disponible && (
-                  <label className="flex items-center justify-between gap-3 cursor-pointer">
+                <p className="text-sm font-semibold text-foreground">¿Necesitas accesorios?</p>
+                {(cancha.accesorios ?? []).map((acc) => (
+                  <label key={acc.id} className="flex items-center justify-between gap-3 cursor-pointer">
                     <div className="flex items-center gap-2">
-                      <span>⚽</span>
+                      <span>{acc.icono}</span>
                       <div>
-                        <p className="text-sm font-medium text-foreground">Balón</p>
+                        <p className="text-sm font-medium text-foreground">{acc.nombre}</p>
                         <p className="text-xs text-muted-foreground">
-                          {cancha.balon_precio != null ? `+ S/ ${cancha.balon_precio}` : "Gratis"}
+                          {acc.modalidad === 'prestado' || acc.precio == null ? 'Gratis' : `+ S/ ${acc.precio}`}
                         </p>
                       </div>
                     </div>
                     <Checkbox
-                      checked={quiereBalon}
-                      onCheckedChange={(v) => setQuiereBalon(v as boolean)}
+                      checked={accesoriosSeleccionados.includes(acc.id)}
+                      onCheckedChange={(v) => setAccesoriosSeleccionados(prev =>
+                        v ? [...prev, acc.id] : prev.filter(id => id !== acc.id)
+                      )}
                     />
                   </label>
-                )}
-                {cancha.chalecos_disponible && (
-                  <label className="flex items-center justify-between gap-3 cursor-pointer">
-                    <div className="flex items-center gap-2">
-                      <span>🎽</span>
-                      <div>
-                        <p className="text-sm font-medium text-foreground">Chalecos</p>
-                        <p className="text-xs text-muted-foreground">
-                          {cancha.chalecos_precio != null ? `+ S/ ${cancha.chalecos_precio}` : "Gratis"}
-                        </p>
-                      </div>
-                    </div>
-                    <Checkbox
-                      checked={quiereChalecos}
-                      onCheckedChange={(v) => setQuiereChalecos(v as boolean)}
-                    />
-                  </label>
-                )}
+                ))}
               </div>
             )}
 
@@ -1114,78 +1085,31 @@ export default function CanchaDetailPage() {
                 ))}
               </div>
 
-              {/* Extras: balón y chalecos — 3 escenarios por cada uno */}
-              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {/* Balón */}
-                {cancha.balon_disponible ? (
-                  <div
-                    className={`flex items-center gap-3 rounded-xl border px-4 py-3 ${
-                      cancha.balon_precio != null
-                        ? "border-primary/20 bg-primary/5"
-                        : "border-green-500/20 bg-green-500/5"
-                    }`}
-                  >
-                    <span className="text-2xl">⚽</span>
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">
-                        Balón disponible
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {cancha.balon_precio != null
-                          ? `S/ ${cancha.balon_precio} por reserva`
-                          : "Incluido gratis"}
-                      </p>
+              {/* Accesorios disponibles */}
+              {(cancha.accesorios ?? []).length > 0 && (
+                <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {(cancha.accesorios ?? []).map((acc) => (
+                    <div
+                      key={acc.id}
+                      className={`flex items-center gap-3 rounded-xl border px-4 py-3 ${
+                        acc.modalidad === 'prestado' || acc.precio == null
+                          ? 'border-green-500/20 bg-green-500/5'
+                          : 'border-primary/20 bg-primary/5'
+                      }`}
+                    >
+                      <span className="text-2xl">{acc.icono}</span>
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">{acc.nombre}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {acc.modalidad === 'prestado' || acc.precio == null
+                            ? 'Incluido gratis'
+                            : `S/ ${acc.precio} por reserva`}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-3 rounded-xl border border-border bg-muted/30 px-4 py-3 opacity-60">
-                    <span className="text-2xl grayscale">⚽</span>
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">
-                        Sin balón
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Debes traer el tuyo
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Chalecos */}
-                {cancha.chalecos_disponible ? (
-                  <div
-                    className={`flex items-center gap-3 rounded-xl border px-4 py-3 ${
-                      cancha.chalecos_precio != null
-                        ? "border-primary/20 bg-primary/5"
-                        : "border-green-500/20 bg-green-500/5"
-                    }`}
-                  >
-                    <span className="text-2xl">🎽</span>
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">
-                        Chalecos disponibles
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {cancha.chalecos_precio != null
-                          ? `S/ ${cancha.chalecos_precio} por reserva`
-                          : "Incluidos gratis"}
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-3 rounded-xl border border-border bg-muted/30 px-4 py-3 opacity-60">
-                    <span className="text-2xl grayscale">🎽</span>
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">
-                        Sin chalecos
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Debes traer los tuyos
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Horarios - Ahora antes del mapa en desktop */}
@@ -1346,68 +1270,37 @@ export default function CanchaDetailPage() {
                     )}
                   </div>
 
-                  {/* Extras desktop */}
-                  {cancha.balon_disponible || cancha.chalecos_disponible ? (
+                  {/* Accesorios desktop */}
+                  {(cancha.accesorios ?? []).length > 0 ? (
                     <div className="rounded-xl border border-border bg-card p-3 space-y-2.5">
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                        ¿Necesitas extras?
+                        ¿Necesitas accesorios?
                       </p>
-                      {cancha.balon_disponible && (
-                        <label className="flex items-center justify-between gap-3 cursor-pointer">
+                      {(cancha.accesorios ?? []).map((acc) => (
+                        <label key={acc.id} className="flex items-center justify-between gap-3 cursor-pointer">
                           <div className="flex items-center gap-2">
-                            <span>⚽</span>
+                            <span>{acc.icono}</span>
                             <div>
-                              <p className="text-sm font-medium text-foreground">
-                                Balón
-                              </p>
+                              <p className="text-sm font-medium text-foreground">{acc.nombre}</p>
                               <p className="text-xs text-muted-foreground">
-                                {cancha.balon_precio != null
-                                  ? `+ S/ ${cancha.balon_precio}`
-                                  : "Gratis"}
+                                {acc.modalidad === 'prestado' || acc.precio == null ? 'Gratis' : `+ S/ ${acc.precio}`}
                               </p>
                             </div>
                           </div>
                           <Checkbox
-                            checked={quiereBalon}
-                            onCheckedChange={(v) =>
-                              setQuiereBalon(v as boolean)
-                            }
+                            checked={accesoriosSeleccionados.includes(acc.id)}
+                            onCheckedChange={(v) => setAccesoriosSeleccionados(prev =>
+                              v ? [...prev, acc.id] : prev.filter(id => id !== acc.id)
+                            )}
                           />
                         </label>
-                      )}
-                      {cancha.chalecos_disponible && (
-                        <label className="flex items-center justify-between gap-3 cursor-pointer">
-                          <div className="flex items-center gap-2">
-                            <span>🎽</span>
-                            <div>
-                              <p className="text-sm font-medium text-foreground">
-                                Chalecos
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {cancha.chalecos_precio != null
-                                  ? `+ S/ ${cancha.chalecos_precio}`
-                                  : "Gratis"}
-                              </p>
-                            </div>
-                          </div>
-                          <Checkbox
-                            checked={quiereChalecos}
-                            onCheckedChange={(v) =>
-                              setQuiereChalecos(v as boolean)
-                            }
-                          />
-                        </label>
-                      )}
+                      ))}
                     </div>
                   ) : (
                     <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/5 px-3 py-2.5 flex items-start gap-2">
                       <span className="text-base leading-none mt-0.5">⚠️</span>
                       <p className="text-xs text-yellow-700 dark:text-yellow-400 font-medium">
-                        Esta cancha{" "}
-                        <span className="font-bold">
-                          no ofrece balón ni chalecos
-                        </span>
-                        . Recuerda traer los tuyos.
+                        Esta cancha <span className="font-bold">no ofrece accesorios</span>. Recuerda traer los tuyos.
                       </p>
                     </div>
                   )}

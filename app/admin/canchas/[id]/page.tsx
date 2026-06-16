@@ -453,14 +453,24 @@ export default function AdminEditarCanchaPage() {
   const [duenoId, setDuenoId] = useState("");
   const [adminToken, setAdminToken] = useState("");
 
-  // Extras
-  const [preciosPorHora, setPreciosPorHora] = useState<Record<string, number>>(
-    {},
-  );
-  const [balonDisponible, setBalonDisponible] = useState(false);
-  const [balonPrecio, setBalonPrecio] = useState<number | null>(null);
-  const [chalecosDisponible, setChalecosDisponible] = useState(false);
-  const [chalecosPrecio, setChalecosPrecio] = useState<number | null>(null);
+  const [preciosPorHora, setPreciosPorHora] = useState<Record<string, number>>({});
+
+  // Accesorios
+  type Accesorio = { id: string; nombre: string; icono: string; modalidad: 'prestado' | 'alquilado'; precio: number | null };
+  const PRESETS_POR_DEPORTE: Record<string, Array<{ nombre: string; icono: string }>> = {
+    futbol:  [{ nombre: 'Balón', icono: '⚽' }, { nombre: 'Chalecos', icono: '🎽' }],
+    futsal:  [{ nombre: 'Balón', icono: '⚽' }, { nombre: 'Chalecos', icono: '🎽' }],
+    voley:   [{ nombre: 'Balón', icono: '🏐' }, { nombre: 'Malla', icono: '🥅' }],
+    basquet: [{ nombre: 'Balón', icono: '🏀' }],
+    tenis:   [{ nombre: 'Raqueta', icono: '🎾' }, { nombre: 'Pelotas', icono: '🎾' }],
+  };
+  const [accesorios, setAccesorios] = useState<Accesorio[]>([]);
+  const precioRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const [nuevoNombre, setNuevoNombre] = useState('');
+  const [nuevoIcono, setNuevoIcono] = useState('🎯');
+  const [nuevaModalidad, setNuevaModalidad] = useState<'prestado' | 'alquilado'>('alquilado');
+  const [nuevoPrecio, setNuevoPrecio] = useState<number | null>(null);
+  const [mostrarFormNuevo, setMostrarFormNuevo] = useState(false);
   const [superficie, setSuperficie] = useState<string>("grass_sintetico");
   const [maxJugadores, setMaxJugadores] = useState<number | null>(null);
   const [horaApertura, setHoraApertura] = useState("06:00");
@@ -492,10 +502,7 @@ export default function AdminEditarCanchaPage() {
           setDireccion(canchaData.direccion ?? "");
           setDistrito(canchaData.distrito ?? "");
           setPreciosPorHora(canchaData.precios_por_hora ?? {});
-          setBalonDisponible(canchaData.balon_disponible ?? false);
-          setBalonPrecio(canchaData.balon_precio ?? null);
-          setChalecosDisponible(canchaData.chalecos_disponible ?? false);
-          setChalecosPrecio(canchaData.chalecos_precio ?? null);
+          setAccesorios(canchaData.accesorios ?? []);
           setSuperficie(canchaData.superficie ?? "grass_sintetico");
           setMaxJugadores(canchaData.max_jugadores ?? null);
           setHoraApertura(canchaData.hora_apertura ?? "06:00");
@@ -535,10 +542,7 @@ export default function AdminEditarCanchaPage() {
         amenidades: amenities,
         imagenes: images,
         preciosPorHora,
-        balonDisponible,
-        balonPrecio,
-        chalecosDisponible,
-        chalecosPrecio,
+        accesorios,
         superficie,
         maxJugadores,
         lat: lat ? Number(lat) : undefined,
@@ -906,135 +910,6 @@ export default function AdminEditarCanchaPage() {
               )}
             </Card>
 
-            {/* Extras */}
-            <Card className="border-border p-5 space-y-4">
-              <div>
-                <p className="font-medium text-foreground">
-                  Extras disponibles
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Indica si ofreces balón y/o chalecos.
-                </p>
-              </div>
-              <div className="grid gap-5 sm:grid-cols-2">
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="balon-disponible"
-                      checked={balonDisponible}
-                      onCheckedChange={(v) => {
-                        setBalonDisponible(v as boolean);
-                        if (!v) setBalonPrecio(null);
-                      }}
-                    />
-                    <label
-                      htmlFor="balon-disponible"
-                      className="text-sm font-medium text-foreground cursor-pointer"
-                    >
-                      ⚽ Ofrezco balón
-                    </label>
-                  </div>
-                  {balonDisponible && (
-                    <div className="ml-6 space-y-2">
-                      <p className="text-xs text-muted-foreground">
-                        ¿Tiene costo adicional?
-                      </p>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground shrink-0">
-                          S/
-                        </span>
-                        <Input
-                          type="number"
-                          min={0}
-                          placeholder="Gratis (dejar vacío)"
-                          value={balonPrecio ?? ""}
-                          onChange={(e) =>
-                            setBalonPrecio(
-                              e.target.value === ""
-                                ? null
-                                : Number(e.target.value),
-                            )
-                          }
-                          className="h-8 text-sm"
-                        />
-                        {balonPrecio != null && (
-                          <button
-                            type="button"
-                            onClick={() => setBalonPrecio(null)}
-                            className="text-xs text-muted-foreground hover:text-destructive shrink-0"
-                          >
-                            ✕
-                          </button>
-                        )}
-                      </div>
-                      <p className="text-xs text-primary font-medium">
-                        {balonPrecio != null
-                          ? `Cobrarás S/ ${balonPrecio} por reserva`
-                          : "✓ Incluido gratis"}
-                      </p>
-                    </div>
-                  )}
-                </div>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="chalecos-disponible"
-                      checked={chalecosDisponible}
-                      onCheckedChange={(v) => {
-                        setChalecosDisponible(v as boolean);
-                        if (!v) setChalecosPrecio(null);
-                      }}
-                    />
-                    <label
-                      htmlFor="chalecos-disponible"
-                      className="text-sm font-medium text-foreground cursor-pointer"
-                    >
-                      🎽 Ofrezco chalecos
-                    </label>
-                  </div>
-                  {chalecosDisponible && (
-                    <div className="ml-6 space-y-2">
-                      <p className="text-xs text-muted-foreground">
-                        ¿Tiene costo adicional?
-                      </p>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground shrink-0">
-                          S/
-                        </span>
-                        <Input
-                          type="number"
-                          min={0}
-                          placeholder="Gratis (dejar vacío)"
-                          value={chalecosPrecio ?? ""}
-                          onChange={(e) =>
-                            setChalecosPrecio(
-                              e.target.value === ""
-                                ? null
-                                : Number(e.target.value),
-                            )
-                          }
-                          className="h-8 text-sm"
-                        />
-                        {chalecosPrecio != null && (
-                          <button
-                            type="button"
-                            onClick={() => setChalecosPrecio(null)}
-                            className="text-xs text-muted-foreground hover:text-destructive shrink-0"
-                          >
-                            ✕
-                          </button>
-                        )}
-                      </div>
-                      <p className="text-xs text-primary font-medium">
-                        {chalecosPrecio != null
-                          ? `Cobrarás S/ ${chalecosPrecio} por reserva`
-                          : "✓ Incluidos gratis"}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </Card>
           </TabsContent>
 
           {/* ── Fotos ── */}
@@ -1138,9 +1013,7 @@ export default function AdminEditarCanchaPage() {
           {/* ── Servicios ── */}
           <TabsContent value="servicios" className="space-y-4 pt-4">
             <Card className="border-border p-5 space-y-4">
-              <p className="font-medium text-foreground">
-                Servicios y amenidades
-              </p>
+              <p className="font-medium text-foreground">Servicios y amenidades</p>
               <div className="flex flex-wrap gap-2">
                 {amenities.map((a) => (
                   <div
@@ -1183,6 +1056,134 @@ export default function AdminEditarCanchaPage() {
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
+            </Card>
+
+            {/* Accesorios */}
+            <Card className="border-border p-5 space-y-4">
+              <div>
+                <p className="font-medium text-foreground">Accesorios</p>
+                <p className="text-sm text-muted-foreground">
+                  Indica qué ofreces con la cancha, si lo prestas gratis o lo alquilas.
+                </p>
+              </div>
+
+              {accesorios.length > 0 && (
+                <div className="space-y-2">
+                  {accesorios.map((acc) => (
+                    <div key={acc.id} className="flex items-center gap-3 rounded-xl border border-border bg-muted/30 px-4 py-3">
+                      <span className="text-xl shrink-0">{acc.icono}</span>
+                      <span className="flex-1 text-sm font-medium text-foreground">{acc.nombre}</span>
+                      <div className="flex items-center rounded-lg border border-border overflow-hidden text-xs shrink-0">
+                        {(['prestado', 'alquilado'] as const).map((m) => (
+                          <button key={m} type="button"
+                            onClick={() => {
+                              setAccesorios(prev => prev.map(a =>
+                                a.id === acc.id ? { ...a, modalidad: m, precio: m === 'prestado' ? null : a.precio } : a
+                              ));
+                              if (m === 'alquilado') {
+                                setTimeout(() => precioRefs.current[acc.id]?.focus(), 0);
+                              }
+                            }}
+                            className={cn('px-2.5 py-1.5 font-medium capitalize transition-colors',
+                              acc.modalidad === m ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-muted'
+                            )}
+                          >{m}</button>
+                        ))}
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <span className="text-xs text-muted-foreground">S/</span>
+                        <Input
+                          ref={(el) => { precioRefs.current[acc.id] = el; }}
+                          type="number" min={0} placeholder="0"
+                          disabled={acc.modalidad === 'prestado'}
+                          value={acc.modalidad === 'prestado' ? 0 : (acc.precio ?? '')}
+                          onChange={(e) => setAccesorios(prev => prev.map(a =>
+                            a.id === acc.id ? { ...a, precio: e.target.value === '' ? null : Number(e.target.value) } : a
+                          ))}
+                          onBlur={(e) => {
+                            const val = e.target.value;
+                            if (acc.modalidad === 'alquilado' && (val === '' || Number(val) === 0)) {
+                              setAccesorios(prev => prev.map(a =>
+                                a.id === acc.id ? { ...a, modalidad: 'prestado', precio: null } : a
+                              ));
+                            }
+                          }}
+                          className="h-7 w-16 text-sm px-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        />
+                      </div>
+                      <button type="button"
+                        onClick={() => setAccesorios(prev => prev.filter(a => a.id !== acc.id))}
+                        className="text-muted-foreground hover:text-destructive transition-colors shrink-0"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {(() => {
+                const tipo = (cancha as any)?.tipo as string | undefined;
+                const presets = tipo ? (PRESETS_POR_DEPORTE[tipo] ?? []) : [];
+                const nombresActuales = accesorios.map(a => a.nombre.toLowerCase());
+                const sugerencias = presets.filter(p => !nombresActuales.includes(p.nombre.toLowerCase()));
+                if (!sugerencias.length) return null;
+                return (
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Sugerencias</p>
+                    <div className="flex flex-wrap gap-2">
+                      {sugerencias.map((s) => (
+                        <button key={s.nombre} type="button"
+                          onClick={() => setAccesorios(prev => [...prev, { id: crypto.randomUUID(), nombre: s.nombre, icono: s.icono, modalidad: 'alquilado', precio: null }])}
+                          className="flex items-center gap-1.5 rounded-full border border-dashed border-primary/40 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/10 transition-colors"
+                        >
+                          <Plus className="h-3 w-3" />{s.icono} {s.nombre}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {mostrarFormNuevo ? (
+                <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-3">
+                  <p className="text-sm font-medium text-foreground">Agregar accesorio</p>
+                  <div className="flex gap-2">
+                    <Input placeholder="🎯" value={nuevoIcono} onChange={(e) => setNuevoIcono(e.target.value)} className="h-9 w-16 text-center text-lg px-1" maxLength={2} />
+                    <Input placeholder="Nombre del accesorio" value={nuevoNombre} onChange={(e) => setNuevoNombre(e.target.value)} className="h-9 flex-1" />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center rounded-lg border border-border overflow-hidden text-xs">
+                      {(['prestado', 'alquilado'] as const).map((m) => (
+                        <button key={m} type="button"
+                          onClick={() => { setNuevaModalidad(m); if (m === 'prestado') setNuevoPrecio(null); }}
+                          className={cn('px-3 py-2 font-medium capitalize transition-colors', nuevaModalidad === m ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-muted')}
+                        >{m}</button>
+                      ))}
+                    </div>
+                    {nuevaModalidad === 'alquilado' && (
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-muted-foreground">S/</span>
+                        <Input type="number" min={0} placeholder="0" value={nuevoPrecio ?? ''} onChange={(e) => setNuevoPrecio(e.target.value === '' ? null : Number(e.target.value))} className="h-9 w-20 text-sm" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={() => {
+                      if (!nuevoNombre.trim()) return;
+                      setAccesorios(prev => [...prev, { id: crypto.randomUUID(), nombre: nuevoNombre.trim(), icono: nuevoIcono || '🎯', modalidad: nuevaModalidad, precio: nuevaModalidad === 'prestado' ? null : nuevoPrecio }]);
+                      setNuevoNombre(''); setNuevoIcono('🎯'); setNuevaModalidad('alquilado'); setNuevoPrecio(null); setMostrarFormNuevo(false);
+                    }}>Agregar</Button>
+                    <Button variant="outline" size="sm" onClick={() => setMostrarFormNuevo(false)}>Cancelar</Button>
+                  </div>
+                </div>
+              ) : (
+                <button type="button" onClick={() => setMostrarFormNuevo(true)}
+                  className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <Plus className="h-4 w-4" /> Agregar accesorio personalizado
+                </button>
+              )}
             </Card>
           </TabsContent>
 
