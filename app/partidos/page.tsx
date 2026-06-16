@@ -532,8 +532,9 @@ function CrearPartidoSheet({
     setError("");
     const token = getToken();
     if (!token) { setError("Debes iniciar sesión."); return; }
-    if (!getStoredUser()?.telefono && telefonoInput && !/^9\d{8}$/.test(telefonoInput)) {
-      setError("El número de WhatsApp debe tener 9 dígitos y empezar con 9."); return;
+    if (!getStoredUser()?.telefono) {
+      if (!telefonoInput) { setError("Ingresa tu número de WhatsApp para notificarte sobre el partido."); return; }
+      if (!/^9\d{8}$/.test(telefonoInput)) { setError("El número de WhatsApp debe tener 9 dígitos y empezar con 9."); return; }
     }
     setSubmitting(true);
     try {
@@ -1016,7 +1017,7 @@ function CrearPartidoSheet({
               {!getStoredUser()?.telefono && (
                 <div>
                   <p className="text-xs font-semibold text-foreground mb-2 uppercase tracking-wide">
-                    Tu número de WhatsApp
+                    Tu número de WhatsApp <span className="text-destructive">*</span>
                   </p>
                   <input
                     type="tel"
