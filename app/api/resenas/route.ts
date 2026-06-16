@@ -64,19 +64,38 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 });
   }
 
-  // Verificar que el usuario tiene una reserva confirmada en esta cancha
+  const hoy = new Date().toISOString().slice(0, 10);
+
+  // Verificar elegibilidad: reserva confirmada pasada O jugador en partido pasado
   const { data: reserva } = await sb
     .from('reservas')
     .select('id')
     .eq('cancha_id', canchaId)
     .eq('usuario_id', user.id)
     .eq('estado', 'confirmada')
+    .lt('fecha', hoy)
     .limit(1)
-    .single();
+    .maybeSingle();
 
-  if (!reserva) {
+  let elegible = !!reserva;
+
+  if (!elegible) {
+    const { data: participacion } = await sb
+      .from('partido_jugadores')
+      .select('id, partidos!inner(cancha_id, fecha, estado)')
+      .eq('usuario_id', user.id)
+      .eq('partidos.cancha_id', canchaId)
+      .lt('partidos.fecha', hoy)
+      .in('partidos.estado', ['abierto', 'finalizado'])
+      .limit(1)
+      .maybeSingle();
+
+    elegible = !!participacion;
+  }
+
+  if (!elegible) {
     return NextResponse.json({
-      error: 'Solo puedes calificar canchas donde hayas tenido una reserva confirmada'
+      error: 'Solo puedes calificar canchas donde hayas jugado (reserva o partido confirmado)'
     }, { status: 403 });
   }
 

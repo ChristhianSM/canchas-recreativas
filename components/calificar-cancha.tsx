@@ -182,7 +182,7 @@ export default function CalificarCancha({ canchaId }: Props) {
             {loading ? 'Enviando...' : seleccion ? `Calificar con ${seleccion} estrella${seleccion > 1 ? 's' : ''}` : 'Selecciona una calificación'}
           </Button>
           <p className="text-xs text-muted-foreground text-center">
-            Solo disponible para usuarios con reservas confirmadas
+            Solo disponible si ya jugaste aquí (reserva o partido)
           </p>
         </div>
       )}
