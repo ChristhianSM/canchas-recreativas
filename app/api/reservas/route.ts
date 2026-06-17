@@ -253,7 +253,7 @@ export async function POST(req: NextRequest) {
 
   // Enviar email al invitado (sin cuenta)
   if (!usuarioId && usuarioEmail) {
-    const baseUrl = req.headers.get('origin') ?? 'http://localhost:3000';
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || req.headers.get('origin') || 'http://localhost:3000';
     await sendReservaRecibidaEmail({
       toEmail:      usuarioEmail,
       toName:       usuarioNombre !== 'Invitado' ? usuarioNombre : 'Cliente',
