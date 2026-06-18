@@ -75,6 +75,7 @@ type Cancha = {
   balon_precio?: number | null;
   chalecos_disponible?: boolean;
   chalecos_precio?: number | null;
+  accesorios?: any[];
   horariosOcupados?: Record<string, "reservado" | "en_proceso">;
   horariosRestringidos?: string[];
 };

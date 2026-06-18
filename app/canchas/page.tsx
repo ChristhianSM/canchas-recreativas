@@ -81,6 +81,7 @@ type Cancha = {
   balon_precio?: number | null;
   chalecos_disponible?: boolean;
   chalecos_precio?: number | null;
+  accesorios?: any[];
   superficie?: string | null;
   max_jugadores?: number | null;
 };
