@@ -12,6 +12,7 @@ import {
   Menu,
   X,
   Users,
+  Gift,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +36,7 @@ const navItems = [
   { href: "/admin/reservas", label: "Reservas", icon: CalendarCheck },
   { href: "/admin/canchas", label: "Canchas", icon: MapPin },
   { href: "/admin/usuarios", label: "Usuarios", icon: Users },
+  { href: "/admin/loyalty", label: "Fidelización", icon: Gift },
 ];
 
 export default function AdminLayout({

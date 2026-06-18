@@ -35,8 +35,9 @@ import { cn } from "@/lib/utils";
 import { type Cupon } from "@/lib/auth";
 import {
   apiCrearReserva,
+  apiGetLoyalty,
   getToken,
-} from "@/lib/api"; /* apiGetLoyalty — SELLOS CONGELADOS */
+} from "@/lib/api";
 
 type MetodoPago = "yape" | "plin" | "efectivo";
 type Paso = "pago" | "datos" | "metodo" | "confirmar" | "exito";
@@ -91,11 +92,8 @@ function PagoContent() {
   const [metodo, setMetodo] = useState<MetodoPago>("yape");
   const [paso, setPaso] = useState<Paso>("datos");
   const [copiado, setCopiado] = useState(false);
-  /* SELLOS CONGELADOS const [cupones, setCupones] = useState<Cupon[]>([]); */
-  const cupones: Cupon[] = [];
-  const [cuponSeleccionado, setCuponSeleccionado] = useState<string | null>(
-    null,
-  );
+  const [canchaCupones, setCanchaCupones] = useState<any[]>([]);
+  const [cuponSeleccionado, setCuponSeleccionado] = useState<string | null>(null);
   const [comprobante, setComprobante] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [segundos, setSegundos] = useState(TIEMPO_LIMITE);
@@ -260,11 +258,10 @@ function PagoContent() {
           return r.json();
         })
         .then((perfil) => {
-          /* SELLOS CONGELADOS — descomentar para reactivar
-          apiGetLoyalty().then((data) => {
-            setCupones((data.cupones ?? []).filter((c: Cupon) => !c.usado));
+          apiGetLoyalty().then((data: any) => {
+            const canchaData = (data.canchas ?? []).find((c: any) => c.cancha_id === canchaId);
+            setCanchaCupones((canchaData?.cupones ?? []).filter((c: any) => !c.usado));
           });
-          */
           const tel = perfil?.telefono || "";
           const email = perfil?.email || perfil?.correo || "";
           if (tel) setTelefonoRegistrado(tel);
@@ -331,7 +328,15 @@ function PagoContent() {
       </div>
     );
 
-  const descuento = cuponSeleccionado ? 5 : 0;
+  const cuponActivo = canchaCupones.find((c) => c.id === cuponSeleccionado);
+  const descuento = (() => {
+    if (!cuponActivo) return 0;
+    if (cuponActivo.premio_tipo === "descuento_fijo") return cuponActivo.premio_valor ?? 0;
+    if (cuponActivo.premio_tipo === "descuento_porcentaje")
+      return Math.round(precioRaw * horas * (cuponActivo.premio_valor ?? 0) / 100);
+    if (cuponActivo.premio_tipo === "hora_gratis") return precioRaw;
+    return 0;
+  })();
   const extraAccesorios = accesoriosSeleccionados
     .reduce((sum, a) => sum + (a.precio ?? 0), 0);
   const total = Math.max(
@@ -450,7 +455,7 @@ function PagoContent() {
         horas,
         precio: total,
         precioOriginal: precioRaw,
-        cuponId: cuponSeleccionado,
+        canchaCuponId: cuponSeleccionado,
         metodoPago: "efectivo",
         accesoriosIncluidos: accesoriosSeleccionados,
         modoPago,
@@ -479,6 +484,10 @@ function PagoContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ canchaId, fecha, hora, horas }),
       });
+      if (cuponSeleccionado) {
+        setCanchaCupones((prev) => prev.filter((c) => c.id !== cuponSeleccionado));
+        setCuponSeleccionado(null);
+      }
       setEnviando(false);
       setPaso("exito");
       return;
@@ -532,6 +541,10 @@ function PagoContent() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ canchaId, fecha, hora, horas }),
     });
+    if (cuponSeleccionado) {
+      setCanchaCupones((prev) => prev.filter((c) => c.id !== cuponSeleccionado));
+      setCuponSeleccionado(null);
+    }
     setEnviando(false);
     setPaso("exito");
   };
@@ -566,11 +579,10 @@ function PagoContent() {
       setEsInvitado(false);
       setEmailRegistrado(data.user.email || "");
       setTelefonoRegistrado(data.user.phone || "");
-      /* SELLOS CONGELADOS — descomentar para reactivar
-      apiGetLoyalty().then((loyaltyData) => {
-        setCupones((loyaltyData.cupones ?? []).filter((c: Cupon) => !c.usado));
+      apiGetLoyalty().then((data: any) => {
+        const canchaData = (data.canchas ?? []).find((c: any) => c.cancha_id === canchaId);
+        setCanchaCupones((canchaData?.cupones ?? []).filter((c: any) => !c.usado));
       });
-      */
       setLoginModalOpen(false);
       setLoginEmail("");
       setLoginPassword("");
@@ -1339,6 +1351,22 @@ function PagoContent() {
                   <span className="text-primary">S/ {total}</span>
                 </div>
               </div>
+              {cancha?.loyalty && (
+                <div className="mt-3 pt-3 border-t border-border flex items-center gap-2 text-xs text-muted-foreground">
+                  <span>🎯</span>
+                  <span>
+                    Esta cancha tiene programa de sellos — reserva{" "}
+                    <span className="font-medium text-foreground">{cancha.loyalty.umbral} veces</span>{" "}
+                    y gana{" "}
+                    <span className="font-medium text-foreground">
+                      {cancha.loyalty.premio_tipo === "descuento_fijo"       && `S/ ${cancha.loyalty.premio_valor} de descuento`}
+                      {cancha.loyalty.premio_tipo === "descuento_porcentaje" && `${cancha.loyalty.premio_valor}% de descuento`}
+                      {cancha.loyalty.premio_tipo === "hora_gratis"          && "1 hora gratis"}
+                      {cancha.loyalty.premio_tipo === "personalizado"        && (cancha.loyalty.premio_descripcion || "un premio especial")}
+                    </span>
+                  </span>
+                </div>
+              )}
             </Card>
             {fromCard && cancha && (cancha.accesorios ?? []).length > 0 && (
                 <Card className="border-border p-4">
@@ -1382,75 +1410,80 @@ function PagoContent() {
                   </div>
                 </Card>
               )}
-            {/* SELLOS CONGELADOS — cambiar false por (!esInvitado && cupones.length > 0) para reactivar */}
-            {false && (
-              <Card className="border-border p-4">
-                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Cupones disponibles
+            {!esInvitado && canchaCupones.length > 0 && (
+              <Card className="border-primary/30 bg-primary/5 p-4">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-primary">
+                  🎟 Tienes {canchaCupones.length} cupón{canchaCupones.length !== 1 ? "es" : ""} disponible{canchaCupones.length !== 1 ? "s" : ""}
                 </p>
                 <div className="space-y-2">
-                  {cupones.map((c) => (
-                    <button
-                      key={c.id}
-                      onClick={() =>
-                        setCuponSeleccionado(
-                          cuponSeleccionado === c.id ? null : c.id,
-                        )
-                      }
-                      className={cn(
-                        "flex w-full items-center gap-3 rounded-xl border-2 border-dashed p-3 text-left transition-all",
-                        cuponSeleccionado === c.id
-                          ? "border-primary bg-primary/5"
-                          : "border-muted-foreground/20 hover:border-primary/40",
-                      )}
-                    >
-                      <div
+                  {canchaCupones.map((c) => {
+                    const label =
+                      c.premio_tipo === "descuento_fijo" ? `S/ ${c.premio_valor} de descuento`
+                      : c.premio_tipo === "descuento_porcentaje" ? `${c.premio_valor}% de descuento`
+                      : c.premio_tipo === "hora_gratis" ? "1 hora gratis"
+                      : c.premio_descripcion || "Premio especial";
+                    const badge =
+                      c.premio_tipo === "descuento_fijo" ? [`S/${c.premio_valor}`, "OFF"]
+                      : c.premio_tipo === "descuento_porcentaje" ? [`${c.premio_valor}%`, "OFF"]
+                      : c.premio_tipo === "hora_gratis" ? ["1H", "FREE"]
+                      : ["🎁", ""];
+                    return (
+                      <button
+                        key={c.id}
+                        onClick={() =>
+                          setCuponSeleccionado(cuponSeleccionado === c.id ? null : c.id)
+                        }
                         className={cn(
-                          "flex h-10 w-10 shrink-0 flex-col items-center justify-center rounded-lg text-xs font-bold",
+                          "flex w-full items-center gap-3 rounded-xl border-2 border-dashed p-3 text-left transition-all",
                           cuponSeleccionado === c.id
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted text-muted-foreground",
+                            ? "border-primary bg-primary/10"
+                            : "border-primary/30 hover:border-primary/60 bg-background",
                         )}
                       >
-                        <span>S/5</span>
-                        <span className="text-[10px] font-normal">OFF</span>
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-foreground">
-                          Descuento de S/ 5
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {cuponSeleccionado === c.id
-                            ? "✓ Aplicado"
-                            : "Toca para aplicar"}
-                        </p>
-                      </div>
-                      <div
-                        className={cn(
-                          "h-5 w-5 rounded-full border-2",
-                          cuponSeleccionado === c.id
-                            ? "border-primary bg-primary"
-                            : "border-muted-foreground/40",
-                        )}
-                      >
-                        {cuponSeleccionado === c.id && (
-                          <svg
-                            className="h-full w-full text-primary-foreground p-0.5"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={3}
-                              d="M5 13l4 4L19 7"
-                            />
-                          </svg>
-                        )}
-                      </div>
-                    </button>
-                  ))}
+                        <div
+                          className={cn(
+                            "flex h-10 w-10 shrink-0 flex-col items-center justify-center rounded-lg text-xs font-bold",
+                            cuponSeleccionado === c.id
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-primary/15 text-primary",
+                          )}
+                        >
+                          <span>{badge[0]}</span>
+                          {badge[1] && <span className="text-[10px] font-normal">{badge[1]}</span>}
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-foreground">{label}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {cuponSeleccionado === c.id ? "✓ Aplicado" : "Toca para aplicar"}
+                          </p>
+                        </div>
+                        <div
+                          className={cn(
+                            "h-5 w-5 rounded-full border-2",
+                            cuponSeleccionado === c.id
+                              ? "border-primary bg-primary"
+                              : "border-muted-foreground/40",
+                          )}
+                        >
+                          {cuponSeleccionado === c.id && (
+                            <svg
+                              className="h-full w-full text-primary-foreground p-0.5"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={3}
+                                d="M5 13l4 4L19 7"
+                              />
+                            </svg>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </Card>
             )}
@@ -2322,77 +2355,80 @@ function PagoContent() {
                       </div>
                     )}
                   </div>
-                  {/* SELLOS CONGELADOS — cambiar false por (!esInvitado && cupones.length > 0) para reactivar */}
-                  {false && (
-                    <div className="bg-white dark:bg-card rounded-xl border border-border p-6">
-                      <h2 className="text-base font-semibold text-foreground mb-4">
-                        Cupones disponibles
+                  {!esInvitado && canchaCupones.length > 0 && (
+                    <div className="rounded-xl border border-primary/30 bg-primary/5 p-6">
+                      <h2 className="text-base font-semibold text-primary mb-4">
+                        🎟 Cupones disponibles ({canchaCupones.length})
                       </h2>
                       <div className="space-y-2">
-                        {cupones.map((c) => (
-                          <button
-                            key={c.id}
-                            onClick={() =>
-                              setCuponSeleccionado(
-                                cuponSeleccionado === c.id ? null : c.id,
-                              )
-                            }
-                            className={cn(
-                              "flex w-full items-center gap-3 rounded-xl border-2 border-dashed p-3 text-left transition-all",
-                              cuponSeleccionado === c.id
-                                ? "border-primary bg-primary/5"
-                                : "border-muted-foreground/20 hover:border-primary/40",
-                            )}
-                          >
-                            <div
+                        {canchaCupones.map((c) => {
+                          const label =
+                            c.premio_tipo === "descuento_fijo" ? `S/ ${c.premio_valor} de descuento`
+                            : c.premio_tipo === "descuento_porcentaje" ? `${c.premio_valor}% de descuento`
+                            : c.premio_tipo === "hora_gratis" ? "1 hora gratis"
+                            : c.premio_descripcion || "Premio especial";
+                          const badge =
+                            c.premio_tipo === "descuento_fijo" ? [`S/${c.premio_valor}`, "OFF"]
+                            : c.premio_tipo === "descuento_porcentaje" ? [`${c.premio_valor}%`, "OFF"]
+                            : c.premio_tipo === "hora_gratis" ? ["1H", "FREE"]
+                            : ["🎁", ""];
+                          return (
+                            <button
+                              key={c.id}
+                              onClick={() =>
+                                setCuponSeleccionado(cuponSeleccionado === c.id ? null : c.id)
+                              }
                               className={cn(
-                                "flex h-10 w-10 shrink-0 flex-col items-center justify-center rounded-lg text-xs font-bold",
+                                "flex w-full items-center gap-3 rounded-xl border-2 border-dashed p-3 text-left transition-all",
                                 cuponSeleccionado === c.id
-                                  ? "bg-primary text-primary-foreground"
-                                  : "bg-muted text-muted-foreground",
+                                  ? "border-primary bg-primary/10"
+                                  : "border-primary/30 hover:border-primary/60 bg-background",
                               )}
                             >
-                              <span>S/5</span>
-                              <span className="text-[10px] font-normal">
-                                OFF
-                              </span>
-                            </div>
-                            <div className="flex-1">
-                              <p className="text-sm font-medium text-foreground">
-                                Descuento de S/ 5
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {cuponSeleccionado === c.id
-                                  ? "✓ Aplicado"
-                                  : "Clic para aplicar"}
-                              </p>
-                            </div>
-                            <div
-                              className={cn(
-                                "h-5 w-5 rounded-full border-2",
-                                cuponSeleccionado === c.id
-                                  ? "border-primary bg-primary"
-                                  : "border-muted-foreground/40",
-                              )}
-                            >
-                              {cuponSeleccionado === c.id && (
-                                <svg
-                                  className="h-full w-full text-primary-foreground p-0.5"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                  stroke="currentColor"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={3}
-                                    d="M5 13l4 4L19 7"
-                                  />
-                                </svg>
-                              )}
-                            </div>
-                          </button>
-                        ))}
+                              <div
+                                className={cn(
+                                  "flex h-10 w-10 shrink-0 flex-col items-center justify-center rounded-lg text-xs font-bold",
+                                  cuponSeleccionado === c.id
+                                    ? "bg-primary text-primary-foreground"
+                                    : "bg-primary/15 text-primary",
+                                )}
+                              >
+                                <span>{badge[0]}</span>
+                                {badge[1] && <span className="text-[10px] font-normal">{badge[1]}</span>}
+                              </div>
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-foreground">{label}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {cuponSeleccionado === c.id ? "✓ Aplicado" : "Clic para aplicar"}
+                                </p>
+                              </div>
+                              <div
+                                className={cn(
+                                  "h-5 w-5 rounded-full border-2",
+                                  cuponSeleccionado === c.id
+                                    ? "border-primary bg-primary"
+                                    : "border-muted-foreground/40",
+                                )}
+                              >
+                                {cuponSeleccionado === c.id && (
+                                  <svg
+                                    className="h-full w-full text-primary-foreground p-0.5"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={3}
+                                      d="M5 13l4 4L19 7"
+                                    />
+                                  </svg>
+                                )}
+                              </div>
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   )}

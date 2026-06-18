@@ -12,6 +12,7 @@ import {
   Heart,
   Star,
   Stamp,
+  Gift,
   LogIn,
   CheckCircle2,
   XCircle,
@@ -53,7 +54,7 @@ import {
   apiGetHistorial,
   apiGetFavoritos,
   apiToggleFavorito,
-  // apiGetLoyalty, /* SELLOS CONGELADOS */
+  apiGetLoyalty,
   apiGetMisPartidos,
   apiGetMisPartidosHistorial,
   getToken,
@@ -408,6 +409,7 @@ type Section =
   | "cuenta"
   | "reservas"
   | "sellos"
+  | "cupones"
   | "favoritos"
   | "perfil"
   | "partidos";
@@ -457,6 +459,7 @@ export default function MisReservasPage() {
     cupones: [],
     historial: [],
   });
+  const [canchasLoyalty, setCanchasLoyalty] = useState<any[]>([]);
   const [user, setUser] = useState<ReturnType<typeof getUser>>(null);
   const [hydrated, setHydrated] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -610,27 +613,9 @@ export default function MisReservasPage() {
       apiGetMisPartidos().then((data) =>
         setMisPartidos(Array.isArray(data) ? data : []),
       );
-      /* SELLOS CONGELADOS — descomentar para reactivar
-      apiGetLoyalty().then((data) =>
-        setLoyalty({
-          sellos: data.sellos ?? 0,
-          totalReservas: data.total_reservas ?? 0,
-          cupones: (data.cupones ?? []).map((c: any) => ({
-            id: c.id,
-            descuento: c.descuento,
-            generadoEn: c.generado_en,
-            usado: c.usado,
-            usadoEn: c.usado_en,
-          })),
-          historial: (data.historial ?? []).map((h: any) => ({
-            id: h.id,
-            cantidad: h.cantidad,
-            motivo: h.motivo,
-            creado_en: h.creado_en,
-          })),
-        }),
-      );
-      */
+      apiGetLoyalty().then((data) => {
+        setCanchasLoyalty(data.canchas ?? []);
+      });
     }
   }, []);
 
@@ -1104,14 +1089,20 @@ export default function MisReservasPage() {
                 }
                 section="reservas"
               />
-              {/* SELLOS CONGELADOS — descomentar cuando se reactive
-              <NavItem
-                icon={<Stamp className="h-4 w-4" />}
-                label="Mis sellos"
-                count={`${loyalty.sellos}/8`}
-                section="sellos"
-              />
-              */}
+              {canchasLoyalty.length > 0 && (
+                <NavItem
+                  icon={<Gift className="h-4 w-4" />}
+                  label="Mis cupones"
+                  count={
+                    canchasLoyalty.reduce(
+                      (acc: number, c: any) =>
+                        acc + (c.cupones ?? []).filter((cu: any) => !cu.usado).length,
+                      0,
+                    ) || undefined
+                  }
+                  section="cupones"
+                />
+              )}
               <NavItem
                 icon={<Heart className="h-4 w-4" />}
                 label="Favoritos"
@@ -1971,6 +1962,174 @@ export default function MisReservasPage() {
                   </div>
                 );
               })()}
+
+            {/* ── SECCIÓN: MIS CUPONES (por cancha) ── */}
+            {activeSection === "cupones" && (
+              <div className="w-full max-w-2xl space-y-6">
+                <div>
+                  <h1 className="text-2xl font-bold text-foreground">Mis cupones</h1>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Premios ganados por fidelidad en cada cancha.
+                  </p>
+                </div>
+
+                {canchasLoyalty.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-border bg-muted/20 py-16 text-center px-4">
+                    <Gift className="mx-auto h-12 w-12 text-muted-foreground/40 mb-4" />
+                    <p className="text-sm font-medium text-muted-foreground">Aún no tienes cupones</p>
+                    <p className="text-xs text-muted-foreground/70 mt-1">
+                      Reserva en canchas con programa de fidelización y acumula sellos.
+                    </p>
+                  </div>
+                ) : (
+                  canchasLoyalty.map((cancha: any) => {
+                    const cuponesActivos = (cancha.cupones ?? []).filter((c: any) => !c.usado);
+                    const cuponesUsados  = (cancha.cupones ?? []).filter((c: any) => c.usado);
+                    const progreso = Math.min(100, Math.round((cancha.sellos / cancha.umbral) * 100));
+
+                    return (
+                      <div key={cancha.cancha_id} className="rounded-xl border border-border bg-card overflow-hidden">
+                        {/* Header cancha */}
+                        <div className="flex items-center gap-3 border-b border-border px-5 py-4 bg-muted/30">
+                          {cancha.cancha_imagen ? (
+                            <Image
+                              src={cancha.cancha_imagen}
+                              alt={cancha.cancha_nombre}
+                              width={40}
+                              height={40}
+                              className="h-10 w-10 rounded-lg object-cover shrink-0"
+                            />
+                          ) : (
+                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 shrink-0">
+                              <MapPin className="h-5 w-5 text-primary" />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-foreground text-sm truncate">{cancha.cancha_nombre}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {cancha.total_reservas} reserva{cancha.total_reservas !== 1 ? 's' : ''} confirmada{cancha.total_reservas !== 1 ? 's' : ''}
+                            </p>
+                          </div>
+                          {cuponesActivos.length > 0 && (
+                            <span className="rounded-full bg-primary px-2.5 py-0.5 text-xs font-semibold text-primary-foreground">
+                              {cuponesActivos.length} disponible{cuponesActivos.length !== 1 ? 's' : ''}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="p-5 space-y-4">
+                          {/* Tarjeta de sellos */}
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-muted-foreground font-medium">Progreso hacia el próximo premio</span>
+                              <span className="font-semibold text-foreground">{cancha.sellos}/{cancha.umbral}</span>
+                            </div>
+                            {/* Grid de sellos */}
+                            <div
+                              className="grid gap-1.5"
+                              style={{ gridTemplateColumns: `repeat(${Math.min(cancha.umbral, 10)}, minmax(0,1fr))` }}
+                            >
+                              {Array.from({ length: cancha.umbral }).map((_, i) => (
+                                <div
+                                  key={i}
+                                  className={cn(
+                                    "aspect-square rounded-lg border-2 flex items-center justify-center text-xs transition-all",
+                                    i < cancha.sellos
+                                      ? "border-primary bg-primary text-primary-foreground"
+                                      : "border-border bg-muted/30 text-muted-foreground/30",
+                                  )}
+                                >
+                                  {i < cancha.sellos ? "★" : "○"}
+                                </div>
+                              ))}
+                            </div>
+                            {/* Barra de progreso */}
+                            <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                              <div
+                                className="h-full rounded-full bg-primary transition-all"
+                                style={{ width: `${progreso}%` }}
+                              />
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              Premio: {' '}
+                              <span className="font-medium text-foreground">
+                                {cancha.premio_tipo === 'descuento_fijo'        && `S/ ${cancha.premio_valor} de descuento`}
+                                {cancha.premio_tipo === 'descuento_porcentaje'  && `${cancha.premio_valor}% de descuento`}
+                                {cancha.premio_tipo === 'hora_gratis'           && '1 hora gratis'}
+                                {cancha.premio_tipo === 'personalizado'         && (cancha.premio_descripcion || 'Premio especial')}
+                              </span>
+                              {cancha.premio_descripcion && cancha.premio_tipo !== 'personalizado' && ` — ${cancha.premio_descripcion}`}
+                            </p>
+                          </div>
+
+                          {/* Cupones disponibles */}
+                          {cuponesActivos.length > 0 && (
+                            <div className="space-y-2">
+                              <p className="text-xs font-semibold text-foreground uppercase tracking-wide">
+                                Disponibles ({cuponesActivos.length})
+                              </p>
+                              {cuponesActivos.map((c: any) => (
+                                <div
+                                  key={c.id}
+                                  className="flex items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3"
+                                >
+                                  <Gift className="h-5 w-5 text-primary shrink-0" />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-semibold text-foreground">
+                                      {c.premio_tipo === 'descuento_fijo'       && `S/ ${c.premio_valor} de descuento`}
+                                      {c.premio_tipo === 'descuento_porcentaje' && `${c.premio_valor}% de descuento`}
+                                      {c.premio_tipo === 'hora_gratis'          && '1 hora gratis'}
+                                      {c.premio_tipo === 'personalizado'        && (c.premio_descripcion || 'Premio especial')}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      Ganado el {new Date(c.generado_en).toLocaleDateString('es-PE', { day: 'numeric', month: 'long' })}
+                                    </p>
+                                  </div>
+                                  <span className="rounded-full bg-primary/10 border border-primary/20 px-2 py-0.5 text-xs font-medium text-primary">
+                                    Válido
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Cupones usados */}
+                          {cuponesUsados.length > 0 && (
+                            <div className="space-y-2">
+                              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                                Usados ({cuponesUsados.length})
+                              </p>
+                              {cuponesUsados.slice(0, 3).map((c: any) => (
+                                <div
+                                  key={c.id}
+                                  className="flex items-center gap-3 rounded-xl border border-border bg-muted/20 px-4 py-3 opacity-60"
+                                >
+                                  <Gift className="h-5 w-5 text-muted-foreground shrink-0" />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-foreground line-through">
+                                      {c.premio_tipo === 'descuento_fijo'       && `S/ ${c.premio_valor} de descuento`}
+                                      {c.premio_tipo === 'descuento_porcentaje' && `${c.premio_valor}% de descuento`}
+                                      {c.premio_tipo === 'hora_gratis'          && '1 hora gratis'}
+                                      {c.premio_tipo === 'personalizado'        && (c.premio_descripcion || 'Premio especial')}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      Usado el {new Date(c.usado_en).toLocaleDateString('es-PE', { day: 'numeric', month: 'long' })}
+                                    </p>
+                                  </div>
+                                  <span className="rounded-full bg-muted border border-border px-2 py-0.5 text-xs text-muted-foreground">
+                                    Canjeado
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            )}
 
             {/* ── SECCIÓN: MI PERFIL ── */}
             {activeSection === "perfil" && (
@@ -3099,6 +3258,89 @@ export default function MisReservasPage() {
                 );
               })()}
 
+            {activeSection === "cupones" && (
+              <div className="space-y-4">
+                <h2 className="text-xl font-bold text-foreground">Mis cupones</h2>
+                {canchasLoyalty.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-border bg-muted/20 py-12 text-center px-4">
+                    <Gift className="mx-auto h-10 w-10 text-muted-foreground/40 mb-3" />
+                    <p className="text-sm font-medium text-muted-foreground">Aún no tienes cupones</p>
+                    <p className="text-xs text-muted-foreground/70 mt-1">
+                      Reserva en canchas con programa de fidelización y acumula sellos.
+                    </p>
+                  </div>
+                ) : (
+                  canchasLoyalty.map((cancha: any) => {
+                    const cuponesActivos = (cancha.cupones ?? []).filter((c: any) => !c.usado);
+                    const progreso = Math.min(100, Math.round((cancha.sellos / cancha.umbral) * 100));
+                    return (
+                      <div key={cancha.cancha_id} className="rounded-xl border border-border bg-card overflow-hidden">
+                        <div className="flex items-center gap-3 border-b border-border px-4 py-3 bg-muted/30">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 shrink-0">
+                            <MapPin className="h-4 w-4 text-primary" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-foreground text-sm truncate">{cancha.cancha_nombre}</p>
+                            <p className="text-xs text-muted-foreground">{cancha.sellos}/{cancha.umbral} sellos</p>
+                          </div>
+                          {cuponesActivos.length > 0 && (
+                            <span className="rounded-full bg-primary px-2.5 py-0.5 text-xs font-semibold text-primary-foreground">
+                              {cuponesActivos.length}
+                            </span>
+                          )}
+                        </div>
+                        <div className="p-4 space-y-3">
+                          {/* Barra progreso */}
+                          <div className="space-y-1">
+                            <div className="flex flex-wrap gap-1">
+                              {Array.from({ length: cancha.umbral }).map((_: any, i: number) => (
+                                <div
+                                  key={i}
+                                  className={cn(
+                                    "h-5 w-5 rounded text-center text-xs leading-5 border",
+                                    i < cancha.sellos
+                                      ? "border-primary bg-primary text-primary-foreground"
+                                      : "border-border bg-muted/30 text-muted-foreground/30",
+                                  )}
+                                >
+                                  {i < cancha.sellos ? "★" : "○"}
+                                </div>
+                              ))}
+                            </div>
+                            <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                              <div className="h-full rounded-full bg-primary" style={{ width: `${progreso}%` }} />
+                            </div>
+                          </div>
+                          {/* Cupones activos */}
+                          {cuponesActivos.map((c: any) => (
+                            <div key={c.id} className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2.5">
+                              <Gift className="h-4 w-4 text-primary shrink-0" />
+                              <p className="flex-1 text-sm font-semibold text-foreground">
+                                {c.premio_tipo === 'descuento_fijo'       && `S/ ${c.premio_valor} de descuento`}
+                                {c.premio_tipo === 'descuento_porcentaje' && `${c.premio_valor}% de descuento`}
+                                {c.premio_tipo === 'hora_gratis'          && '1 hora gratis'}
+                                {c.premio_tipo === 'personalizado'        && (c.premio_descripcion || 'Premio especial')}
+                              </p>
+                              <span className="text-xs text-primary font-medium">Válido</span>
+                            </div>
+                          ))}
+                          {cuponesActivos.length === 0 && (
+                            <p className="text-xs text-muted-foreground text-center py-2">
+                              Premio: {cancha.premio_tipo === 'descuento_fijo' && `S/ ${cancha.premio_valor} de descuento`}
+                              {cancha.premio_tipo === 'descuento_porcentaje' && `${cancha.premio_valor}% de descuento`}
+                              {cancha.premio_tipo === 'hora_gratis' && '1 hora gratis'}
+                              {cancha.premio_tipo === 'personalizado' && (cancha.premio_descripcion || 'Premio especial')}
+                              {' '}al llegar a {cancha.umbral} sellos
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            )}
+
             {activeSection === "favoritos" && (
               <div className="space-y-4">
                 <h2 className="text-xl font-bold text-foreground">Favoritos</h2>
@@ -3415,6 +3657,20 @@ export default function MisReservasPage() {
                   label: "Mis partidos",
                   value: `${misPartidos.length} creados`,
                   section: "partidos" as Section,
+                },
+                {
+                  icon: <Gift className="h-5 w-5 text-purple-500" />,
+                  iconBg: "bg-purple-500/20",
+                  label: "Mis cupones",
+                  value: (() => {
+                    const total = canchasLoyalty.reduce(
+                      (acc: number, c: any) =>
+                        acc + (c.cupones ?? []).filter((cu: any) => !cu.usado).length,
+                      0,
+                    );
+                    return total > 0 ? `${total} disponible${total !== 1 ? "s" : ""}` : "Acumula sellos";
+                  })(),
+                  section: "cupones" as Section,
                 },
               ].map(({ icon, iconBg, label, value, section }) => (
                 <button

@@ -11,6 +11,9 @@ import {
   MapPin,
   ChevronLeft,
   ChevronRight,
+  Gift,
+  ToggleLeft,
+  ToggleRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -456,6 +459,248 @@ function UbicacionTab({
   );
 }
 
+// ── Tab de fidelización ───────────────────────────────────────────────
+const UMBRAL_OPCIONES = [4, 5, 6, 7, 8, 9, 10, 12, 15, 20];
+const PREMIO_TIPOS = [
+  { value: 'descuento_fijo',       label: 'Descuento fijo (S/)' },
+  { value: 'descuento_porcentaje', label: 'Descuento en porcentaje (%)' },
+  { value: 'hora_gratis',          label: 'Hora gratis' },
+  { value: 'personalizado',        label: 'Premio personalizado' },
+];
+
+function FidelizacionTab({ canchaId }: { canchaId: string }) {
+  const [activo, setActivo]                   = useState(false);
+  const [umbral, setUmbral]                   = useState(8);
+  const [premioTipo, setPremioTipo]           = useState('descuento_fijo');
+  const [premioValor, setPremioValor]         = useState(5);
+  const [premioDescripcion, setPremioDesc]    = useState('');
+  const [cargando, setCargando]               = useState(true);
+  const [guardando, setGuardando]             = useState(false);
+  const [guardado, setGuardado]               = useState(false);
+  const [error, setError]                     = useState('');
+
+  useEffect(() => {
+    const token = getOwnerToken();
+    if (!token || !canchaId) return;
+    fetch(`/api/admin-cancha/loyalty-config?canchaId=${canchaId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data) {
+          setActivo(data.activo ?? false);
+          setUmbral(data.umbral ?? 8);
+          setPremioTipo(data.premio_tipo ?? 'descuento_fijo');
+          setPremioValor(data.premio_valor ?? 5);
+          setPremioDesc(data.premio_descripcion ?? '');
+        }
+        setCargando(false);
+      })
+      .catch(() => setCargando(false));
+  }, [canchaId]);
+
+  const handleGuardar = async () => {
+    const token = getOwnerToken();
+    if (!token) return;
+    setGuardando(true);
+    setError('');
+    const res = await fetch('/api/admin-cancha/loyalty-config', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        canchaId,
+        activo,
+        umbral,
+        premioTipo,
+        premioValor: premioTipo === 'hora_gratis' ? null : premioValor,
+        premioDescripcion,
+      }),
+    });
+    const data = await res.json();
+    setGuardando(false);
+    if (!res.ok) {
+      setError(data.error ?? 'Error al guardar');
+    } else {
+      setGuardado(true);
+      setTimeout(() => setGuardado(false), 2500);
+    }
+  };
+
+  if (cargando) {
+    return (
+      <div className="flex items-center justify-center py-16 text-muted-foreground gap-2">
+        <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        <span className="text-sm">Cargando configuración...</span>
+      </div>
+    );
+  }
+
+  const mostrarValor = premioTipo !== 'hora_gratis' && premioTipo !== 'personalizado';
+  const labelValor   = premioTipo === 'descuento_porcentaje' ? '%' : 'S/';
+
+  return (
+    <div className="space-y-4 pt-4">
+      {/* Banner explicativo */}
+      <Card className="border-border bg-primary/5 border-primary/20 p-5">
+        <div className="flex items-start gap-3">
+          <Gift className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+          <div className="space-y-1">
+            <p className="font-medium text-foreground text-sm">Programa de sellos por cancha</p>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Cada vez que un cliente confirme una reserva aquí, acumulará un sello.
+              Al llegar al número que definas, recibirá automáticamente un premio
+              canjeble <strong>solo en tu cancha</strong>.
+            </p>
+          </div>
+        </div>
+      </Card>
+
+      {/* Toggle activo */}
+      <Card className="border-border p-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="font-medium text-foreground text-sm">Estado del programa</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {activo ? 'Los clientes están acumulando sellos.' : 'El programa está desactivado.'}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setActivo(v => !v)}
+            className="flex items-center gap-2 focus:outline-none"
+          >
+            {activo
+              ? <ToggleRight className="h-9 w-9 text-primary" />
+              : <ToggleLeft  className="h-9 w-9 text-muted-foreground" />}
+          </button>
+        </div>
+      </Card>
+
+      {/* Configuración */}
+      <Card className="border-border p-5 space-y-5">
+        {/* Umbral */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-foreground">
+            ¿Cuántas reservas se necesitan para ganar un premio?
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {UMBRAL_OPCIONES.map(n => (
+              <button
+                key={n}
+                type="button"
+                onClick={() => setUmbral(n)}
+                className={cn(
+                  "h-10 w-12 rounded-xl border-2 text-sm font-semibold transition-all",
+                  umbral === n
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-card text-foreground hover:border-primary/50",
+                )}
+              >
+                {n}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Sellos necesarios: <span className="font-medium text-foreground">{umbral}</span>
+          </p>
+        </div>
+
+        <Separator />
+
+        {/* Tipo de premio */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-foreground">Tipo de premio</label>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {PREMIO_TIPOS.map(({ value, label }) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setPremioTipo(value)}
+                className={cn(
+                  "rounded-xl border-2 px-4 py-3 text-left text-sm transition-all",
+                  premioTipo === value
+                    ? "border-primary bg-primary/5 text-primary font-medium"
+                    : "border-border bg-card text-foreground hover:border-primary/30",
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Valor del premio */}
+        {mostrarValor && (
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-foreground">
+              Valor del descuento ({labelValor})
+            </label>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">{labelValor}</span>
+              <input
+                type="number"
+                min={1}
+                max={premioTipo === 'descuento_porcentaje' ? 100 : 500}
+                value={premioValor}
+                onChange={e => setPremioValor(Number(e.target.value))}
+                className="w-28 rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Descripción personalizada */}
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium text-foreground">
+            Descripción del premio{premioTipo === 'personalizado' ? '' : ' (opcional)'}
+          </label>
+          <input
+            type="text"
+            maxLength={120}
+            value={premioDescripcion}
+            onChange={e => setPremioDesc(e.target.value)}
+            placeholder={
+              premioTipo === 'personalizado'
+                ? 'Ej: Una bebida gratis, descuento en accesorio...'
+                : 'Texto que verá el cliente al ganar el premio'
+            }
+            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+        </div>
+
+        {/* Vista previa */}
+        <div className="rounded-xl border border-dashed border-primary/30 bg-primary/5 p-4 space-y-1">
+          <p className="text-xs font-medium text-primary uppercase tracking-wide">Vista previa del cliente</p>
+          <p className="text-sm text-foreground">
+            🎯 Reserva <strong>{umbral} veces</strong> en esta cancha y gana:{' '}
+            {premioTipo === 'descuento_fijo'       && <strong>S/ {premioValor} de descuento</strong>}
+            {premioTipo === 'descuento_porcentaje' && <strong>{premioValor}% de descuento</strong>}
+            {premioTipo === 'hora_gratis'          && <strong>1 hora gratis</strong>}
+            {premioTipo === 'personalizado'        && <strong>{premioDescripcion || '(sin descripción)'}</strong>}
+            {premioDescripcion && premioTipo !== 'personalizado' && ` — ${premioDescripcion}`}
+          </p>
+        </div>
+      </Card>
+
+      {/* Error y botón guardar */}
+      {error && (
+        <div className="rounded-xl bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive">
+          {error}
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={handleGuardar}
+        disabled={guardando}
+        className="w-full rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50 transition-opacity"
+      >
+        {guardando ? 'Guardando...' : guardado ? '¡Guardado! ✓' : 'Guardar configuración'}
+      </button>
+    </div>
+  );
+}
+
 export default function OwnerEditarCanchaPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -683,7 +928,7 @@ export default function OwnerEditarCanchaPage() {
           disabled={saving}
           className={cn(
             "gap-2 shrink-0",
-            activeTab === "bloqueos" && "invisible",
+            (activeTab === "bloqueos" || activeTab === "fidelizacion") && "invisible",
           )}
         >
           <Save className="h-4 w-4" />
@@ -709,6 +954,7 @@ export default function OwnerEditarCanchaPage() {
               <TabsTrigger value="bloqueos">Bloqueos</TabsTrigger>
               <TabsTrigger value="ubicacion">Ubicación</TabsTrigger>
               <TabsTrigger value="servicios">Servicios</TabsTrigger>
+              <TabsTrigger value="fidelizacion">Fidelización</TabsTrigger>
             </TabsList>
           </div>
 
@@ -1274,6 +1520,11 @@ export default function OwnerEditarCanchaPage() {
                 </button>
               )}
             </Card>
+          </TabsContent>
+
+          {/* ── Fidelización ── */}
+          <TabsContent value="fidelizacion">
+            <FidelizacionTab canchaId={id as string} />
           </TabsContent>
 
           {/* ── Fotos ── */}

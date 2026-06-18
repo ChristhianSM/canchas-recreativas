@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
   const sb = createServiceClient();
 
   const body = await req.json();
-  const { canchaId, canchaNombre, fecha, hora, horas = 1, precio, precioOriginal, cuponId, metodoPago, comprobanteUrl, emailInvitado, telefonoInvitado, whatsappInvitado, metodoDevolucion, telefonoDevolucion, actualizarTelefono, nuevoTelefono, accesoriosIncluidos, modo_pago, monto_adelanto, saldo_pendiente } = body;
+  const { canchaId, canchaNombre, fecha, hora, horas = 1, precio, precioOriginal, cuponId, canchaCuponId, metodoPago, comprobanteUrl, emailInvitado, telefonoInvitado, whatsappInvitado, metodoDevolucion, telefonoDevolucion, actualizarTelefono, nuevoTelefono, accesoriosIncluidos, modo_pago, monto_adelanto, saldo_pendiente } = body;
 
   // Precio por hora individual (para multi-hora)
   const precioPorHora = horas > 1 ? Math.round(precio / horas) : precio;
@@ -239,12 +239,22 @@ export async function POST(req: NextRequest) {
 
   const reserva = reservaPrincipal;
 
-  // Marcar cupón como usado
+  // Marcar cupón (sistema viejo) como usado
   if (cuponId && usuarioId) {
     await sb.from('cupones')
       .update({ usado: true, usado_en: new Date().toISOString() })
       .eq('id', cuponId)
       .eq('usuario_id', usuarioId);
+  }
+
+  // Marcar cupón por cancha (nuevo sistema) como usado
+  console.log('[reservas] canchaCuponId recibido:', canchaCuponId, '| usuarioId:', usuarioId);
+  if (canchaCuponId && usuarioId) {
+    const { error: cuponError, count } = await sb.from('cancha_cupones')
+      .update({ usado: true, usado_en: new Date().toISOString() })
+      .eq('id', canchaCuponId)
+      .eq('usuario_id', usuarioId);
+    console.log('[reservas] update cancha_cupones → error:', cuponError, '| rows afectadas:', count);
   }
 
   // Hora de fin para notificaciones

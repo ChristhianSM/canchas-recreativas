@@ -110,6 +110,12 @@ type CanchaDB = {
   max_jugadores: number | null;
   yape_numero?: string;
   plin_numero?: string;
+  loyalty?: {
+    umbral: number;
+    premio_tipo: 'descuento_fijo' | 'descuento_porcentaje' | 'hora_gratis' | 'personalizado';
+    premio_valor: number | null;
+    premio_descripcion: string;
+  } | null;
 };
 
 function buildSchedule(
@@ -292,6 +298,7 @@ export default function CanchaDetailPage() {
       accesoriosSeleccionados: accesoriosElegidos,
       yapeNumero: cancha.yape_numero ?? "",
       plinNumero: cancha.plin_numero ?? "",
+      loyalty: cancha.loyalty ?? null,
     }));
 
     setReservaStep(2);
@@ -880,6 +887,31 @@ export default function CanchaDetailPage() {
                 </>
               )}
             </div>
+
+            {/* ── Banner de fidelización ── */}
+            {cancha.loyalty && (
+              <div className="flex items-start gap-3 rounded-xl border border-primary/25 bg-primary/5 px-4 py-3">
+                <span className="text-xl shrink-0">🎯</span>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">
+                    Programa de sellos
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Reserva <span className="font-medium text-foreground">{cancha.loyalty.umbral} veces</span> aquí y gana{" "}
+                    <span className="font-medium text-foreground">
+                      {cancha.loyalty.premio_tipo === "descuento_fijo"        && `S/ ${cancha.loyalty.premio_valor} de descuento`}
+                      {cancha.loyalty.premio_tipo === "descuento_porcentaje"  && `${cancha.loyalty.premio_valor}% de descuento`}
+                      {cancha.loyalty.premio_tipo === "hora_gratis"           && "1 hora gratis"}
+                      {cancha.loyalty.premio_tipo === "personalizado"         && (cancha.loyalty.premio_descripcion || "un premio especial")}
+                    </span>
+                    {cancha.loyalty.premio_descripcion && cancha.loyalty.premio_tipo !== "personalizado" && (
+                      <> — {cancha.loyalty.premio_descripcion}</>
+                    )}
+                    .
+                  </p>
+                </div>
+              </div>
+            )}
 
             <div>
               <h2 className="mb-2 text-lg font-semibold text-foreground">

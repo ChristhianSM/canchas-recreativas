@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
 import { verifyToken } from '@/lib/admin-auth';
 import { notificarEstadoReserva } from '@/lib/whatsapp';
+import { revertirSelloCancha } from '@/lib/loyalty';
 
 export async function POST(req: NextRequest) {
   const token = req.headers.get('authorization')?.replace('Bearer ', '');
@@ -89,20 +90,9 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // Restar sello de loyalty si estaba confirmada
+  // Revertir sello por cancha si la reserva estaba confirmada
   if (reserva.estado === 'confirmada' && reserva.usuario_id) {
-    const { data: loyalty } = await sb
-      .from('loyalty')
-      .select('sellos, total_reservas')
-      .eq('usuario_id', reserva.usuario_id)
-      .single();
-
-    if (loyalty && loyalty.sellos > 0) {
-      await sb.from('loyalty').update({
-        sellos: loyalty.sellos - 1,
-        total_reservas: Math.max(0, loyalty.total_reservas - 1),
-      }).eq('usuario_id', reserva.usuario_id);
-    }
+    await revertirSelloCancha(sb, reserva.usuario_id, reserva.cancha_id);
   }
 
   return NextResponse.json({ ok: true });
