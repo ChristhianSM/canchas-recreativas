@@ -40,6 +40,7 @@ export default function CalificarCancha({ canchaId }: Props) {
   const [enviado, setEnviado]       = useState(false);
   const [error, setError]           = useState('');
   const [usuario, setUsuario]       = useState(false);
+  const [selloGanado, setSelloGanado] = useState(false);
 
   useEffect(() => {
     const token = getToken();
@@ -91,6 +92,7 @@ export default function CalificarCancha({ canchaId }: Props) {
     }
 
     setEnviado(true);
+    if (result.selloGanado) setSelloGanado(true);
     setData(prev => {
       const nuevaDistribucion = { ...prev.distribucion, [seleccion]: (prev.distribucion[seleccion] || 0) + 1 };
       return {
@@ -147,7 +149,7 @@ export default function CalificarCancha({ canchaId }: Props) {
           <a href="/login" className="text-primary hover:underline font-medium">Inicia sesión</a> para calificar esta cancha
         </p>
       ) : enviado ? (
-        <div className="space-y-2 rounded-lg bg-muted/40 p-3">
+        <div className="rounded-lg bg-muted/40 p-3 space-y-2">
           <div className="flex items-center gap-2">
             <StarRating value={seleccion} readonly size="md" />
             <span className="text-sm font-medium text-green-600">Tu calificación</span>
@@ -156,6 +158,12 @@ export default function CalificarCancha({ canchaId }: Props) {
             <p className="text-sm text-foreground italic">"{data.miComentario}"</p>
           )}
           <p className="text-xs text-muted-foreground">No es posible cambiar la calificación.</p>
+          {selloGanado && (
+            <div className="flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 px-3 py-2">
+              <span className="text-lg">🏅</span>
+              <p className="text-xs font-medium text-amber-800 dark:text-amber-300">¡Ganaste 1 sello por tu reseña!</p>
+            </div>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
