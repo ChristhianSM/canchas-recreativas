@@ -1246,18 +1246,15 @@ export default function CanchaDetailPage() {
                           </span>
                           <span>S/ {precioBase}</span>
                         </div>
-                        {extraBalon > 0 && (
-                          <div className="flex justify-between text-xs text-muted-foreground">
-                            <span>⚽ Balón</span>
-                            <span>+ S/ {extraBalon}</span>
-                          </div>
-                        )}
-                        {extraChalecos > 0 && (
-                          <div className="flex justify-between text-xs text-muted-foreground">
-                            <span>🎽 Chalecos</span>
-                            <span>+ S/ {extraChalecos}</span>
-                          </div>
-                        )}
+                        {(cancha.accesorios ?? [])
+                          .filter(a => accesoriosSeleccionados.includes(a.id) && (a.precio ?? 0) > 0)
+                          .map(a => (
+                            <div key={a.id} className="flex justify-between text-xs text-muted-foreground">
+                              <span>{a.icono} {a.nombre}</span>
+                              <span>+ S/ {a.precio}</span>
+                            </div>
+                          ))
+                        }
                         <div className="flex justify-between text-sm font-bold text-primary pt-0.5">
                           <span>Total</span>
                           <span>S/ {precioConExtras}</span>
