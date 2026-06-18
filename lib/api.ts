@@ -170,7 +170,7 @@ export async function apiGetHistorial(page = 0, limit = 10) {
 
 export async function apiCrearReserva(data: {
   canchaId: string; canchaNombre: string; fecha: string; hora: string; horas?: number;
-  precio: number; precioOriginal?: number; cuponId?: string | null; canchaCuponId?: string | null;
+  precio: number; precioOriginal?: number; canchaCuponId?: string | null;
   accesoriosIncluidos?: { id: string; nombre: string; icono: string; precio: number | null }[];
   metodoPago: string; comprobanteUrl?: string | null;
   emailInvitado?: string; telefonoInvitado?: string;

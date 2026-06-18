@@ -32,7 +32,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { type Cupon } from "@/lib/auth";
 import {
   apiCrearReserva,
   apiGetLoyalty,
@@ -502,7 +501,7 @@ function PagoContent() {
       horas,
       precio: total,
       precioOriginal: precioRaw,
-      cuponId: cuponSeleccionado,
+      canchaCuponId: cuponSeleccionado,
       metodoPago: metodo,
       comprobanteUrl: comprobante,
       accesoriosIncluidos: accesoriosSeleccionados,

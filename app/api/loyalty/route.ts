@@ -3,21 +3,19 @@ import { createServiceClient } from '@/lib/supabase';
 
 export async function GET(req: NextRequest) {
   const token = req.headers.get('authorization')?.replace('Bearer ', '');
-  if (!token) return NextResponse.json({ sellos: 0, total_reservas: 0, cupones: [], historial: [], canchas: [] });
+  if (!token) return NextResponse.json({ sellos: 0, total_reservas: 0, historial: [], canchas: [] });
 
   const sb = createServiceClient();
   const { data: { user } } = await sb.auth.getUser(token);
-  if (!user) return NextResponse.json({ sellos: 0, total_reservas: 0, cupones: [], historial: [], canchas: [] });
+  if (!user) return NextResponse.json({ sellos: 0, total_reservas: 0, historial: [], canchas: [] });
 
   const [
     { data: loyaltyRows },
-    { data: cupones },
     { data: historial },
     { data: canchaSellos },
     { data: canchaCupones },
   ] = await Promise.all([
     sb.from('loyalty').select('*').eq('usuario_id', user.id).order('sellos', { ascending: false }).limit(1),
-    sb.from('cupones').select('*').eq('usuario_id', user.id).order('generado_en', { ascending: false }),
     sb.from('loyalty_historial').select('*').eq('usuario_id', user.id).order('creado_en', { ascending: false }).limit(20),
     // Sellos por cancha (nuevo sistema)
     sb.from('cancha_sellos')
@@ -74,7 +72,6 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     sellos:         loyalty?.sellos ?? 0,
     total_reservas: loyalty?.total_reservas ?? 0,
-    cupones:        cupones ?? [],
     historial:      historial ?? [],
     canchas,
   });
