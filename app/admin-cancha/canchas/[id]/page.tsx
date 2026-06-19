@@ -50,16 +50,31 @@ type Accesorio = {
   id: string;
   nombre: string;
   icono: string;
-  modalidad: 'prestado' | 'alquilado';
+  modalidad: "prestado" | "alquilado";
   precio: number | null;
 };
 
-const PRESETS_POR_DEPORTE: Record<string, Array<{ nombre: string; icono: string }>> = {
-  futbol:  [{ nombre: 'Balón', icono: '⚽' }, { nombre: 'Chalecos', icono: '🎽' }],
-  futsal:  [{ nombre: 'Balón', icono: '⚽' }, { nombre: 'Chalecos', icono: '🎽' }],
-  voley:   [{ nombre: 'Balón', icono: '🏐' }, { nombre: 'Malla', icono: '🥅' }],
-  basquet: [{ nombre: 'Balón', icono: '🏀' }],
-  tenis:   [{ nombre: 'Raqueta', icono: '🎾' }, { nombre: 'Pelotas', icono: '🎾' }],
+const PRESETS_POR_DEPORTE: Record<
+  string,
+  Array<{ nombre: string; icono: string }>
+> = {
+  futbol: [
+    { nombre: "Balón", icono: "⚽" },
+    { nombre: "Chalecos", icono: "🎽" },
+  ],
+  futsal: [
+    { nombre: "Balón", icono: "⚽" },
+    { nombre: "Chalecos", icono: "🎽" },
+  ],
+  voley: [
+    { nombre: "Balón", icono: "🏐" },
+    { nombre: "Malla", icono: "🥅" },
+  ],
+  basquet: [{ nombre: "Balón", icono: "🏀" }],
+  tenis: [
+    { nombre: "Raqueta", icono: "🎾" },
+    { nombre: "Pelotas", icono: "🎾" },
+  ],
 };
 
 function getOwnerToken() {
@@ -78,7 +93,13 @@ function getLunesDeSemana(base = new Date()): Date {
   return d;
 }
 
-function HorarioTab({ canchaId, horasOperacion = HORAS_APP }: { canchaId: string; horasOperacion?: string[] }) {
+function HorarioTab({
+  canchaId,
+  horasOperacion = HORAS_APP,
+}: {
+  canchaId: string;
+  horasOperacion?: string[];
+}) {
   const [reservas, setReservas] = useState<any[]>([]);
   const [bloqueos, setBloqueos] = useState<BloqueoAdmin[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -462,22 +483,22 @@ function UbicacionTab({
 // ── Tab de fidelización ───────────────────────────────────────────────
 const UMBRAL_OPCIONES = [4, 5, 6, 7, 8, 9, 10, 12, 15, 20];
 const PREMIO_TIPOS = [
-  { value: 'descuento_fijo',       label: 'Descuento fijo (S/)' },
-  { value: 'descuento_porcentaje', label: 'Descuento en porcentaje (%)' },
-  { value: 'hora_gratis',          label: 'Hora gratis' },
-  { value: 'personalizado',        label: 'Premio personalizado' },
+  { value: "descuento_fijo", label: "Descuento fijo (S/)" },
+  { value: "descuento_porcentaje", label: "Descuento en porcentaje (%)" },
+  { value: "hora_gratis", label: "Hora gratis" },
+  { value: "personalizado", label: "Premio personalizado" },
 ];
 
 function FidelizacionTab({ canchaId }: { canchaId: string }) {
-  const [activo, setActivo]                   = useState(false);
-  const [umbral, setUmbral]                   = useState(8);
-  const [premioTipo, setPremioTipo]           = useState('descuento_fijo');
-  const [premioValor, setPremioValor]         = useState(5);
-  const [premioDescripcion, setPremioDesc]    = useState('');
-  const [cargando, setCargando]               = useState(true);
-  const [guardando, setGuardando]             = useState(false);
-  const [guardado, setGuardado]               = useState(false);
-  const [error, setError]                     = useState('');
+  const [activo, setActivo] = useState(false);
+  const [umbral, setUmbral] = useState(8);
+  const [premioTipo, setPremioTipo] = useState("descuento_fijo");
+  const [premioValor, setPremioValor] = useState(5);
+  const [premioDescripcion, setPremioDesc] = useState("");
+  const [cargando, setCargando] = useState(true);
+  const [guardando, setGuardando] = useState(false);
+  const [guardado, setGuardado] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const token = getOwnerToken();
@@ -485,14 +506,14 @@ function FidelizacionTab({ canchaId }: { canchaId: string }) {
     fetch(`/api/admin-cancha/loyalty-config?canchaId=${canchaId}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then(r => r.json())
-      .then(data => {
+      .then((r) => r.json())
+      .then((data) => {
         if (data) {
           setActivo(data.activo ?? false);
           setUmbral(data.umbral ?? 8);
-          setPremioTipo(data.premio_tipo ?? 'descuento_fijo');
+          setPremioTipo(data.premio_tipo ?? "descuento_fijo");
           setPremioValor(data.premio_valor ?? 5);
-          setPremioDesc(data.premio_descripcion ?? '');
+          setPremioDesc(data.premio_descripcion ?? "");
         }
         setCargando(false);
       })
@@ -503,23 +524,26 @@ function FidelizacionTab({ canchaId }: { canchaId: string }) {
     const token = getOwnerToken();
     if (!token) return;
     setGuardando(true);
-    setError('');
-    const res = await fetch('/api/admin-cancha/loyalty-config', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    setError("");
+    const res = await fetch("/api/admin-cancha/loyalty-config", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({
         canchaId,
         activo,
         umbral,
         premioTipo,
-        premioValor: premioTipo === 'hora_gratis' ? null : premioValor,
+        premioValor: premioTipo === "hora_gratis" ? null : premioValor,
         premioDescripcion,
       }),
     });
     const data = await res.json();
     setGuardando(false);
     if (!res.ok) {
-      setError(data.error ?? 'Error al guardar');
+      setError(data.error ?? "Error al guardar");
     } else {
       setGuardado(true);
       setTimeout(() => setGuardado(false), 2500);
@@ -535,8 +559,9 @@ function FidelizacionTab({ canchaId }: { canchaId: string }) {
     );
   }
 
-  const mostrarValor = premioTipo !== 'hora_gratis' && premioTipo !== 'personalizado';
-  const labelValor   = premioTipo === 'descuento_porcentaje' ? '%' : 'S/';
+  const mostrarValor =
+    premioTipo !== "hora_gratis" && premioTipo !== "personalizado";
+  const labelValor = premioTipo === "descuento_porcentaje" ? "%" : "S/";
 
   return (
     <div className="space-y-4 pt-4">
@@ -545,11 +570,13 @@ function FidelizacionTab({ canchaId }: { canchaId: string }) {
         <div className="flex items-start gap-3">
           <Gift className="h-5 w-5 text-primary mt-0.5 shrink-0" />
           <div className="space-y-1">
-            <p className="font-medium text-foreground text-sm">Programa de sellos por cancha</p>
+            <p className="font-medium text-foreground text-sm">
+              Programa de sellos por cancha
+            </p>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Cada vez que un cliente confirme una reserva aquí, acumulará un sello.
-              Al llegar al número que definas, recibirá automáticamente un premio
-              canjeble <strong>solo en tu cancha</strong>.
+              Cada vez que un cliente confirme una reserva aquí, acumulará un
+              sello. Al llegar al número que definas, recibirá automáticamente
+              un premio canjeble <strong>solo en tu cancha</strong>.
             </p>
           </div>
         </div>
@@ -559,19 +586,25 @@ function FidelizacionTab({ canchaId }: { canchaId: string }) {
       <Card className="border-border p-5">
         <div className="flex items-center justify-between">
           <div>
-            <p className="font-medium text-foreground text-sm">Estado del programa</p>
+            <p className="font-medium text-foreground text-sm">
+              Estado del programa
+            </p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {activo ? 'Los clientes están acumulando sellos.' : 'El programa está desactivado.'}
+              {activo
+                ? "Los clientes están acumulando sellos."
+                : "El programa está desactivado."}
             </p>
           </div>
           <button
             type="button"
-            onClick={() => setActivo(v => !v)}
+            onClick={() => setActivo((v) => !v)}
             className="flex items-center gap-2 focus:outline-none"
           >
-            {activo
-              ? <ToggleRight className="h-9 w-9 text-primary" />
-              : <ToggleLeft  className="h-9 w-9 text-muted-foreground" />}
+            {activo ? (
+              <ToggleRight className="h-9 w-9 text-primary" />
+            ) : (
+              <ToggleLeft className="h-9 w-9 text-muted-foreground" />
+            )}
           </button>
         </div>
       </Card>
@@ -584,7 +617,7 @@ function FidelizacionTab({ canchaId }: { canchaId: string }) {
             ¿Cuántas reservas se necesitan para ganar un premio?
           </label>
           <div className="flex flex-wrap gap-2">
-            {UMBRAL_OPCIONES.map(n => (
+            {UMBRAL_OPCIONES.map((n) => (
               <button
                 key={n}
                 type="button"
@@ -601,7 +634,8 @@ function FidelizacionTab({ canchaId }: { canchaId: string }) {
             ))}
           </div>
           <p className="text-xs text-muted-foreground">
-            Sellos necesarios: <span className="font-medium text-foreground">{umbral}</span>
+            Sellos necesarios:{" "}
+            <span className="font-medium text-foreground">{umbral}</span>
           </p>
         </div>
 
@@ -609,7 +643,9 @@ function FidelizacionTab({ canchaId }: { canchaId: string }) {
 
         {/* Tipo de premio */}
         <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground">Tipo de premio</label>
+          <label className="text-sm font-medium text-foreground">
+            Tipo de premio
+          </label>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {PREMIO_TIPOS.map(({ value, label }) => (
               <button
@@ -636,13 +672,15 @@ function FidelizacionTab({ canchaId }: { canchaId: string }) {
               Valor del descuento ({labelValor})
             </label>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">{labelValor}</span>
+              <span className="text-sm text-muted-foreground">
+                {labelValor}
+              </span>
               <input
                 type="number"
                 min={1}
-                max={premioTipo === 'descuento_porcentaje' ? 100 : 500}
+                max={premioTipo === "descuento_porcentaje" ? 100 : 500}
                 value={premioValor}
-                onChange={e => setPremioValor(Number(e.target.value))}
+                onChange={(e) => setPremioValor(Number(e.target.value))}
                 className="w-28 rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
@@ -652,17 +690,18 @@ function FidelizacionTab({ canchaId }: { canchaId: string }) {
         {/* Descripción personalizada */}
         <div className="space-y-1.5">
           <label className="text-sm font-medium text-foreground">
-            Descripción del premio{premioTipo === 'personalizado' ? '' : ' (opcional)'}
+            Descripción del premio
+            {premioTipo === "personalizado" ? "" : " (opcional)"}
           </label>
           <input
             type="text"
             maxLength={120}
             value={premioDescripcion}
-            onChange={e => setPremioDesc(e.target.value)}
+            onChange={(e) => setPremioDesc(e.target.value)}
             placeholder={
-              premioTipo === 'personalizado'
-                ? 'Ej: Una bebida gratis, descuento en accesorio...'
-                : 'Texto que verá el cliente al ganar el premio'
+              premioTipo === "personalizado"
+                ? "Ej: Una bebida gratis, descuento en accesorio..."
+                : "Texto que verá el cliente al ganar el premio"
             }
             className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           />
@@ -670,14 +709,24 @@ function FidelizacionTab({ canchaId }: { canchaId: string }) {
 
         {/* Vista previa */}
         <div className="rounded-xl border border-dashed border-primary/30 bg-primary/5 p-4 space-y-1">
-          <p className="text-xs font-medium text-primary uppercase tracking-wide">Vista previa del cliente</p>
+          <p className="text-xs font-medium text-primary uppercase tracking-wide">
+            Vista previa del cliente
+          </p>
           <p className="text-sm text-foreground">
-            🎯 Reserva <strong>{umbral} veces</strong> en esta cancha y gana:{' '}
-            {premioTipo === 'descuento_fijo'       && <strong>S/ {premioValor} de descuento</strong>}
-            {premioTipo === 'descuento_porcentaje' && <strong>{premioValor}% de descuento</strong>}
-            {premioTipo === 'hora_gratis'          && <strong>1 hora gratis</strong>}
-            {premioTipo === 'personalizado'        && <strong>{premioDescripcion || '(sin descripción)'}</strong>}
-            {premioDescripcion && premioTipo !== 'personalizado' && ` — ${premioDescripcion}`}
+            🎯 Reserva <strong>{umbral} veces</strong> en esta cancha y gana:{" "}
+            {premioTipo === "descuento_fijo" && (
+              <strong>S/ {premioValor} de descuento</strong>
+            )}
+            {premioTipo === "descuento_porcentaje" && (
+              <strong>{premioValor}% de descuento</strong>
+            )}
+            {premioTipo === "hora_gratis" && <strong>1 hora gratis</strong>}
+            {premioTipo === "personalizado" && (
+              <strong>{premioDescripcion || "(sin descripción)"}</strong>
+            )}
+            {premioDescripcion &&
+              premioTipo !== "personalizado" &&
+              ` — ${premioDescripcion}`}
           </p>
         </div>
       </Card>
@@ -695,7 +744,11 @@ function FidelizacionTab({ canchaId }: { canchaId: string }) {
         disabled={guardando}
         className="w-full rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50 transition-opacity"
       >
-        {guardando ? 'Guardando...' : guardado ? '¡Guardado! ✓' : 'Guardar configuración'}
+        {guardando
+          ? "Guardando..."
+          : guardado
+            ? "¡Guardado! ✓"
+            : "Guardar configuración"}
       </button>
     </div>
   );
@@ -725,9 +778,11 @@ export default function OwnerEditarCanchaPage() {
   );
   const [accesorios, setAccesorios] = useState<Accesorio[]>([]);
   const precioRefs = useRef<Record<string, HTMLInputElement | null>>({});
-  const [nuevoNombre, setNuevoNombre] = useState('');
-  const [nuevoIcono, setNuevoIcono] = useState('🎯');
-  const [nuevaModalidad, setNuevaModalidad] = useState<'prestado' | 'alquilado'>('alquilado');
+  const [nuevoNombre, setNuevoNombre] = useState("");
+  const [nuevoIcono, setNuevoIcono] = useState("🎯");
+  const [nuevaModalidad, setNuevaModalidad] = useState<
+    "prestado" | "alquilado"
+  >("alquilado");
   const [nuevoPrecio, setNuevoPrecio] = useState<number | null>(null);
   const [mostrarFormNuevo, setMostrarFormNuevo] = useState(false);
   const [superficie, setSuperficie] = useState<string>("grass_sintetico");
@@ -741,7 +796,7 @@ export default function OwnerEditarCanchaPage() {
   const [yapeError, setYapeError] = useState("");
   const [plinError, setPlinError] = useState("");
   const [horaApertura, setHoraApertura] = useState("06:00");
-  const [horaCierre, setHoraCierre]     = useState("23:00");
+  const [horaCierre, setHoraCierre] = useState("23:00");
 
   useEffect(() => {
     const token = getOwnerToken();
@@ -913,7 +968,12 @@ export default function OwnerEditarCanchaPage() {
       {/* Header — sticky para que el botón siempre sea accesible al hacer scroll */}
       <div className="sticky top-0 z-20 -mx-4 -mt-4 flex items-center justify-between gap-2 border-b border-border bg-background/95 px-4 py-3 backdrop-blur-sm lg:-mx-6 lg:px-6">
         <div className="flex flex-1 items-center gap-2 min-w-0">
-          <Button variant="ghost" size="icon" className="shrink-0" onClick={() => router.back()}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0"
+            onClick={() => router.back()}
+          >
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div className="min-w-0">
@@ -928,12 +988,17 @@ export default function OwnerEditarCanchaPage() {
           disabled={saving}
           className={cn(
             "gap-2 shrink-0",
-            (activeTab === "bloqueos" || activeTab === "fidelizacion") && "invisible",
+            (activeTab === "bloqueos" || activeTab === "fidelizacion") &&
+              "invisible",
           )}
         >
           <Save className="h-4 w-4" />
           <span className="hidden sm:inline">
-            {saving ? "Guardando..." : saved ? "¡Guardado! ✓" : "Guardar cambios"}
+            {saving
+              ? "Guardando..."
+              : saved
+                ? "¡Guardado! ✓"
+                : "Guardar cambios"}
           </span>
         </Button>
       </div>
@@ -963,42 +1028,66 @@ export default function OwnerEditarCanchaPage() {
             {/* Configuración de horario de operación */}
             <Card className="border-border p-5 space-y-4">
               <div>
-                <p className="font-medium text-foreground">Horario de operación</p>
-                <p className="text-sm text-muted-foreground">Define las horas en que tu cancha está disponible para reservas.</p>
+                <p className="font-medium text-foreground">
+                  Horario de operación
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Define las horas en que tu cancha está disponible para
+                  reservas.
+                </p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-foreground">Apertura</label>
+                  <label className="text-sm font-medium text-foreground">
+                    Apertura
+                  </label>
                   <select
                     value={horaApertura}
-                    onChange={e => setHoraApertura(e.target.value)}
+                    onChange={(e) => setHoraApertura(e.target.value)}
                     className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   >
-                    {HORAS_APP.filter(h => h < horaCierre).map(h => (
-                      <option key={h} value={h}>{h}</option>
+                    {HORAS_APP.filter((h) => h < horaCierre).map((h) => (
+                      <option key={h} value={h}>
+                        {h}
+                      </option>
                     ))}
                   </select>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-foreground">Cierre</label>
+                  <label className="text-sm font-medium text-foreground">
+                    Cierre
+                  </label>
                   <select
                     value={horaCierre}
-                    onChange={e => setHoraCierre(e.target.value)}
+                    onChange={(e) => setHoraCierre(e.target.value)}
                     className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   >
-                    {HORAS_APP.filter(h => h > horaApertura).map(h => (
-                      <option key={h} value={h}>{h}</option>
+                    {HORAS_APP.filter((h) => h > horaApertura).map((h) => (
+                      <option key={h} value={h}>
+                        {h}
+                      </option>
                     ))}
                   </select>
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
-                Los usuarios solo verán horas entre <span className="font-medium text-foreground">{horaApertura}</span> y <span className="font-medium text-foreground">{horaCierre}</span>.
+                Los usuarios solo verán horas entre{" "}
+                <span className="font-medium text-foreground">
+                  {horaApertura}
+                </span>{" "}
+                y{" "}
+                <span className="font-medium text-foreground">
+                  {horaCierre}
+                </span>
+                .
               </p>
             </Card>
 
             <Card className="border-border p-5">
-              <HorarioTab canchaId={id as string} horasOperacion={getHorasOperacion(horaApertura, horaCierre)} />
+              <HorarioTab
+                canchaId={id as string}
+                horasOperacion={getHorasOperacion(horaApertura, horaCierre)}
+              />
             </Card>
           </TabsContent>
 
@@ -1285,222 +1374,6 @@ export default function OwnerEditarCanchaPage() {
                 </div>
               )}
             </Card>
-
-            {/* Accesorios dinámicos */}
-            <Card className="border-border p-5 space-y-4">
-              <div>
-                <p className="font-medium text-foreground">Accesorios</p>
-                <p className="text-sm text-muted-foreground">
-                  Indica qué ofreces con tu cancha, si lo prestas gratis o lo alquilas.
-                </p>
-              </div>
-
-              {/* Lista de accesorios actuales */}
-              {accesorios.length > 0 && (
-                <div className="space-y-2">
-                  {accesorios.map((acc) => (
-                    <div key={acc.id} className="flex items-center gap-3 rounded-xl border border-border bg-muted/30 px-4 py-3">
-                      <span className="text-xl shrink-0">{acc.icono}</span>
-                      <span className="flex-1 text-sm font-medium text-foreground">{acc.nombre}</span>
-
-                      {/* Toggle prestado / alquilado */}
-                      <div className="flex items-center rounded-lg border border-border overflow-hidden text-xs shrink-0">
-                        {(['prestado', 'alquilado'] as const).map((m) => (
-                          <button
-                            key={m}
-                            type="button"
-                            onClick={() => {
-                              setAccesorios(prev => prev.map(a =>
-                                a.id === acc.id
-                                  ? { ...a, modalidad: m, precio: m === 'prestado' ? null : a.precio }
-                                  : a
-                              ));
-                              if (m === 'alquilado') {
-                                setTimeout(() => precioRefs.current[acc.id]?.focus(), 0);
-                              }
-                            }}
-                            className={cn(
-                              'px-2.5 py-1.5 font-medium capitalize transition-colors',
-                              acc.modalidad === m
-                                ? 'bg-primary text-primary-foreground'
-                                : 'bg-background text-muted-foreground hover:bg-muted'
-                            )}
-                          >
-                            {m}
-                          </button>
-                        ))}
-                      </div>
-
-                      {/* Precio — siempre visible, bloqueado si prestado */}
-                      <div className="flex items-center gap-1 shrink-0">
-                        <span className="text-xs text-muted-foreground">S/</span>
-                        <Input
-                          ref={(el) => { precioRefs.current[acc.id] = el; }}
-                          type="number"
-                          min={0}
-                          placeholder="0"
-                          disabled={acc.modalidad === 'prestado'}
-                          value={acc.modalidad === 'prestado' ? 0 : (acc.precio ?? '')}
-                          onChange={(e) => setAccesorios(prev => prev.map(a =>
-                            a.id === acc.id
-                              ? { ...a, precio: e.target.value === '' ? null : Number(e.target.value) }
-                              : a
-                          ))}
-                          onBlur={(e) => {
-                            const val = e.target.value;
-                            if (acc.modalidad === 'alquilado' && (val === '' || Number(val) === 0)) {
-                              setAccesorios(prev => prev.map(a =>
-                                a.id === acc.id ? { ...a, modalidad: 'prestado', precio: null } : a
-                              ));
-                            }
-                          }}
-                          className="h-7 w-16 text-sm px-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                        />
-                      </div>
-
-                      {/* Eliminar */}
-                      <button
-                        type="button"
-                        onClick={() => setAccesorios(prev => prev.filter(a => a.id !== acc.id))}
-                        className="text-muted-foreground hover:text-destructive transition-colors shrink-0"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Sugerencias según deporte */}
-              {(() => {
-                const tipo = (cancha as any)?.tipo as string | undefined;
-                const presets = tipo ? (PRESETS_POR_DEPORTE[tipo] ?? []) : [];
-                const nombresActuales = accesorios.map(a => a.nombre.toLowerCase());
-                const sugerencias = presets.filter(p => !nombresActuales.includes(p.nombre.toLowerCase()));
-                if (!sugerencias.length) return null;
-                return (
-                  <div className="space-y-2">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                      Sugerencias para tu cancha
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {sugerencias.map((s) => (
-                        <button
-                          key={s.nombre}
-                          type="button"
-                          onClick={() => setAccesorios(prev => [...prev, {
-                            id: crypto.randomUUID(),
-                            nombre: s.nombre,
-                            icono: s.icono,
-                            modalidad: 'alquilado',
-                            precio: null,
-                          }])}
-                          className="flex items-center gap-1.5 rounded-full border border-dashed border-primary/40 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/10 transition-colors"
-                        >
-                          <Plus className="h-3 w-3" />
-                          {s.icono} {s.nombre}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* Formulario para agregar personalizado */}
-              {mostrarFormNuevo ? (
-                <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-3">
-                  <p className="text-sm font-medium text-foreground">Agregar accesorio</p>
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="🎯"
-                      value={nuevoIcono}
-                      onChange={(e) => setNuevoIcono(e.target.value)}
-                      className="h-9 w-16 text-center text-lg px-1"
-                      maxLength={2}
-                    />
-                    <Input
-                      placeholder="Nombre del accesorio"
-                      value={nuevoNombre}
-                      onChange={(e) => setNuevoNombre(e.target.value)}
-                      className="h-9 flex-1"
-                    />
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center rounded-lg border border-border overflow-hidden text-xs">
-                      {(['prestado', 'alquilado'] as const).map((m) => (
-                        <button
-                          key={m}
-                          type="button"
-                          onClick={() => {
-                            setNuevaModalidad(m);
-                            if (m === 'prestado') setNuevoPrecio(null);
-                          }}
-                          className={cn(
-                            'px-3 py-2 font-medium capitalize transition-colors',
-                            nuevaModalidad === m
-                              ? 'bg-primary text-primary-foreground'
-                              : 'bg-background text-muted-foreground hover:bg-muted'
-                          )}
-                        >
-                          {m}
-                        </button>
-                      ))}
-                    </div>
-                    {nuevaModalidad === 'alquilado' && (
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs text-muted-foreground">S/</span>
-                        <Input
-                          type="number"
-                          min={0}
-                          placeholder="0"
-                          value={nuevoPrecio ?? ''}
-                          onChange={(e) => setNuevoPrecio(e.target.value === '' ? null : Number(e.target.value))}
-                          className="h-9 w-20 text-sm"
-                        />
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      onClick={() => {
-                        if (!nuevoNombre.trim()) return;
-                        setAccesorios(prev => [...prev, {
-                          id: crypto.randomUUID(),
-                          nombre: nuevoNombre.trim(),
-                          icono: nuevoIcono || '🎯',
-                          modalidad: nuevaModalidad,
-                          precio: nuevaModalidad === 'prestado' ? null : nuevoPrecio,
-                        }]);
-                        setNuevoNombre('');
-                        setNuevoIcono('🎯');
-                        setNuevaModalidad('alquilado');
-                        setNuevoPrecio(null);
-                        setMostrarFormNuevo(false);
-                      }}
-                    >
-                      Agregar
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setMostrarFormNuevo(false)}
-                    >
-                      Cancelar
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setMostrarFormNuevo(true)}
-                  className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <Plus className="h-4 w-4" />
-                  Agregar accesorio personalizado
-                </button>
-              )}
-            </Card>
           </TabsContent>
 
           {/* ── Fidelización ── */}
@@ -1588,7 +1461,11 @@ export default function OwnerEditarCanchaPage() {
                 estarán disponibles para reservas.
               </p>
             </div>
-            <BloqueosAdminPanel canchaId={id} token={getOwnerToken() ?? ""} horasOperacion={getHorasOperacion(horaApertura, horaCierre)} />
+            <BloqueosAdminPanel
+              canchaId={id}
+              token={getOwnerToken() ?? ""}
+              horasOperacion={getHorasOperacion(horaApertura, horaCierre)}
+            />
           </TabsContent>
 
           {/* ── Ubicación ── */}
@@ -1611,6 +1488,299 @@ export default function OwnerEditarCanchaPage() {
 
           {/* ── Servicios ── */}
           <TabsContent value="servicios" className="space-y-4 pt-4">
+            {/* Accesorios dinámicos */}
+            <Card className="border-border p-5 space-y-4">
+              <div>
+                <p className="font-medium text-foreground">Accesorios</p>
+                <p className="text-sm text-muted-foreground">
+                  Indica qué ofreces con tu cancha, si lo prestas gratis o lo
+                  alquilas.
+                </p>
+              </div>
+
+              {/* Lista de accesorios actuales */}
+              {accesorios.length > 0 && (
+                <div className="space-y-2">
+                  {accesorios.map((acc) => (
+                    <div
+                      key={acc.id}
+                      className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-border bg-muted/30 px-4 py-3"
+                    >
+                      <span className="text-xl shrink-0">{acc.icono}</span>
+                      <span className="flex-1 text-sm font-medium text-foreground">
+                        {acc.nombre}
+                      </span>
+
+                      {/* Controles: en mobile ocupan fila completa alineados bajo el nombre, en desktop se quedan inline */}
+                      <div className="flex w-full items-center gap-2 sm:w-auto sm:pl-0">
+                        {/* Toggle prestado / alquilado */}
+                        <div className="flex items-center rounded-lg border border-border overflow-hidden text-xs">
+                          {(["prestado", "alquilado"] as const).map((m) => (
+                            <button
+                              key={m}
+                              type="button"
+                              onClick={() => {
+                                setAccesorios((prev) =>
+                                  prev.map((a) =>
+                                    a.id === acc.id
+                                      ? {
+                                          ...a,
+                                          modalidad: m,
+                                          precio:
+                                            m === "prestado" ? null : a.precio,
+                                        }
+                                      : a,
+                                  ),
+                                );
+                                if (m === "alquilado") {
+                                  setTimeout(
+                                    () => precioRefs.current[acc.id]?.focus(),
+                                    0,
+                                  );
+                                }
+                              }}
+                              className={cn(
+                                "px-2.5 py-1.5 font-medium capitalize transition-colors",
+                                acc.modalidad === m
+                                  ? "bg-primary text-primary-foreground"
+                                  : "bg-background text-muted-foreground hover:bg-muted",
+                              )}
+                            >
+                              {m}
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* Precio */}
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-muted-foreground">
+                            S/
+                          </span>
+                          <Input
+                            ref={(el) => {
+                              precioRefs.current[acc.id] = el;
+                            }}
+                            type="number"
+                            min={0}
+                            placeholder="0"
+                            disabled={acc.modalidad === "prestado"}
+                            value={
+                              acc.modalidad === "prestado"
+                                ? 0
+                                : (acc.precio ?? "")
+                            }
+                            onChange={(e) =>
+                              setAccesorios((prev) =>
+                                prev.map((a) =>
+                                  a.id === acc.id
+                                    ? {
+                                        ...a,
+                                        precio:
+                                          e.target.value === ""
+                                            ? null
+                                            : Number(e.target.value),
+                                      }
+                                    : a,
+                                ),
+                              )
+                            }
+                            onBlur={(e) => {
+                              const val = e.target.value;
+                              if (
+                                acc.modalidad === "alquilado" &&
+                                (val === "" || Number(val) === 0)
+                              ) {
+                                setAccesorios((prev) =>
+                                  prev.map((a) =>
+                                    a.id === acc.id
+                                      ? {
+                                          ...a,
+                                          modalidad: "prestado",
+                                          precio: null,
+                                        }
+                                      : a,
+                                  ),
+                                );
+                              }
+                            }}
+                            className="h-7 w-16 text-sm px-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                          />
+                        </div>
+
+                        {/* Eliminar */}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setAccesorios((prev) =>
+                              prev.filter((a) => a.id !== acc.id),
+                            )
+                          }
+                          className="ml-auto text-muted-foreground hover:text-destructive transition-colors sm:ml-0"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Sugerencias según deporte */}
+              {(() => {
+                const tipo = (cancha as any)?.tipo as string | undefined;
+                const presets = tipo ? (PRESETS_POR_DEPORTE[tipo] ?? []) : [];
+                const nombresActuales = accesorios.map((a) =>
+                  a.nombre.toLowerCase(),
+                );
+                const sugerencias = presets.filter(
+                  (p) => !nombresActuales.includes(p.nombre.toLowerCase()),
+                );
+                if (!sugerencias.length) return null;
+                return (
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      Sugerencias para tu cancha
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {sugerencias.map((s) => (
+                        <button
+                          key={s.nombre}
+                          type="button"
+                          onClick={() =>
+                            setAccesorios((prev) => [
+                              ...prev,
+                              {
+                                id: crypto.randomUUID(),
+                                nombre: s.nombre,
+                                icono: s.icono,
+                                modalidad: "alquilado",
+                                precio: null,
+                              },
+                            ])
+                          }
+                          className="flex items-center gap-1.5 rounded-full border border-dashed border-primary/40 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/10 transition-colors"
+                        >
+                          <Plus className="h-3 w-3" />
+                          {s.icono} {s.nombre}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Formulario para agregar personalizado */}
+              {mostrarFormNuevo ? (
+                <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-3">
+                  <p className="text-sm font-medium text-foreground">
+                    Agregar accesorio
+                  </p>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="🎯"
+                      value={nuevoIcono}
+                      onChange={(e) => setNuevoIcono(e.target.value)}
+                      className="h-9 w-16 text-center text-lg px-1"
+                      maxLength={2}
+                    />
+                    <Input
+                      placeholder="Nombre del accesorio"
+                      value={nuevoNombre}
+                      onChange={(e) => setNuevoNombre(e.target.value)}
+                      className="h-9 flex-1"
+                    />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center rounded-lg border border-border overflow-hidden text-xs">
+                      {(["prestado", "alquilado"] as const).map((m) => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => {
+                            setNuevaModalidad(m);
+                            if (m === "prestado") setNuevoPrecio(null);
+                          }}
+                          className={cn(
+                            "px-3 py-2 font-medium capitalize transition-colors",
+                            nuevaModalidad === m
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-background text-muted-foreground hover:bg-muted",
+                          )}
+                        >
+                          {m}
+                        </button>
+                      ))}
+                    </div>
+                    {nuevaModalidad === "alquilado" && (
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-muted-foreground">
+                          S/
+                        </span>
+                        <Input
+                          type="number"
+                          min={0}
+                          placeholder="0"
+                          value={nuevoPrecio ?? ""}
+                          onChange={(e) =>
+                            setNuevoPrecio(
+                              e.target.value === ""
+                                ? null
+                                : Number(e.target.value),
+                            )
+                          }
+                          className="h-9 w-20 text-sm"
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        if (!nuevoNombre.trim()) return;
+                        setAccesorios((prev) => [
+                          ...prev,
+                          {
+                            id: crypto.randomUUID(),
+                            nombre: nuevoNombre.trim(),
+                            icono: nuevoIcono || "🎯",
+                            modalidad: nuevaModalidad,
+                            precio:
+                              nuevaModalidad === "prestado"
+                                ? null
+                                : nuevoPrecio,
+                          },
+                        ]);
+                        setNuevoNombre("");
+                        setNuevoIcono("🎯");
+                        setNuevaModalidad("alquilado");
+                        setNuevoPrecio(null);
+                        setMostrarFormNuevo(false);
+                      }}
+                    >
+                      Agregar
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setMostrarFormNuevo(false)}
+                    >
+                      Cancelar
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setMostrarFormNuevo(true)}
+                  className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <Plus className="h-4 w-4" />
+                  Agregar accesorio personalizado
+                </button>
+              )}
+            </Card>
+
             <Card className="border-border p-5 space-y-4">
               <p className="font-medium text-foreground">
                 Servicios y amenidades
