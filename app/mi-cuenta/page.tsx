@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Calendar,
   Clock,
@@ -12,6 +12,7 @@ import {
   Heart,
   Star,
   Stamp,
+  Gift,
   LogIn,
   CheckCircle2,
   XCircle,
@@ -53,7 +54,7 @@ import {
   apiGetHistorial,
   apiGetFavoritos,
   apiToggleFavorito,
-  // apiGetLoyalty, /* SELLOS CONGELADOS */
+  apiGetLoyalty,
   apiGetMisPartidos,
   apiGetMisPartidosHistorial,
   getToken,
@@ -408,6 +409,7 @@ type Section =
   | "cuenta"
   | "reservas"
   | "sellos"
+  | "cupones"
   | "favoritos"
   | "perfil"
   | "partidos";
@@ -436,6 +438,7 @@ interface PartidoItem {
 // ── Página principal ───────────────────────────────────────────────
 export default function MisReservasPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [reservas, setReservas] = useState<Reserva[]>([]);
   const [historialItems, setHistorialItems] = useState<Reserva[]>([]);
   const [historialTotal, setHistorialTotal] = useState(0);
@@ -454,16 +457,20 @@ export default function MisReservasPage() {
   const [loyalty, setLoyalty] = useState<LoyaltyData>({
     sellos: 0,
     totalReservas: 0,
-    cupones: [],
     historial: [],
   });
+  const [canchasLoyalty, setCanchasLoyalty] = useState<any[]>([]);
   const [user, setUser] = useState<ReturnType<typeof getUser>>(null);
   const [hydrated, setHydrated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [reservaDetalle, setReservaDetalle] = useState<Reserva | null>(null);
   const [reservaCancelar, setReservaCancelar] = useState<Reserva | null>(null);
   const { toast } = useToast();
-  const [activeSection, setActiveSection] = useState<Section>("cuenta");
+  const VALID_SECTIONS: Section[] = ["cuenta", "reservas", "sellos", "cupones", "favoritos", "perfil", "partidos"];
+  const initialSection = VALID_SECTIONS.includes(searchParams.get("tab") as Section)
+    ? (searchParams.get("tab") as Section)
+    : "cuenta";
+  const [activeSection, setActiveSection] = useState<Section>(initialSection);
 
   // ── Estado de perfil ──
   interface PerfilData {
@@ -610,27 +617,9 @@ export default function MisReservasPage() {
       apiGetMisPartidos().then((data) =>
         setMisPartidos(Array.isArray(data) ? data : []),
       );
-      /* SELLOS CONGELADOS — descomentar para reactivar
-      apiGetLoyalty().then((data) =>
-        setLoyalty({
-          sellos: data.sellos ?? 0,
-          totalReservas: data.total_reservas ?? 0,
-          cupones: (data.cupones ?? []).map((c: any) => ({
-            id: c.id,
-            descuento: c.descuento,
-            generadoEn: c.generado_en,
-            usado: c.usado,
-            usadoEn: c.usado_en,
-          })),
-          historial: (data.historial ?? []).map((h: any) => ({
-            id: h.id,
-            cantidad: h.cantidad,
-            motivo: h.motivo,
-            creado_en: h.creado_en,
-          })),
-        }),
-      );
-      */
+      apiGetLoyalty().then((data) => {
+        setCanchasLoyalty(data.canchas ?? []);
+      });
     }
   }, []);
 
@@ -1104,14 +1093,20 @@ export default function MisReservasPage() {
                 }
                 section="reservas"
               />
-              {/* SELLOS CONGELADOS — descomentar cuando se reactive
-              <NavItem
-                icon={<Stamp className="h-4 w-4" />}
-                label="Mis sellos"
-                count={`${loyalty.sellos}/8`}
-                section="sellos"
-              />
-              */}
+              {canchasLoyalty.length > 0 && (
+                <NavItem
+                  icon={<Gift className="h-4 w-4" />}
+                  label="Mis cupones"
+                  count={
+                    canchasLoyalty.reduce(
+                      (acc: number, c: any) =>
+                        acc + (c.cupones ?? []).filter((cu: any) => !cu.usado).length,
+                      0,
+                    ) || undefined
+                  }
+                  section="cupones"
+                />
+              )}
               <NavItem
                 icon={<Heart className="h-4 w-4" />}
                 label="Favoritos"
@@ -1576,401 +1571,174 @@ export default function MisReservasPage() {
               </div>
             )}
 
-            {/* ── SECCIÓN: MIS SELLOS (CONGELADA) — cambiar false por true para reactivar ── */}
-            {false && activeSection === "sellos" &&
-              (() => {
-                const TOTAL = 8;
-                const sellos = loyalty.sellos;
-                const faltan = Math.max(0, TOTAL - sellos);
-                return (
-                  <div className="w-full">
-                    <h1 className="text-2xl font-bold text-foreground">
-                      Mis sellos
-                    </h1>
-                    <p className="text-sm text-muted-foreground mt-1 mb-6">
-                      Reserva, junta sellos y canjéalos por horas gratis.
+
+            {/* ── SECCIÓN: MIS CUPONES (por cancha) ── */}
+            {activeSection === "cupones" && (
+              <div className="w-full max-w-2xl space-y-6">
+                <div>
+                  <h1 className="text-2xl font-bold text-foreground">Mis cupones</h1>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Premios ganados por fidelidad en cada cancha.
+                  </p>
+                </div>
+
+                {canchasLoyalty.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-border bg-muted/20 py-16 text-center px-4">
+                    <Gift className="mx-auto h-12 w-12 text-muted-foreground/40 mb-4" />
+                    <p className="text-sm font-medium text-muted-foreground">Aún no tienes cupones</p>
+                    <p className="text-xs text-muted-foreground/70 mt-1">
+                      Reserva en canchas con programa de fidelización y acumula sellos.
                     </p>
+                  </div>
+                ) : (
+                  canchasLoyalty.map((cancha: any) => {
+                    const cuponesActivos = (cancha.cupones ?? []).filter((c: any) => !c.usado);
+                    const cuponesUsados  = (cancha.cupones ?? []).filter((c: any) => c.usado);
+                    const progreso = Math.min(100, Math.round((cancha.sellos / cancha.umbral) * 100));
 
-                    {/* Banner verde */}
-                    <div className="rounded-xl bg-green-600 p-6 mb-6 overflow-hidden relative">
-                      <div className="flex items-start justify-between mb-5">
-                        <div>
-                          <p className="text-xs font-semibold text-green-200 uppercase tracking-widest mb-1">
-                            Recompensa
-                          </p>
-                          <p className="text-3xl font-extrabold text-white leading-tight">
-                            1 hora gratis
-                          </p>
-                        </div>
-                        <div className="bg-card rounded-xl px-3 py-2 flex items-center gap-1.5 shrink-0">
-                          <span className="text-green-700 font-extrabold text-sm">
-                            CanchaGo
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Sellos */}
-                      <div className="grid grid-cols-8 gap-2 mb-4">
-                        {Array.from({ length: TOTAL }).map((_, i) => (
-                          <div
-                            key={i}
-                            className={cn(
-                              "aspect-square flex items-center justify-center rounded-xl text-sm font-bold transition-all",
-                              i < sellos
-                                ? "bg-card text-green-600 shadow"
-                                : "border-2 border-dashed border-white/40 text-white/50",
-                            )}
-                          >
-                            {i < sellos ? (
-                              <svg
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth={3}
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                className="h-5 w-5"
-                              >
-                                <polyline points="20 6 9 17 4 12" />
-                              </svg>
-                            ) : (
-                              <span>{i + 1}</span>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm text-green-100 font-medium">
-                          {sellos} de {TOTAL} sellos
-                        </p>
-                        {faltan > 0 && (
-                          <p className="text-sm text-green-100 font-medium">
-                            Faltan {faltan} 🎯
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Dos columnas: info + cupones */}
-                    <div className="grid grid-cols-2 gap-4">
-                      {/* Columna izquierda: Cómo ganar + Historial */}
-                      <div className="flex flex-col gap-4">
-                        <div className="bg-card rounded-xl p-5">
-                          <h3 className="font-semibold text-foreground mb-4">
-                            Cómo ganar sellos
-                          </h3>
-                          <div className="space-y-3">
-                            {[
-                              {
-                                icon: "⚡",
-                                label: "1 sello por reserva",
-                                sub: "Cualquier cancha, cualquier deporte.",
-                              },
-                              {
-                                icon: "👥",
-                                label: "2 sellos por partido",
-                                sub: "Crea y organiza tu pichanga.",
-                              },
-                              {
-                                icon: "❤️",
-                                label: "1 sello por reseña",
-                                sub: "Comparte tu experiencia tras jugar.",
-                              },
-                            ].map(({ icon, label, sub }) => (
-                              <div
-                                key={label}
-                                className="flex items-start gap-3 p-3 rounded-xl bg-amber-500/10"
-                              >
-                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-lg">
-                                  {icon}
-                                </span>
-                                <div>
-                                  <p className="text-sm font-semibold text-foreground">
-                                    {label}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {sub}
-                                  </p>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="bg-card rounded-xl p-5">
-                          <h3 className="font-semibold text-foreground mb-4">
-                            Historial
-                          </h3>
-                          {loyalty.historial.length > 0 ? (
-                            <div className="space-y-3">
-                              {(showAllHistorial
-                                ? loyalty.historial
-                                : loyalty.historial.slice(0, 5)
-                              ).map((h) => (
-                                <div
-                                  key={h.id}
-                                  className="flex items-center gap-3"
-                                >
-                                  <span className="text-lg">
-                                    {h.motivo === "reserva"
-                                      ? "✅"
-                                      : h.motivo === "partido"
-                                        ? "🏟️"
-                                        : "⭐"}
-                                  </span>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-foreground truncate">
-                                      {h.motivo === "reserva"
-                                        ? "Reserva confirmada"
-                                        : h.motivo === "partido"
-                                          ? "Partido creado"
-                                          : "Reseña enviada"}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                      {new Date(h.creado_en).toLocaleDateString(
-                                        "es-PE",
-                                        {
-                                          day: "numeric",
-                                          month: "short",
-                                          year: "numeric",
-                                        },
-                                      )}
-                                    </p>
-                                  </div>
-                                  <span className="text-xs font-semibold text-amber-600 shrink-0">
-                                    +{h.cantidad}
-                                  </span>
-                                </div>
-                              ))}
-                              {loyalty.historial.length > 5 && (
-                                <button
-                                  onClick={() => setShowAllHistorial((v) => !v)}
-                                  className="w-full text-xs font-medium text-primary hover:text-primary/80 text-center pt-1 transition-colors"
-                                >
-                                  {showAllHistorial
-                                    ? "Ver menos ↑"
-                                    : `Ver todos (+${loyalty.historial.length - 5}) ↓`}
-                                </button>
-                              )}
-                            </div>
+                    return (
+                      <div key={cancha.cancha_id} className="rounded-xl border border-border bg-card overflow-hidden">
+                        {/* Header cancha */}
+                        <div className="flex items-center gap-3 border-b border-border px-5 py-4 bg-muted/30">
+                          {cancha.cancha_imagen ? (
+                            <Image
+                              src={cancha.cancha_imagen}
+                              alt={cancha.cancha_nombre}
+                              width={40}
+                              height={40}
+                              className="h-10 w-10 rounded-lg object-cover shrink-0"
+                            />
                           ) : (
-                            <p className="text-sm text-muted-foreground text-center py-4">
-                              Sin historial aún
-                            </p>
+                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 shrink-0">
+                              <MapPin className="h-5 w-5 text-primary" />
+                            </div>
                           )}
-                        </div>
-                      </div>
-
-                      {/* Columna derecha: Tus cupones con pestañas */}
-                      <div className="bg-card rounded-xl p-5 flex flex-col">
-                        <div className="flex items-center justify-between mb-4">
-                          <h3 className="font-semibold text-foreground">
-                            Tus cupones
-                          </h3>
-                          {loyalty.cupones.filter((c) => !c.usado).length >
-                            0 && (
-                            <span className="text-xs font-semibold bg-green-500/100/20 text-green-700 px-2 py-0.5 rounded-full">
-                              {loyalty.cupones.filter((c) => !c.usado).length}{" "}
-                              activos
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-foreground text-sm truncate">{cancha.cancha_nombre}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {cancha.total_reservas} reserva{cancha.total_reservas !== 1 ? 's' : ''} confirmada{cancha.total_reservas !== 1 ? 's' : ''}
+                            </p>
+                          </div>
+                          {cuponesActivos.length > 0 && (
+                            <span className="rounded-full bg-primary px-2.5 py-0.5 text-xs font-semibold text-primary-foreground">
+                              {cuponesActivos.length} disponible{cuponesActivos.length !== 1 ? 's' : ''}
                             </span>
                           )}
                         </div>
 
-                        {loyalty.cupones.length === 0 ? (
-                          <div className="flex flex-col items-center justify-center flex-1 py-8 text-center">
-                            <span className="text-4xl mb-3">🎟️</span>
-                            <p className="text-sm font-medium text-foreground/80">
-                              Aún no tienes cupones
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Completa 8 reservas para ganar tu primer cupón
+                        <div className="p-5 space-y-4">
+                          {/* Tarjeta de sellos */}
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-muted-foreground font-medium">Progreso hacia el próximo premio</span>
+                              <span className="font-semibold text-foreground">{cancha.sellos}/{cancha.umbral}</span>
+                            </div>
+                            {/* Grid de sellos */}
+                            <div
+                              className="grid gap-1.5"
+                              style={{ gridTemplateColumns: `repeat(${Math.min(cancha.umbral, 10)}, minmax(0,1fr))` }}
+                            >
+                              {Array.from({ length: cancha.umbral }).map((_, i) => (
+                                <div
+                                  key={i}
+                                  className={cn(
+                                    "aspect-square rounded-lg border-2 flex items-center justify-center text-xs transition-all",
+                                    i < cancha.sellos
+                                      ? "border-primary bg-primary text-primary-foreground"
+                                      : "border-border bg-muted/30 text-muted-foreground/30",
+                                  )}
+                                >
+                                  {i < cancha.sellos ? "★" : "○"}
+                                </div>
+                              ))}
+                            </div>
+                            {/* Barra de progreso */}
+                            <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                              <div
+                                className="h-full rounded-full bg-primary transition-all"
+                                style={{ width: `${progreso}%` }}
+                              />
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              Premio: {' '}
+                              <span className="font-medium text-foreground">
+                                {cancha.premio_tipo === 'descuento_fijo'        && `S/ ${cancha.premio_valor} de descuento`}
+                                {cancha.premio_tipo === 'descuento_porcentaje'  && `${cancha.premio_valor}% de descuento`}
+                                {cancha.premio_tipo === 'hora_gratis'           && '1 hora gratis'}
+                                {cancha.premio_tipo === 'personalizado'         && (cancha.premio_descripcion || 'Premio especial')}
+                              </span>
+                              {cancha.premio_descripcion && cancha.premio_tipo !== 'personalizado' && ` — ${cancha.premio_descripcion}`}
                             </p>
                           </div>
-                        ) : (
-                          (() => {
-                            const activos = loyalty.cupones.filter(
-                              (c) => !c.usado,
-                            );
-                            const usados = loyalty.cupones.filter(
-                              (c) => c.usado,
-                            );
 
-                            const CuponItem = ({
-                              cupon,
-                              disponible,
-                            }: {
-                              cupon: (typeof loyalty.cupones)[0];
-                              disponible: boolean;
-                            }) => {
-                              const fecha = new Date(
-                                cupon.generadoEn,
-                              ).toLocaleDateString("es-PE", {
-                                day: "numeric",
-                                month: "short",
-                                year: "numeric",
-                              });
-                              return (
+                          {/* Cupones disponibles */}
+                          {cuponesActivos.length > 0 && (
+                            <div className="space-y-2">
+                              <p className="text-xs font-semibold text-foreground uppercase tracking-wide">
+                                Disponibles ({cuponesActivos.length})
+                              </p>
+                              {cuponesActivos.map((c: any) => (
                                 <div
-                                  className={cn(
-                                    "relative flex items-center gap-3 rounded-xl border-2 border-dashed p-3 overflow-hidden",
-                                    disponible
-                                      ? "border-green-300 bg-green-500/10"
-                                      : "border-gray-200 bg-muted/50",
-                                  )}
+                                  key={c.id}
+                                  className="flex items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3"
                                 >
-                                  <div className="absolute -left-2.5 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full bg-background border border-border" />
-                                  <div className="absolute -right-2.5 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full bg-background border border-border" />
-                                  <div
-                                    className={cn(
-                                      "flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-lg",
-                                      disponible
-                                        ? "bg-green-600 text-white"
-                                        : "bg-gray-300 text-gray-500",
-                                    )}
-                                  >
-                                    <span className="text-[10px] font-medium">
-                                      S/
-                                    </span>
-                                    <span className="text-xl font-extrabold leading-none">
-                                      {cupon.descuento}
-                                    </span>
-                                    <span className="text-[10px] font-medium">
-                                      OFF
-                                    </span>
-                                  </div>
-                                  <div className="flex-1 min-w-0 pl-1">
-                                    <p className="text-sm font-bold text-foreground">
-                                      Descuento en reserva
+                                  <Gift className="h-5 w-5 text-primary shrink-0" />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-semibold text-foreground">
+                                      {c.premio_tipo === 'descuento_fijo'       && `S/ ${c.premio_valor} de descuento`}
+                                      {c.premio_tipo === 'descuento_porcentaje' && `${c.premio_valor}% de descuento`}
+                                      {c.premio_tipo === 'hora_gratis'          && '1 hora gratis'}
+                                      {c.premio_tipo === 'personalizado'        && (c.premio_descripcion || 'Premio especial')}
                                     </p>
                                     <p className="text-xs text-muted-foreground">
-                                      Generado el {fecha}
+                                      Ganado el {new Date(c.generado_en).toLocaleDateString('es-PE', { day: 'numeric', month: 'long' })}
                                     </p>
-                                    {disponible ? (
-                                      <p className="text-xs text-green-600 font-medium mt-0.5">
-                                        ✓ Se aplica automáticamente
-                                      </p>
-                                    ) : (
-                                      <p className="text-xs text-gray-400 font-medium mt-0.5">
-                                        Ya utilizado
-                                      </p>
-                                    )}
                                   </div>
+                                  <span className="rounded-full bg-primary/10 border border-primary/20 px-2 py-0.5 text-xs font-medium text-primary">
+                                    Válido
+                                  </span>
                                 </div>
-                              );
-                            };
+                              ))}
+                            </div>
+                          )}
 
-                            return (
-                              <Tabs defaultValue="activos" className="flex-1">
-                                <TabsList className="w-full mb-4">
-                                  <TabsTrigger
-                                    value="activos"
-                                    className="flex-1 gap-1.5"
-                                  >
-                                    Activos
-                                    {activos.length > 0 && (
-                                      <Badge
-                                        variant="secondary"
-                                        className="h-4 min-w-4 px-1 text-xs"
-                                      >
-                                        {activos.length}
-                                      </Badge>
-                                    )}
-                                  </TabsTrigger>
-                                  <TabsTrigger
-                                    value="usados"
-                                    className="flex-1 gap-1.5"
-                                  >
-                                    Usados
-                                    {usados.length > 0 && (
-                                      <Badge
-                                        variant="secondary"
-                                        className="h-4 min-w-4 px-1 text-xs"
-                                      >
-                                        {usados.length}
-                                      </Badge>
-                                    )}
-                                  </TabsTrigger>
-                                </TabsList>
-                                <TabsContent
-                                  value="activos"
-                                  className="space-y-3 mt-0"
+                          {/* Cupones usados */}
+                          {cuponesUsados.length > 0 && (
+                            <div className="space-y-2">
+                              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                                Usados ({cuponesUsados.length})
+                              </p>
+                              {cuponesUsados.slice(0, 3).map((c: any) => (
+                                <div
+                                  key={c.id}
+                                  className="flex items-center gap-3 rounded-xl border border-border bg-muted/20 px-4 py-3 opacity-60"
                                 >
-                                  {activos.length > 0 ? (
-                                    <>
-                                      {(showAllCuponesActivos
-                                        ? activos
-                                        : activos.slice(0, 3)
-                                      ).map((c) => (
-                                        <CuponItem
-                                          key={c.id}
-                                          cupon={c}
-                                          disponible={true}
-                                        />
-                                      ))}
-                                      {activos.length > 3 && (
-                                        <button
-                                          onClick={() =>
-                                            setShowAllCuponesActivos((v) => !v)
-                                          }
-                                          className="w-full text-xs font-medium text-primary hover:text-primary/80 text-center pt-1 transition-colors"
-                                        >
-                                          {showAllCuponesActivos
-                                            ? "Ver menos ↑"
-                                            : `Ver todos (+${activos.length - 3}) ↓`}
-                                        </button>
-                                      )}
-                                    </>
-                                  ) : (
-                                    <p className="text-sm text-muted-foreground text-center py-6">
-                                      No tienes cupones activos
+                                  <Gift className="h-5 w-5 text-muted-foreground shrink-0" />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-foreground line-through">
+                                      {c.premio_tipo === 'descuento_fijo'       && `S/ ${c.premio_valor} de descuento`}
+                                      {c.premio_tipo === 'descuento_porcentaje' && `${c.premio_valor}% de descuento`}
+                                      {c.premio_tipo === 'hora_gratis'          && '1 hora gratis'}
+                                      {c.premio_tipo === 'personalizado'        && (c.premio_descripcion || 'Premio especial')}
                                     </p>
-                                  )}
-                                </TabsContent>
-                                <TabsContent
-                                  value="usados"
-                                  className="space-y-3 mt-0"
-                                >
-                                  {usados.length > 0 ? (
-                                    <>
-                                      {(showAllCuponesUsados
-                                        ? usados
-                                        : usados.slice(0, 3)
-                                      ).map((c) => (
-                                        <CuponItem
-                                          key={c.id}
-                                          cupon={c}
-                                          disponible={false}
-                                        />
-                                      ))}
-                                      {usados.length > 3 && (
-                                        <button
-                                          onClick={() =>
-                                            setShowAllCuponesUsados((v) => !v)
-                                          }
-                                          className="w-full text-xs font-medium text-primary hover:text-primary/80 text-center pt-1 transition-colors"
-                                        >
-                                          {showAllCuponesUsados
-                                            ? "Ver menos ↑"
-                                            : `Ver todos (+${usados.length - 3}) ↓`}
-                                        </button>
-                                      )}
-                                    </>
-                                  ) : (
-                                    <p className="text-sm text-muted-foreground text-center py-6">
-                                      No has usado cupones aún
+                                    <p className="text-xs text-muted-foreground">
+                                      Usado el {new Date(c.usado_en).toLocaleDateString('es-PE', { day: 'numeric', month: 'long' })}
                                     </p>
-                                  )}
-                                </TabsContent>
-                              </Tabs>
-                            );
-                          })()
-                        )}
+                                  </div>
+                                  <span className="rounded-full bg-muted border border-border px-2 py-0.5 text-xs text-muted-foreground">
+                                    Canjeado
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                );
-              })()}
+                    );
+                  })
+                )}
+              </div>
+            )}
 
             {/* ── SECCIÓN: MI PERFIL ── */}
             {activeSection === "perfil" && (
@@ -2569,535 +2337,89 @@ export default function MisReservasPage() {
               </div>
             )}
 
-            {/* SELLOS CONGELADOS — cambiar false por true para reactivar */}
-            {false && activeSection === "sellos" &&
-              (() => {
-                const TOTAL = 8;
-                const sellos = loyalty.sellos;
-                const faltan = Math.max(0, TOTAL - sellos);
-                const activos = loyalty.cupones.filter((c) => !c.usado);
-                const usados = loyalty.cupones.filter((c) => c.usado);
-                return (
-                  <div className="space-y-4">
-                    <h2 className="text-xl font-bold text-foreground">
-                      Mis sellos
-                    </h2>
 
-                    {/* Banner verde con grid 4×2 */}
-                    <div className="rounded-xl bg-green-600 p-5">
-                      <div className="flex items-start justify-between mb-4">
-                        <div>
-                          <p className="text-xs font-semibold text-green-200 uppercase tracking-widest mb-0.5">
-                            Recompensa
-                          </p>
-                          <p className="text-2xl font-extrabold text-white leading-tight">
-                            1 hora gratis
-                          </p>
-                        </div>
-                        <div className="bg-card rounded-xl px-2.5 py-1.5 shrink-0">
-                          <span className="text-green-700 font-extrabold text-xs">
-                            CanchaGo
-                          </span>
-                        </div>
-                      </div>
-                      {/* Grid 4 columnas × 2 filas */}
-                      <div className="grid grid-cols-4 gap-2 mb-4">
-                        {Array.from({ length: TOTAL }).map((_, i) => (
-                          <div
-                            key={i}
-                            className={cn(
-                              "aspect-square flex items-center justify-center rounded-xl text-sm font-bold",
-                              i < sellos
-                                ? "bg-card text-green-600 shadow"
-                                : "border-2 border-dashed border-white/40 text-white/50",
-                            )}
-                          >
-                            {i < sellos ? (
-                              <svg
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth={3}
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                className="h-5 w-5"
-                              >
-                                <polyline points="20 6 9 17 4 12" />
-                              </svg>
-                            ) : (
-                              <span>{i + 1}</span>
-                            )}
+            {activeSection === "cupones" && (
+              <div className="space-y-4">
+                <h2 className="text-xl font-bold text-foreground">Mis cupones</h2>
+                {canchasLoyalty.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-border bg-muted/20 py-12 text-center px-4">
+                    <Gift className="mx-auto h-10 w-10 text-muted-foreground/40 mb-3" />
+                    <p className="text-sm font-medium text-muted-foreground">Aún no tienes cupones</p>
+                    <p className="text-xs text-muted-foreground/70 mt-1">
+                      Reserva en canchas con programa de fidelización y acumula sellos.
+                    </p>
+                  </div>
+                ) : (
+                  canchasLoyalty.map((cancha: any) => {
+                    const cuponesActivos = (cancha.cupones ?? []).filter((c: any) => !c.usado);
+                    const progreso = Math.min(100, Math.round((cancha.sellos / cancha.umbral) * 100));
+                    return (
+                      <div key={cancha.cancha_id} className="rounded-xl border border-border bg-card overflow-hidden">
+                        <div className="flex items-center gap-3 border-b border-border px-4 py-3 bg-muted/30">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 shrink-0">
+                            <MapPin className="h-4 w-4 text-primary" />
                           </div>
-                        ))}
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm text-green-100 font-medium">
-                          {sellos} de {TOTAL} sellos
-                        </p>
-                        {faltan > 0 && (
-                          <p className="text-sm text-green-100 font-medium">
-                            Faltan {faltan}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Cómo ganar sellos */}
-                    <div className="bg-card rounded-xl p-4">
-                      <h3 className="font-semibold text-foreground mb-3">
-                        Cómo ganar sellos
-                      </h3>
-                      <div className="space-y-2">
-                        {[
-                          {
-                            icon: "⚡",
-                            label: "1 sello por cada reserva",
-                            sub: "Cualquier cancha, cualquier deporte.",
-                          },
-                          {
-                            icon: "👥",
-                            label: "2 sellos por crear un partido",
-                            sub: "Abre cupos y completa con la comunidad.",
-                          },
-                          {
-                            icon: "❤️",
-                            label: "1 sello por reseña",
-                            sub: "Cuenta tu experiencia tras jugar.",
-                          },
-                        ].map(({ icon, label, sub }) => (
-                          <div
-                            key={label}
-                            className="flex items-start gap-3 p-3 rounded-xl bg-amber-500/10"
-                          >
-                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-lg">
-                              {icon}
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-foreground text-sm truncate">{cancha.cancha_nombre}</p>
+                            <p className="text-xs text-muted-foreground">{cancha.sellos}/{cancha.umbral} sellos</p>
+                          </div>
+                          {cuponesActivos.length > 0 && (
+                            <span className="rounded-full bg-primary px-2.5 py-0.5 text-xs font-semibold text-primary-foreground">
+                              {cuponesActivos.length}
                             </span>
-                            <div>
-                              <p className="text-sm font-semibold text-foreground">
-                                {label}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {sub}
-                              </p>
+                          )}
+                        </div>
+                        <div className="p-4 space-y-3">
+                          {/* Barra progreso */}
+                          <div className="space-y-1">
+                            <div className="flex flex-wrap gap-1">
+                              {Array.from({ length: cancha.umbral }).map((_: any, i: number) => (
+                                <div
+                                  key={i}
+                                  className={cn(
+                                    "h-5 w-5 rounded text-center text-xs leading-5 border",
+                                    i < cancha.sellos
+                                      ? "border-primary bg-primary text-primary-foreground"
+                                      : "border-border bg-muted/30 text-muted-foreground/30",
+                                  )}
+                                >
+                                  {i < cancha.sellos ? "★" : "○"}
+                                </div>
+                              ))}
+                            </div>
+                            <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                              <div className="h-full rounded-full bg-primary" style={{ width: `${progreso}%` }} />
                             </div>
                           </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Historial de sellos ganados */}
-                    <div className="bg-card rounded-xl p-4">
-                      <h3 className="font-semibold text-foreground mb-3">
-                        Historial de sellos
-                      </h3>
-                      {loyalty.historial.length > 0 ? (
-                        <div className="space-y-3">
-                          {(showAllHistorial
-                            ? loyalty.historial
-                            : loyalty.historial.slice(0, 5)
-                          ).map((h) => (
-                            <div key={h.id} className="flex items-center gap-3">
-                              <span className="text-lg">
-                                {h.motivo === "reserva"
-                                  ? "✅"
-                                  : h.motivo === "partido"
-                                    ? "🏟️"
-                                    : "⭐"}
-                              </span>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-foreground truncate">
-                                  {h.motivo === "reserva"
-                                    ? "Reserva confirmada"
-                                    : h.motivo === "partido"
-                                      ? "Partido creado"
-                                      : "Reseña enviada"}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  {new Date(h.creado_en).toLocaleDateString(
-                                    "es-PE",
-                                    {
-                                      day: "numeric",
-                                      month: "short",
-                                      year: "numeric",
-                                    },
-                                  )}
-                                </p>
-                              </div>
-                              <span className="text-xs font-semibold text-amber-600 shrink-0">
-                                +{h.cantidad}
-                              </span>
+                          {/* Cupones activos */}
+                          {cuponesActivos.map((c: any) => (
+                            <div key={c.id} className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2.5">
+                              <Gift className="h-4 w-4 text-primary shrink-0" />
+                              <p className="flex-1 text-sm font-semibold text-foreground">
+                                {c.premio_tipo === 'descuento_fijo'       && `S/ ${c.premio_valor} de descuento`}
+                                {c.premio_tipo === 'descuento_porcentaje' && `${c.premio_valor}% de descuento`}
+                                {c.premio_tipo === 'hora_gratis'          && '1 hora gratis'}
+                                {c.premio_tipo === 'personalizado'        && (c.premio_descripcion || 'Premio especial')}
+                              </p>
+                              <span className="text-xs text-primary font-medium">Válido</span>
                             </div>
                           ))}
-                          {loyalty.historial.length > 5 && (
-                            <button
-                              onClick={() => setShowAllHistorial((v) => !v)}
-                              className="w-full text-xs font-medium text-primary hover:text-primary/80 text-center pt-1 transition-colors"
-                            >
-                              {showAllHistorial
-                                ? "Ver menos ↑"
-                                : `Ver todos (+${loyalty.historial.length - 5}) ↓`}
-                            </button>
+                          {cuponesActivos.length === 0 && (
+                            <p className="text-xs text-muted-foreground text-center py-2">
+                              Premio: {cancha.premio_tipo === 'descuento_fijo' && `S/ ${cancha.premio_valor} de descuento`}
+                              {cancha.premio_tipo === 'descuento_porcentaje' && `${cancha.premio_valor}% de descuento`}
+                              {cancha.premio_tipo === 'hora_gratis' && '1 hora gratis'}
+                              {cancha.premio_tipo === 'personalizado' && (cancha.premio_descripcion || 'Premio especial')}
+                              {' '}al llegar a {cancha.umbral} sellos
+                            </p>
                           )}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-muted-foreground text-center py-3">
-                          Sin historial aún
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Cupones con pestañas */}
-                    <div className="bg-card rounded-xl p-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="font-semibold text-foreground">
-                          Tus cupones
-                        </h3>
-                        {activos.length > 0 && (
-                          <span className="text-xs font-semibold bg-green-500/100/20 text-green-700 px-2 py-0.5 rounded-full">
-                            {activos.length} activos
-                          </span>
-                        )}
-                      </div>
-                      {loyalty.cupones.length === 0 ? (
-                        <div className="text-center py-6">
-                          <p className="text-2xl mb-2">🎟️</p>
-                          <p className="text-sm font-medium text-foreground/80">
-                            Aún no tienes cupones
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Completa {TOTAL} reservas para ganar tu primer cupón
-                          </p>
-                        </div>
-                      ) : (
-                        <Tabs defaultValue="activos">
-                          <TabsList className="w-full mb-3">
-                            <TabsTrigger
-                              value="activos"
-                              className="flex-1 gap-1.5"
-                            >
-                              Activos{" "}
-                              {activos.length > 0 && (
-                                <Badge
-                                  variant="secondary"
-                                  className="h-4 min-w-4 px-1 text-xs"
-                                >
-                                  {activos.length}
-                                </Badge>
-                              )}
-                            </TabsTrigger>
-                            <TabsTrigger
-                              value="usados"
-                              className="flex-1 gap-1.5"
-                            >
-                              Usados{" "}
-                              {usados.length > 0 && (
-                                <Badge
-                                  variant="secondary"
-                                  className="h-4 min-w-4 px-1 text-xs"
-                                >
-                                  {usados.length}
-                                </Badge>
-                              )}
-                            </TabsTrigger>
-                          </TabsList>
-                          {[
-                            {
-                              key: "activos",
-                              list: activos,
-                              disponible: true,
-                              showAll: showAllCuponesActivos,
-                              setShowAll: setShowAllCuponesActivos,
-                            },
-                            {
-                              key: "usados",
-                              list: usados,
-                              disponible: false,
-                              showAll: showAllCuponesUsados,
-                              setShowAll: setShowAllCuponesUsados,
-                            },
-                          ].map(
-                            ({
-                              key,
-                              list,
-                              disponible,
-                              showAll,
-                              setShowAll,
-                            }) => (
-                              <TabsContent
-                                key={key}
-                                value={key}
-                                className="space-y-2 mt-0"
-                              >
-                                {list.length > 0
-                                  ? (showAll ? list : list.slice(0, 3)).map(
-                                      (cupon) => {
-                                        const fecha = new Date(
-                                          cupon.generadoEn,
-                                        ).toLocaleDateString("es-PE", {
-                                          day: "numeric",
-                                          month: "short",
-                                          year: "numeric",
-                                        });
-                                        return (
-                                          <div
-                                            key={cupon.id}
-                                            className={cn(
-                                              "relative flex items-center gap-3 rounded-xl border-2 border-dashed p-3 overflow-hidden",
-                                              disponible
-                                                ? "border-green-300 bg-green-500/10"
-                                                : "border-gray-200 bg-muted/50 opacity-60",
-                                            )}
-                                          >
-                                            <div className="absolute -left-2 top-1/2 -translate-y-1/2 h-4 w-4 rounded-full bg-background border border-border" />
-                                            <div className="absolute -right-2 top-1/2 -translate-y-1/2 h-4 w-4 rounded-full bg-background border border-border" />
-                                            <div
-                                              className={cn(
-                                                "flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-lg",
-                                                disponible
-                                                  ? "bg-green-600 text-white"
-                                                  : "bg-gray-300 text-gray-500",
-                                              )}
-                                            >
-                                              <span className="text-[10px]">
-                                                S/
-                                              </span>
-                                              <span className="text-xl font-extrabold leading-none">
-                                                {cupon.descuento}
-                                              </span>
-                                              <span className="text-[10px]">
-                                                OFF
-                                              </span>
-                                            </div>
-                                            <div className="flex-1 min-w-0 pl-1">
-                                              <p className="text-sm font-bold text-foreground">
-                                                Descuento en reserva
-                                              </p>
-                                              <p className="text-xs text-muted-foreground">
-                                                Generado el {fecha}
-                                              </p>
-                                              {disponible ? (
-                                                <p className="text-xs text-green-600 font-medium mt-0.5">
-                                                  ✓ Se aplica automáticamente
-                                                </p>
-                                              ) : (
-                                                <p className="text-xs text-gray-400 mt-0.5">
-                                                  Ya utilizado
-                                                </p>
-                                              )}
-                                            </div>
-                                          </div>
-                                        );
-                                      },
-                                    )
-                                  : null}
-                                {list.length > 3 && (
-                                  <button
-                                    onClick={() =>
-                                      setShowAll((v: boolean) => !v)
-                                    }
-                                    className="w-full text-xs font-medium text-primary hover:text-primary/80 text-center pt-1 transition-colors"
-                                  >
-                                    {showAll
-                                      ? "Ver menos ↑"
-                                      : `Ver todos (+${list.length - 3}) ↓`}
-                                  </button>
-                                )}
-                                {list.length === 0 && (
-                                  <p className="text-sm text-muted-foreground text-center py-4">
-                                    {disponible
-                                      ? "No tienes cupones activos"
-                                      : "No has usado cupones aún"}
-                                  </p>
-                                )}
-                              </TabsContent>
-                            ),
-                          )}
-                        </Tabs>
-                      )}
-                    </div>
-                  </div>
-                );
-              })()}
-
-            {activeSection === "partidos" &&
-              (() => {
-                const deporteEmoji: Record<string, string> = {
-                  futbol: "⚽",
-                  futsal: "🥅",
-                  basquet: "🏀",
-                  voley: "🏐",
-                  tenis: "🎾",
-                };
-                const estadoConfig: Record<
-                  string,
-                  { label: string; cls: string }
-                > = {
-                  abierto: {
-                    label: "Abierto",
-                    cls: "bg-green-500/100/10 text-green-700 border-green-500/20",
-                  },
-                  completo: {
-                    label: "Completo",
-                    cls: "bg-blue-500/100/10 text-blue-700 border-blue-500/20",
-                  },
-                  cancelado: {
-                    label: "Cancelado",
-                    cls: "bg-destructive/10 text-destructive border-destructive/20",
-                  },
-                  finalizado: {
-                    label: "Finalizado",
-                    cls: "bg-muted text-muted-foreground",
-                  },
-                };
-
-                const proximos = misPartidos;
-
-                const PartidoCardMobile = ({ p }: { p: PartidoItem }) => {
-                  const cfg = estadoConfig[p.estado] ?? estadoConfig.abierto;
-                  const esHoy = p.fecha === hoyStr;
-                  const fechaLabel = esHoy
-                    ? "Hoy"
-                    : new Date(p.fecha + "T00:00:00").toLocaleDateString(
-                        "es-PE",
-                        { day: "numeric", month: "short" },
-                      );
-                  const horaFin = `${String((parseInt(p.hora.split(":")[0]) + 1) % 24).padStart(2, "0")}:00`;
-                  const cuposOcupados = p.jugadores_actuales ?? 0;
-                  const canchaLocal = canchas.find((c) => c.id === p.cancha_id);
-                  const img =
-                    canchaLocal?.images[0] ??
-                    "https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=800&h=600&fit=crop";
-
-                  return (
-                    <Card className="overflow-hidden">
-                      <div className="flex">
-                        <div className="relative w-24 shrink-0">
-                          <Image
-                            src={img}
-                            alt={p.cancha_nombre}
-                            fill
-                            className="object-cover"
-                          />
-                        </div>
-                        <div className="flex-1 p-3">
-                          <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
-                            <Badge
-                              variant="outline"
-                              className={cn("text-xs", cfg.cls)}
-                            >
-                              {cfg.label}
-                            </Badge>
-                            <span className="text-xs text-muted-foreground">
-                              {deporteEmoji[p.deporte] ?? "🏟️"}
-                            </span>
-                          </div>
-                          <p className="font-semibold text-sm text-foreground line-clamp-1">
-                            {p.cancha_nombre}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {fechaLabel} · {p.hora} - {horaFin}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            <Users className="inline h-3 w-3 mr-0.5" />
-                            {cuposOcupados}/{p.jugadores_max} jugadores
-                          </p>
-                          <div className="mt-2 h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                            <div
-                              className="h-full rounded-full bg-green-500/100"
-                              style={{
-                                width: `${Math.min(100, (cuposOcupados / p.jugadores_max) * 100)}%`,
-                              }}
-                            />
-                          </div>
                         </div>
                       </div>
-                    </Card>
-                  );
-                };
-
-                return (
-                  <div className="space-y-4">
-                    <h2 className="text-xl font-bold text-foreground">
-                      Mis partidos
-                    </h2>
-
-                    {misPartidos.length === 0 &&
-                    partHistorialTotal === 0 &&
-                    !partHistorialLoading ? (
-                      <EmptyState type="partidos_activos" />
-                    ) : (
-                      <Tabs defaultValue="proximos">
-                        <TabsList className="w-full mb-3">
-                          <TabsTrigger
-                            value="proximos"
-                            className="flex-1 gap-1.5"
-                          >
-                            Próximos
-                            {proximos.length > 0 && (
-                              <Badge
-                                variant="secondary"
-                                className="ml-1 h-4 min-w-4 px-1 text-xs"
-                              >
-                                {proximos.length}
-                              </Badge>
-                            )}
-                          </TabsTrigger>
-                          <TabsTrigger
-                            value="historial"
-                            className="flex-1 gap-1.5"
-                          >
-                            Historial
-                            {partHistorialLoading ? (
-                              <span className="ml-1 h-3 w-3 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground" />
-                            ) : (
-                              partHistorialTotal > 0 && (
-                                <Badge
-                                  variant="secondary"
-                                  className="ml-1 h-4 min-w-4 px-1 text-xs"
-                                >
-                                  {partHistorialTotal}
-                                </Badge>
-                              )
-                            )}
-                          </TabsTrigger>
-                        </TabsList>
-                        <TabsContent value="proximos" className="space-y-3">
-                          {proximos.length > 0 ? (
-                            proximos.map((p) => (
-                              <PartidoCardMobile key={p.id} p={p} />
-                            ))
-                          ) : (
-                            <EmptyState type="partidos_activos" />
-                          )}
-                        </TabsContent>
-                        <TabsContent value="historial" className="space-y-3">
-                          {partHistorialItems.length > 0
-                            ? partHistorialItems.map((p) => (
-                                <PartidoCardMobile key={p.id} p={p} />
-                              ))
-                            : !partHistorialLoading && (
-                                <EmptyState type="partidos_historial" />
-                              )}
-                          {partHistorialItems.length < partHistorialTotal && (
-                            <Button
-                              variant="outline"
-                              className="w-full mt-2"
-                              onClick={() =>
-                                cargarPartidosHistorial(partHistorialPage + 1)
-                              }
-                              disabled={partHistorialLoading}
-                            >
-                              {partHistorialLoading
-                                ? "Cargando..."
-                                : `Ver más (${partHistorialTotal - partHistorialItems.length} restantes)`}
-                            </Button>
-                          )}
-                        </TabsContent>
-                      </Tabs>
-                    )}
-                  </div>
-                );
-              })()}
+                    );
+                  })
+                )}
+              </div>
+            )}
 
             {activeSection === "favoritos" && (
               <div className="space-y-4">
@@ -3415,6 +2737,20 @@ export default function MisReservasPage() {
                   label: "Mis partidos",
                   value: `${misPartidos.length} creados`,
                   section: "partidos" as Section,
+                },
+                {
+                  icon: <Gift className="h-5 w-5 text-purple-500" />,
+                  iconBg: "bg-purple-500/20",
+                  label: "Mis cupones",
+                  value: (() => {
+                    const total = canchasLoyalty.reduce(
+                      (acc: number, c: any) =>
+                        acc + (c.cupones ?? []).filter((cu: any) => !cu.usado).length,
+                      0,
+                    );
+                    return total > 0 ? `${total} disponible${total !== 1 ? "s" : ""}` : "Acumula sellos";
+                  })(),
+                  section: "cupones" as Section,
                 },
               ].map(({ icon, iconBg, label, value, section }) => (
                 <button

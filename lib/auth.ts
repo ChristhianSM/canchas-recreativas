@@ -20,16 +20,7 @@ export interface HistorialItem {
 export interface LoyaltyData {
   sellos: number;
   totalReservas: number;
-  cupones: Cupon[];
   historial: HistorialItem[];
-}
-
-export interface Cupon {
-  id: string;
-  descuento: number;
-  generadoEn: string;
-  usado: boolean;
-  usadoEn?: string;
 }
 
 const USER_KEY = 'cp_user'; // unificado con lib/api.ts

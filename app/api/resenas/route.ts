@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
-/* SELLOS CONGELADOS import { agregarSellos } from '@/lib/loyalty'; */
+import { agregarSelloCancha } from '@/lib/loyalty';
 
 // GET — obtener reseñas de una cancha
 export async function GET(req: NextRequest) {
@@ -143,9 +143,21 @@ export async function POST(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  /* SELLOS CONGELADOS — descomentar para reactivar
-  await agregarSellos(sb, user.id, 1, 'resena');
-  */
+  // Sumar 1 sello al programa de fidelización de la cancha por la reseña
+  let selloGanado = false;
+  if (reserva) {
+    const { data: config } = await sb
+      .from('cancha_loyalty_config')
+      .select('id')
+      .eq('cancha_id', canchaId)
+      .eq('activo', true)
+      .maybeSingle();
+
+    if (config) {
+      await agregarSelloCancha(sb, user.id, canchaId);
+      selloGanado = true;
+    }
+  }
 
   // Actualizar el rating promedio en la tabla canchas
   const { data: todasResenas } = await sb
@@ -164,5 +176,5 @@ export async function POST(req: NextRequest) {
       .eq('id', canchaId);
   }
 
-  return NextResponse.json({ ok: true, resena });
+  return NextResponse.json({ ok: true, resena, selloGanado });
 }

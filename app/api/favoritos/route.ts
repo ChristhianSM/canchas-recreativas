@@ -57,18 +57,13 @@ export async function POST(req: NextRequest) {
     });
     if (insertError) return NextResponse.json({ error: `Insert error: ${insertError.message}` }, { status: 500 });
 
-    // Obtener nombre de la cancha para la notificación
-    const { data: cancha } = await sb
-      .from('canchas')
-      .select('nombre')
-      .eq('id', canchaId)
-      .single();
-
-    // Crear notificación
-    await sb.from('notificaciones').insert({
-      usuario_id: user.id,
-      mensaje: `❤️ Agregaste "${cancha?.nombre ?? 'una cancha'}" a tus favoritas.`,
-      tipo: 'favorito',
+    // Notificación en background — no bloquea la respuesta
+    sb.from('canchas').select('nombre').eq('id', canchaId).single().then(({ data: cancha }) => {
+      sb.from('notificaciones').insert({
+        usuario_id: user.id,
+        mensaje: `❤️ Agregaste "${cancha?.nombre ?? 'una cancha'}" a tus favoritas.`,
+        tipo: 'favorito',
+      });
     });
 
     return NextResponse.json({ agregado: true });

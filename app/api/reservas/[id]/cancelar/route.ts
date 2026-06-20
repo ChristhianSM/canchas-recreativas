@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
 import { notificarCancelacionAdmin, notificarCancelacionUsuario } from '@/lib/whatsapp';
+import { revertirSelloCancha } from '@/lib/loyalty';
 
 interface CancelacionResult {
   success: boolean;
@@ -231,54 +232,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       }
     }
 
-    // Restar sello de loyalty si la reserva estaba confirmada
+    // Revertir sello por cancha si la reserva estaba confirmada
     if (reserva.estado === 'confirmada' && userId) {
-      const { data: loyalty } = await sb
-        .from('loyalty')
-        .select('*')
-        .eq('usuario_id', userId)
-        .single();
-
-      if (loyalty && loyalty.sellos > 0) {
-        // Verificar si al confirmar esta reserva se generó un cupón
-        // (eso ocurre cuando los sellos llegaron a 6 y se resetearon a 0)
-        // Si sellos actuales son 0, significa que se generó un cupón recientemente
-        const seGeneroCupon = loyalty.sellos === 0;
-
-        if (seGeneroCupon) {
-          // Buscar el cupón más reciente no usado de este usuario
-          const { data: cuponReciente } = await sb
-            .from('cupones')
-            .select('id, usado')
-            .eq('usuario_id', userId)
-            .eq('usado', false)
-            .order('generado_en', { ascending: false })
-            .limit(1)
-            .single();
-
-          if (cuponReciente && !cuponReciente.usado) {
-            // Eliminar el cupón que se generó por esta reserva
-            await sb.from('cupones').delete().eq('id', cuponReciente.id);
-            // Volver a 5 sellos (justo antes de completar los 6)
-            await sb.from('loyalty').update({
-              sellos: 5,
-              total_reservas: Math.max(0, loyalty.total_reservas - 1),
-            }).eq('usuario_id', userId);
-          } else {
-            // El cupón ya fue usado — solo restar el sello y total
-            await sb.from('loyalty').update({
-              sellos: 5,
-              total_reservas: Math.max(0, loyalty.total_reservas - 1),
-            }).eq('usuario_id', userId);
-          }
-        } else {
-          // No se generó cupón — simplemente restar 1 sello
-          await sb.from('loyalty').update({
-            sellos: loyalty.sellos - 1,
-            total_reservas: Math.max(0, loyalty.total_reservas - 1),
-          }).eq('usuario_id', userId);
-        }
-      }
+      await revertirSelloCancha(sb, userId, reserva.cancha_id);
     }
 
     return NextResponse.json({
