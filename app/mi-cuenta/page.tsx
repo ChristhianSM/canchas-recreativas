@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Calendar,
   Clock,
@@ -438,6 +438,7 @@ interface PartidoItem {
 // ── Página principal ───────────────────────────────────────────────
 export default function MisReservasPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [reservas, setReservas] = useState<Reserva[]>([]);
   const [historialItems, setHistorialItems] = useState<Reserva[]>([]);
   const [historialTotal, setHistorialTotal] = useState(0);
@@ -465,7 +466,11 @@ export default function MisReservasPage() {
   const [reservaDetalle, setReservaDetalle] = useState<Reserva | null>(null);
   const [reservaCancelar, setReservaCancelar] = useState<Reserva | null>(null);
   const { toast } = useToast();
-  const [activeSection, setActiveSection] = useState<Section>("cuenta");
+  const VALID_SECTIONS: Section[] = ["cuenta", "reservas", "sellos", "cupones", "favoritos", "perfil", "partidos"];
+  const initialSection = VALID_SECTIONS.includes(searchParams.get("tab") as Section)
+    ? (searchParams.get("tab") as Section)
+    : "cuenta";
+  const [activeSection, setActiveSection] = useState<Section>(initialSection);
 
   // ── Estado de perfil ──
   interface PerfilData {

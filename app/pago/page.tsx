@@ -590,22 +590,22 @@ function PagoContent() {
     }
   };
 
-  // Desktop: pago + método combinados → 3 pasos (igual que mobile)
+  // Desktop: cuando soloEfectivo solo 2 pasos (datos + confirmar), si no 3
   const PASOS_LABELS = soloEfectivo
-    ? (["Datos", "Pago", "Resumen"] as const)
+    ? (["Datos", "Confirmar"] as const)
     : (["Datos", "Pago", "Confirmar"] as const);
 
   const PASO_INDEX: Record<string, number> = soloEfectivo
-    ? { datos: 0, pago: 1, metodo: 2 }
+    ? { datos: 0, pago: 1 }
     : { datos: 0, pago: 1, metodo: 1, confirmar: 2 };
 
-  // Mobile: pago + método combinados → 3 pasos
+  // Mobile: igual que desktop
   const MOBILE_PASOS_LABELS = soloEfectivo
-    ? (["Datos", "Pago", "Resumen"] as const)
+    ? (["Datos", "Confirmar"] as const)
     : (["Datos", "Pago", "Confirmar"] as const);
 
   const MOBILE_PASO_INDEX: Record<string, number> = soloEfectivo
-    ? { datos: 0, pago: 1, metodo: 2 }
+    ? { datos: 0, pago: 1 }
     : { datos: 0, pago: 1, metodo: 1, confirmar: 2 };
 
   const idx = PASO_INDEX[paso] ?? 0;
@@ -928,7 +928,10 @@ function PagoContent() {
           ahora · <span className="font-medium">S/ {previewSaldo}</span> en
           cancha
         </p>
-        <div className="mt-2 ml-7">
+        <div className="mt-2 ml-7 flex flex-col gap-1">
+          <span className="text-xs text-green-600 dark:text-green-400 font-medium">
+            ✓ Reserva garantizada
+          </span>
           <span className="text-xs text-amber-600 font-medium">
             ⚠ Sin devolución al cancelar
           </span>
@@ -1367,7 +1370,7 @@ function PagoContent() {
                 </div>
               )}
             </Card>
-            {fromCard && cancha && (cancha.accesorios ?? []).length > 0 && (
+            {cancha && (cancha.accesorios ?? []).length > 0 && (
                 <Card className="border-border p-4">
                   <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     ¿Necesitas accesorios?
@@ -1607,10 +1610,13 @@ function PagoContent() {
                 size="lg"
                 className="w-full"
                 onClick={() =>
-                  soloEfectivo ? setPaso("metodo") : setPaso("confirmar")
+                  soloEfectivo ? handleEnviar() : setPaso("confirmar")
                 }
+                disabled={enviando}
               >
-                {soloEfectivo ? "Continuar" : "Ir a pagar"}
+                {soloEfectivo
+                  ? (enviando ? "Confirmando..." : "Confirmar reserva (pago en cancha)")
+                  : "Ir a pagar"}
               </Button>
               <Button
                 variant="outline"
@@ -2214,7 +2220,7 @@ function PagoContent() {
               {/* PASO 1: Tipo de pago */}
               {paso === "pago" && (
                 <>
-                  {fromCard && cancha && (cancha.accesorios ?? []).length > 0 && (
+                  {cancha && (cancha.accesorios ?? []).length > 0 && (
                       <div className="bg-white dark:bg-card rounded-xl border border-border p-6">
                         <h2 className="text-base font-semibold text-foreground mb-4">
                           ¿Necesitas accesorios?

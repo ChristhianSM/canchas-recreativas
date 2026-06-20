@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 
 export default function AuthCallbackPage() {
   const router = useRouter();
+  const handled = useRef(false);
 
   useEffect(() => {
     const supabase = createBrowserClient(
@@ -13,13 +14,9 @@ export default function AuthCallbackPage() {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
 
-    const sync = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-
-      if (!session) {
-        router.replace('/login');
-        return;
-      }
+    const handleSession = async (session: any) => {
+      if (handled.current) return;
+      handled.current = true;
 
       const user  = session.user;
       const token = session.access_token;
@@ -50,7 +47,28 @@ export default function AuthCallbackPage() {
       router.replace('/');
     };
 
-    sync();
+    // onAuthStateChange detecta la sesión desde cookies de forma asíncrona,
+    // resolviendo la race condition donde getSession() retorna null en el primer intento
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session) {
+        await handleSession(session);
+      }
+    });
+
+    // Fallback: si la sesión ya estaba en localStorage al montar (segundo intento o refresco)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) handleSession(session);
+    });
+
+    // Timeout de seguridad: si en 8s no llegó nada, redirigir al login
+    const timeout = setTimeout(() => {
+      if (!handled.current) router.replace('/login');
+    }, 8000);
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
   }, [router]);
 
   return (
