@@ -42,6 +42,14 @@ function parsearRespuesta(body: string): { accion: 'confirmar' | 'rechazar' | nu
   return { accion: null, codigo: null };
 }
 
+// Extrae solo los dígitos significativos del teléfono peruano (9 dígitos, empieza con 9)
+function normalizarTelefono(raw: string): string | null {
+  const digits = raw.replace(/\D/g, '');
+  // Puede venir como 51987654321, 987654321, +51987654321
+  const match = digits.match(/(9\d{8})$/);
+  return match ? match[1] : null;
+}
+
 async function processWebhook(payload: any) {
   const message = payload?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
   if (!message) {
@@ -52,13 +60,12 @@ async function processWebhook(payload: any) {
   console.log('[webhook] 🔍 message.type:', message.type, '| from:', message.from);
 
   const from = message.from as string;
-  const phoneMatch = from.match(/51(9\d{8})/);
-  if (!phoneMatch) {
-    console.log('[webhook] 🔍 phoneMatch falló para:', from);
+  const adminPhone = normalizarTelefono(from);
+  if (!adminPhone) {
+    console.log('[webhook] 🔍 No se pudo normalizar número:', from);
     return;
   }
 
-  const adminPhone = phoneMatch[1];
   let accion: 'confirmar' | 'rechazar' | null = null;
   let codigo: string | null = null;
 
@@ -74,7 +81,6 @@ async function processWebhook(payload: any) {
       codigo  = match[2];
     }
   } else if (message.type === 'button') {
-    // Meta envía clicks de botones de plantilla como tipo 'button'
     const buttonPayload: string = message.button?.payload ?? '';
     console.log('[webhook] 🔍 button.payload:', buttonPayload);
     const match = buttonPayload.match(/^(CONFIRMAR|RECHAZAR)_([A-Z0-9]{4,8})$/);
@@ -86,30 +92,45 @@ async function processWebhook(payload: any) {
     }
   }
 
-  console.log('[webhook] 🔍 accion:', accion, '| codigo:', codigo);
+  console.log('[webhook] 🔍 accion:', accion, '| codigo:', codigo, '| adminPhone:', adminPhone);
   if (!accion) return;
 
   const sb = createServiceClient();
 
-  const { data: usuario } = await sb
-    .from('usuarios')
-    .select('id')
-    .eq('telefono', adminPhone)
-    .maybeSingle();
+  // Buscar canchas del admin: buscar el usuario por teléfono en cualquier formato
+  let canchaIds: string[] = [];
 
-  if (!usuario) {
-    console.log('[webhook] 🔍 No se encontró usuario con teléfono:', adminPhone);
-    return;
+  const { data: usuarios } = await sb
+    .from('usuarios')
+    .select('id, telefono');
+
+  const usuarioEncontrado = (usuarios ?? []).find((u: any) => {
+    const norm = normalizarTelefono(u.telefono ?? '');
+    return norm === adminPhone;
+  });
+
+  if (usuarioEncontrado) {
+    const { data: relaciones } = await sb
+      .from('duenos_canchas')
+      .select('cancha_id')
+      .eq('usuario_id', usuarioEncontrado.id);
+
+    canchaIds = (relaciones ?? []).map((r: any) => r.cancha_id).filter(Boolean);
+    console.log('[webhook] 🔍 Usuario encontrado:', usuarioEncontrado.id, '| Canchas:', canchaIds);
   }
 
-  const { data: relaciones } = await sb
-    .from('duenos_canchas')
-    .select('cancha_id')
-    .eq('usuario_id', usuario.id);
-
-  const canchaIds = (relaciones ?? []).map((r: any) => r.cancha_id).filter(Boolean);
+  // Fallback: si el número es el del admin configurado en env, tomar todas las canchas pendientes
   if (!canchaIds.length) {
-    console.log('[webhook] 🔍 Usuario', usuario.id, 'no tiene canchas asignadas');
+    const adminEnv = normalizarTelefono(process.env.ADMIN_WHATSAPP_NUMBER ?? '');
+    if (adminEnv && adminEnv === adminPhone) {
+      console.log('[webhook] 🔍 Número coincide con ADMIN_WHATSAPP_NUMBER, buscando reservas pendientes globales');
+      const { data: todasCanchas } = await sb.from('canchas').select('id');
+      canchaIds = (todasCanchas ?? []).map((c: any) => c.id);
+    }
+  }
+
+  if (!canchaIds.length) {
+    console.log('[webhook] 🔍 No se encontraron canchas para el número:', adminPhone);
     return;
   }
 
