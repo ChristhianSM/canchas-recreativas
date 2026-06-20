@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -436,7 +436,15 @@ interface PartidoItem {
 }
 
 // ── Página principal ───────────────────────────────────────────────
-export default function MisReservasPage() {
+export default function MiCuentaPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background" />}>
+      <MiCuentaContent />
+    </Suspense>
+  );
+}
+
+function MiCuentaContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [reservas, setReservas] = useState<Reserva[]>([]);
