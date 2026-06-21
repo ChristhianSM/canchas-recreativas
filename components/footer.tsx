@@ -60,7 +60,7 @@ export function Footer() {
                   href="tel:+51940394075"
                   className="hover:text-white transition-colors"
                 >
-                  +51 959 686 193
+                  +51 940 394 075
                 </a>
               </li>
               <li className="flex items-center gap-3">
