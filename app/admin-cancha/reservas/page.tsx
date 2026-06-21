@@ -46,7 +46,7 @@ function getOwnerToken() {
 }
 
 // Extrae el método de devolución desde el campo usuario_telefono
-// Formatos posibles: "959686193 (plin)", "Mismo número de yape", "959686193 (yape)"
+// Formatos posibles: "940394075 (plin)", "Mismo número de yape", "940394075 (yape)"
 function getMetodoDevolucion(telefono: string | null, metodoPago: string): { metodo: string; label: string; esDiferente: boolean } {
   const tel = (telefono ?? '').toLowerCase();
   let metodo = metodoPago; // por defecto, el mismo método de pago

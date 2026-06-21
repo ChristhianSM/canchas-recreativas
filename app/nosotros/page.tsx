@@ -362,7 +362,7 @@ export default function NosotrosPage() {
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <a
-                href="https://wa.me/51959686193?text=Hola%2C%20me%20interesa%20publicar%20mi%20cancha%20en%20CanchaGo."
+                href="https://wa.me/51940394075?text=Hola%2C%20me%20interesa%20publicar%20mi%20cancha%20en%20CanchaGo."
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 active:scale-[0.98] text-primary-foreground font-bold px-6 py-3.5 rounded-xl transition-all text-sm shadow-lg shadow-primary/20"
