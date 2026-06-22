@@ -22,7 +22,12 @@ const navItems = [
   { href: "/admin-cancha", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin-cancha/reservas", label: "Reservas", icon: CalendarCheck },
   { href: "/admin-cancha/canchas", label: "Mis Canchas", icon: Store },
-  { href: "/admin-cancha/noticias", label: "Publicaciones", icon: Newspaper },
+  {
+    href: "/admin-cancha/noticias",
+    label: "Publicaciones",
+    icon: Newspaper,
+    requiresPublicaciones: true,
+  },
 ];
 
 function getOwnerToken() {
@@ -47,6 +52,12 @@ export default function OwnerLayout({
   const [pendientes, setPendientes] = useState(0);
   const [ownerName, setOwnerName] = useState("");
   const [token, setToken] = useState<string | null>(null);
+  const [puedeGestionarPublicaciones, setPuedeGestionarPublicaciones] =
+    useState(false);
+
+  const visibleNavItems = navItems.filter(
+    (item) => !item.requiresPublicaciones || puedeGestionarPublicaciones
+  );
 
   const isLoginPage = pathname === "/admin-cancha/login";
 
@@ -83,6 +94,17 @@ export default function OwnerLayout({
         }
       })
       .catch(() => {});
+
+    fetch("/api/admin-cancha/permisos", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        setPuedeGestionarPublicaciones(
+          Boolean(data?.puedeGestionarPublicaciones)
+        );
+      })
+      .catch(() => setPuedeGestionarPublicaciones(false));
     // Solo re-ejecutar cuando cambia la ruta (para refrescar el badge de pendientes)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
@@ -115,7 +137,7 @@ export default function OwnerLayout({
         </div>
 
         <nav className="flex flex-1 flex-col gap-1 p-3">
-          {navItems.map((item) => (
+          {visibleNavItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
@@ -170,7 +192,7 @@ export default function OwnerLayout({
               </Button>
             </div>
             <nav className="flex flex-1 flex-col gap-1 p-3">
-              {navItems.map((item) => (
+              {visibleNavItems.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
@@ -218,7 +240,7 @@ export default function OwnerLayout({
             {token && <NotificationBell token={token} />}
           </div>
         </header>
-        <main className="flex-1 overflow-auto p-4 pt-0 lg:p-6 lg:pt-0">
+        <main className="flex-1 overflow-auto p-4 lg:p-6">
           {children}
         </main>
       </div>

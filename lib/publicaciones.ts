@@ -49,6 +49,8 @@ export type CanchaPublicacionResumen = {
   nombre: string | null;
   direccion?: string | null;
   distrito?: string | null;
+  lat?: number | null;
+  lng?: number | null;
 };
 
 export type Publicacion = {
@@ -82,4 +84,16 @@ export function isPublicacionEstado(value: unknown): value is PublicacionEstado 
 
 export function isPublicacionDeporte(value: unknown): value is PublicacionDeporte {
   return typeof value === 'string' && PUBLICACION_DEPORTES.includes(value as PublicacionDeporte);
+}
+
+export function publicacionRequiereFechaFin(tipo: PublicacionTipo): boolean {
+  return tipo === 'torneo';
+}
+
+export function publicacionRequierePrecio(tipo: PublicacionTipo): boolean {
+  return tipo === 'torneo';
+}
+
+export function publicacionMuestraPrecio(tipo: PublicacionTipo): boolean {
+  return tipo !== 'mantenimiento';
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ImagePlus, Loader2, Plus, Upload, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -27,20 +27,40 @@ import {
 import {
   PUBLICACION_DEPORTES,
   PUBLICACION_TIPOS,
+  publicacionMuestraPrecio,
+  publicacionRequiereFechaFin,
+  publicacionRequierePrecio,
+  type Publicacion,
   type PublicacionDeporte,
   type PublicacionEstado,
   type PublicacionTipo,
 } from '@/lib/publicaciones';
 import {
+  initialPublicacionForm,
+  isPublicacionFormDirty,
+  publicacionToForm,
+  type PublicacionFormState,
+} from '@/lib/publicaciones-form';
+import { toast } from '@/components/ui/use-toast';
+import {
+  apiAdminCrearNoticia,
+  apiAdminEditarNoticia,
+  apiAdminUploadPublicacionImage,
   apiOwnerCrearNoticia,
+  apiOwnerEditarNoticia,
   apiOwnerUploadPublicacionImage,
   getOwnerToken,
 } from '@/lib/api';
+import { getAdminTokenFresh } from '@/lib/supabase-browser';
+import type { AdminNoticiasPanel } from '@/lib/publicaciones-panel';
 
 type CrearPublicacionDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreated: () => void;
+  onCreated?: () => void;
+  onUpdated?: (publicacion: Publicacion) => void;
+  publicacion?: Publicacion | null;
+  panel?: AdminNoticiasPanel;
 };
 
 type CanchaOption = {
@@ -48,37 +68,7 @@ type CanchaOption = {
   nombre: string | null;
 };
 
-type FormState = {
-  tipo: PublicacionTipo;
-  titulo: string;
-  resumen: string;
-  contenido: string;
-  imagenUrl: string;
-  canchaIds: string[];
-  deporte: PublicacionDeporte | '';
-  fechaInicio: string;
-  fechaFin: string;
-  hora: string;
-  precio: string;
-  estado: PublicacionEstado;
-};
-
-type FormErrors = Partial<Record<keyof FormState | 'general' | 'tags', string>>;
-
-const initialForm: FormState = {
-  tipo: 'torneo',
-  titulo: '',
-  resumen: '',
-  contenido: '',
-  imagenUrl: '',
-  canchaIds: [],
-  deporte: '',
-  fechaInicio: '',
-  fechaFin: '',
-  hora: '',
-  precio: '',
-  estado: 'borrador',
-};
+type FormErrors = Partial<Record<keyof PublicacionFormState | 'general' | 'tags', string>>;
 
 const MAX_IMAGE_FILE_SIZE = 5 * 1024 * 1024;
 
@@ -86,9 +76,13 @@ export function CrearPublicacionDialog({
   open,
   onOpenChange,
   onCreated,
+  onUpdated,
+  publicacion = null,
+  panel = 'owner',
 }: CrearPublicacionDialogProps) {
+  const isEditing = Boolean(publicacion);
   const fileRef = useRef<HTMLInputElement>(null);
-  const [form, setForm] = useState<FormState>(initialForm);
+  const [form, setForm] = useState<PublicacionFormState>(initialPublicacionForm);
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const [canchas, setCanchas] = useState<CanchaOption[]>([]);
@@ -100,52 +94,102 @@ export function CrearPublicacionDialog({
   useEffect(() => {
     if (!open) return;
 
-    const token = getOwnerToken();
-    if (!token) {
-      setErrors({ general: 'Tu sesion expiro. Vuelve a iniciar sesion.' });
-      return;
+    if (publicacion) {
+      setForm(publicacionToForm(publicacion));
+      setTags(publicacion.tags ?? []);
+    } else {
+      setForm(initialPublicacionForm);
+      setTags([]);
     }
+    setTagInput('');
+    setErrors({});
+    if (fileRef.current) fileRef.current.value = '';
 
-    setLoadingCanchas(true);
-    fetch('/api/admin-cancha/canchas', {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then(res => res.json())
-      .then(data => {
+    const loadCanchas = async () => {
+      const token =
+        panel === 'superadmin'
+          ? await getAdminTokenFresh()
+          : getOwnerToken();
+
+      if (!token) {
+        setErrors({ general: 'Tu sesion expiro. Vuelve a iniciar sesion.' });
+        return;
+      }
+
+      const canchasUrl =
+        panel === 'superadmin'
+          ? '/api/admin/canchas'
+          : '/api/admin-cancha/canchas';
+
+      setLoadingCanchas(true);
+
+      try {
+        const res = await fetch(canchasUrl, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+
         if (!Array.isArray(data)) {
           setErrors(prev => ({
             ...prev,
-            canchaIds: data?.error ?? 'No se pudieron cargar tus canchas',
+            canchaIds: data?.error ?? 'No se pudieron cargar las canchas',
           }));
           return;
         }
 
-        setCanchas(data);
-      })
-      .catch(() => {
+        setCanchas(
+          data.map((cancha: { id: string; nombre?: string | null }) => ({
+            id: cancha.id,
+            nombre: cancha.nombre ?? null,
+          }))
+        );
+      } catch {
         setErrors(prev => ({
           ...prev,
-          canchaIds: 'No se pudieron cargar tus canchas',
+          canchaIds: 'No se pudieron cargar las canchas',
         }));
-      })
-      .finally(() => setLoadingCanchas(false));
-  }, [open]);
+      } finally {
+        setLoadingCanchas(false);
+      }
+    };
 
-  const updateField = <Key extends keyof FormState>(
+    void loadCanchas();
+  }, [open, publicacion, panel]);
+
+  const updateField = <Key extends keyof PublicacionFormState>(
     key: Key,
-    value: FormState[Key]
+    value: PublicacionFormState[Key]
   ) => {
     setForm(prev => ({ ...prev, [key]: value }));
     setErrors(prev => ({ ...prev, [key]: undefined, general: undefined }));
   };
 
   const resetForm = () => {
-    setForm(initialForm);
+    setForm(initialPublicacionForm);
     setTags([]);
     setTagInput('');
     setErrors({});
     if (fileRef.current) fileRef.current.value = '';
   };
+
+  const buildPayload = () => ({
+    tipo: form.tipo,
+    estado: form.estado,
+    titulo: form.titulo.trim(),
+    resumen: form.resumen.trim(),
+    contenido: form.contenido.trim(),
+    imagenUrl: form.imagenUrl || null,
+    deporte: form.deporte || null,
+    fechaInicio: form.fechaInicio,
+    fechaFin: form.fechaFin || null,
+    hora: form.hora || null,
+    precio:
+      publicacionMuestraPrecio(form.tipo) && form.precio.trim()
+        ? form.precio.trim()
+        : null,
+    tags,
+    canchaIds: form.canchaIds,
+  });
 
   const addTag = () => {
     const nextTag = tagInput.trim();
@@ -182,7 +226,11 @@ export function CrearPublicacionDialog({
   };
 
   const handleImageUpload = async (file: File) => {
-    const token = getOwnerToken();
+    const token =
+      panel === 'superadmin'
+        ? await getAdminTokenFresh()
+        : getOwnerToken();
+
     if (!token) {
       setErrors(prev => ({
         ...prev,
@@ -208,7 +256,11 @@ export function CrearPublicacionDialog({
     setErrors(prev => ({ ...prev, imagenUrl: undefined, general: undefined }));
 
     try {
-      const data = await apiOwnerUploadPublicacionImage(file);
+      const uploadFn =
+        panel === 'superadmin'
+          ? apiAdminUploadPublicacionImage
+          : apiOwnerUploadPublicacionImage;
+      const data = await uploadFn(file);
 
       if (data.error) {
         setErrors(prev => ({
@@ -232,6 +284,8 @@ export function CrearPublicacionDialog({
 
   const validate = () => {
     const nextErrors: FormErrors = {};
+    const requiereFechaFin = publicacionRequiereFechaFin(form.tipo);
+    const requierePrecio = publicacionRequierePrecio(form.tipo);
 
     if (!form.tipo) nextErrors.tipo = 'Selecciona un tipo';
     if (!form.titulo.trim()) nextErrors.titulo = 'Ingresa un titulo';
@@ -240,8 +294,14 @@ export function CrearPublicacionDialog({
     if (!form.canchaIds.length) nextErrors.canchaIds = 'Selecciona al menos una cancha';
     if (!form.deporte) nextErrors.deporte = 'Selecciona un deporte';
     if (!form.fechaInicio) nextErrors.fechaInicio = 'Selecciona una fecha de inicio';
+    if (requiereFechaFin && !form.fechaFin) {
+      nextErrors.fechaFin = 'Selecciona una fecha de fin';
+    }
     if (form.fechaFin && form.fechaInicio && form.fechaFin < form.fechaInicio) {
       nextErrors.fechaFin = 'La fecha de fin no puede ser anterior al inicio';
+    }
+    if (requierePrecio && !form.precio.trim()) {
+      nextErrors.precio = 'Ingresa un precio';
     }
 
     setErrors(nextErrors);
@@ -251,7 +311,11 @@ export function CrearPublicacionDialog({
   const handleSubmit = async () => {
     if (!validate()) return;
 
-    const token = getOwnerToken();
+    const token =
+      panel === 'superadmin'
+        ? await getAdminTokenFresh()
+        : getOwnerToken();
+
     if (!token) {
       setErrors({ general: 'Tu sesion expiro. Vuelve a iniciar sesion.' });
       return;
@@ -261,34 +325,80 @@ export function CrearPublicacionDialog({
     setErrors({});
 
     try {
-      const data = await apiOwnerCrearNoticia({
-        tipo: form.tipo,
-        estado: form.estado,
-        titulo: form.titulo.trim(),
-        resumen: form.resumen.trim(),
-        contenido: form.contenido.trim(),
-        imagenUrl: form.imagenUrl || null,
-        deporte: form.deporte || null,
-        fechaInicio: form.fechaInicio,
-        fechaFin: form.fechaFin || null,
-        hora: form.hora || null,
-        precio: form.precio.trim() || null,
-        tags,
-        canchaIds: form.canchaIds,
-      });
+      const payload = buildPayload();
+      const editarFn =
+        panel === 'superadmin' ? apiAdminEditarNoticia : apiOwnerEditarNoticia;
+      const crearFn =
+        panel === 'superadmin' ? apiAdminCrearNoticia : apiOwnerCrearNoticia;
+
+      if (isEditing && publicacion) {
+        const data = await editarFn(publicacion.slug, payload);
+
+        if (data.error || !data.publicacion) {
+          const mensaje = data?.error ?? 'No se pudo actualizar la publicacion';
+          setErrors({ general: mensaje });
+          toast({
+            title: 'No se pudo actualizar la publicación',
+            description: mensaje,
+            variant: 'destructive',
+            duration: 4000,
+          });
+          return;
+        }
+
+        toast({
+          title: 'Publicación actualizada',
+          description: data.publicacion.titulo,
+          duration: 3000,
+        });
+
+        resetForm();
+        onOpenChange(false);
+        onUpdated?.(data.publicacion);
+        return;
+      }
+
+      const data = await crearFn(payload);
 
       if (data.error) {
-        setErrors({
-          general: data?.error ?? 'No se pudo crear la publicacion',
+        const mensaje = data?.error ?? 'No se pudo crear la publicacion';
+        setErrors({ general: mensaje });
+        toast({
+          title: 'No se pudo crear la publicación',
+          description: mensaje,
+          variant: 'destructive',
+          duration: 4000,
         });
         return;
       }
 
+      const titulo = form.titulo.trim();
+      toast({
+        title: form.estado === 'publicado' ? 'Publicación publicada' : 'Borrador guardado',
+        description:
+          form.estado === 'publicado'
+            ? `"${titulo}" ya es visible en noticias.`
+            : `"${titulo}" quedó guardada como borrador.`,
+        duration: 3000,
+      });
+
       resetForm();
       onOpenChange(false);
-      onCreated();
+      onCreated?.();
     } catch {
-      setErrors({ general: 'No se pudo crear la publicacion' });
+      setErrors({
+        general: isEditing
+          ? 'No se pudo actualizar la publicacion'
+          : 'No se pudo crear la publicacion',
+      });
+      toast({
+        title: isEditing
+          ? 'No se pudo actualizar la publicación'
+          : 'No se pudo crear la publicación',
+        description: 'Intenta de nuevo.',
+        variant: 'destructive',
+        duration: 4000,
+      });
     } finally {
       setSaving(false);
     }
@@ -300,12 +410,38 @@ export function CrearPublicacionDialog({
     if (!nextOpen) resetForm();
   };
 
+  const requiereFechaFin = publicacionRequiereFechaFin(form.tipo);
+  const requierePrecio = publicacionRequierePrecio(form.tipo);
+  const muestraPrecio = publicacionMuestraPrecio(form.tipo);
+
+  const hasChanges = useMemo(() => {
+    if (!isEditing || !publicacion) return true;
+    return isPublicacionFormDirty(form, tags, publicacion);
+  }, [form, tags, publicacion, isEditing]);
+
+  const handleTipoChange = (tipo: PublicacionTipo) => {
+    setForm(prev => ({
+      ...prev,
+      tipo,
+      precio: tipo === 'mantenimiento' ? '' : prev.precio,
+    }));
+    setErrors(prev => ({
+      ...prev,
+      tipo: undefined,
+      fechaFin: undefined,
+      precio: undefined,
+      general: undefined,
+    }));
+  };
+
   return (
     <Dialog open={open} onOpenChange={closeDialog}>
       <DialogContent className="max-h-[92vh] overflow-y-auto p-0 sm:max-w-2xl">
         <div className="space-y-6 p-6">
           <DialogHeader>
-            <DialogTitle>Crear publicacion</DialogTitle>
+            <DialogTitle>
+              {isEditing ? 'Editar publicacion' : 'Crear publicacion'}
+            </DialogTitle>
           </DialogHeader>
 
           <section className="space-y-4">
@@ -319,7 +455,7 @@ export function CrearPublicacionDialog({
               </label>
               <Select
                 value={form.tipo}
-                onValueChange={value => updateField('tipo', value as PublicacionTipo)}
+                onValueChange={value => handleTipoChange(value as PublicacionTipo)}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Selecciona un tipo" />
@@ -503,7 +639,7 @@ export function CrearPublicacionDialog({
 
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-foreground">
-                  Fecha de fin (opcional)
+                  Fecha de fin{requiereFechaFin ? ' *' : ' (opcional)'}
                 </label>
                 <Input
                   type="date"
@@ -524,16 +660,21 @@ export function CrearPublicacionDialog({
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">
-                  Precio (opcional)
-                </label>
-                <Input
-                  value={form.precio}
-                  onChange={event => updateField('precio', event.target.value)}
-                  placeholder="Ej: S/ 400 por equipo"
-                />
-              </div>
+              {muestraPrecio ? (
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-foreground">
+                    Precio{requierePrecio ? ' *' : ' (opcional)'}
+                  </label>
+                  <Input
+                    value={form.precio}
+                    onChange={event => updateField('precio', event.target.value)}
+                    placeholder="Ej: S/ 400 por equipo"
+                  />
+                  {errors.precio ? (
+                    <p className="text-xs text-destructive">{errors.precio}</p>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           </section>
 
@@ -623,12 +764,12 @@ export function CrearPublicacionDialog({
             </Button>
             <Button
               type="button"
-              disabled={saving || uploadingImage}
+              disabled={saving || uploadingImage || (isEditing && !hasChanges)}
               onClick={handleSubmit}
               className="gap-2"
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
-              {saving ? 'Guardando...' : 'Guardar publicacion'}
+              {saving ? 'Guardando...' : isEditing ? 'Guardar cambios' : 'Guardar publicacion'}
             </Button>
           </div>
         </div>

@@ -46,7 +46,6 @@ function PublicacionCardSkeleton() {
         <div className="absolute left-3 top-3 h-6 w-24 animate-pulse rounded-full bg-background/80" />
         <div className="absolute bottom-3 right-3 flex gap-2">
           <div className="h-10 w-10 animate-pulse rounded-full bg-background/80" />
-          <div className="h-10 w-10 animate-pulse rounded-full bg-background/80" />
         </div>
       </div>
       <div className="space-y-4 p-5">
@@ -175,7 +174,7 @@ function NoticiasPageInner() {
 
       <main className="container mx-auto px-4 md:px-8 lg:px-12 p-12">
           <div className="space-y-4 mb-8">
-            <div className="flex flex-wrap gap-2">
+            <div className="flex items-center gap-2 mt-4 overflow-x-auto pb-0.5 scrollbar-hide">
               {FILTROS_TIPO.map(filtro => (
                 <button
                   key={filtro.key}
@@ -193,7 +192,7 @@ function NoticiasPageInner() {
               ))}
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="flex items-center gap-2 mt-4 overflow-x-auto pb-0.5 scrollbar-hide">
               {FILTROS_DEPORTE.map(filtro => (
                 <button
                   key={filtro.key}

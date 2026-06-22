@@ -6,9 +6,10 @@ interface MapViewProps {
   lat: number;
   lng: number;
   nombre: string;
+  className?: string;
 }
 
-export function MapView({ lat, lng, nombre }: MapViewProps) {
+export function MapView({ lat, lng, nombre, className }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef       = useRef<any>(null);
   const [moved, setMoved] = useState(false);
@@ -143,8 +144,8 @@ export function MapView({ lat, lng, nombre }: MapViewProps) {
       <div style={{ position: 'relative', zIndex: 0 }}>
         <div
           ref={containerRef}
-          className="h-64 w-full"
-          style={{ minHeight: '256px' }}
+          className={className ?? 'h-64 w-full'}
+          style={{ minHeight: className ? undefined : '256px' }}
         />
         
         {/* Overlay para activar el mapa en mobile */}

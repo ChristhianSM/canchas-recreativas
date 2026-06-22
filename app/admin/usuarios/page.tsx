@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { getAdminTokenFresh } from '@/lib/supabase-browser';
@@ -17,6 +18,7 @@ type Usuario = {
   telefono: string;
   rol: string;
   creado_en: string;
+  puede_gestionar_publicaciones?: boolean;
 };
 
 type Cancha = {
@@ -56,6 +58,7 @@ export default function AdminUsuariosPage() {
   const [busqueda, setBusqueda]                 = useState('');
   const [usuarioAEliminar, setUsuarioAEliminar] = useState<Usuario | null>(null);
   const [eliminando, setEliminando]             = useState(false);
+  const [togglingPermisoId, setTogglingPermisoId] = useState<string | null>(null);
 
   const usuariosFiltrados = usuarios.filter(u =>
     u.nombre?.toLowerCase().includes(busqueda.toLowerCase()) ||
@@ -111,6 +114,37 @@ export default function AdminUsuariosPage() {
     reload();
   };
 
+  const handleTogglePermisoPublicaciones = async (
+    usuario: Usuario,
+    checked: boolean
+  ) => {
+    setTogglingPermisoId(usuario.id);
+    const token = await getAdminTokenFresh();
+    const res = await fetch(`/api/admin/usuarios/${usuario.id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ puede_gestionar_publicaciones: checked }),
+    });
+    const data = await res.json();
+    setTogglingPermisoId(null);
+
+    if (!res.ok) {
+      setError(data.error ?? 'No se pudo actualizar el permiso');
+      return;
+    }
+
+    setUsuarios(prev =>
+      prev.map(u =>
+        u.id === usuario.id
+          ? { ...u, puede_gestionar_publicaciones: checked }
+          : u
+      )
+    );
+  };
+
   const handleEliminar = async () => {
     if (!usuarioAEliminar) return;
     setEliminando(true);
@@ -163,7 +197,7 @@ export default function AdminUsuariosPage() {
             <table className="w-full text-sm">
               <thead className="border-b border-border bg-muted/40">
                 <tr>
-                  {['Nombre', 'Email', 'Teléfono', 'Rol', 'Registrado', ''].map(h => (
+                  {['Nombre', 'Email', 'Teléfono', 'Rol', 'Puede publicar', 'Registrado', ''].map(h => (
                     <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">{h}</th>
                   ))}
                 </tr>
@@ -182,6 +216,19 @@ export default function AdminUsuariosPage() {
                     <td className="px-4 py-3 text-muted-foreground">{u.email}</td>
                     <td className="px-4 py-3 text-muted-foreground">{u.telefono || '—'}</td>
                     <td className="px-4 py-3">{rolBadge(u.rol)}</td>
+                    <td className="px-4 py-3">
+                      {u.rol === 'dueno' ? (
+                        <Switch
+                          checked={Boolean(u.puede_gestionar_publicaciones)}
+                          disabled={togglingPermisoId === u.id}
+                          onCheckedChange={(checked) =>
+                            handleTogglePermisoPublicaciones(u, checked)
+                          }
+                        />
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-muted-foreground">
                       {new Date(u.creado_en).toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </td>

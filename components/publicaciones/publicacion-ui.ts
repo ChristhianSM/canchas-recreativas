@@ -41,10 +41,10 @@ export const PUBLICACION_ESTADO_STYLES: Record<PublicacionEstado, string> = {
 export const PUBLICACION_TIPO_STYLES: Record<PublicacionTipo, string> = {
   torneo: 'border-blue-200 bg-blue-100 text-blue-700',
   escuela: 'border-purple-200 bg-purple-100 text-purple-700',
-  evento: 'border-orange-200 bg-orange-100 text-orange-700',
+  evento: 'border-black-200 bg-white text-black-700',
   promocion: 'border-pink-200 bg-pink-100 text-pink-700',
   noticia: 'border-cyan-200 bg-cyan-100 text-cyan-700',
-  mantenimiento: 'border-orange-200 bg-orange-100 text-orange-700',
+  mantenimiento: 'border-orange-300 bg-orange-100 text-orange-700',
   novedad: 'border-purple-200 bg-purple-100 text-purple-700',
 };
 
