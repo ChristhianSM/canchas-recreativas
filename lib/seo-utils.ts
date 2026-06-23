@@ -70,7 +70,7 @@ export function generateOrganizationSchema() {
     description: 'Plataforma de reserva de canchas deportivas en Piura, Perú',
     url: BASE_URL,
     logo: `${BASE_URL}/images/logo.png`,
-    telephone: '+51959686193',
+    telephone: '+51940394075',
     email: 'admin@tucanchago.com',
     address: {
       '@type': 'PostalAddress',
@@ -80,7 +80,7 @@ export function generateOrganizationSchema() {
     },
     contactPoint: {
       '@type': 'ContactPoint',
-      telephone: '+51959686193',
+      telephone: '+51940394075',
       contactType: 'customer service',
       availableLanguage: ['Spanish'],
       areaServed: 'PE',

@@ -67,10 +67,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   // 2. Eliminar loyalty
   await sb.from('loyalty').delete().eq('usuario_id', id);
 
-  // 3. Eliminar cupones
-  await sb.from('cupones').delete().eq('usuario_id', id);
-
-  // 4. Eliminar notificaciones
+  // 3. Eliminar notificaciones
   await sb.from('notificaciones').delete().eq('usuario_id', id);
 
   // 5. Eliminar de tabla usuarios

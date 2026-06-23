@@ -17,6 +17,7 @@ import {
   Phone,
   Trophy,
   X,
+  ClipboardList,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -254,7 +255,7 @@ export function Header() {
             </SheetTrigger>
             <SheetContent
               side="right"
-              className="w-70 bg-card p-0"
+              className="w-[calc(100%-80px)] sm:w-80 bg-card p-0"
               showCloseButton={false}
             >
               {/* Header del sheet con logo y botón cerrar */}
@@ -285,9 +286,9 @@ export function Header() {
                         key={item.href}
                         href={item.href}
                         onClick={() => setOpen(false)}
-                        className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${
+                        className={`flex items-center gap-3 rounded-lg px-3 py-3 text-sm transition-colors ${
                           isActive
-                            ? "font-semibold text-primary"
+                            ? "bg-primary/10 font-semibold text-primary"
                             : "font-medium text-foreground hover:bg-secondary"
                         }`}
                       >
@@ -302,13 +303,13 @@ export function Header() {
                 <div className="mt-2 border-t border-border pt-2">
                   {!hydrated ? (
                     <div className="space-y-1 px-1">
-                      <div className="h-9 w-full animate-pulse rounded-lg bg-muted" />
-                      <div className="h-9 w-full animate-pulse rounded-lg bg-muted" />
+                      <div className="h-10 w-full animate-pulse rounded-lg bg-muted" />
+                      <div className="h-10 w-full animate-pulse rounded-lg bg-muted" />
                     </div>
                   ) : user?.name ? (
                     <>
-                      <div className="flex items-center gap-3 px-3 py-2.5">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+                      <div className="flex items-center gap-3 px-3 py-3">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
                           {user.name.charAt(0).toUpperCase()}
                         </div>
                         <div className="min-w-0">
@@ -321,34 +322,48 @@ export function Header() {
                         </div>
                       </div>
                       <Link
+                        href="/mi-cuenta?tab=reservas"
+                        onClick={() => setOpen(false)}
+                        className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-foreground hover:bg-secondary transition-colors"
+                      >
+                        <ClipboardList className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        Mis Reservas
+                      </Link>
+                      <Link
                         href="/mi-cuenta"
                         onClick={() => setOpen(false)}
-                        className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground hover:bg-secondary transition-colors"
+                        className={`flex items-center gap-3 rounded-lg px-3 py-3 text-sm transition-colors ${
+                          pathname === "/mi-cuenta"
+                            ? "bg-primary/10 font-semibold text-primary"
+                            : "font-medium text-foreground hover:bg-secondary"
+                        }`}
                       >
-                        <User className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        <User
+                          className={`h-4 w-4 shrink-0 ${pathname === "/mi-cuenta" ? "text-primary" : "text-muted-foreground"}`}
+                        />
                         Mi Cuenta
                       </Link>
                       <button
                         onClick={handleLogout}
-                        className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-destructive hover:bg-destructive/5 transition-colors"
+                        className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-destructive hover:bg-destructive/5 transition-colors"
                       >
                         <LogOut className="h-4 w-4 shrink-0" />
                         Cerrar Sesión
                       </button>
                     </>
                   ) : (
-                    <div className="flex flex-col gap-1.5 px-1 pt-1">
+                    <div className="flex flex-col gap-2 px-1 pt-1">
                       <Link
                         href={loginHref}
                         onClick={() => setOpen(false)}
-                        className="flex items-center justify-center rounded-lg px-3 py-2.5 text-sm font-medium text-foreground border border-border hover:bg-secondary transition-colors"
+                        className="flex items-center justify-center rounded-lg px-3 py-3 text-sm font-medium text-foreground border border-border hover:bg-secondary transition-colors"
                       >
                         Iniciar Sesión
                       </Link>
                       <Link
                         href={registroHref}
                         onClick={() => setOpen(false)}
-                        className="flex items-center justify-center rounded-lg px-3 py-2.5 text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                        className="flex items-center justify-center rounded-lg px-3 py-3 text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
                       >
                         Registrarse
                       </Link>

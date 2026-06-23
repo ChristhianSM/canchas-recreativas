@@ -75,6 +75,7 @@ type Cancha = {
   balon_precio?: number | null;
   chalecos_disponible?: boolean;
   chalecos_precio?: number | null;
+  accesorios?: any[];
   horariosOcupados?: Record<string, "reservado" | "en_proceso">;
   horariosRestringidos?: string[];
 };
@@ -201,6 +202,7 @@ function adaptCancha(c: Cancha) {
     balonPrecio: c.balon_precio ?? null,
     chalecoDisponible: c.chalecos_disponible ?? false,
     chalecosPrecio: c.chalecos_precio ?? null,
+    accesorios: c.accesorios ?? [],
   };
 }
 
@@ -1281,7 +1283,7 @@ export default function HomePage() {
 
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                 <a
-                  href="https://wa.me/51959686193?text=Hola%2C%20me%20interesa%20publicar%20mi%20cancha%20en%20CanchaGo.%20%C2%BFMe%20pueden%20dar%20m%C3%A1s%20informaci%C3%B3n%3F"
+                  href="https://wa.me/51940394075?text=Hola%2C%20me%20interesa%20publicar%20mi%20cancha%20en%20CanchaGo.%20%C2%BFMe%20pueden%20dar%20m%C3%A1s%20informaci%C3%B3n%3F"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 bg-[#16a34a] hover:bg-[#15803d] active:scale-[0.98] text-white font-bold px-6 py-3.5 rounded-xl transition-all text-sm"

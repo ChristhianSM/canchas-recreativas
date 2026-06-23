@@ -81,6 +81,7 @@ type Cancha = {
   balon_precio?: number | null;
   chalecos_disponible?: boolean;
   chalecos_precio?: number | null;
+  accesorios?: any[];
   superficie?: string | null;
   max_jugadores?: number | null;
 };
@@ -171,6 +172,7 @@ function adaptCancha(c: Cancha) {
     balonPrecio: c.balon_precio ?? null,
     chalecoDisponible: c.chalecos_disponible ?? false,
     chalecosPrecio: c.chalecos_precio ?? null,
+    accesorios: c.accesorios ?? [],
     superficie: (c.superficie ?? null) as any,
     maxJugadores: c.max_jugadores ?? null,
   };

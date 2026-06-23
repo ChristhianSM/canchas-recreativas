@@ -28,7 +28,7 @@ const INFO = [
     icon: MessageCircle,
     label: "WhatsApp",
     value: "+51 959 686 193",
-    href: "https://wa.me/51959686193",
+    href: "https://wa.me/51940394075",
     iconClass: "bg-green-500/10 text-green-600 dark:text-green-400",
   },
   {
@@ -84,7 +84,7 @@ export default function ContactoPage() {
       .filter(Boolean)
       .join("\n");
     window.open(
-      `https://wa.me/51959686193?text=${encodeURIComponent(lines)}`,
+      `https://wa.me/51940394075?text=${encodeURIComponent(lines)}`,
       "_blank",
     );
     setEnviado(true);
@@ -109,7 +109,7 @@ export default function ContactoPage() {
             y pagos. Respuesta garantizada en menos de 24 horas.
           </p>
           <a
-            href="https://wa.me/51959686193"
+            href="https://wa.me/51940394075"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-white font-semibold px-6 py-3 rounded-full transition-colors text-sm"
@@ -288,7 +288,7 @@ export default function ContactoPage() {
                   Escríbenos directo por WhatsApp y te atendemos al instante.
                 </p>
                 <a
-                  href="https://wa.me/51959686193"
+                  href="https://wa.me/51940394075"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex w-full items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-white font-semibold px-4 py-3 rounded-xl transition-colors text-sm"

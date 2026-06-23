@@ -9,13 +9,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { LoadingButton } from "@/components/loading-button";
 import { saveUser } from "@/lib/auth";
-import { apiLogin, apiLoginWithOAuth } from "@/lib/api";
-import { Suspense } from "react";
+import { apiLogin, apiLoginWithOAuth, getToken } from "@/lib/api";
+import { Suspense, useEffect } from "react";
 
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirect") || "/";
+
+  useEffect(() => {
+    if (getToken()) router.replace("/");
+  }, [router]);
 
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);

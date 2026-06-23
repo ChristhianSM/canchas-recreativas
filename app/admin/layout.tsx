@@ -13,6 +13,7 @@ import {
   X,
   Users,
   Newspaper,
+  Gift,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -37,6 +38,7 @@ const navItems = [
   { href: "/admin/canchas", label: "Canchas", icon: MapPin },
   { href: "/admin/usuarios", label: "Usuarios", icon: Users },
   { href: "/admin/noticias", label: "Publicaciones", icon: Newspaper },
+  { href: "/admin/loyalty", label: "Fidelización", icon: Gift },
 ];
 
 export default function AdminLayout({
@@ -212,7 +214,7 @@ export default function AdminLayout({
           </div>
         </header>
 
-        <main className="flex-1 overflow-auto p-4 lg:p-6">{children}</main>
+        <main className="flex-1 overflow-auto p-4 pt-0 lg:p-6 lg:pt-0">{children}</main>
       </div>
     </div>
   );

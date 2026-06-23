@@ -13,7 +13,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const {
     descripcion, telefono, precioHora, amenidades, imagenes, horariosRestringidos,
     lat, lng, direccion, distrito,
-    preciosPorHora, balonDisponible, balonPrecio, chalecosDisponible, chalecosPrecio,
+    preciosPorHora, accesorios,
     superficie, maxJugadores, horaApertura, horaCierre, activa,
   } = body;
 
@@ -28,10 +28,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (direccion !== undefined) updateData.direccion = direccion;
   if (distrito !== undefined) updateData.distrito = distrito;
   if (preciosPorHora !== undefined) updateData.precios_por_hora = preciosPorHora;
-  if (balonDisponible !== undefined) updateData.balon_disponible = balonDisponible;
-  if (balonPrecio !== undefined) updateData.balon_precio = balonPrecio;
-  if (chalecosDisponible !== undefined) updateData.chalecos_disponible = chalecosDisponible;
-  if (chalecosPrecio !== undefined) updateData.chalecos_precio = chalecosPrecio;
+  if (accesorios !== undefined) updateData.accesorios = accesorios ?? [];
   if (superficie !== undefined) updateData.superficie = superficie;
   if (maxJugadores !== undefined) updateData.max_jugadores = maxJugadores;
   if (horaApertura !== undefined) updateData.hora_apertura = horaApertura;
