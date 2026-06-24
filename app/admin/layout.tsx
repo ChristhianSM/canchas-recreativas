@@ -12,6 +12,7 @@ import {
   Menu,
   X,
   Users,
+  Newspaper,
   Gift,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,7 @@ const navItems = [
   { href: "/admin/reservas", label: "Reservas", icon: CalendarCheck },
   { href: "/admin/canchas", label: "Canchas", icon: MapPin },
   { href: "/admin/usuarios", label: "Usuarios", icon: Users },
+  { href: "/admin/noticias", label: "Publicaciones", icon: Newspaper },
   { href: "/admin/loyalty", label: "Fidelización", icon: Gift },
 ];
 

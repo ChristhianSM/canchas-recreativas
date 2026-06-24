@@ -36,7 +36,7 @@ export async function GET(
 
   const { data: relaciones, error: relacionesError } = await sb
     .from('publicacion_canchas')
-    .select('cancha_id, canchas(id, nombre, direccion, distrito)')
+    .select('cancha_id, canchas(id, nombre, direccion, distrito, lat, lng)')
     .eq('publicacion_id', publicacion.id);
 
   if (relacionesError) {
@@ -56,6 +56,8 @@ export async function GET(
       nombre: cancha?.nombre ?? null,
       direccion: cancha?.direccion ?? null,
       distrito: cancha?.distrito ?? null,
+      lat: cancha?.lat ?? null,
+      lng: cancha?.lng ?? null,
     };
   });
 

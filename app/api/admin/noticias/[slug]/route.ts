@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDuenoPublicacionesContext } from '@/lib/publicaciones-owner-context';
+import { getSuperadminPublicacionesContext } from '@/lib/publicaciones-superadmin-context';
 import { getPublicacionPorSlug } from '@/lib/publicaciones-queries';
 import { isPublicacionEstado, type CrearPublicacionBody } from '@/lib/publicaciones';
 import { validatePublicacionBody } from '@/lib/publicaciones-admin';
@@ -15,20 +15,13 @@ export async function GET(
     return NextResponse.json({ error: 'Slug requerido' }, { status: 400 });
   }
 
-  const context = await getDuenoPublicacionesContext(token);
+  const context = await getSuperadminPublicacionesContext(token);
   if ('errorResponse' in context) return context.errorResponse;
 
-  const { sb, canchasDelDueno } = context;
-
-  if (!canchasDelDueno.length) {
-    return NextResponse.json(
-      { error: 'Publicacion no encontrada' },
-      { status: 404 }
-    );
-  }
+  const { sb } = context;
 
   try {
-    const resultado = await getPublicacionPorSlug(sb, slug, canchasDelDueno);
+    const resultado = await getPublicacionPorSlug(sb, slug);
     if (!resultado) {
       return NextResponse.json(
         { error: 'Publicacion no encontrada' },
@@ -64,13 +57,13 @@ export async function PATCH(
     return NextResponse.json({ error: 'Estado invalido' }, { status: 400 });
   }
 
-  const context = await getDuenoPublicacionesContext(token);
+  const context = await getSuperadminPublicacionesContext(token);
   if ('errorResponse' in context) return context.errorResponse;
 
-  const { sb, canchasDelDueno } = context;
+  const { sb } = context;
 
   try {
-    const resultado = await getPublicacionPorSlug(sb, slug, canchasDelDueno);
+    const resultado = await getPublicacionPorSlug(sb, slug);
     if (!resultado) {
       return NextResponse.json(
         { error: 'Publicacion no encontrada' },
@@ -132,13 +125,13 @@ export async function PUT(
     return NextResponse.json({ error: 'Slug requerido' }, { status: 400 });
   }
 
-  const context = await getDuenoPublicacionesContext(token);
+  const context = await getSuperadminPublicacionesContext(token);
   if ('errorResponse' in context) return context.errorResponse;
 
-  const { sb, canchasDelDueno } = context;
+  const { sb, todasLasCanchas } = context;
 
   try {
-    const resultado = await getPublicacionPorSlug(sb, slug, canchasDelDueno);
+    const resultado = await getPublicacionPorSlug(sb, slug);
     if (!resultado) {
       return NextResponse.json(
         { error: 'Publicacion no encontrada' },
@@ -148,7 +141,7 @@ export async function PUT(
 
     const { publicacion } = resultado;
     const body = (await req.json()) as CrearPublicacionBody;
-    const validated = validatePublicacionBody(body, canchasDelDueno);
+    const validated = validatePublicacionBody(body, todasLasCanchas);
 
     if (!validated.ok) {
       return NextResponse.json(
@@ -262,13 +255,13 @@ export async function DELETE(
     return NextResponse.json({ error: 'Slug requerido' }, { status: 400 });
   }
 
-  const context = await getDuenoPublicacionesContext(token);
+  const context = await getSuperadminPublicacionesContext(token);
   if ('errorResponse' in context) return context.errorResponse;
 
-  const { sb, canchasDelDueno } = context;
+  const { sb } = context;
 
   try {
-    const resultado = await getPublicacionPorSlug(sb, slug, canchasDelDueno);
+    const resultado = await getPublicacionPorSlug(sb, slug);
     if (!resultado) {
       return NextResponse.json(
         { error: 'Publicacion no encontrada' },

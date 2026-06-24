@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDuenoPublicacionesContext } from '@/lib/publicaciones-owner-context';
-import { listPublicacionesPorCanchas } from '@/lib/publicaciones-queries';
+import { getSuperadminPublicacionesContext } from '@/lib/publicaciones-superadmin-context';
+import { listTodasLasPublicaciones } from '@/lib/publicaciones-queries';
 import type { CrearPublicacionBody } from '@/lib/publicaciones';
 import {
   createPublicacionSlug,
@@ -9,13 +9,13 @@ import {
 
 export async function GET(req: NextRequest) {
   const token = req.headers.get('authorization')?.replace('Bearer ', '');
-  const context = await getDuenoPublicacionesContext(token);
+  const context = await getSuperadminPublicacionesContext(token);
   if ('errorResponse' in context) return context.errorResponse;
 
-  const { sb, canchasDelDueno } = context;
+  const { sb } = context;
 
   try {
-    const noticias = await listPublicacionesPorCanchas(sb, canchasDelDueno);
+    const noticias = await listTodasLasPublicaciones(sb);
     return NextResponse.json(noticias);
   } catch (error) {
     return NextResponse.json(
@@ -27,20 +27,20 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const token = req.headers.get('authorization')?.replace('Bearer ', '');
-  const context = await getDuenoPublicacionesContext(token);
+  const context = await getSuperadminPublicacionesContext(token);
   if ('errorResponse' in context) return context.errorResponse;
 
-  const { sb, userId, canchasDelDueno } = context;
+  const { sb, userId, todasLasCanchas } = context;
 
-  if (!canchasDelDueno.length) {
+  if (!todasLasCanchas.length) {
     return NextResponse.json(
-      { error: 'No tienes canchas asignadas' },
+      { error: 'No hay canchas registradas' },
       { status: 403 }
     );
   }
 
   const body = (await req.json()) as CrearPublicacionBody;
-  const validated = validatePublicacionBody(body, canchasDelDueno);
+  const validated = validatePublicacionBody(body, todasLasCanchas);
 
   if (!validated.ok) {
     return NextResponse.json(

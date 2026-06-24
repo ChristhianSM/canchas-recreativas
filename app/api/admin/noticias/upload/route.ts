@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import sharp from 'sharp';
-import { getDuenoPublicacionesContext } from '@/lib/publicaciones-owner-context';
+import { getSuperadminPublicacionesContext } from '@/lib/publicaciones-superadmin-context';
 import { createServiceClient } from '@/lib/supabase';
 
 const BUCKET_NAME = 'imagenes';
@@ -9,7 +9,7 @@ const COMPRESSED_MAX_SIZE = 1 * 1024 * 1024;
 
 export async function POST(req: NextRequest) {
   const token = req.headers.get('authorization')?.replace('Bearer ', '');
-  const context = await getDuenoPublicacionesContext(token);
+  const context = await getSuperadminPublicacionesContext(token);
   if ('errorResponse' in context) return context.errorResponse;
 
   const { userId } = context;
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
       attempts += 1;
     } while (attempts < 5);
 
-    const fileName = `publicaciones/${userId}/${Date.now()}-${crypto.randomUUID().slice(0, 8)}.webp`;
+    const fileName = `publicaciones/admin/${userId}/${Date.now()}-${crypto.randomUUID().slice(0, 8)}.webp`;
     const { error: uploadError } = await sb.storage
       .from(BUCKET_NAME)
       .upload(fileName, compressedBuffer, {

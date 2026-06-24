@@ -1,6 +1,17 @@
 'use client';
 
-import { Archive, CalendarDays, Clock, Eye, Heart, MapPin, Newspaper, Send, Share2 } from 'lucide-react';
+import {
+  Archive,
+  CalendarDays,
+  Clock,
+  Eye,
+  MapPin,
+  Newspaper,
+  Pencil,
+  Send,
+  Share2,
+  Trash2,
+} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -14,13 +25,15 @@ import {
   PUBLICACION_TIPO_STYLES,
   formatPublicacionDate,
 } from './publicacion-ui';
+import { PublicacionTags } from './publicacion-tags';
 
 type PublicacionCardProps = {
   publicacion: Publicacion;
   variant: 'admin' | 'public';
   onOpenDetail: (publicacion: Publicacion) => void;
   onToggleEstado?: (publicacion: Publicacion) => void;
-  onToggleFavorito?: (publicacion: Publicacion) => void;
+  onEliminar?: (publicacion: Publicacion) => void;
+  onEditar?: (publicacion: Publicacion) => void;
 };
 
 async function compartirPublicacion(slug: string) {
@@ -45,7 +58,8 @@ export function PublicacionCard({
   variant,
   onOpenDetail,
   onToggleEstado,
-  onToggleFavorito,
+  onEliminar,
+  onEditar,
 }: PublicacionCardProps) {
   const fechaInicio = formatPublicacionDate(publicacion.fecha_inicio);
   const fechaFin = formatPublicacionDate(publicacion.fecha_fin);
@@ -77,7 +91,10 @@ export function PublicacionCard({
         )}
 
         <div className="absolute left-3 top-3">
-          <Badge variant="outline" className={`gap-1 ${PUBLICACION_TIPO_STYLES[publicacion.tipo]}`}>
+          <Badge
+            variant="outline"
+            className={`gap-1 ${PUBLICACION_TIPO_STYLES[publicacion.tipo]}`}
+          >
             <span>{PUBLICACION_TIPO_EMOJIS[publicacion.tipo]}</span>
             {PUBLICACION_TIPO_LABELS[publicacion.tipo]}
           </Badge>
@@ -85,7 +102,10 @@ export function PublicacionCard({
 
         {variant === 'admin' ? (
           <div className="absolute bottom-3 left-3 flex flex-wrap gap-2">
-            <Badge variant="outline" className={PUBLICACION_ESTADO_STYLES[publicacion.estado]}>
+            <Badge
+              variant="outline"
+              className={PUBLICACION_ESTADO_STYLES[publicacion.estado]}
+            >
               {PUBLICACION_ESTADO_LABELS[publicacion.estado]}
             </Badge>
           </div>
@@ -94,20 +114,38 @@ export function PublicacionCard({
         <div className="absolute bottom-3 right-3 flex gap-2">
           <button
             type="button"
-            aria-label="Marcar como favorito"
-            onClick={() => onToggleFavorito?.(publicacion)}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-card/95 text-foreground shadow-sm backdrop-blur transition hover:bg-card"
-          >
-            <Heart className="h-5 w-5" />
-          </button>
-          <button
-            type="button"
             aria-label="Compartir publicacion"
-            onClick={() => compartirPublicacion(publicacion.slug)}
+            onClick={(event) => {
+              event.stopPropagation();
+              void compartirPublicacion(publicacion.slug);
+            }}
             className="flex h-10 w-10 items-center justify-center rounded-full bg-card/95 text-foreground shadow-sm backdrop-blur transition hover:bg-card"
           >
             <Share2 className="h-5 w-5" />
           </button>
+          {variant === 'admin' && onEditar ? (
+            <button
+              type="button"
+              aria-label="Editar publicacion"
+              onClick={() => onEditar(publicacion)}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-card/95 text-foreground shadow-sm backdrop-blur transition hover:bg-card"
+            >
+              <Pencil className="h-5 w-5" />
+            </button>
+          ) : null}
+          {variant === 'admin' && onEliminar ? (
+            <button
+              type="button"
+              aria-label="Eliminar publicacion"
+              onClick={(event) => {
+                event.stopPropagation();
+                onEliminar(publicacion);
+              }}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-card/95 text-destructive shadow-sm backdrop-blur transition hover:bg-destructive/10"
+            >
+              <Trash2 className="h-5 w-5" />
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -116,7 +154,8 @@ export function PublicacionCard({
           <div className="mb-3 flex items-center justify-between gap-3">
             {publicacion.deporte ? (
               <Badge variant="outline">
-                {PUBLICACION_DEPORTE_LABELS[publicacion.deporte] ?? publicacion.deporte}
+                {PUBLICACION_DEPORTE_LABELS[publicacion.deporte] ??
+                  publicacion.deporte}
               </Badge>
             ) : (
               <span />
@@ -129,8 +168,12 @@ export function PublicacionCard({
           </div>
 
           <div className="space-y-2">
-            <h2 className="line-clamp-2 text-lg font-semibold text-foreground">{publicacion.titulo}</h2>
-            <p className="line-clamp-3 text-sm text-muted-foreground">{publicacion.resumen}</p>
+            <h2 className="line-clamp-2 text-lg font-semibold text-foreground">
+              {publicacion.titulo}
+            </h2>
+            <p className="line-clamp-3 text-sm text-muted-foreground">
+              {publicacion.resumen}
+            </p>
           </div>
 
           <div className="mt-4 grid gap-2 text-sm text-muted-foreground">
@@ -150,7 +193,9 @@ export function PublicacionCard({
               <div className="flex items-center gap-2">
                 <MapPin className="h-4 w-4 shrink-0" />
                 <span className="line-clamp-1">
-                  {publicacion.canchas.map(cancha => cancha.nombre ?? 'Cancha').join(', ')}
+                  {publicacion.canchas
+                    .map((cancha) => cancha.nombre ?? 'Cancha')
+                    .join(', ')}
                 </span>
               </div>
             ) : null}
@@ -158,14 +203,22 @@ export function PublicacionCard({
 
           <div className="mt-4 min-w-0">
             {publicacion.precio ? (
-              <p className="truncate text-sm font-medium text-primary">{publicacion.precio}</p>
-            ) : (
-              <p className="text-sm text-muted-foreground">Sin precio definido</p>
-            )}
+              <p className="truncate text-sm font-medium text-primary">
+                {publicacion.precio}
+              </p>
+            ) : null}
           </div>
+
+          <PublicacionTags tags={publicacion.tags} className="mt-4" />
         </div>
 
-        <div className={variant === 'admin' ? 'mt-5 grid grid-cols-2 gap-2 border-t border-border pt-4' : 'mt-5'}>
+        <div
+          className={
+            variant === 'admin'
+              ? 'mt-5 grid grid-cols-2 gap-2 border-t border-border pt-4'
+              : 'mt-5'
+          }
+        >
           <Button
             size="sm"
             variant="outline"

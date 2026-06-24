@@ -1,5 +1,6 @@
 'use client';
 
+import { getAdminTokenFresh } from '@/lib/supabase-browser';
 import type {
   CrearPublicacionBody,
   NoticiasQueryParams,
@@ -99,6 +100,10 @@ function ownerAuthHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+async function adminAuthHeaders(): Promise<Record<string, string>> {
+  const token = await getAdminTokenFresh();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 // ── Auth ───────────────────────────────────────────────────────
 
 export async function apiRegistro(data: {
@@ -317,6 +322,23 @@ export async function apiOwnerActualizarEstadoNoticia(
   return res.json();
 }
 
+export async function apiOwnerEliminarNoticia(slug: string) {
+  const res = await fetch(`/api/admin-cancha/noticias/${slug}`, {
+    method: 'DELETE',
+    headers: ownerAuthHeaders(),
+  });
+  return res.json();
+}
+
+export async function apiOwnerEditarNoticia(slug: string, data: CrearPublicacionBody) {
+  const res = await fetch(`/api/admin-cancha/noticias/${slug}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...ownerAuthHeaders() },
+    body: JSON.stringify(data),
+  });
+  return res.json();
+}
+
 export async function apiOwnerUploadPublicacionImage(file: File) {
   const formData = new FormData();
   formData.append('file', file);
@@ -324,6 +346,72 @@ export async function apiOwnerUploadPublicacionImage(file: File) {
   const res = await fetch('/api/admin-cancha/noticias/upload', {
     method: 'POST',
     headers: ownerAuthHeaders(),
+    body: formData,
+  });
+  return res.json();
+}
+
+// ── Super admin ───────────────────────────────────────────────
+
+export async function apiAdminGetNoticias() {
+  const res = await fetch('/api/admin/noticias', {
+    headers: await adminAuthHeaders(),
+  });
+  return res.json();
+}
+
+export async function apiAdminGetNoticiaPorSlug(slug: string) {
+  const res = await fetch(`/api/admin/noticias/${slug}`, {
+    headers: await adminAuthHeaders(),
+  });
+  return res.json();
+}
+
+export async function apiAdminCrearNoticia(data: CrearPublicacionBody) {
+  const res = await fetch('/api/admin/noticias', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...(await adminAuthHeaders()) },
+    body: JSON.stringify(data),
+  });
+  return res.json();
+}
+
+export async function apiAdminActualizarEstadoNoticia(
+  slug: string,
+  estado: PublicacionEstado
+) {
+  const res = await fetch(`/api/admin/noticias/${slug}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...(await adminAuthHeaders()) },
+    body: JSON.stringify({ estado }),
+  });
+  return res.json();
+}
+
+export async function apiAdminEliminarNoticia(slug: string) {
+  const res = await fetch(`/api/admin/noticias/${slug}`, {
+    method: 'DELETE',
+    headers: await adminAuthHeaders(),
+  });
+  return res.json();
+}
+
+export async function apiAdminEditarNoticia(slug: string, data: CrearPublicacionBody) {
+  const res = await fetch(`/api/admin/noticias/${slug}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...(await adminAuthHeaders()) },
+    body: JSON.stringify(data),
+  });
+  return res.json();
+}
+
+export async function apiAdminUploadPublicacionImage(file: File) {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const res = await fetch('/api/admin/noticias/upload', {
+    method: 'POST',
+    headers: await adminAuthHeaders(),
     body: formData,
   });
   return res.json();

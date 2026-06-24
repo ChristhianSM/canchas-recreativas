@@ -22,7 +22,8 @@ export async function POST(req: NextRequest) {
   const token = req.headers.get('authorization')?.replace('Bearer ', '');
   if (!await verifyAdmin(token)) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
-  const { nombre, email, password, telefono, rol } = await req.json();
+  const { nombre, email, password, telefono, rol, puede_gestionar_publicaciones } =
+    await req.json();
 
   if (!nombre || !email || !password) {
     return NextResponse.json({ error: 'Faltan datos requeridos' }, { status: 400 });
@@ -51,6 +52,8 @@ export async function POST(req: NextRequest) {
     email,
     telefono: telefono ?? '',
     rol:      rol ?? 'dueno',
+    puede_gestionar_publicaciones:
+      rol === 'dueno' ? Boolean(puede_gestionar_publicaciones) : false,
   });
 
   // Crear loyalty
