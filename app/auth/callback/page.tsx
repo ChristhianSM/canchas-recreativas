@@ -47,15 +47,15 @@ export default function AuthCallbackPage() {
       router.replace('/');
     };
 
-    // onAuthStateChange detecta la sesión desde cookies de forma asíncrona,
-    // resolviendo la race condition donde getSession() retorna null en el primer intento
+    // INITIAL_SESSION se dispara cuando la sesión ya existe en cookies (flujo PKCE normal).
+    // SIGNED_IN se dispara en reintento o cuando no hay sesión previa.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session) {
+      if ((event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session) {
         await handleSession(session);
       }
     });
 
-    // Fallback: si la sesión ya estaba en localStorage al montar (segundo intento o refresco)
+    // Fallback: por si onAuthStateChange no disparó (edge case)
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) handleSession(session);
     });
@@ -68,6 +68,8 @@ export default function AuthCallbackPage() {
     return () => {
       subscription.unsubscribe();
       clearTimeout(timeout);
+      // Reset para React Strict Mode (double-invoke en desarrollo)
+      handled.current = false;
     };
   }, [router]);
 
