@@ -211,7 +211,7 @@ function NoticiasPageInner() {
             </div>
           </div>
         {loading ? (
-          <div className="grid gap-5 md:grid-cols-2">
+          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             {[1, 2, 3, 4].map(item => (
               <PublicacionCardSkeleton key={item} />
             ))}
@@ -232,7 +232,7 @@ function NoticiasPageInner() {
             <p className="mt-1 text-sm text-muted-foreground">Prueba cambiando el tipo o deporte.</p>
           </Card>
         ) : (
-          <div className="grid gap-5 md:grid-cols-2">
+          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             {publicacionesFiltradas.map(publicacion => (
               <PublicacionCard
                 key={publicacion.id}

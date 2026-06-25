@@ -8,6 +8,7 @@ import {
   CalendarCheck,
   Store,
   Newspaper,
+  UserCircle,
   LogOut,
   Menu,
   X,
@@ -28,6 +29,7 @@ const navItems = [
     icon: Newspaper,
     requiresPublicaciones: true,
   },
+  { href: "/admin-cancha/perfil", label: "Mi Perfil", icon: UserCircle },
 ];
 
 function getOwnerToken() {

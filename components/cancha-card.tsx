@@ -703,7 +703,7 @@ export function CanchaCard({
                 onClick={(e) => e.stopPropagation()}
                 className="text-xs font-medium text-primary hover:underline flex items-center gap-0.5"
               >
-                Ver todos →
+                Ver horarios →
               </Link>
             </div>
 

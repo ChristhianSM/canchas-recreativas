@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { LoadingButton } from "@/components/loading-button";
 import { saveUser } from "@/lib/auth";
-import { apiLogin, apiLoginWithOAuth, getToken } from "@/lib/api";
+import { apiLogin, apiLoginWithOAuth, getToken, removeToken } from "@/lib/api";
 import { Suspense, useEffect } from "react";
 
 function LoginContent() {
@@ -18,7 +18,14 @@ function LoginContent() {
   const redirectTo = searchParams.get("redirect") || "/";
 
   useEffect(() => {
-    if (getToken()) router.replace("/");
+    const token = getToken();
+    if (!token) return;
+    const tokenTime = localStorage.getItem('cp_token_time');
+    if (!tokenTime) {
+      removeToken();
+      return;
+    }
+    router.replace("/");
   }, [router]);
 
   const [showPassword, setShowPassword] = useState(false);

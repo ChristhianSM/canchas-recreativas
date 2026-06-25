@@ -7,6 +7,28 @@ import { getToken } from "@/lib/api";
 import type { Notificacion } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
+// Deduplicación: si dos instancias llaman a la vez, comparten el mismo Promise
+let _inflight: Promise<Notificacion[]> | null = null;
+
+async function fetchNotifs(token: string): Promise<Notificacion[]> {
+  if (_inflight) return _inflight;
+  _inflight = fetch('/api/notificaciones', { headers: { Authorization: `Bearer ${token}` } })
+    .then(async (res) => {
+      const data = await res.json();
+      if (!Array.isArray(data)) return [];
+      return data.map((n: any) => ({
+        id: n.id,
+        reservaId: n.reserva_id,
+        mensaje: n.mensaje,
+        tipo: n.tipo,
+        leida: n.leida,
+        creadaEn: n.creado_en,
+      }));
+    })
+    .finally(() => { _inflight = null; });
+  return _inflight;
+}
+
 export function NotificationBell({ token: externalToken }: { token?: string } = {}) {
   const [open, setOpen] = useState(false);
   const [notifs, setNotifs] = useState<Notificacion[]>([]);
@@ -20,20 +42,9 @@ export function NotificationBell({ token: externalToken }: { token?: string } = 
   const cargar = useCallback(async () => {
     const token = getEffectiveToken();
     if (!token) return;
-    const res = await fetch('/api/notificaciones', { headers: { Authorization: `Bearer ${token}` } });
-    const data = await res.json();
-    if (!Array.isArray(data)) return;
-    setNotifs(
-      data.map((n: any) => ({
-        id: n.id,
-        reservaId: n.reserva_id,
-        mensaje: n.mensaje,
-        tipo: n.tipo,
-        leida: n.leida,
-        creadaEn: n.creado_en,
-      })),
-    );
-  }, []);
+    const notificaciones = await fetchNotifs(token);
+    setNotifs(notificaciones);
+  }, [getEffectiveToken]);
 
   useEffect(() => {
     setHydrated(true);

@@ -1,11 +1,13 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
+import { Suspense } from 'react';
 
-export default function AuthCallbackPage() {
+function AuthCallbackContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const handled = useRef(false);
 
   useEffect(() => {
@@ -14,12 +16,24 @@ export default function AuthCallbackPage() {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
 
-    const handleSession = async (session: any) => {
-      if (handled.current) return;
+    const handleSession = async (session: any, source: string) => {
+      console.log(`[auth-callback] handleSession desde: ${source}`);
+      if (handled.current) {
+        console.log(`[auth-callback] YA MANEJADO — ignorando (source: ${source})`);
+        return;
+      }
       handled.current = true;
 
       const user  = session.user;
       const token = session.access_token;
+
+      console.log(`[auth-callback] user.id: ${user?.id}, token: ${!!token}`);
+
+      if (!token) {
+        console.warn('[auth-callback] ⚠️ access_token vacío — redirigiendo a /login');
+        router.replace('/login');
+        return;
+      }
 
       const nombre =
         user.user_metadata?.full_name ??
@@ -32,21 +46,22 @@ export default function AuthCallbackPage() {
       const telefono = user.user_metadata?.phone ?? user.user_metadata?.telefono ?? '';
 
       localStorage.setItem('cp_token', token);
+      localStorage.setItem('cp_token_time', Date.now().toString());
       localStorage.setItem('cp_user', JSON.stringify({ name: nombre, email, phone: telefono }));
+      console.log('[auth-callback] ✅ localStorage guardado');
 
-      await fetch('/api/auth/sync-oauth', {
+      fetch('/api/auth/sync-oauth', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ nombre, email, telefono }),
-      });
+      }).catch((err) => console.error('[auth-callback] sync-oauth falló:', err));
 
+      console.log('[auth-callback] ✅ Redirigiendo a /');
       window.dispatchEvent(new Event('user-login'));
       router.replace('/');
     };
 
+<<<<<<< Updated upstream
     // INITIAL_SESSION se dispara cuando la sesión ya existe en cookies (flujo PKCE normal).
     // SIGNED_IN se dispara en reintento o cuando no hay sesión previa.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -58,11 +73,48 @@ export default function AuthCallbackPage() {
     // Fallback: por si onAuthStateChange no disparó (edge case)
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) handleSession(session);
+=======
+    const code = searchParams.get('code');
+    console.log(`[auth-callback] 🚀 Montado. code en URL: ${!!code}`);
+
+    if (code) {
+      // El redirect viene directo de Google con ?code= — intercambiar en el cliente
+      // donde el code_verifier de PKCE está disponible en cookies/localStorage
+      console.log('[auth-callback] Intercambiando code por sesión (cliente)...');
+      supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
+        console.log(`[auth-callback] exchangeCodeForSession → error: ${error?.message ?? 'none'}, session: ${!!data.session}`);
+        if (data.session) {
+          handleSession(data.session, 'exchangeCodeForSession');
+        } else {
+          console.error('[auth-callback] Sin sesión tras exchange:', error?.message);
+          router.replace('/login');
+        }
+      });
+      return;
+    }
+
+    // Sin ?code= — puede ser redirect desde el server-side route o sesión en cookies
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log(`[auth-callback] onAuthStateChange → ${event}, session: ${!!session}`);
+      if ((event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session) {
+        await handleSession(session, `onAuthStateChange(${event})`);
+      }
     });
 
-    // Timeout de seguridad: si en 8s no llegó nada, redirigir al login
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      console.log(`[auth-callback] getSession() → session: ${!!session}, error: ${error?.message ?? 'none'}`);
+      if (session) handleSession(session, 'getSession()');
+>>>>>>> Stashed changes
+    });
+
     const timeout = setTimeout(() => {
-      if (!handled.current) router.replace('/login');
+      if (!handled.current) {
+        console.warn('[auth-callback] ⏱️ TIMEOUT 8s — sin sesión. Limpiando y redirigiendo a /login');
+        localStorage.removeItem('cp_token');
+        localStorage.removeItem('cp_token_time');
+        localStorage.removeItem('cp_user');
+        router.replace('/login');
+      }
     }, 8000);
 
     return () => {
@@ -71,7 +123,7 @@ export default function AuthCallbackPage() {
       // Reset para React Strict Mode (double-invoke en desarrollo)
       handled.current = false;
     };
-  }, [router]);
+  }, [router, searchParams]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
@@ -80,5 +132,17 @@ export default function AuthCallbackPage() {
         <p className="text-muted-foreground">Iniciando sesión...</p>
       </div>
     </div>
+  );
+}
+
+export default function AuthCallbackPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    }>
+      <AuthCallbackContent />
+    </Suspense>
   );
 }

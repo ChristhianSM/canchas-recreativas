@@ -2479,6 +2479,123 @@ function MiCuentaContent() {
               </div>
             )}
 
+            {activeSection === "partidos" && (() => {
+              const deporteEmoji: Record<string, string> = {
+                futbol: "⚽", futsal: "🥅", basquet: "🏀", voley: "🏐", tenis: "🎾",
+              };
+              const estadoConfig: Record<string, { label: string; cls: string }> = {
+                abierto:   { label: "Abierto",   cls: "bg-green-500/10 text-green-700 border-green-500/20" },
+                completo:  { label: "Completo",  cls: "bg-blue-500/10 text-blue-700 border-blue-500/20" },
+                cancelado: { label: "Cancelado", cls: "bg-destructive/10 text-destructive border-destructive/20" },
+                finalizado:{ label: "Finalizado",cls: "bg-muted text-muted-foreground" },
+              };
+
+              const MobilePartidoCard = ({ p }: { p: PartidoItem }) => {
+                const cfg = estadoConfig[p.estado] ?? estadoConfig.abierto;
+                const esHoy = p.fecha === hoyStr;
+                const fechaLabel = esHoy
+                  ? "Hoy"
+                  : new Date(p.fecha + "T00:00:00").toLocaleDateString("es-PE", { day: "numeric", month: "long", year: "numeric" });
+                const horaFin = `${String((parseInt(p.hora.split(":")[0]) + 1) % 24).padStart(2, "0")}:00`;
+                const cuposOcupados = p.jugadores_actuales ?? 0;
+                const canchaLocal = canchas.find((c) => c.id === p.cancha_id);
+                const img = canchaLocal?.images[0] ?? "https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=800&h=600&fit=crop";
+
+                return (
+                  <Card className="overflow-hidden border-border">
+                    <div className="flex">
+                      <div className="relative w-28 shrink-0">
+                        <Image src={img} alt={p.cancha_nombre} fill className="object-cover" />
+                      </div>
+                      <div className="flex flex-1 flex-col p-3">
+                        <div className="flex items-start justify-between gap-2 mb-1.5">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <Badge variant="outline" className={cfg.cls}>{cfg.label}</Badge>
+                            <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-200">
+                              {deporteEmoji[p.deporte] ?? "🏟️"} {p.deporte.charAt(0).toUpperCase() + p.deporte.slice(1)}
+                            </Badge>
+                          </div>
+                          <p className="text-sm font-bold text-primary shrink-0">S/ {p.precio_total}</p>
+                        </div>
+                        <p className="font-semibold text-foreground text-sm">{p.cancha_nombre}</p>
+                        <div className="mt-1.5 space-y-0.5">
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <Calendar className="h-3 w-3" />
+                            <span className="capitalize">{fechaLabel}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <Clock className="h-3 w-3" />
+                            <span>{p.hora} - {horaFin}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <Users className="h-3 w-3" />
+                            <span>{cuposOcupados}/{p.jugadores_max} jugadores · nivel {p.nivel}</span>
+                          </div>
+                        </div>
+                        <div className="mt-2">
+                          <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-green-500 transition-all"
+                              style={{ width: `${Math.min(100, (cuposOcupados / p.jugadores_max) * 100)}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                );
+              };
+
+              return (
+                <div className="space-y-4">
+                  <h2 className="text-xl font-bold text-foreground">Mis partidos</h2>
+                  {misPartidos.length === 0 && partHistorialTotal === 0 && !partHistorialLoading ? (
+                    <EmptyState type="partidos_activos" />
+                  ) : (
+                    <Tabs defaultValue="proximos" className="w-full">
+                      <TabsList className="w-full mb-4">
+                        <TabsTrigger value="proximos" className="flex-1 gap-1.5">
+                          Próximos
+                          {misPartidos.length > 0 && (
+                            <Badge variant="secondary" className="ml-1 h-4 min-w-4 px-1 text-xs">{misPartidos.length}</Badge>
+                          )}
+                        </TabsTrigger>
+                        <TabsTrigger value="historial" className="flex-1 gap-1.5">
+                          Historial
+                          {partHistorialLoading ? (
+                            <span className="ml-1 h-3 w-3 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground" />
+                          ) : (
+                            partHistorialTotal > 0 && (
+                              <Badge variant="secondary" className="ml-1 h-4 min-w-4 px-1 text-xs">{partHistorialTotal}</Badge>
+                            )
+                          )}
+                        </TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="proximos" className="space-y-3">
+                        {misPartidos.length > 0
+                          ? misPartidos.map((p) => <MobilePartidoCard key={p.id} p={p} />)
+                          : <EmptyState type="partidos_activos" />}
+                      </TabsContent>
+                      <TabsContent value="historial" className="space-y-3">
+                        {partHistorialItems.length > 0
+                          ? partHistorialItems.map((p) => <MobilePartidoCard key={p.id} p={p} />)
+                          : !partHistorialLoading && <EmptyState type="partidos_historial" />}
+                        {partHistorialItems.length < partHistorialTotal && (
+                          <button
+                            onClick={() => cargarPartidosHistorial(partHistorialPage + 1)}
+                            disabled={partHistorialLoading}
+                            className="w-full py-3 text-sm font-medium text-primary border border-primary/30 rounded-xl hover:bg-primary/5 transition-colors disabled:opacity-50"
+                          >
+                            {partHistorialLoading ? "Cargando..." : `Ver más (${partHistorialTotal - partHistorialItems.length} restantes)`}
+                          </button>
+                        )}
+                      </TabsContent>
+                    </Tabs>
+                  )}
+                </div>
+              );
+            })()}
+
             {activeSection === "perfil" && (
               <div className="space-y-4">
                 <h2 className="text-xl font-bold text-foreground">Mi perfil</h2>

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import {
   Archive,
   CalendarDays,
@@ -11,6 +12,7 @@ import {
   Send,
   Share2,
   Trash2,
+  X,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -61,6 +63,7 @@ export function PublicacionCard({
   onEliminar,
   onEditar,
 }: PublicacionCardProps) {
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const fechaInicio = formatPublicacionDate(publicacion.fecha_inicio);
   const fechaFin = formatPublicacionDate(publicacion.fecha_fin);
   const fechaCreacion = formatPublicacionDate(publicacion.creado_en);
@@ -76,13 +79,36 @@ export function PublicacionCard({
   const esPublicada = publicacion.estado === 'publicado';
 
   return (
+    <>
+    {lightboxOpen && publicacion.imagen_url && (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
+        onClick={() => setLightboxOpen(false)}
+      >
+        <button
+          className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
+          onClick={() => setLightboxOpen(false)}
+          aria-label="Cerrar"
+        >
+          <X className="h-5 w-5" />
+        </button>
+        <img
+          src={publicacion.imagen_url}
+          alt={publicacion.titulo}
+          className="max-h-full max-w-full rounded-xl object-contain"
+          onClick={(e) => e.stopPropagation()}
+        />
+      </div>
+    )}
+
     <Card className="flex flex-col overflow-hidden border-border">
-      <div className="relative aspect-[16/6] overflow-hidden bg-muted">
+      <div className="relative aspect-video overflow-hidden bg-muted">
         {publicacion.imagen_url ? (
           <img
             src={publicacion.imagen_url}
             alt={publicacion.titulo}
-            className="h-full w-full object-cover"
+            className="h-full w-full object-cover cursor-zoom-in"
+            onClick={() => setLightboxOpen(true)}
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center">
@@ -204,7 +230,7 @@ export function PublicacionCard({
           <div className="mt-4 min-w-0">
             {publicacion.precio ? (
               <p className="truncate text-sm font-medium text-primary">
-                {publicacion.precio}
+                Inscripción: S/ {publicacion.precio}
               </p>
             ) : null}
           </div>
@@ -247,5 +273,6 @@ export function PublicacionCard({
         </div>
       </div>
     </Card>
+    </>
   );
 }

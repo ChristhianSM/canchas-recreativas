@@ -533,7 +533,7 @@ function CrearPartidoSheet({
     setError("");
     const token = getToken();
     if (!token) { setError("Debes iniciar sesión."); return; }
-    if (!getStoredUser()?.telefono) {
+    if (!getStoredUser()?.phone) {
       if (!telefonoInput) { setError("Ingresa tu número de WhatsApp para notificarte sobre el partido."); return; }
       if (!/^9\d{8}$/.test(telefonoInput)) { setError("El número de WhatsApp debe tener 9 dígitos y empezar con 9."); return; }
     }
@@ -558,8 +558,8 @@ function CrearPartidoSheet({
           descripcion: form.descripcion || null,
           metodo_pago: metodo,
           comprobante_url: comprobante,
-          organizador_nombre: getStoredUser()?.nombre ?? null,
-          organizador_telefono: getStoredUser()?.telefono || telefonoInput || null,
+          organizador_nombre: getStoredUser()?.name ?? null,
+          organizador_telefono: getStoredUser()?.phone || telefonoInput || null,
         }),
       });
       const data = await res.json();
@@ -1015,7 +1015,7 @@ function CrearPartidoSheet({
               ) : null}
 
               {/* Teléfono WhatsApp — solo si no está en el perfil */}
-              {!getStoredUser()?.telefono && (
+              {!getStoredUser()?.phone && (
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium text-foreground">
                     Número de celular <span className="text-destructive">*</span>
