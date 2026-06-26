@@ -25,30 +25,39 @@ import { Header } from "@/components/header";
 import { CanchaCard } from "@/components/cancha-card";
 import { SportType } from "@/lib/types";
 import { getLocalDateString } from "@/lib/date-utils";
-import { guardarUbicacion, guardarCiudad, obtenerCiudadGuardada } from "@/lib/geolocation-utils";
+import {
+  guardarUbicacion,
+  guardarCiudad,
+  obtenerCiudadGuardada,
+} from "@/lib/geolocation-utils";
 import { getAllDistricts } from "@/lib/filter-utils";
 import { generateFaqSchema } from "@/lib/seo-utils";
 
 const HOME_FAQS = [
   {
-    question: '¿Cómo funciona CanchaGo?',
-    answer: 'Busca una cancha por deporte, fecha y hora. Elige el horario disponible y confirma tu reserva pagando un adelanto con Yape, Plin o transferencia bancaria. Recibes la confirmación al instante, sin llamadas.',
+    question: "¿Cómo funciona CanchaGo?",
+    answer:
+      "Busca una cancha por deporte, fecha y hora. Elige el horario disponible y confirma tu reserva pagando un adelanto con Yape, Plin o transferencia bancaria. Recibes la confirmación al instante, sin llamadas.",
   },
   {
-    question: '¿Cómo pago mi reserva?',
-    answer: 'Aceptamos Yape, Plin y transferencia bancaria. Puedes pagar el monto completo o dejar un adelanto y cancelar el saldo restante el día de tu reserva.',
+    question: "¿Cómo pago mi reserva?",
+    answer:
+      "Aceptamos Yape, Plin y transferencia bancaria. Puedes pagar el monto completo o dejar un adelanto y cancelar el saldo restante el día de tu reserva.",
   },
   {
-    question: '¿Puedo cancelar o modificar mi reserva?',
-    answer: 'Sí. Puedes cancelar tu reserva desde la sección "Mis reservas" en tu perfil. Consulta las políticas de cancelación de cada cancha para conocer los plazos y condiciones de devolución.',
+    question: "¿Puedo cancelar o modificar mi reserva?",
+    answer:
+      'Sí. Puedes cancelar tu reserva desde la sección "Mis reservas" en tu perfil. Consulta las políticas de cancelación de cada cancha para conocer los plazos y condiciones de devolución.',
   },
   {
-    question: '¿En qué zonas de Piura tienen canchas disponibles?',
-    answer: 'TuCanchaGo tiene canchas en los principales distritos de Piura, incluyendo Piura Centro, Castilla, Sullana, Catacaos, La Unión y más. Usa el mapa interactivo para encontrar canchas cerca de ti.',
+    question: "¿En qué zonas de Piura tienen canchas disponibles?",
+    answer:
+      "TuCanchaGo tiene canchas en los principales distritos de Piura, incluyendo Piura Centro, Castilla, Sullana, Catacaos, La Unión y más. Usa el mapa interactivo para encontrar canchas cerca de ti.",
   },
   {
-    question: '¿Cómo registro mi cancha en CanchaGo?',
-    answer: 'Escríbenos por WhatsApp al +51 959 686 193 y te explicamos el proceso. Nos encargamos de configurar tu cancha desde cero: horarios, precios y disponibilidad en tiempo real.',
+    question: "¿Cómo registro mi cancha en CanchaGo?",
+    answer:
+      "Escríbenos por WhatsApp al +51 940 394 075 y te explicamos el proceso. Nos encargamos de configurar tu cancha desde cero: horarios, precios y disponibilidad en tiempo real.",
   },
 ];
 
@@ -100,7 +109,6 @@ const HORAS = [
   "22:00",
   "23:00",
 ];
-
 
 const HERO_SLIDES = [
   {
@@ -206,11 +214,18 @@ function adaptCancha(c: Cancha) {
   };
 }
 
-const TrustBadges = memo(function TrustBadges({ badges }: { badges: string[] }) {
+const TrustBadges = memo(function TrustBadges({
+  badges,
+}: {
+  badges: string[];
+}) {
   return (
     <div className="hero-enter-d2 mt-5 flex flex-wrap gap-4">
       {badges.map((badge) => (
-        <div key={badge} className="flex items-center gap-1.5 text-white/90 text-sm">
+        <div
+          key={badge}
+          className="flex items-center gap-1.5 text-white/90 text-sm"
+        >
           <CheckCircle className="h-4 w-4 text-[#4ade80]" />
           {badge}
         </div>
@@ -533,31 +548,34 @@ export default function HomePage() {
     router.push(`/canchas?${params.toString()}`);
   };
 
-  const handleNewsletter = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newsletterEmail || newsletterStatus === "loading") return;
-    setNewsletterStatus("loading");
-    try {
-      const res = await fetch("/api/newsletter/subscribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: newsletterEmail }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
+  const handleNewsletter = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!newsletterEmail || newsletterStatus === "loading") return;
+      setNewsletterStatus("loading");
+      try {
+        const res = await fetch("/api/newsletter/subscribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: newsletterEmail }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setNewsletterStatus("error");
+          return;
+        }
+        if (data.status === "ya_suscrito") {
+          setNewsletterStatus("ya_suscrito");
+        } else {
+          setNewsletterStatus("success");
+          setNewsletterEmail("");
+        }
+      } catch {
         setNewsletterStatus("error");
-        return;
       }
-      if (data.status === "ya_suscrito") {
-        setNewsletterStatus("ya_suscrito");
-      } else {
-        setNewsletterStatus("success");
-        setNewsletterEmail("");
-      }
-    } catch {
-      setNewsletterStatus("error");
-    }
-  }, [newsletterEmail, newsletterStatus]);
+    },
+    [newsletterEmail, newsletterStatus],
+  );
 
   // Generar calendario para el mes mostrado (puede diferir del mes seleccionado)
   const generateCalendar = () => {
@@ -587,7 +605,9 @@ export default function HomePage() {
     <div className="flex flex-col flex-1 bg-white dark:bg-background">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(generateFaqSchema(HOME_FAQS)) }}
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(generateFaqSchema(HOME_FAQS)),
+        }}
       />
       <Header />
 
@@ -818,34 +838,39 @@ export default function HomePage() {
                     {loading ? (
                       <div className="space-y-1 px-1">
                         {[1, 2, 3, 4, 5].map((i) => (
-                          <div key={i} className="h-8 rounded-md bg-gray-100 dark:bg-muted animate-pulse" />
+                          <div
+                            key={i}
+                            className="h-8 rounded-md bg-gray-100 dark:bg-muted animate-pulse"
+                          />
                         ))}
                       </div>
-                    ) : allDistricts.length > 0 && (
-                      <div className="mb-2">
-                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1 px-1">
-                          Piura
-                        </p>
-                        <div className="space-y-0.5">
-                          {allDistricts.map((distrito) => (
-                            <button
-                              key={distrito}
-                              onClick={() => {
-                                setUbicacion(distrito);
-                                setShowLocationModal(false);
-                              }}
-                              className={`flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm transition-colors text-left ${
-                                ubicacion === distrito
-                                  ? "bg-[#16a34a]/10 text-[#16a34a] font-medium"
-                                  : "text-gray-700 dark:text-foreground hover:bg-gray-50 dark:hover:bg-muted"
-                              }`}
-                            >
-                              <MapPin className="h-3.5 w-3.5 shrink-0 text-gray-400" />
-                              {distrito}
-                            </button>
-                          ))}
+                    ) : (
+                      allDistricts.length > 0 && (
+                        <div className="mb-2">
+                          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1 px-1">
+                            Piura
+                          </p>
+                          <div className="space-y-0.5">
+                            {allDistricts.map((distrito) => (
+                              <button
+                                key={distrito}
+                                onClick={() => {
+                                  setUbicacion(distrito);
+                                  setShowLocationModal(false);
+                                }}
+                                className={`flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm transition-colors text-left ${
+                                  ubicacion === distrito
+                                    ? "bg-[#16a34a]/10 text-[#16a34a] font-medium"
+                                    : "text-gray-700 dark:text-foreground hover:bg-gray-50 dark:hover:bg-muted"
+                                }`}
+                              >
+                                <MapPin className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+                                {distrito}
+                              </button>
+                            ))}
+                          </div>
                         </div>
-                      </div>
+                      )
                     )}
                   </div>
                 </div>
@@ -869,9 +894,7 @@ export default function HomePage() {
                   }}
                 >
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-semibold text-sm">
-                      Seleccionar fecha
-                    </h3>
+                    <h3 className="font-semibold text-sm">Seleccionar fecha</h3>
                     <button
                       onClick={() => setShowDatePicker(false)}
                       className="text-gray-400 hover:text-gray-600"
@@ -999,10 +1022,8 @@ export default function HomePage() {
                         const [h] = time.split(":").map(Number);
                         const esPasada =
                           esHoy &&
-                          h * 60 <=
-                            ahora.getHours() * 60 + ahora.getMinutes();
-                        const estaDisponible =
-                          availableHours.includes(time);
+                          h * 60 <= ahora.getHours() * 60 + ahora.getMinutes();
+                        const estaDisponible = availableHours.includes(time);
                         const deshabilitada = esPasada || !estaDisponible;
 
                         return (
@@ -1422,7 +1443,8 @@ export default function HomePage() {
 
             {/* Columna derecha — formulario */}
             <div>
-              {newsletterStatus === "success" || newsletterStatus === "ya_suscrito" ? (
+              {newsletterStatus === "success" ||
+              newsletterStatus === "ya_suscrito" ? (
                 <div className="flex items-start gap-3 bg-white/10 border border-white/20 rounded-xl px-5 py-4">
                   <CheckCircle className="h-5 w-5 text-[#4ade80] shrink-0 mt-0.5" />
                   <div>
@@ -1450,7 +1472,8 @@ export default function HomePage() {
                       value={newsletterEmail}
                       onChange={(e) => {
                         setNewsletterEmail(e.target.value);
-                        if (newsletterStatus === "error") setNewsletterStatus("idle");
+                        if (newsletterStatus === "error")
+                          setNewsletterStatus("idle");
                       }}
                       placeholder="tu@correo.com"
                       required
@@ -1479,11 +1502,13 @@ export default function HomePage() {
                   Ocurrió un error. Por favor intenta de nuevo.
                 </p>
               )}
-              {newsletterStatus !== "success" && newsletterStatus !== "ya_suscrito" && (
-                <p className="text-white/40 text-xs mt-3">
-                  Al suscribirte aceptas recibir contenido informativo de CanchaGo
-                </p>
-              )}
+              {newsletterStatus !== "success" &&
+                newsletterStatus !== "ya_suscrito" && (
+                  <p className="text-white/40 text-xs mt-3">
+                    Al suscribirte aceptas recibir contenido informativo de
+                    CanchaGo
+                  </p>
+                )}
             </div>
           </div>
         </div>

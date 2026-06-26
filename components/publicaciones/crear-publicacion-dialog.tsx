@@ -89,6 +89,7 @@ export function CrearPublicacionDialog({
   const [loadingCanchas, setLoadingCanchas] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [notificarSuscritos, setNotificarSuscritos] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
 
   useEffect(() => {
@@ -168,6 +169,7 @@ export function CrearPublicacionDialog({
     setForm(initialPublicacionForm);
     setTags([]);
     setTagInput('');
+    setNotificarSuscritos(false);
     setErrors({});
     if (fileRef.current) fileRef.current.value = '';
   };
@@ -189,6 +191,7 @@ export function CrearPublicacionDialog({
         : null,
     tags,
     canchaIds: form.canchaIds,
+    notificarSuscritos: !isEditing && notificarSuscritos,
   });
 
   const addTag = () => {
@@ -377,7 +380,9 @@ export function CrearPublicacionDialog({
         title: form.estado === 'publicado' ? 'Publicación publicada' : 'Borrador guardado',
         description:
           form.estado === 'publicado'
-            ? `"${titulo}" ya es visible en noticias.`
+            ? notificarSuscritos
+              ? `"${titulo}" publicada y notificación enviada a suscritos.`
+              : `"${titulo}" ya es visible en noticias.`
             : `"${titulo}" quedó guardada como borrador.`,
         duration: 3000,
       });
@@ -722,7 +727,10 @@ export function CrearPublicacionDialog({
             <div className="grid gap-3 sm:grid-cols-2">
               <button
                 type="button"
-                onClick={() => updateField('estado', 'borrador')}
+                onClick={() => {
+                  updateField('estado', 'borrador');
+                  setNotificarSuscritos(false);
+                }}
                 className={`rounded-xl border p-4 text-center transition ${
                   form.estado === 'borrador'
                     ? 'border-yellow-400 bg-yellow-50 text-yellow-800'
@@ -745,6 +753,31 @@ export function CrearPublicacionDialog({
                 <span className="text-xs">Visible para usuarios</span>
               </button>
             </div>
+
+            {!isEditing && (
+              <label
+                className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition ${
+                  form.estado === 'publicado'
+                    ? 'border-border hover:bg-muted/20'
+                    : 'cursor-not-allowed border-border opacity-50'
+                }`}
+              >
+                <Checkbox
+                  checked={notificarSuscritos}
+                  disabled={form.estado !== 'publicado'}
+                  onCheckedChange={v => setNotificarSuscritos(v === true)}
+                  className="mt-0.5"
+                />
+                <div>
+                  <span className="text-sm font-medium">Notificar a suscritos por email</span>
+                  <p className="text-xs text-muted-foreground">
+                    {form.estado !== 'publicado'
+                      ? 'Solo disponible al publicar'
+                      : 'Se enviará el contenido completo por email a todos los suscritos activos'}
+                  </p>
+                </div>
+              </label>
+            )}
           </section>
 
           {errors.general ? (

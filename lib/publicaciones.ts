@@ -37,6 +37,7 @@ export type CrearPublicacionBody = {
   tags?: string[];
   canchaIds?: string[];
   todasLasCanchas?: boolean;
+  notificarSuscritos?: boolean;
 };
 
 export type NoticiasQueryParams = {
