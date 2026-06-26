@@ -107,7 +107,7 @@ export function Footer() {
           {/* Derecha — redes */}
           <div className="flex items-center gap-4">
             <a
-              href="https://www.facebook.com/Canchago"
+              href="https://www.facebook.com/profile.php?id=61590374610935&locale=es_LA"
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Facebook"
@@ -118,7 +118,7 @@ export function Footer() {
               </svg>
             </a>
             <a
-              href="https://www.instagram.com/tucanchago"
+              href="https://www.instagram.com/tucanchago?igsh=MTZheXE0bnFhZmVpbg=="
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Instagram"
@@ -129,7 +129,7 @@ export function Footer() {
               </svg>
             </a>
             <a
-              href="https://www.tiktok.com/@tucanchago"
+              href="https://www.tiktok.com/@canchago1?_r=1&_t=ZS-97WYLM6JDIz"
               target="_blank"
               rel="noopener noreferrer"
               aria-label="TikTok"
@@ -139,7 +139,7 @@ export function Footer() {
                 <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.18 8.18 0 0 0 4.78 1.52V6.75a4.85 4.85 0 0 1-1.01-.06z" />
               </svg>
             </a>
-            <a
+            {/* <a
               href="https://www.youtube.com/@tucanchago"
               target="_blank"
               rel="noopener noreferrer"
@@ -149,7 +149,7 @@ export function Footer() {
               <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
               </svg>
-            </a>
+            </a> */}
           </div>
         </div>
       </div>

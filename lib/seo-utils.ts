@@ -54,9 +54,9 @@ export function generateCanchaSchema(cancha: CanchaSchemaData) {
     } : undefined,
     url: `${BASE_URL}/cancha/${cancha.id}`,
     sameAs: [
-      'https://www.facebook.com/Canchago',
-      'https://www.instagram.com/tucanchago',
-      'https://www.tiktok.com/@tucanchago',
+      'https://www.facebook.com/profile.php?id=61590374610935&locale=es_LA',
+      'https://www.instagram.com/tucanchago?igsh=MTZheXE0bnFhZmVpbg==',
+      'https://www.tiktok.com/@canchago1?_r=1&_t=ZS-97WYLM6JDIz',
     ],
   };
 }
@@ -91,9 +91,9 @@ export function generateOrganizationSchema() {
       '@id': 'https://www.wikidata.org/wiki/Q200047',
     },
     sameAs: [
-      'https://www.facebook.com/Canchago',
-      'https://www.instagram.com/tucanchago',
-      'https://www.tiktok.com/@tucanchago',
+      'https://www.facebook.com/profile.php?id=61590374610935&locale=es_LA',
+      'https://www.instagram.com/tucanchago?igsh=MTZheXE0bnFhZmVpbg==',
+      'https://www.tiktok.com/@canchago1?_r=1&_t=ZS-97WYLM6JDIz',
     ],
   };
 }
