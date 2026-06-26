@@ -65,6 +65,10 @@ function AuthCallbackContent() {
     console.log(`[auth-callback] 🚀 Montado. code en URL: ${!!code}`);
 
     if (code) {
+      // Guard sincrónico: previene doble exchange en React Strict Mode (doble invoke del effect)
+      if (handled.current) return;
+      handled.current = true;
+
       console.log('[auth-callback] Intercambiando code por sesión (cliente)...');
       supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
         console.log(`[auth-callback] exchangeCodeForSession → error: ${error?.message ?? 'none'}, session: ${!!data.session}`);
