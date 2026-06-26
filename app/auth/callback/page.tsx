@@ -61,25 +61,10 @@ function AuthCallbackContent() {
       router.replace('/');
     };
 
-<<<<<<< Updated upstream
-    // INITIAL_SESSION se dispara cuando la sesión ya existe en cookies (flujo PKCE normal).
-    // SIGNED_IN se dispara en reintento o cuando no hay sesión previa.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if ((event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session) {
-        await handleSession(session);
-      }
-    });
-
-    // Fallback: por si onAuthStateChange no disparó (edge case)
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) handleSession(session);
-=======
     const code = searchParams.get('code');
     console.log(`[auth-callback] 🚀 Montado. code en URL: ${!!code}`);
 
     if (code) {
-      // El redirect viene directo de Google con ?code= — intercambiar en el cliente
-      // donde el code_verifier de PKCE está disponible en cookies/localStorage
       console.log('[auth-callback] Intercambiando code por sesión (cliente)...');
       supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
         console.log(`[auth-callback] exchangeCodeForSession → error: ${error?.message ?? 'none'}, session: ${!!data.session}`);
@@ -104,7 +89,6 @@ function AuthCallbackContent() {
     supabase.auth.getSession().then(({ data: { session }, error }) => {
       console.log(`[auth-callback] getSession() → session: ${!!session}, error: ${error?.message ?? 'none'}`);
       if (session) handleSession(session, 'getSession()');
->>>>>>> Stashed changes
     });
 
     const timeout = setTimeout(() => {
