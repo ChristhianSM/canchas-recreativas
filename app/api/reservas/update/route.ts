@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
 import { sendReservaEmail } from '@/lib/email';
-import { notificarEstadoReserva } from '@/lib/whatsapp';
+import { notificarEstadoReserva, notificarEstadoReservaAdmin } from '@/lib/whatsapp';
 import { agregarSelloCancha } from '@/lib/loyalty';
 
 // PATCH /api/reservas/update?id=xxx — actualizar estado de reserva
@@ -163,6 +163,16 @@ export async function PATCH(req: NextRequest) {
         estado,
         reservaId:    reserva.id,
       });
+    }
+
+    // WhatsApp al admin (dueño de la cancha) confirmando que su acción fue procesada
+    const { data: adminData } = await sb
+      .from('usuarios')
+      .select('telefono')
+      .eq('id', user.id)
+      .maybeSingle();
+    if (adminData?.telefono) {
+      await notificarEstadoReservaAdmin({ adminPhone: adminData.telefono, reservaId: reserva.id, estado });
     }
 
   }

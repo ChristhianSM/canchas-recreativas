@@ -14,6 +14,7 @@ import {
   Gift,
   ToggleLeft,
   ToggleRight,
+  CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +24,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/components/ui/use-toast";
 import { BloqueosAdminPanel } from "@/components/bloqueos-admin-panel";
 import {
   estaBloquedoPor,
@@ -761,6 +763,7 @@ export default function OwnerEditarCanchaPage() {
 
   const [cancha, setCancha] = useState<Cancha | null>(null);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState("");
@@ -912,8 +915,10 @@ export default function OwnerEditarCanchaPage() {
     if (res.ok) {
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
+      toast({ title: "¡Cambios guardados!", description: <span className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 shrink-0 text-green-500" />La configuración de tu cancha se actualizó correctamente.</span>, duration: 2500 });
     } else {
       setSaveError(data.error ?? "Error al guardar");
+      toast({ title: "Error al guardar", description: data.error ?? "Ocurrió un error al guardar los cambios.", variant: "destructive", duration: 2500 });
     }
   };
 
@@ -966,7 +971,7 @@ export default function OwnerEditarCanchaPage() {
   return (
     <div>
       {/* Header — sticky para que el botón siempre sea accesible al hacer scroll */}
-      <div className="sticky top-0 z-20 -mx-4 -mt-4 flex items-center justify-between gap-2 border-b border-border bg-background/95 px-4 py-3 backdrop-blur-sm lg:-mx-6 lg:px-6">
+      <div className="sticky -top-4 lg:-top-6 z-20 -mx-4 -mt-4 lg:-mt-6 flex items-center justify-between gap-2 border-b border-border bg-background/95 px-4 py-3 backdrop-blur-sm lg:-mx-6 lg:px-6">
         <div className="flex flex-1 items-center gap-2 min-w-0">
           <Button
             variant="ghost"

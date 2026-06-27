@@ -76,7 +76,10 @@ export default function AdminLayout({
             let count = 0;
             for (const r of data.filter((r: any) => r.estado === "pendiente")) {
               const key = r.grupo_reserva_id ?? r.id;
-              if (!vistos.has(key)) { vistos.add(key); count++; }
+              if (!vistos.has(key)) {
+                vistos.add(key);
+                count++;
+              }
             }
             setPendientes(count);
           }
@@ -214,7 +217,7 @@ export default function AdminLayout({
           </div>
         </header>
 
-        <main className="flex-1 overflow-auto p-4 pt-0 lg:p-6 lg:pt-0">{children}</main>
+        <main className="flex-1 overflow-auto p-4 lg:p-6">{children}</main>
       </div>
     </div>
   );

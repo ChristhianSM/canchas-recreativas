@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
 import { sendReservaEmail } from '@/lib/email';
-import { notificarEstadoReserva } from '@/lib/whatsapp';
+import { notificarEstadoReserva, notificarEstadoReservaAdmin } from '@/lib/whatsapp';
 import { verifyAdmin } from '@/lib/admin-auth';
 import { agregarSelloCancha } from '@/lib/loyalty';
 
@@ -9,7 +9,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const { id } = await params;
 
   const token = req.headers.get('authorization')?.replace('Bearer ', '');
-  if (!await verifyAdmin(token)) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+  const adminUser = await verifyAdmin(token);
+  if (!adminUser) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
   const sb = createServiceClient();
 
@@ -126,6 +127,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       estado,
       reservaId:    reserva.id,
     });
+  }
+
+  // WhatsApp al superadmin confirmando que su acción fue procesada
+  const { data: adminData } = await sb
+    .from('usuarios')
+    .select('telefono')
+    .eq('id', adminUser.id)
+    .maybeSingle();
+  if (adminData?.telefono) {
+    await notificarEstadoReservaAdmin({ adminPhone: adminData.telefono, reservaId: reserva.id, estado });
   }
 
   return NextResponse.json(reserva);
