@@ -467,6 +467,11 @@ function PagoContent() {
               metodoDevolucion: "yape",
             }
           : {}),
+        ...(!esInvitado
+          ? {
+              telefonoDevolucion: telefonoRegistrado || "",
+            }
+          : {}),
       });
       if (res.error) {
         setEnviando(false);
@@ -2441,11 +2446,14 @@ function PagoContent() {
                     <Button
                       size="lg"
                       className="w-full"
+                      disabled={enviando}
                       onClick={() =>
-                        soloEfectivo ? setPaso("metodo") : setPaso("confirmar")
+                        soloEfectivo ? handleEnviar() : setPaso("confirmar")
                       }
                     >
-                      {soloEfectivo ? "Continuar" : "Ir a pagar"}
+                      {soloEfectivo
+                        ? (enviando ? "Confirmando..." : "Confirmar reserva (pago en cancha)")
+                        : "Ir a pagar"}
                     </Button>
                     <Button
                       variant="outline"

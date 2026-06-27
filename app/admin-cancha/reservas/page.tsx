@@ -125,7 +125,12 @@ export default function OwnerReservasPage() {
     setLoading(false);
   };
 
-  useEffect(() => { reload(); }, []);
+  useEffect(() => {
+    reload();
+    const onVisible = () => { if (!document.hidden) reload(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, []);
 
   const confirmar = async (id: string) => {
     setConfirmando(true);
@@ -269,7 +274,9 @@ export default function OwnerReservasPage() {
       const principal = slots.find(s => s.id === gid) ?? slots[0];
       const horas = slots.map(s => s.hora).sort();
       const horaFin = `${String(parseInt(horas[horas.length - 1].split(':')[0]) + 1).padStart(2, '0')}:00`;
-      resultado.push({ ...principal, hora: horas.length > 1 ? `${horas[0]} - ${horaFin}` : principal.hora });
+      // Si algún slot del grupo está pendiente, mostrar el grupo como pendiente
+      const estadoGrupo = slots.some(s => s.estado === 'pendiente') ? 'pendiente' : principal.estado;
+      resultado.push({ ...principal, estado: estadoGrupo, hora: horas.length > 1 ? `${horas[0]} - ${horaFin}` : principal.hora });
     }
     return resultado;
   }, [reservas]);
