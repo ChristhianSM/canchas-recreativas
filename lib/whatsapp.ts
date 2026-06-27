@@ -217,7 +217,7 @@ export async function notificarEstadoReserva(data: {
   if (data.estado === 'confirmada') {
     const mapsLink = data.lat && data.lng
       ? `https://maps.google.com/?q=${data.lat},${data.lng}`
-      : '';
+      : 'https://tucanchago.com';
     await sendTemplate(data.clientePhone, TPL.reservaConfirmadaUsuario, [
       codigo,
       data.canchaNombre,

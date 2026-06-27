@@ -173,6 +173,7 @@ export async function PATCH(req: NextRequest) {
       .maybeSingle();
 
     // WhatsApp al cliente
+    console.log('[reservas/update] clientePhone:', clientePhone, '| estado:', estado, '| reservaId:', reserva.id);
     if (clientePhone) {
       await notificarEstadoReserva({
         clientePhone,
@@ -185,6 +186,9 @@ export async function PATCH(req: NextRequest) {
         lat:          cancha?.lat ?? null,
         lng:          cancha?.lng ?? null,
       });
+      console.log('[reservas/update] notificarEstadoReserva completado');
+    } else {
+      console.warn('[reservas/update] clientePhone vacío, no se notificó al usuario');
     }
 
     // WhatsApp al admin (dueño de la cancha) confirmando que su acción fue procesada

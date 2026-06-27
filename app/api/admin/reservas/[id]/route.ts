@@ -134,6 +134,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     .maybeSingle();
 
   // WhatsApp al cliente
+  console.log('[admin/reservas] clientePhone:', clientePhone, '| estado:', estado, '| reservaId:', reserva.id);
   if (clientePhone) {
     await notificarEstadoReserva({
       clientePhone,
@@ -146,6 +147,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       lat:          cancha?.lat ?? null,
       lng:          cancha?.lng ?? null,
     });
+    console.log('[admin/reservas] notificarEstadoReserva completado');
+  } else {
+    console.warn('[admin/reservas] clientePhone vacío, no se notificó al usuario');
   }
 
   // WhatsApp al admin confirmando que su acción fue procesada
