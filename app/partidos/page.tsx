@@ -3,11 +3,7 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import { Header } from "@/components/header";
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
   Clock,
   Plus,
@@ -96,12 +92,12 @@ interface CanchaSimple {
 // ── Constantes ────────────────────────────────────────────────
 
 const FILTROS_DEPORTE = [
-  { key: "todos",   label: "Todos",   emoji: null },
-  { key: "futbol",  label: "Fútbol",  emoji: "⚽" },
-  { key: "futsal",  label: "Futsal",  emoji: "🥅" },
+  { key: "todos", label: "Todos", emoji: null },
+  { key: "futbol", label: "Fútbol", emoji: "⚽" },
+  { key: "futsal", label: "Futsal", emoji: "🥅" },
   { key: "basquet", label: "Básquet", emoji: "🏀" },
-  { key: "voley",   label: "Voley",   emoji: "🏐" },
-  { key: "tenis",   label: "Tenis",   emoji: "🎾" },
+  { key: "voley", label: "Voley", emoji: "🏐" },
+  { key: "tenis", label: "Tenis", emoji: "🎾" },
 ] as const;
 
 const NIVEL_CONFIG: Record<Nivel, { label: string; cls: string }> = {
@@ -131,9 +127,24 @@ const AVATAR_COLORS = [
 ];
 
 const HORAS = [
-  "06:00","07:00","08:00","09:00","10:00","11:00","12:00",
-  "13:00","14:00","15:00","16:00","17:00","18:00","19:00",
-  "20:00","21:00","22:00","23:00",
+  "06:00",
+  "07:00",
+  "08:00",
+  "09:00",
+  "10:00",
+  "11:00",
+  "12:00",
+  "13:00",
+  "14:00",
+  "15:00",
+  "16:00",
+  "17:00",
+  "18:00",
+  "19:00",
+  "20:00",
+  "21:00",
+  "22:00",
+  "23:00",
 ];
 
 type PartidoConDistancia = PartidoAPI & { distancia?: number };
@@ -180,12 +191,14 @@ function PartidoCard({
   const pct = Math.round(
     (partido.jugadores_actuales / partido.jugadores_max) * 100,
   );
-  const lleno = partido.estado === "completo" || partido.jugadores_actuales >= partido.jugadores_max;
+  const lleno =
+    partido.estado === "completo" ||
+    partido.jugadores_actuales >= partido.jugadores_max;
   const isLoading = loadingId === partido.id;
   const jugadores = partido.jugadores ?? [];
   const cuposRestantes = partido.jugadores_max - partido.jugadores_actuales;
-  const casiLleno = !lleno && cuposRestantes <= 2 && partido.jugadores_actuales > 0;
-
+  const casiLleno =
+    !lleno && cuposRestantes <= 2 && partido.jugadores_actuales > 0;
 
   const esPendiente = partido.estado === "pendiente";
 
@@ -196,8 +209,8 @@ function PartidoCard({
         esPendiente
           ? "border-amber-300 opacity-90"
           : lleno && !partido.ya_unido
-          ? "border-border opacity-70"
-          : "border-border"
+            ? "border-border opacity-70"
+            : "border-border"
       }`}
     >
       {/* Banner de pendiente */}
@@ -236,12 +249,17 @@ function PartidoCard({
           </div>
         </div>
         <div className="flex flex-col items-end gap-1.5 shrink-0">
-          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${nivelCls}`}>
+          <span
+            className={`text-xs font-semibold px-2.5 py-1 rounded-full ${nivelCls}`}
+          >
             {nivelLabel}
           </span>
           {partido.cancha_lat != null && (
             <button
-              onClick={(e) => { e.stopPropagation(); onAbrirMapa(partido); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onAbrirMapa(partido);
+              }}
               title="Ver cómo llegar"
               className="flex items-center gap-1 text-xs font-semibold text-primary hover:text-primary/70 transition-colors"
             >
@@ -272,19 +290,26 @@ function PartidoCard({
             </div>
           )}
           {partido.jugadores_actuales === 0 && (
-            <span className="text-xs text-muted-foreground">Sin jugadores aún</span>
+            <span className="text-xs text-muted-foreground">
+              Sin jugadores aún
+            </span>
           )}
         </div>
         <div className="flex flex-col items-end gap-0.5">
           {casiLleno && (
             <span className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
-              {cuposRestantes === 1 ? "¡Último cupo!" : `¡Solo ${cuposRestantes} cupos!`}
+              {cuposRestantes === 1
+                ? "¡Último cupo!"
+                : `¡Solo ${cuposRestantes} cupos!`}
             </span>
           )}
           <span className="text-xs font-semibold text-muted-foreground">
             {partido.jugadores_actuales}/{partido.jugadores_max} cupos
             {partido.jugadores_equipo > partido.jugadores_max && (
-              <span className="font-normal"> · {partido.jugadores_equipo} en total</span>
+              <span className="font-normal">
+                {" "}
+                · {partido.jugadores_equipo} en total
+              </span>
             )}
           </span>
         </div>
@@ -297,15 +322,18 @@ function PartidoCard({
             lleno
               ? "bg-muted-foreground"
               : pct >= 85
-              ? "bg-amber-500"
-              : "bg-primary"
+                ? "bg-amber-500"
+                : "bg-primary"
           }`}
           style={{ width: `${pct}%` }}
         />
       </div>
 
       {/* Precio + botón */}
-      <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="flex items-center gap-3"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="shrink-0">
           <p className="text-xl font-bold text-foreground leading-none">
             S/ {partido.precio_por_persona}
@@ -371,7 +399,6 @@ function PartidoCard({
           </button>
         )}
       </div>
-
     </div>
   );
 }
@@ -392,7 +419,10 @@ function PartidoSkeleton() {
       <div className="flex items-center justify-between">
         <div className="flex -space-x-2">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-7 w-7 rounded-full bg-muted border-2 border-card" />
+            <div
+              key={i}
+              className="h-7 w-7 rounded-full bg-muted border-2 border-card"
+            />
           ))}
         </div>
         <div className="h-3 w-24 bg-muted rounded-full" />
@@ -476,11 +506,14 @@ function CrearPartidoSheet({
   const canchaSeleccionada = canchas.find((c) => c.id === form.cancha_id);
 
   const precioTotal = canchaSeleccionada
-    ? (canchaSeleccionada.precios_por_hora[form.hora] ?? canchaSeleccionada.precio_por_hora)
+    ? (canchaSeleccionada.precios_por_hora[form.hora] ??
+      canchaSeleccionada.precio_por_hora)
     : 0;
   const maxJugadores = canchaSeleccionada?.max_jugadores ?? 22;
   const precioPorPersona =
-    form.jugadores_equipo > 0 ? Math.ceil(precioTotal / form.jugadores_equipo) : 0;
+    form.jugadores_equipo > 0
+      ? Math.ceil(precioTotal / form.jugadores_equipo)
+      : 0;
 
   const horasDisponibles = useMemo(() => {
     if (!canchaSeleccionada || !form.fecha) return [];
@@ -513,7 +546,13 @@ function CrearPartidoSheet({
     setForm((prev) => {
       const equipo = Math.min(prev.jugadores_equipo, maxCancha);
       const max = Math.min(prev.jugadores_max, maxCancha - 1);
-      return { ...prev, cancha_id: id, hora: "", jugadores_equipo: equipo, jugadores_max: max };
+      return {
+        ...prev,
+        cancha_id: id,
+        hora: "",
+        jugadores_equipo: equipo,
+        jugadores_max: max,
+      };
     });
   };
 
@@ -521,10 +560,22 @@ function CrearPartidoSheet({
   const handleSubmit = (e?: React.SyntheticEvent) => {
     e?.preventDefault();
     setError("");
-    if (!getToken()) { setError("Debes iniciar sesión para crear un partido."); return; }
-    if (!form.cancha_id) { setError("Selecciona una cancha."); return; }
-    if (!form.hora) { setError("Selecciona un horario disponible."); return; }
-    if (precioTotal <= 0) { setError("La cancha seleccionada no tiene precio configurado."); return; }
+    if (!getToken()) {
+      setError("Debes iniciar sesión para crear un partido.");
+      return;
+    }
+    if (!form.cancha_id) {
+      setError("Selecciona una cancha.");
+      return;
+    }
+    if (!form.hora) {
+      setError("Selecciona un horario disponible.");
+      return;
+    }
+    if (precioTotal <= 0) {
+      setError("La cancha seleccionada no tiene precio configurado.");
+      return;
+    }
     setPaso("pago");
   };
 
@@ -532,10 +583,21 @@ function CrearPartidoSheet({
   const handleConfirmarPago = async () => {
     setError("");
     const token = getToken();
-    if (!token) { setError("Debes iniciar sesión."); return; }
+    if (!token) {
+      setError("Debes iniciar sesión.");
+      return;
+    }
     if (!getStoredUser()?.phone) {
-      if (!telefonoInput) { setError("Ingresa tu número de WhatsApp para notificarte sobre el partido."); return; }
-      if (!/^9\d{8}$/.test(telefonoInput)) { setError("El número de WhatsApp debe tener 9 dígitos y empezar con 9."); return; }
+      if (!telefonoInput) {
+        setError(
+          "Ingresa tu número de WhatsApp para notificarte sobre el partido.",
+        );
+        return;
+      }
+      if (!/^9\d{8}$/.test(telefonoInput)) {
+        setError("El número de WhatsApp debe tener 9 dígitos y empezar con 9.");
+        return;
+      }
     }
     setSubmitting(true);
     try {
@@ -563,7 +625,10 @@ function CrearPartidoSheet({
         }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error ?? "Error al crear el partido."); return; }
+      if (!res.ok) {
+        setError(data.error ?? "Error al crear el partido.");
+        return;
+      }
       onCreado();
       onClose();
     } catch {
@@ -584,11 +649,17 @@ function CrearPartidoSheet({
         const MAX = 1200;
         let { width, height } = img;
         if (width > MAX || height > MAX) {
-          if (width > height) { height = Math.round((height * MAX) / width); width = MAX; }
-          else { width = Math.round((width * MAX) / height); height = MAX; }
+          if (width > height) {
+            height = Math.round((height * MAX) / width);
+            width = MAX;
+          } else {
+            width = Math.round((width * MAX) / height);
+            height = MAX;
+          }
         }
         const canvas = document.createElement("canvas");
-        canvas.width = width; canvas.height = height;
+        canvas.width = width;
+        canvas.height = height;
         canvas.getContext("2d")!.drawImage(img, 0, 0, width, height);
         setComprobante(canvas.toDataURL("image/jpeg", 0.75));
       };
@@ -597,8 +668,8 @@ function CrearPartidoSheet({
     reader.readAsDataURL(file);
   };
 
-  const yapeDisponible = !!(canchaSeleccionada?.yape_numero);
-  const plinDisponible = !!(canchaSeleccionada?.plin_numero);
+  const yapeDisponible = !!canchaSeleccionada?.yape_numero;
+  const plinDisponible = !!canchaSeleccionada?.plin_numero;
 
   // Auto-seleccionar el primer método disponible al cambiar de cancha
   useEffect(() => {
@@ -608,11 +679,12 @@ function CrearPartidoSheet({
     else setMetodo("efectivo");
   }, [canchaSeleccionada?.id]);
 
-  const numPago = metodo === "yape"
-    ? canchaSeleccionada?.yape_numero
-    : metodo === "plin"
-    ? canchaSeleccionada?.plin_numero
-    : null;
+  const numPago =
+    metodo === "yape"
+      ? canchaSeleccionada?.yape_numero
+      : metodo === "plin"
+        ? canchaSeleccionada?.plin_numero
+        : null;
 
   const metodosDisponibles: MetodoPago[] = [
     ...(yapeDisponible ? ["yape" as MetodoPago] : []),
@@ -622,12 +694,14 @@ function CrearPartidoSheet({
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="p-0 h-[92dvh] max-h-[92dvh] flex flex-col gap-0 sm:max-w-lg w-full overflow-hidden">
-
         {/* Header */}
         <div className="flex items-center gap-3 px-5 py-4 border-b border-border shrink-0">
           {paso === "pago" && (
             <button
-              onClick={() => { setPaso("form"); setError(""); }}
+              onClick={() => {
+                setPaso("form");
+                setError("");
+              }}
               className="shrink-0 p-1 rounded-lg hover:bg-muted transition-colors"
             >
               <ChevronLeft className="h-5 w-5 text-foreground" />
@@ -642,481 +716,606 @@ function CrearPartidoSheet({
         <div className="flex-1 overflow-hidden min-h-0">
           <div
             className="flex h-full w-[200%] transition-transform duration-300 ease-in-out"
-            style={{ transform: paso === "pago" ? "translateX(-50%)" : "translateX(0)" }}
+            style={{
+              transform: paso === "pago" ? "translateX(-50%)" : "translateX(0)",
+            }}
           >
-
-        {/* ── PASO 1: Formulario ── */}
-        <div className="w-1/2 flex flex-col min-h-0">
-            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto overscroll-contain px-5 py-4 space-y-4">
-              {error && (
-                <div className="flex items-center gap-2 rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive">
-                  <AlertCircle className="h-4 w-4 shrink-0" />
-                  {error}
-                </div>
-              )}
-
-              {/* Cancha */}
-              <div>
-                <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">
-                  Cancha
-                </label>
-                {loadingCanchas ? (
-                  <div className="h-11 bg-muted rounded-xl animate-pulse" />
-                ) : (
-                  <select
-                    required
-                    value={form.cancha_id}
-                    onChange={(e) => handleCanchaChange(e.target.value)}
-                    className="w-full h-11 px-3 rounded-xl border border-border bg-background text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  >
-                    <option value="">Selecciona una cancha</option>
-                    {canchas.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.nombre} — {c.distrito}
-                      </option>
-                    ))}
-                  </select>
+            {/* ── PASO 1: Formulario ── */}
+            <div className="w-1/2 flex flex-col min-h-0">
+              <form
+                onSubmit={handleSubmit}
+                className="flex-1 overflow-y-auto overscroll-contain px-5 py-4 space-y-4"
+              >
+                {error && (
+                  <div className="flex items-center gap-2 rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    {error}
+                  </div>
                 )}
-                <div className={`mt-2 flex items-center gap-2 px-3 py-2 rounded-lg border h-9 transition-colors ${
-                  canchaSeleccionada ? "bg-primary/5 border-primary/20" : "bg-muted/40 border-border"
-                }`}>
-                  {canchaSeleccionada ? (
-                    <>
-                      <span className="text-base select-none leading-none">
-                        {DEPORTE_EMOJI[canchaSeleccionada.tipo] ?? "🏅"}
-                      </span>
-                      <span className="text-xs text-primary font-semibold capitalize">
-                        {canchaSeleccionada.tipo}
-                      </span>
-                      <span className="text-xs text-muted-foreground">·</span>
-                      <span className="text-xs font-bold text-foreground">
-                        {(() => {
-                          const vals = Object.values(canchaSeleccionada.precios_por_hora);
-                          const all = [...vals, canchaSeleccionada.precio_por_hora];
-                          const min = Math.min(...all);
-                          const max = Math.max(...all);
-                          return min === max ? `S/ ${min}/hora` : `S/ ${min}–${max}/hora`;
-                        })()}
-                      </span>
-                      {canchaSeleccionada.max_jugadores && (
-                        <>
-                          <span className="text-xs text-muted-foreground">·</span>
-                          <span className="text-xs text-muted-foreground">
-                            Máx. {canchaSeleccionada.max_jugadores} jug.
-                          </span>
-                        </>
-                      )}
-                    </>
-                  ) : (
-                    <span className="text-xs text-muted-foreground">
-                      Selecciona una cancha para ver los detalles
-                    </span>
-                  )}
-                </div>
-              </div>
 
-              {/* Fecha + Hora */}
-              <div className="grid grid-cols-2 gap-3">
+                {/* Cancha */}
                 <div>
                   <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">
-                    Fecha
+                    Cancha
                   </label>
-                  <input
-                    type="date"
-                    required
-                    disabled={!form.cancha_id}
-                    min={getLocalDateString()}
-                    value={form.fecha}
-                    onChange={(e) => setForm((p) => ({ ...p, fecha: e.target.value, hora: "" }))}
-                    className="w-full h-11 px-3 rounded-xl border border-border bg-background text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50 disabled:cursor-not-allowed"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">
-                    Hora disponible
-                  </label>
-                  {form.cancha_id && horasDisponibles.length === 0 ? (
-                    <div className="h-11 flex items-center px-3 rounded-xl border border-destructive/40 bg-destructive/5 text-xs text-destructive font-medium">
-                      Sin horarios libres
-                    </div>
+                  {loadingCanchas ? (
+                    <div className="h-11 bg-muted rounded-xl animate-pulse" />
                   ) : (
                     <select
                       required
-                      disabled={!form.cancha_id}
-                      value={form.hora}
-                      onChange={(e) => setForm((p) => ({ ...p, hora: e.target.value }))}
-                      className="w-full h-11 px-3 rounded-xl border border-border bg-background text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                      value={form.cancha_id}
+                      onChange={(e) => handleCanchaChange(e.target.value)}
+                      className="w-full h-11 px-3 rounded-xl border border-border bg-background text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30"
                     >
-                      {!form.hora && <option value="">Selecciona</option>}
-                      {horasDisponibles.map((h) => (
-                        <option key={h} value={h}>{h}</option>
+                      <option value="">Selecciona una cancha</option>
+                      {canchas.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.nombre} — {c.distrito}
+                        </option>
                       ))}
                     </select>
                   )}
-                </div>
-              </div>
-
-              {/* Nivel */}
-              <div>
-                <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">
-                  Nivel
-                </label>
-                <select
-                  value={form.nivel}
-                  onChange={(e) => setForm((p) => ({ ...p, nivel: e.target.value as Nivel }))}
-                  className="w-full h-11 px-3 rounded-xl border border-border bg-background text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30"
-                >
-                  <option value="libre">Libre (cualquier nivel)</option>
-                  <option value="principiante">Principiante</option>
-                  <option value="intermedio">Intermedio</option>
-                  <option value="avanzado">Avanzado</option>
-                </select>
-              </div>
-
-              {/* Jugadores */}
-              <div className="rounded-xl border border-border bg-secondary/30 p-3 space-y-3">
-                <p className="text-xs font-semibold text-foreground uppercase tracking-wide">
-                  Jugadores
-                </p>
-
-                {/* Total del partido */}
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">
-                    Total del partido (para dividir el precio)
-                  </label>
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const next = Math.max(form.jugadores_equipo - 1, 2);
-                        const max = Math.max(1, Math.min(form.jugadores_max, next - 1));
-                        setForm((p) => ({ ...p, jugadores_equipo: next, jugadores_max: max }));
-                      }}
-                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-background text-lg font-bold hover:bg-muted transition-colors disabled:opacity-40"
-                      disabled={form.jugadores_equipo <= 2}
-                    >−</button>
-                    <span className="flex-1 text-center text-xl font-bold text-foreground">{form.jugadores_equipo}</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const next = Math.min(form.jugadores_equipo + 1, maxJugadores);
-                        setForm((p) => ({ ...p, jugadores_equipo: next }));
-                      }}
-                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-background text-lg font-bold hover:bg-muted transition-colors disabled:opacity-40"
-                      disabled={form.jugadores_equipo >= maxJugadores}
-                    >+</button>
-                  </div>
-                  <p className="text-[10px] text-muted-foreground mt-1">
-                    {canchaSeleccionada?.max_jugadores ? `Máx. ${maxJugadores} según la cancha` : "Ej: 10 para una pichanga de 5 vs 5"}
-                  </p>
-                </div>
-
-                {/* Cupos disponibles */}
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">
-                    Cupos que abres (jugadores que buscas)
-                  </label>
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const next = Math.max(form.jugadores_max - 1, 1);
-                        setForm((p) => ({ ...p, jugadores_max: next }));
-                      }}
-                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-background text-lg font-bold hover:bg-muted transition-colors disabled:opacity-40"
-                      disabled={form.jugadores_max <= 1}
-                    >−</button>
-                    <span className="flex-1 text-center text-xl font-bold text-foreground">{form.jugadores_max}</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const next = Math.min(form.jugadores_max + 1, form.jugadores_equipo - 1);
-                        setForm((p) => ({ ...p, jugadores_max: next }));
-                      }}
-                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-background text-lg font-bold hover:bg-muted transition-colors disabled:opacity-40"
-                      disabled={form.jugadores_max >= form.jugadores_equipo - 1}
-                    >+</button>
-                  </div>
-                  {form.jugadores_max >= 1 && form.jugadores_max < form.jugadores_equipo && (
-                    <p className="text-[10px] text-primary font-semibold mt-1">
-                      Tu grupo: {form.jugadores_equipo - form.jugadores_max} · Buscas: {form.jugadores_max} más
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Resumen precio */}
-              <div className={`rounded-xl border px-4 py-3 space-y-1.5 transition-colors ${
-                precioTotal > 0 ? "border-border bg-secondary/40" : "border-border bg-muted/30"
-              }`}>
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
-                  Resumen de costo
-                </p>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-foreground">
-                    Precio de la cancha
-                    {form.hora && precioTotal > 0 && (
-                      <span className="ml-1 text-[10px] font-normal text-muted-foreground">
-                        ({form.hora})
+                  <div
+                    className={`mt-2 flex items-center gap-2 px-3 py-2 rounded-lg border h-9 transition-colors ${
+                      canchaSeleccionada
+                        ? "bg-primary/5 border-primary/20"
+                        : "bg-muted/40 border-border"
+                    }`}
+                  >
+                    {canchaSeleccionada ? (
+                      <>
+                        <span className="text-base select-none leading-none">
+                          {DEPORTE_EMOJI[canchaSeleccionada.tipo] ?? "🏅"}
+                        </span>
+                        <span className="text-xs text-primary font-semibold capitalize">
+                          {canchaSeleccionada.tipo}
+                        </span>
+                        <span className="text-xs text-muted-foreground">·</span>
+                        <span className="text-xs font-bold text-foreground">
+                          {(() => {
+                            const vals = Object.values(
+                              canchaSeleccionada.precios_por_hora,
+                            );
+                            const all = [
+                              ...vals,
+                              canchaSeleccionada.precio_por_hora,
+                            ];
+                            const min = Math.min(...all);
+                            const max = Math.max(...all);
+                            return min === max
+                              ? `S/ ${min}/hora`
+                              : `S/ ${min}–${max}/hora`;
+                          })()}
+                        </span>
+                        {canchaSeleccionada.max_jugadores && (
+                          <>
+                            <span className="text-xs text-muted-foreground">
+                              ·
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              Máx. {canchaSeleccionada.max_jugadores} jug.
+                            </span>
+                          </>
+                        )}
+                      </>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">
+                        Selecciona una cancha para ver los detalles
                       </span>
                     )}
-                  </span>
-                  <span className="font-bold">
-                    {precioTotal > 0 ? `S/ ${precioTotal}` : "—"}
-                  </span>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">
-                    {precioTotal > 0 ? `Entre ${form.jugadores_equipo} jugadores` : "Selecciona una cancha"}
-                  </span>
-                  <span className={`text-xl font-bold ${precioTotal > 0 ? "text-primary" : "text-muted-foreground"}`}>
-                    {precioTotal > 0 ? `S/ ${precioPorPersona} c/u` : "—"}
-                  </span>
-                </div>
-              </div>
 
-              {/* Descripción */}
-              <div>
-                <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">
-                  Descripción{" "}
-                  <span className="normal-case font-normal text-muted-foreground">(opcional)</span>
-                </label>
-                <textarea
-                  rows={2}
-                  maxLength={200}
-                  value={form.descripcion}
-                  onChange={(e) => setForm((p) => ({ ...p, descripcion: e.target.value }))}
-                  placeholder="Ej: Pichanga amistosa, llevamos el balón..."
-                  className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/30"
-                />
-              </div>
-            </form>
-
-            <div className="px-5 py-4 border-t border-border bg-background shrink-0">
-              <button
-                onClick={handleSubmit}
-                disabled={!form.hora || !form.cancha_id}
-                className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3.5 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Plus className="h-4 w-4" />
-                Continuar al pago
-              </button>
-            </div>
-        </div>
-
-        {/* ── PASO 2: Pago ── */}
-        <div className="w-1/2 flex flex-col min-h-0">
-            <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-4 space-y-4">
-              {error && (
-                <div className="flex items-center gap-2 rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive">
-                  <AlertCircle className="h-4 w-4 shrink-0" />
-                  {error}
-                </div>
-              )}
-
-              {/* Resumen del partido */}
-              <div className="rounded-xl border border-border bg-secondary/40 px-4 py-3 space-y-2">
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
-                  Resumen del partido
-                </p>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Cancha</span>
-                  <span className="font-semibold text-foreground text-right max-w-[60%] truncate">
-                    {canchaSeleccionada?.nombre}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Fecha y hora</span>
-                  <span className="font-semibold">{formatFechaDisplay(form.fecha)} · {form.hora}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Total del partido</span>
-                  <span className="font-semibold">{form.jugadores_equipo} jugadores</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Cupos que abres</span>
-                  <span className="font-semibold">{form.jugadores_max} cupos</span>
-                </div>
-                <div className="h-px bg-border" />
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-foreground">Total a pagar</span>
-                  <span className="text-lg font-bold text-primary">S/ {precioTotal}</span>
-                </div>
-              </div>
-
-              {/* Selector de método */}
-              <div>
-                <p className="text-xs font-semibold text-foreground mb-2 uppercase tracking-wide">
-                  Método de pago
-                </p>
-                <div className="grid grid-cols-2 gap-2">
-                  {metodosDisponibles.map((m) => {
-                    const isYape = m === "yape";
-                    const activeColor = isYape ? "#6C1FC6" : "#00C2CB";
-                    const isSelected = metodo === m;
-                    return (
-                      <button
-                        key={m}
-                        type="button"
-                        onClick={() => setMetodo(m)}
-                        className="flex items-center gap-3 rounded-xl border-2 p-3 transition-all"
-                        style={isSelected
-                          ? { borderColor: activeColor, backgroundColor: `${activeColor}0D` }
-                          : { borderColor: "hsl(var(--border))", backgroundColor: "hsl(var(--background))" }
-                        }
-                      >
-                        <div className="h-9 w-9 shrink-0 rounded-lg overflow-hidden border border-border">
-                          <Image
-                            src={isYape ? "/images/yape.png" : "/images/plin.png"}
-                            alt={m}
-                            width={36}
-                            height={36}
-                            className="object-contain"
-                          />
-                        </div>
-                        <p className="font-semibold text-foreground text-sm">
-                          {isYape ? "Yape" : "Plin"}
-                        </p>
-                        <div
-                          className="ml-auto h-4 w-4 shrink-0 rounded-full border-2 flex items-center justify-center"
-                          style={isSelected
-                            ? { borderColor: activeColor, backgroundColor: activeColor }
-                            : { borderColor: "hsl(var(--border))" }
-                          }
-                        >
-                          {isSelected && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Número de pago */}
-              {metodosDisponibles.length === 0 ? (
-                <div className="flex items-center gap-2 rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive">
-                  <AlertCircle className="h-4 w-4 shrink-0" />
-                  Esta cancha no tiene Yape ni Plin configurados. No es posible crear un partido aquí por ahora.
-                </div>
-              ) : numPago ? (
-                <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 flex items-center justify-between">
+                {/* Fecha + Hora */}
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <p className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wide mb-0.5">
-                      Envía S/ {precioTotal} a
-                    </p>
-                    <p className="text-xl font-bold text-foreground tracking-widest">
-                      {numPago}
-                    </p>
-                  </div>
-                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                    <Smartphone className="h-5 w-5 text-primary" />
-                  </div>
-                </div>
-              ) : null}
-
-              {/* Teléfono WhatsApp — solo si no está en el perfil */}
-              {!getStoredUser()?.phone && (
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-foreground">
-                    Número de celular <span className="text-destructive">*</span>
-                  </label>
-                  <div className="flex gap-2">
-                    <div className="flex items-center gap-1.5 rounded-lg border border-border bg-muted px-3 py-2 text-sm font-medium text-muted-foreground shrink-0">
-                      +51
-                    </div>
+                    <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">
+                      Fecha
+                    </label>
                     <input
-                      type="tel"
-                      placeholder="987654321"
-                      maxLength={9}
-                      value={telefonoInput}
-                      onChange={e => {
-                        setTelefonoInput(e.target.value.replace(/\D/g, '').slice(0, 9));
-                        setTelefonoError('');
-                      }}
-                      onBlur={e => {
-                        const v = e.target.value.trim();
-                        if (!v) setTelefonoError('Ingresa tu número de WhatsApp');
-                        else if (!/^9\d{8}$/.test(v)) setTelefonoError('Número inválido (9 dígitos, empieza en 9)');
-                      }}
-                      className={`flex-1 rounded-lg border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 ${telefonoError ? 'border-destructive' : 'border-border'}`}
+                      type="date"
+                      required
+                      disabled={!form.cancha_id}
+                      min={getLocalDateString()}
+                      value={form.fecha}
+                      onChange={(e) =>
+                        setForm((p) => ({
+                          ...p,
+                          fecha: e.target.value,
+                          hora: "",
+                        }))
+                      }
+                      className="w-full h-11 px-3 rounded-xl border border-border bg-background text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50 disabled:cursor-not-allowed"
                     />
                   </div>
-                  {telefonoError ? (
-                    <p className="text-xs text-destructive">{telefonoError}</p>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">
-                      Te enviaremos la confirmación por WhatsApp a este número
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {/* Upload comprobante */}
-              <div>
-                <p className="text-xs font-semibold text-foreground mb-2 uppercase tracking-wide">
-                  Comprobante de pago{" "}
-                  <span className="normal-case font-normal text-muted-foreground">(opcional)</span>
-                </p>
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleFileChange}
-                />
-                {comprobante ? (
-                  <div className="space-y-2">
-                    <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-border">
-                      <Image src={comprobante} alt="Comprobante" fill className="object-contain" />
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => { setComprobante(null); if (fileRef.current) fileRef.current.value = ""; }}
-                      className="flex items-center gap-1.5 text-xs text-destructive font-semibold"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                      Quitar imagen
-                    </button>
+                  <div>
+                    <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">
+                      Hora disponible
+                    </label>
+                    {form.cancha_id && horasDisponibles.length === 0 ? (
+                      <div className="h-11 flex items-center px-3 rounded-xl border border-destructive/40 bg-destructive/5 text-xs text-destructive font-medium">
+                        Sin horarios libres
+                      </div>
+                    ) : (
+                      <select
+                        required
+                        disabled={!form.cancha_id}
+                        value={form.hora}
+                        onChange={(e) =>
+                          setForm((p) => ({ ...p, hora: e.target.value }))
+                        }
+                        className="w-full h-11 px-3 rounded-xl border border-border bg-background text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {!form.hora && <option value="">Selecciona</option>}
+                        {horasDisponibles.map((h) => (
+                          <option key={h} value={h}>
+                            {h}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => fileRef.current?.click()}
-                    className="w-full flex flex-col items-center gap-2 py-6 rounded-xl border-2 border-dashed border-border hover:border-primary/40 hover:bg-primary/5 transition-colors"
+                </div>
+
+                {/* Nivel */}
+                <div>
+                  <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">
+                    Nivel
+                  </label>
+                  <select
+                    value={form.nivel}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, nivel: e.target.value as Nivel }))
+                    }
+                    className="w-full h-11 px-3 rounded-xl border border-border bg-background text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30"
                   >
-                    <ImageIcon className="h-7 w-7 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">
-                      <span className="font-semibold text-primary">Subir captura</span> del comprobante
+                    <option value="libre">Libre (cualquier nivel)</option>
+                    <option value="principiante">Principiante</option>
+                    <option value="intermedio">Intermedio</option>
+                    <option value="avanzado">Avanzado</option>
+                  </select>
+                </div>
+
+                {/* Jugadores */}
+                <div className="rounded-xl border border-border bg-secondary/30 p-3 space-y-3">
+                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide">
+                    Jugadores
+                  </p>
+
+                  {/* Total del partido */}
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">
+                      Total del partido (para dividir el precio)
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = Math.max(form.jugadores_equipo - 1, 2);
+                          const max = Math.max(
+                            1,
+                            Math.min(form.jugadores_max, next - 1),
+                          );
+                          setForm((p) => ({
+                            ...p,
+                            jugadores_equipo: next,
+                            jugadores_max: max,
+                          }));
+                        }}
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-background text-lg font-bold hover:bg-muted transition-colors disabled:opacity-40"
+                        disabled={form.jugadores_equipo <= 2}
+                      >
+                        −
+                      </button>
+                      <span className="flex-1 text-center text-xl font-bold text-foreground">
+                        {form.jugadores_equipo}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = Math.min(
+                            form.jugadores_equipo + 1,
+                            maxJugadores,
+                          );
+                          setForm((p) => ({ ...p, jugadores_equipo: next }));
+                        }}
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-background text-lg font-bold hover:bg-muted transition-colors disabled:opacity-40"
+                        disabled={form.jugadores_equipo >= maxJugadores}
+                      >
+                        +
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      {canchaSeleccionada?.max_jugadores
+                        ? `Máx. ${maxJugadores} según la cancha`
+                        : "Ej: 10 para una pichanga de 5 vs 5"}
+                    </p>
+                  </div>
+
+                  {/* Cupos disponibles */}
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">
+                      Cupos que abres (jugadores que buscas)
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = Math.max(form.jugadores_max - 1, 1);
+                          setForm((p) => ({ ...p, jugadores_max: next }));
+                        }}
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-background text-lg font-bold hover:bg-muted transition-colors disabled:opacity-40"
+                        disabled={form.jugadores_max <= 1}
+                      >
+                        −
+                      </button>
+                      <span className="flex-1 text-center text-xl font-bold text-foreground">
+                        {form.jugadores_max}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = Math.min(
+                            form.jugadores_max + 1,
+                            form.jugadores_equipo - 1,
+                          );
+                          setForm((p) => ({ ...p, jugadores_max: next }));
+                        }}
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-background text-lg font-bold hover:bg-muted transition-colors disabled:opacity-40"
+                        disabled={
+                          form.jugadores_max >= form.jugadores_equipo - 1
+                        }
+                      >
+                        +
+                      </button>
+                    </div>
+                    {form.jugadores_max >= 1 &&
+                      form.jugadores_max < form.jugadores_equipo && (
+                        <p className="text-[10px] text-primary font-semibold mt-1">
+                          Tu grupo: {form.jugadores_equipo - form.jugadores_max}{" "}
+                          · Buscas: {form.jugadores_max} más
+                        </p>
+                      )}
+                  </div>
+                </div>
+
+                {/* Resumen precio */}
+                <div
+                  className={`rounded-xl border px-4 py-3 space-y-1.5 transition-colors ${
+                    precioTotal > 0
+                      ? "border-border bg-secondary/40"
+                      : "border-border bg-muted/30"
+                  }`}
+                >
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                    Resumen de costo
+                  </p>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-foreground">
+                      Precio de la cancha
+                      {form.hora && precioTotal > 0 && (
+                        <span className="ml-1 text-[10px] font-normal text-muted-foreground">
+                          ({form.hora})
+                        </span>
+                      )}
                     </span>
-                  </button>
-                )}
-                <p className="mt-2 text-[11px] text-muted-foreground">
-                  También puedes enviar sin comprobante; el admin podrá pedírtelo después.
-                </p>
+                    <span className="font-bold">
+                      {precioTotal > 0 ? `S/ ${precioTotal}` : "—"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      {precioTotal > 0
+                        ? `Entre ${form.jugadores_equipo} jugadores`
+                        : "Selecciona una cancha"}
+                    </span>
+                    <span
+                      className={`text-xl font-bold ${precioTotal > 0 ? "text-primary" : "text-muted-foreground"}`}
+                    >
+                      {precioTotal > 0 ? `S/ ${precioPorPersona} c/u` : "—"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Descripción */}
+                <div>
+                  <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">
+                    Descripción{" "}
+                    <span className="normal-case font-normal text-muted-foreground">
+                      (opcional)
+                    </span>
+                  </label>
+                  <textarea
+                    rows={2}
+                    maxLength={200}
+                    value={form.descripcion}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, descripcion: e.target.value }))
+                    }
+                    placeholder="Ej: Pichanga amistosa, llevamos el balón..."
+                    className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                </div>
+              </form>
+
+              <div className="px-5 py-4 border-t border-border bg-background shrink-0">
+                <button
+                  onClick={handleSubmit}
+                  disabled={!form.hora || !form.cancha_id}
+                  className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3.5 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Plus className="h-4 w-4" />
+                  Continuar al pago
+                </button>
               </div>
             </div>
 
-            <div className="px-5 py-4 border-t border-border bg-background shrink-0">
-              <button
-                onClick={handleConfirmarPago}
-                disabled={submitting}
-                className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3.5 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {submitting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <>
-                    <Upload className="h-4 w-4" />
-                    Confirmar y publicar partido
-                  </>
+            {/* ── PASO 2: Pago ── */}
+            <div className="w-1/2 flex flex-col min-h-0">
+              <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-4 space-y-4">
+                {error && (
+                  <div className="flex items-center gap-2 rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    {error}
+                  </div>
                 )}
-              </button>
+
+                {/* Resumen del partido */}
+                <div className="rounded-xl border border-border bg-secondary/40 px-4 py-3 space-y-2">
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                    Resumen del partido
+                  </p>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Cancha</span>
+                    <span className="font-semibold text-foreground text-right max-w-[60%] truncate">
+                      {canchaSeleccionada?.nombre}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Fecha y hora</span>
+                    <span className="font-semibold">
+                      {formatFechaDisplay(form.fecha)} · {form.hora}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      Total del partido
+                    </span>
+                    <span className="font-semibold">
+                      {form.jugadores_equipo} jugadores
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      Cupos que abres
+                    </span>
+                    <span className="font-semibold">
+                      {form.jugadores_max} cupos
+                    </span>
+                  </div>
+                  <div className="h-px bg-border" />
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-semibold text-foreground">
+                      Total a pagar
+                    </span>
+                    <span className="text-lg font-bold text-primary">
+                      S/ {precioTotal}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Selector de método */}
+                <div>
+                  <p className="text-xs font-semibold text-foreground mb-2 uppercase tracking-wide">
+                    Método de pago
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {metodosDisponibles.map((m) => {
+                      const isYape = m === "yape";
+                      const activeColor = isYape ? "#6C1FC6" : "#00C2CB";
+                      const isSelected = metodo === m;
+                      return (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => setMetodo(m)}
+                          className="flex items-center gap-3 rounded-xl border-2 p-3 transition-all"
+                          style={
+                            isSelected
+                              ? {
+                                  borderColor: activeColor,
+                                  backgroundColor: `${activeColor}0D`,
+                                }
+                              : {
+                                  borderColor: "hsl(var(--border))",
+                                  backgroundColor: "hsl(var(--background))",
+                                }
+                          }
+                        >
+                          <div className="h-9 w-9 shrink-0 rounded-lg overflow-hidden border border-border">
+                            <Image
+                              src={
+                                isYape ? "/images/yape.png" : "/images/plin.png"
+                              }
+                              alt={m}
+                              width={36}
+                              height={36}
+                              className="object-contain"
+                            />
+                          </div>
+                          <p className="font-semibold text-foreground text-sm">
+                            {isYape ? "Yape" : "Plin"}
+                          </p>
+                          <div
+                            className="ml-auto h-4 w-4 shrink-0 rounded-full border-2 flex items-center justify-center"
+                            style={
+                              isSelected
+                                ? {
+                                    borderColor: activeColor,
+                                    backgroundColor: activeColor,
+                                  }
+                                : { borderColor: "hsl(var(--border))" }
+                            }
+                          >
+                            {isSelected && (
+                              <div className="h-1.5 w-1.5 rounded-full bg-white" />
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Número de pago */}
+                {metodosDisponibles.length === 0 ? (
+                  <div className="flex items-center gap-2 rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    Esta cancha no tiene Yape ni Plin configurados. No es
+                    posible crear un partido aquí por ahora.
+                  </div>
+                ) : numPago ? (
+                  <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wide mb-0.5">
+                        Envía S/ {precioTotal} a
+                      </p>
+                      <p className="text-xl font-bold text-foreground tracking-widest">
+                        {numPago}
+                      </p>
+                    </div>
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <Smartphone className="h-5 w-5 text-primary" />
+                    </div>
+                  </div>
+                ) : null}
+
+                {/* Teléfono WhatsApp — solo si no está en el perfil */}
+                {!getStoredUser()?.phone && (
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-foreground">
+                      Número de celular{" "}
+                      <span className="text-destructive">*</span>
+                    </label>
+                    <div className="flex gap-2 min-w-0">
+                      <div className="flex items-center gap-1.5 rounded-lg border border-border bg-muted px-3 py-2 text-sm font-medium text-muted-foreground shrink-0">
+                        +51
+                      </div>
+                      <input
+                        type="tel"
+                        placeholder="987654321"
+                        maxLength={9}
+                        value={telefonoInput}
+                        onChange={(e) => {
+                          setTelefonoInput(
+                            e.target.value.replace(/\D/g, "").slice(0, 9),
+                          );
+                          setTelefonoError("");
+                        }}
+                        onBlur={(e) => {
+                          const v = e.target.value.trim();
+                          if (!v)
+                            setTelefonoError("Ingresa tu número de WhatsApp");
+                          else if (!/^9\d{8}$/.test(v))
+                            setTelefonoError(
+                              "Número inválido (9 dígitos, empieza en 9)",
+                            );
+                        }}
+                        className={`flex-1 min-w-0 rounded-lg border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 ${telefonoError ? "border-destructive" : "border-border"}`}
+                      />
+                    </div>
+                    {telefonoError ? (
+                      <p className="text-xs text-destructive">
+                        {telefonoError}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Te enviaremos la confirmación por WhatsApp a este número
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Upload comprobante */}
+                <div>
+                  <p className="text-xs font-semibold text-foreground mb-2 uppercase tracking-wide">
+                    Comprobante de pago{" "}
+                    <span className="normal-case font-normal text-muted-foreground">
+                      (opcional)
+                    </span>
+                  </p>
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleFileChange}
+                  />
+                  {comprobante ? (
+                    <div className="space-y-2">
+                      <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-border">
+                        <Image
+                          src={comprobante}
+                          alt="Comprobante"
+                          fill
+                          className="object-contain"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setComprobante(null);
+                          if (fileRef.current) fileRef.current.value = "";
+                        }}
+                        className="flex items-center gap-1.5 text-xs text-destructive font-semibold"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                        Quitar imagen
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => fileRef.current?.click()}
+                      className="w-full flex flex-col items-center gap-2 py-6 rounded-xl border-2 border-dashed border-border hover:border-primary/40 hover:bg-primary/5 transition-colors"
+                    >
+                      <ImageIcon className="h-7 w-7 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">
+                        <span className="font-semibold text-primary">
+                          Subir captura
+                        </span>{" "}
+                        del comprobante
+                      </span>
+                    </button>
+                  )}
+                  <p className="mt-2 text-[11px] text-muted-foreground">
+                    También puedes enviar sin comprobante; el admin podrá
+                    pedírtelo después.
+                  </p>
+                </div>
+              </div>
+
+              <div className="px-5 py-4 border-t border-border bg-background shrink-0">
+                <button
+                  onClick={handleConfirmarPago}
+                  disabled={submitting}
+                  className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3.5 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {submitting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4" />
+                      Confirmar y publicar partido
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
+          </div>
+          {/* fin track */}
         </div>
-
-          </div>{/* fin track */}
-        </div>{/* fin outer overflow */}
-
+        {/* fin outer overflow */}
       </DialogContent>
     </Dialog>
   );
@@ -1128,20 +1327,38 @@ function calcularDevolucionEstimada(partido: PartidoAPI) {
   const precio = partido.precio_total;
 
   if (partido.estado === "pendiente") {
-    return { porcentaje: 100, devolucion: precio, motivo: "Partido no confirmado aún" };
+    return {
+      porcentaje: 100,
+      devolucion: precio,
+      motivo: "Partido no confirmado aún",
+    };
   }
 
   const horasRestantes =
-    (new Date(`${partido.fecha}T${partido.hora}`).getTime() - Date.now()) / (1000 * 60 * 60);
+    (new Date(`${partido.fecha}T${partido.hora}`).getTime() - Date.now()) /
+    (1000 * 60 * 60);
 
   let porcentaje = 0;
   let motivo = "";
-  if (horasRestantes >= 4)      { porcentaje = 85; motivo = "Más de 4 h de anticipación"; }
-  else if (horasRestantes >= 2) { porcentaje = 60; motivo = "Entre 2 y 4 h de anticipación"; }
-  else if (horasRestantes >= 1) { porcentaje = 30; motivo = "Entre 1 y 2 h de anticipación"; }
-  else                          { porcentaje = 0;  motivo = "Menos de 1 h de anticipación"; }
+  if (horasRestantes >= 4) {
+    porcentaje = 85;
+    motivo = "Más de 4 h de anticipación";
+  } else if (horasRestantes >= 2) {
+    porcentaje = 60;
+    motivo = "Entre 2 y 4 h de anticipación";
+  } else if (horasRestantes >= 1) {
+    porcentaje = 30;
+    motivo = "Entre 1 y 2 h de anticipación";
+  } else {
+    porcentaje = 0;
+    motivo = "Menos de 1 h de anticipación";
+  }
 
-  return { porcentaje, devolucion: Math.round(precio * porcentaje / 100), motivo };
+  return {
+    porcentaje,
+    devolucion: Math.round((precio * porcentaje) / 100),
+    motivo,
+  };
 }
 
 // ── Página principal ──────────────────────────────────────────
@@ -1150,7 +1367,9 @@ export default function PartidosPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [partidos, setPartidos] = useState<PartidoAPI[]>([]);
-  const [misPartidosPendientes, setMisPartidosPendientes] = useState<PartidoAPI[]>([]);
+  const [misPartidosPendientes, setMisPartidosPendientes] = useState<
+    PartidoAPI[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [deporte, setDeporte] = useState("todos");
@@ -1160,13 +1379,25 @@ export default function PartidosPage() {
   const [alertMsg, setAlertMsg] = useState("");
   const [ubicacion, setUbicacion] = useState<Coordenadas | null>(null);
   const [loadingUbicacion, setLoadingUbicacion] = useState(false);
-  const [confirmacion, setConfirmacion] = useState<{ id: string; tipo: "salir" | "cancelar" } | null>(null);
+  const [confirmacion, setConfirmacion] = useState<{
+    id: string;
+    tipo: "salir" | "cancelar";
+  } | null>(null);
+  const [modalTelefono, setModalTelefono] = useState<{ id: string } | null>(
+    null,
+  );
+  const [telefonoModalInput, setTelefonoModalInput] = useState("");
+  const [telefonoModalError, setTelefonoModalError] = useState("");
+  const [telefonoModalLoading, setTelefonoModalLoading] = useState(false);
   const [partidoMapa, setPartidoMapa] = useState<PartidoAPI | null>(null);
   const [partidoDetalle, setPartidoDetalle] = useState<PartidoAPI | null>(null);
 
   const fetchMisPartidosPendientes = useCallback(async () => {
     const token = getToken();
-    if (!token) { setMisPartidosPendientes([]); return; }
+    if (!token) {
+      setMisPartidosPendientes([]);
+      return;
+    }
     try {
       const res = await fetch("/api/partidos/mis-partidos", {
         headers: { Authorization: `Bearer ${token}` },
@@ -1174,7 +1405,7 @@ export default function PartidosPage() {
       if (!res.ok) return;
       const data = await res.json();
       const pendientes = (Array.isArray(data) ? data : []).filter(
-        (p: PartidoAPI) => p.estado === "pendiente"
+        (p: PartidoAPI) => p.estado === "pendiente",
       );
       setMisPartidosPendientes(pendientes);
     } catch {
@@ -1221,7 +1452,11 @@ export default function PartidosPage() {
       guardarUbicacion(coords);
       setUbicacion(coords);
     } catch {
-      toast({ title: "No se pudo obtener tu ubicación", description: "Verifica que hayas dado permiso al navegador.", variant: "destructive" });
+      toast({
+        title: "No se pudo obtener tu ubicación",
+        description: "Verifica que hayas dado permiso al navegador.",
+        variant: "destructive",
+      });
     } finally {
       setLoadingUbicacion(false);
     }
@@ -1233,7 +1468,8 @@ export default function PartidosPage() {
   };
 
   const solicitarSalir = (id: string) => setConfirmacion({ id, tipo: "salir" });
-  const solicitarCancelar = (id: string) => setConfirmacion({ id, tipo: "cancelar" });
+  const solicitarCancelar = (id: string) =>
+    setConfirmacion({ id, tipo: "cancelar" });
 
   const confirmarAccion = async () => {
     if (!confirmacion) return;
@@ -1243,24 +1479,32 @@ export default function PartidosPage() {
     else await handleCancelar(id);
   };
 
-  const handleUnirse = async (id: string) => {
+  const ejecutarUnirse = async (id: string, telefono?: string) => {
     const token = getToken();
-    if (!token) {
-      router.push("/login?redirect=/partidos");
-      return;
-    }
     const partidoInfo = partidos.find((p) => p.id === id);
     setLoadingId(id);
     setAlertMsg("");
     try {
       const res = await fetch(`/api/partidos/${id}/unirse`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ telefono: telefono ?? null }),
       });
       const data = await res.json();
       if (!res.ok) {
         setAlertMsg(data.error ?? "No se pudo unir al partido.");
         return;
+      }
+      if (telefono) {
+        const stored = getStoredUser();
+        if (stored)
+          localStorage.setItem(
+            "cp_user",
+            JSON.stringify({ ...stored, phone: telefono }),
+          );
       }
       toast({
         title: "¡Te uniste al partido!",
@@ -1274,6 +1518,39 @@ export default function PartidosPage() {
     } finally {
       setLoadingId(null);
     }
+  };
+
+  const handleUnirse = async (id: string) => {
+    const token = getToken();
+    if (!token) {
+      router.push("/login?redirect=/partidos");
+      return;
+    }
+    if (!getStoredUser()?.phone) {
+      setTelefonoModalInput("");
+      setTelefonoModalError("");
+      setModalTelefono({ id });
+      return;
+    }
+    await ejecutarUnirse(id);
+  };
+
+  const handleUnirseConTelefono = async () => {
+    const tel = telefonoModalInput.trim();
+    if (!tel) {
+      setTelefonoModalError("Ingresa tu número de WhatsApp");
+      return;
+    }
+    if (!/^9\d{8}$/.test(tel)) {
+      setTelefonoModalError("Debe tener 9 dígitos y empezar con 9");
+      return;
+    }
+    if (!modalTelefono) return;
+    setTelefonoModalLoading(true);
+    const idPartido = modalTelefono.id;
+    setModalTelefono(null);
+    await ejecutarUnirse(idPartido, tel);
+    setTelefonoModalLoading(false);
   };
 
   const handleSalir = async (id: string) => {
@@ -1340,13 +1617,18 @@ export default function PartidosPage() {
         ...p,
         distancia:
           p.cancha_lat != null && p.cancha_lng != null
-            ? calcularDistancia(ubicacion, { lat: p.cancha_lat, lng: p.cancha_lng })
+            ? calcularDistancia(ubicacion, {
+                lat: p.cancha_lat,
+                lng: p.cancha_lng,
+              })
             : undefined,
       }))
       .sort((a, b) => (a.distancia ?? Infinity) - (b.distancia ?? Infinity));
   }, [partidos, ubicacion, deporte, soloHoy]);
 
-  const disponibles = partidosFiltrados.filter((p) => p.estado === "abierto").length;
+  const disponibles = partidosFiltrados.filter(
+    (p) => p.estado === "abierto",
+  ).length;
 
   return (
     <div className="flex flex-col flex-1 bg-background">
@@ -1427,7 +1709,6 @@ export default function PartidosPage() {
       {/* Contenido */}
       <div className="flex-1 bg-background">
         <div className="container mx-auto px-4 md:px-8 lg:px-12 py-5">
-
           {/* Alerta de error inline */}
           {alertMsg && (
             <div className="flex items-center gap-2 rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive mb-4">
@@ -1584,77 +1865,152 @@ export default function PartidosPage() {
       )}
 
       {/* Dialog de confirmación para salir/cancelar */}
-      {confirmacion && (() => {
-        const partidoACancelar = confirmacion.tipo === "cancelar"
-          ? ([...partidos, ...misPartidosPendientes].find((p) => p.id === confirmacion.id) ?? null)
-          : null;
-        const dev = partidoACancelar ? calcularDevolucionEstimada(partidoACancelar) : null;
+      {confirmacion &&
+        (() => {
+          const partidoACancelar =
+            confirmacion.tipo === "cancelar"
+              ? ([...partidos, ...misPartidosPendientes].find(
+                  (p) => p.id === confirmacion.id,
+                ) ?? null)
+              : null;
+          const dev = partidoACancelar
+            ? calcularDevolucionEstimada(partidoACancelar)
+            : null;
 
-        return (
-          <Dialog open onOpenChange={(v) => !v && setConfirmacion(null)}>
-            <DialogContent className="sm:max-w-sm">
-              <DialogTitle>
-                {confirmacion.tipo === "cancelar" ? "Cancelar partido" : "Salir del partido"}
-              </DialogTitle>
+          return (
+            <Dialog open onOpenChange={(v) => !v && setConfirmacion(null)}>
+              <DialogContent className="sm:max-w-sm">
+                <DialogTitle>
+                  {confirmacion.tipo === "cancelar"
+                    ? "Cancelar partido"
+                    : "Salir del partido"}
+                </DialogTitle>
 
-              {confirmacion.tipo === "cancelar" && dev && partidoACancelar ? (
-                <div className="mt-2 space-y-3">
-                  <p className="text-sm text-muted-foreground">
-                    Los jugadores serán notificados. Revisa la devolución estimada:
-                  </p>
-                  <div className="rounded-xl border border-border bg-secondary/40 px-4 py-3 space-y-2">
-                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
-                      Devolución estimada
+                {confirmacion.tipo === "cancelar" && dev && partidoACancelar ? (
+                  <div className="mt-2 space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      Los jugadores serán notificados. Revisa la devolución
+                      estimada:
                     </p>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Pagado</span>
-                      <span className="font-semibold">S/ {partidoACancelar.precio_total}</span>
+                    <div className="rounded-xl border border-border bg-secondary/40 px-4 py-3 space-y-2">
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                        Devolución estimada
+                      </p>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Pagado</span>
+                        <span className="font-semibold">
+                          S/ {partidoACancelar.precio_total}
+                        </span>
+                      </div>
+                      <div className="h-px bg-border" />
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">
+                          Devolución ({dev.porcentaje}%)
+                        </span>
+                        <span
+                          className={`text-base font-bold ${dev.devolucion > 0 ? "text-primary" : "text-destructive"}`}
+                        >
+                          S/ {dev.devolucion}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">
+                        {dev.motivo}
+                      </p>
                     </div>
-                    <div className="h-px bg-border" />
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Devolución ({dev.porcentaje}%)</span>
-                      <span className={`text-base font-bold ${dev.devolucion > 0 ? "text-primary" : "text-destructive"}`}>
-                        S/ {dev.devolucion}
-                      </span>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground">{dev.motivo}</p>
+                    {dev.devolucion === 0 && (
+                      <p className="text-xs text-destructive font-medium">
+                        No se realizará ninguna devolución por cancelación
+                        tardía.
+                      </p>
+                    )}
                   </div>
-                  {dev.devolucion === 0 && (
-                    <p className="text-xs text-destructive font-medium">
-                      No se realizará ninguna devolución por cancelación tardía.
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground mt-1">
-                  ¿Seguro que quieres salir de este partido?
-                </p>
-              )}
+                ) : (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    ¿Seguro que quieres salir de este partido?
+                  </p>
+                )}
 
-              <div className="flex gap-3 mt-4">
-                <button
-                  onClick={() => setConfirmacion(null)}
-                  className="flex-1 py-2.5 rounded-xl border border-border text-sm font-semibold text-foreground hover:bg-muted/40 transition-colors"
-                >
-                  Volver
-                </button>
-                <button
-                  onClick={confirmarAccion}
-                  className="flex-1 py-2.5 rounded-xl bg-destructive text-destructive-foreground text-sm font-bold hover:bg-destructive/90 transition-colors"
-                >
-                  {confirmacion.tipo === "cancelar" ? "Sí, cancelar" : "Sí, salir"}
-                </button>
+                <div className="flex gap-3 mt-4">
+                  <button
+                    onClick={() => setConfirmacion(null)}
+                    className="flex-1 py-2.5 rounded-xl border border-border text-sm font-semibold text-foreground hover:bg-muted/40 transition-colors"
+                  >
+                    Volver
+                  </button>
+                  <button
+                    onClick={confirmarAccion}
+                    className="flex-1 py-2.5 rounded-xl bg-destructive text-destructive-foreground text-sm font-bold hover:bg-destructive/90 transition-colors"
+                  >
+                    {confirmacion.tipo === "cancelar"
+                      ? "Sí, cancelar"
+                      : "Sí, salir"}
+                  </button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          );
+        })()}
+
+      {/* Modal teléfono al unirse */}
+      <Dialog
+        open={!!modalTelefono}
+        onOpenChange={(v) => !v && setModalTelefono(null)}
+      >
+        <DialogContent className="sm:max-w-sm">
+          <DialogTitle>Número de WhatsApp</DialogTitle>
+          <p className="text-sm text-muted-foreground -mt-1">
+            Necesitamos tu número para notificarte novedades del partido.
+          </p>
+          <div className="space-y-3 mt-1">
+            <div className="flex gap-2 min-w-0">
+              <div className="flex items-center gap-1.5 rounded-lg border border-border bg-muted px-3 py-2 text-sm font-medium text-muted-foreground shrink-0">
+                +51
               </div>
-            </DialogContent>
-          </Dialog>
-        );
-      })()}
+              <input
+                type="tel"
+                placeholder="987654321"
+                maxLength={9}
+                value={telefonoModalInput}
+                autoFocus
+                onChange={(e) => {
+                  setTelefonoModalInput(
+                    e.target.value.replace(/\D/g, "").slice(0, 9),
+                  );
+                  setTelefonoModalError("");
+                }}
+                onKeyDown={(e) =>
+                  e.key === "Enter" && handleUnirseConTelefono()
+                }
+                className={`flex-1 min-w-0 rounded-lg border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 ${telefonoModalError ? "border-destructive" : "border-border"}`}
+              />
+            </div>
+            {telefonoModalError && (
+              <p className="text-xs text-destructive">{telefonoModalError}</p>
+            )}
+            <button
+              onClick={handleUnirseConTelefono}
+              disabled={telefonoModalLoading}
+              className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-bold hover:bg-primary/90 transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+            >
+              {telefonoModalLoading && (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              )}
+              Confirmar y unirme
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Sheet para crear partido */}
       <CrearPartidoSheet
         open={showCrear}
         onClose={() => setShowCrear(false)}
-        onCreado={async () => { await Promise.all([fetchPartidos(true), fetchMisPartidosPendientes()]); }}
+        onCreado={async () => {
+          await Promise.all([
+            fetchPartidos(true),
+            fetchMisPartidosPendientes(),
+          ]);
+        }}
       />
     </div>
   );

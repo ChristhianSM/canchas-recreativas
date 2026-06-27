@@ -14,6 +14,7 @@ import {
   Users,
   Newspaper,
   Gift,
+  BarChart2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +36,7 @@ function logoutAdmin() {
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/reservas", label: "Reservas", icon: CalendarCheck },
+  { href: "/admin/reportes", label: "Reportes", icon: BarChart2 },
   { href: "/admin/canchas", label: "Canchas", icon: MapPin },
   { href: "/admin/usuarios", label: "Usuarios", icon: Users },
   { href: "/admin/noticias", label: "Publicaciones", icon: Newspaper },

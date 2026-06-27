@@ -56,9 +56,11 @@ function AuthCallbackContent() {
         body: JSON.stringify({ nombre, email, telefono }),
       }).catch((err) => console.error('[auth-callback] sync-oauth falló:', err));
 
-      console.log('[auth-callback] ✅ Redirigiendo a /');
+      const returnUrl = sessionStorage.getItem('oauth_return_url');
+      sessionStorage.removeItem('oauth_return_url');
       window.dispatchEvent(new Event('user-login'));
-      router.replace('/');
+      console.log('[auth-callback] ✅ Redirigiendo a', returnUrl ?? '/');
+      router.replace(returnUrl ?? '/');
     };
 
     const code = searchParams.get('code');

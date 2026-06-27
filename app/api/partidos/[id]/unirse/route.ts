@@ -27,6 +27,9 @@ export async function POST(
     return NextResponse.json({ error: 'El partido no tiene cupos disponibles' }, { status: 409 });
   }
 
+  const body = await req.json().catch(() => ({}));
+  const telefono: string | null = body.telefono ?? null;
+
   const { error: joinError } = await sb.from('partido_jugadores').insert({
     partido_id: id,
     usuario_id: user.id,
@@ -39,6 +42,10 @@ export async function POST(
       return NextResponse.json({ error: 'Ya estás en este partido' }, { status: 409 });
     }
     return NextResponse.json({ error: joinError.message }, { status: 500 });
+  }
+
+  if (telefono) {
+    await sb.from('usuarios').update({ telefono }).eq('id', user.id);
   }
 
   return NextResponse.json({ ok: true });

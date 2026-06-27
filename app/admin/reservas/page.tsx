@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import Image from 'next/image';
-import { CheckCircle2, XCircle, Clock, Eye, Search, X, CalendarDays, Loader2, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, Eye, Search, X, CalendarDays, Loader2, AlertCircle, ChevronLeft, ChevronRight, FileSpreadsheet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -13,6 +13,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { type Reserva } from '@/lib/store';
 import { getAdminTokenFresh } from '@/lib/supabase-browser';
+import { exportarReservasExcel } from '@/lib/export-reservas';
 
 export default function AdminReservasPage() {
   const [reservas, setReservas]     = useState<Reserva[]>([]);
@@ -23,8 +24,9 @@ export default function AdminReservasPage() {
   const [filtroCancha, setFiltroCancha]     = useState('');
   const [loading, setLoading]       = useState(true);
   const [accion, setAccion]         = useState<'confirmando' | 'rechazando' | 'cancelando' | null>(null);
-  const [procesando, setProcesando] = useState(false);
-  const [page, setPage]             = useState(1);
+  const [procesando, setProcesando]   = useState(false);
+  const [exportando, setExportando]   = useState(false);
+  const [page, setPage]               = useState(1);
   const [total, setTotal]           = useState(0);
   const [counts, setCounts]         = useState<Record<string, number>>({});
   const LIMIT = 50;
@@ -178,6 +180,40 @@ export default function AdminReservasPage() {
     r => r.estado === 'cancelada' && (r.devolucionCalculada ?? 0) > 0 && !r.devolucionProcesada
   );
 
+  const handleExportar = async () => {
+    setExportando(true);
+    try {
+      const token = await getAdminToken();
+      const res = await fetch('/api/reservas/all', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data: any[] = await res.json();
+      if (!Array.isArray(data) || data.length === 0) return;
+      const filas = data.map((r: any) => ({
+        'ID':                   r.id,
+        'Usuario':              r.usuario_nombre,
+        'Email':                r.usuario_email,
+        'Teléfono':             r.usuario_telefono ?? '',
+        'Cancha':               r.cancha_nombre,
+        'Fecha juego':          new Date(r.fecha + 'T00:00:00').toLocaleDateString('es-PE'),
+        'Hora':                 r.hora,
+        'Fecha reservado':      new Date(r.creado_en).toLocaleString('es-PE'),
+        'Monto total (S/)':     r.precio,
+        'Modo pago':            r.modo_pago === 'parcial' ? 'Parcial' : 'Completo',
+        'Adelanto (S/)':        r.modo_pago === 'parcial' ? (r.monto_adelanto ?? '') : '',
+        'Saldo cancha (S/)':    r.modo_pago === 'parcial' ? (r.saldo_pendiente ?? '') : '',
+        'Método':               r.metodo_pago,
+        'Estado':               (r.estado as string).charAt(0).toUpperCase() + (r.estado as string).slice(1),
+        'Devolución (S/)':      r.devolucion_calculada ?? '',
+        'Devolución procesada': r.devolucion_procesada ? 'Sí' : (r.devolucion_calculada ? 'No' : ''),
+      }));
+      const fecha = new Date().toISOString().slice(0, 10);
+      exportarReservasExcel(filas, `reservas-${fecha}`);
+    } finally {
+      setExportando(false);
+    }
+  };
+
   const marcarDevolucion = async (id: string) => {
     setProcesando(true);
     const token = await getAdminToken();
@@ -304,7 +340,7 @@ export default function AdminReservasPage() {
           <h1 className="text-2xl font-bold text-foreground">Reservas</h1>
           <p className="text-muted-foreground">Gestiona y confirma los pagos de tus clientes</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           {byEstado('pendiente').length > 0 && (
             <Badge className="bg-yellow-500 text-white text-sm px-3 py-1">
               {byEstado('pendiente').length} pendiente{byEstado('pendiente').length > 1 ? 's' : ''}
@@ -315,6 +351,12 @@ export default function AdminReservasPage() {
               {devolucionesPendientes.length} devolución{devolucionesPendientes.length > 1 ? 'es' : ''} pendiente{devolucionesPendientes.length > 1 ? 's' : ''}
             </Badge>
           )}
+          <Button variant="outline" size="sm" onClick={handleExportar} disabled={exportando} className="gap-2">
+            {exportando
+              ? <Loader2 className="h-4 w-4 animate-spin" />
+              : <FileSpreadsheet className="h-4 w-4" />}
+            {exportando ? 'Exportando...' : 'Exportar Excel'}
+          </Button>
         </div>
       </div>
 

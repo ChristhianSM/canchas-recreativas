@@ -12,6 +12,7 @@ import {
   LogOut,
   Menu,
   X,
+  BarChart2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +23,7 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { href: "/admin-cancha", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin-cancha/reservas", label: "Reservas", icon: CalendarCheck },
+  { href: "/admin-cancha/reportes", label: "Reportes", icon: BarChart2 },
   { href: "/admin-cancha/canchas", label: "Mis Canchas", icon: Store },
   {
     href: "/admin-cancha/noticias",
