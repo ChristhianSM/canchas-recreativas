@@ -37,12 +37,12 @@ const HOME_FAQS = [
   {
     question: "¿Cómo funciona CanchaGo?",
     answer:
-      "Busca una cancha por deporte, fecha y hora. Elige el horario disponible y confirma tu reserva pagando un adelanto con Yape, Plin o transferencia bancaria. Recibes la confirmación al instante, sin llamadas.",
+      "Busca una cancha por deporte, fecha y hora. Elige el horario disponible y confirma tu reserva pagando un adelanto con Yape o Plin. Recibes la confirmación al instante, sin llamadas.",
   },
   {
     question: "¿Cómo pago mi reserva?",
     answer:
-      "Aceptamos Yape, Plin y transferencia bancaria. Puedes pagar el monto completo o dejar un adelanto y cancelar el saldo restante el día de tu reserva.",
+      "Aceptamos Yape y Plin. Puedes pagar el monto completo o dejar un adelanto y cancelar el saldo restante el día de tu reserva.",
   },
   {
     question: "¿Puedo cancelar o modificar mi reserva?",
@@ -965,7 +965,7 @@ export default function HomePage() {
                           disabled={isPast}
                           className={`
                             aspect-square flex items-center justify-center text-sm rounded-md transition-colors
-                            ${isPast ? "text-gray-300 cursor-not-allowed" : "hover:bg-gray-100 dark:hover:bg-muted"}
+                            ${isPast ? "text-gray-300 dark:text-neutral-600 cursor-not-allowed" : "hover:bg-gray-100 dark:hover:bg-muted"}
                             ${isSelected ? "bg-[#16a34a] text-white hover:bg-[#15803d]" : ""}
                             ${isToday && !isSelected ? "border-2 border-[#16a34a] text-[#16a34a] font-semibold" : ""}
                           `}
@@ -1232,7 +1232,7 @@ export default function HomePage() {
                 icon: CreditCard,
                 title: "Paga con Yape o Plin",
                 desc: "Confirma con un adelanto desde la app. Recibes tu reserva al momento, sin llamadas.",
-                tag: "También transferencia bancaria",
+                tag: "También puedes pagar en cancha",
                 highlight: true,
               },
             ].map((item, idx) => (
@@ -1395,7 +1395,7 @@ export default function HomePage() {
               {
                 icon: CreditCard,
                 title: "Pagos fáciles",
-                desc: "Paga con tarjeta, transferencia o saldo en la app de forma segura.",
+                desc: "Paga con yape o plim en la app de forma segura.",
               },
             ].map((b) => (
               <div
@@ -1447,8 +1447,12 @@ export default function HomePage() {
                 <div className="flex items-start gap-3 bg-white/10 border border-white/20 rounded-xl px-5 py-4">
                   <CheckCircle className="h-5 w-5 text-[#4ade80] shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-white font-semibold text-sm">¡Listo! Ya estás suscrito.</p>
-                    <p className="text-white/60 text-xs mt-0.5">Te avisaremos sobre torneos y novedades en Piura.</p>
+                    <p className="text-white font-semibold text-sm">
+                      ¡Listo! Ya estás suscrito.
+                    </p>
+                    <p className="text-white/60 text-xs mt-0.5">
+                      Te avisaremos sobre torneos y novedades en Piura.
+                    </p>
                   </div>
                 </div>
               ) : (
@@ -1463,7 +1467,10 @@ export default function HomePage() {
                       value={newsletterEmail}
                       onChange={(e) => {
                         setNewsletterEmail(e.target.value);
-                        if (newsletterStatus === "error" || newsletterStatus === "ya_suscrito")
+                        if (
+                          newsletterStatus === "error" ||
+                          newsletterStatus === "ya_suscrito"
+                        )
                           setNewsletterStatus("idle");
                       }}
                       placeholder="tu@correo.com"
@@ -1490,7 +1497,8 @@ export default function HomePage() {
               )}
               {newsletterStatus === "ya_suscrito" && (
                 <p className="text-yellow-300 text-xs mt-2">
-                  Este correo ya está suscrito. Recibirás nuestras novedades cuando las publiquemos.
+                  Este correo ya está suscrito. Recibirás nuestras novedades
+                  cuando las publiquemos.
                 </p>
               )}
               {newsletterStatus === "error" && (
@@ -1500,7 +1508,8 @@ export default function HomePage() {
               )}
               {newsletterStatus !== "success" && (
                 <p className="text-white/40 text-xs mt-3">
-                  Al suscribirte aceptas recibir contenido informativo de CanchaGo
+                  Al suscribirte aceptas recibir contenido informativo de
+                  CanchaGo
                 </p>
               )}
             </div>

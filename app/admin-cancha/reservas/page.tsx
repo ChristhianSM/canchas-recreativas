@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import Image from 'next/image';
-import { CheckCircle2, XCircle, Clock, Eye, AlertCircle, Search, X, CalendarDays, FileSpreadsheet } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, Eye, AlertCircle, Search, X, CalendarDays } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { LoadingButton } from '@/components/loading-button';
@@ -10,7 +10,6 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { exportarReservasExcel } from '@/lib/export-reservas';
 
 type ReservaEstado = 'pendiente' | 'confirmada' | 'rechazada' | 'cancelada';
 
@@ -97,31 +96,6 @@ export default function OwnerReservasPage() {
     setFiltroEmail('');
     setFiltroCancha('');
     setFiltroModoPago('todos');
-  };
-
-  const handleExportar = () => {
-    const lista = aplicarFiltros(reservasDisplay);
-    if (lista.length === 0) return;
-    const filas = lista.map(r => ({
-      'ID':                   r.id,
-      'Cliente':              r.usuario_nombre,
-      'Email':                r.usuario_email,
-      'Teléfono':             r.usuario_telefono ?? '',
-      'Cancha':               r.cancha_nombre,
-      'Fecha juego':          new Date(r.fecha + 'T00:00:00').toLocaleDateString('es-PE'),
-      'Hora':                 r.hora,
-      'Fecha reservado':      new Date(r.creado_en).toLocaleString('es-PE'),
-      'Monto total (S/)':     r.precio,
-      'Modo pago':            r.modo_pago === 'parcial' ? 'Parcial' : 'Completo',
-      'Adelanto (S/)':        r.modo_pago === 'parcial' ? (r.monto_adelanto ?? '') : '',
-      'Saldo cancha (S/)':    r.modo_pago === 'parcial' ? (r.saldo_pendiente ?? '') : '',
-      'Método':               r.metodo_pago,
-      'Estado':               r.estado.charAt(0).toUpperCase() + r.estado.slice(1),
-      'Devolución (S/)':      r.devolucion_calculada ?? '',
-      'Devolución procesada': r.devolucion_procesada ? 'Sí' : (r.devolucion_calculada ? 'No' : ''),
-    }));
-    const fecha = new Date().toISOString().slice(0, 10);
-    exportarReservasExcel(filas, `reservas-${fecha}`);
   };
 
   const aplicarFiltros = (lista: Reserva[]) => lista.filter(r => {
@@ -418,10 +392,6 @@ export default function OwnerReservasPage() {
               {devolucionesPendientes.length} devolución{devolucionesPendientes.length > 1 ? 'es' : ''} pendiente{devolucionesPendientes.length > 1 ? 's' : ''}
             </Badge>
           )}
-          <Button variant="outline" size="sm" onClick={handleExportar} className="gap-2">
-            <FileSpreadsheet className="h-4 w-4" />
-            Exportar Excel
-          </Button>
         </div>
       </div>
 
@@ -566,7 +536,7 @@ export default function OwnerReservasPage() {
 
       {/* Modal detalle */}
       <Dialog open={!!selected} onOpenChange={() => setSelected(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Detalle de reserva</DialogTitle>
           </DialogHeader>
