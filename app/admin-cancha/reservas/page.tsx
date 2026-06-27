@@ -134,25 +134,18 @@ export default function OwnerReservasPage() {
 
   const confirmar = async (id: string) => {
     setConfirmando(true);
-    
-    // Optimistic update - actualizar inmediatamente en el estado local
-    setReservas(prev => prev.map(r => 
-      r.id === id ? { ...r, estado: 'confirmada' as ReservaEstado } : r
-    ));
-    
-    // Cerrar modal inmediatamente
-    setSelected(null);
-    
-    // Hacer la petición al servidor en segundo plano
     const token = getOwnerToken();
     try {
-      await fetch(`/api/reservas/update?id=${id}`, {
+      const res = await fetch(`/api/reservas/update?id=${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ estado: 'confirmada' }),
       });
-    } catch (error) {
-      // Si falla, recargar para obtener el estado real
+      if (res.ok) {
+        await reload();
+        setSelected(null);
+      }
+    } catch {
       reload();
     } finally {
       setConfirmando(false);
@@ -161,25 +154,18 @@ export default function OwnerReservasPage() {
 
   const rechazar = async (id: string) => {
     setRechazando(true);
-    
-    // Optimistic update - actualizar inmediatamente en el estado local
-    setReservas(prev => prev.map(r => 
-      r.id === id ? { ...r, estado: 'rechazada' as ReservaEstado } : r
-    ));
-    
-    // Cerrar modal inmediatamente
-    setSelected(null);
-    
-    // Hacer la petición al servidor en segundo plano
     const token = getOwnerToken();
     try {
-      await fetch(`/api/reservas/update?id=${id}`, {
+      const res = await fetch(`/api/reservas/update?id=${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ estado: 'rechazada' }),
       });
-    } catch (error) {
-      // Si falla, recargar para obtener el estado real
+      if (res.ok) {
+        await reload();
+        setSelected(null);
+      }
+    } catch {
       reload();
     } finally {
       setRechazando(false);
