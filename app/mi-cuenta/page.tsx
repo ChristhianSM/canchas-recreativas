@@ -206,6 +206,9 @@ function ReservaCard({
               >
                 {r.canchaName}
               </Link>
+              <p className="text-xs text-muted-foreground font-mono">
+                #{r.id.slice(-6).toUpperCase()}
+              </p>
               {canchaLocal && (
                 <p className="text-sm text-muted-foreground">
                   {sportLabels[canchaLocal.type]}
@@ -1989,6 +1992,9 @@ function MiCuentaContent() {
                           <p className="font-semibold text-foreground">
                             {p.cancha_nombre}
                           </p>
+                          <p className="text-xs text-muted-foreground font-mono">
+                            #{p.reserva_id.slice(-6).toUpperCase()}
+                          </p>
                           {p.cancha_distrito && (
                             <p className="text-xs text-muted-foreground">
                               {p.cancha_distrito}
@@ -2518,6 +2524,7 @@ function MiCuentaContent() {
                           <p className="text-sm font-bold text-primary shrink-0">S/ {p.precio_total}</p>
                         </div>
                         <p className="font-semibold text-foreground text-sm">{p.cancha_nombre}</p>
+                        <p className="text-xs text-muted-foreground font-mono">#{p.reserva_id.slice(-6).toUpperCase()}</p>
                         <div className="mt-1.5 space-y-0.5">
                           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                             <Calendar className="h-3 w-3" />

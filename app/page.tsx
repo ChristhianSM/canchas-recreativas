@@ -1443,21 +1443,12 @@ export default function HomePage() {
 
             {/* Columna derecha — formulario */}
             <div>
-              {newsletterStatus === "success" ||
-              newsletterStatus === "ya_suscrito" ? (
+              {newsletterStatus === "success" ? (
                 <div className="flex items-start gap-3 bg-white/10 border border-white/20 rounded-xl px-5 py-4">
                   <CheckCircle className="h-5 w-5 text-[#4ade80] shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-white font-semibold text-sm">
-                      {newsletterStatus === "success"
-                        ? "¡Listo! Ya estás suscrito."
-                        : "Este correo ya está registrado."}
-                    </p>
-                    <p className="text-white/60 text-xs mt-0.5">
-                      {newsletterStatus === "success"
-                        ? "Te avisaremos sobre torneos y novedades en Piura."
-                        : "Recibirás nuestras novedades cuando las publiquemos."}
-                    </p>
+                    <p className="text-white font-semibold text-sm">¡Listo! Ya estás suscrito.</p>
+                    <p className="text-white/60 text-xs mt-0.5">Te avisaremos sobre torneos y novedades en Piura.</p>
                   </div>
                 </div>
               ) : (
@@ -1472,7 +1463,7 @@ export default function HomePage() {
                       value={newsletterEmail}
                       onChange={(e) => {
                         setNewsletterEmail(e.target.value);
-                        if (newsletterStatus === "error")
+                        if (newsletterStatus === "error" || newsletterStatus === "ya_suscrito")
                           setNewsletterStatus("idle");
                       }}
                       placeholder="tu@correo.com"
@@ -1497,18 +1488,21 @@ export default function HomePage() {
                   </button>
                 </form>
               )}
+              {newsletterStatus === "ya_suscrito" && (
+                <p className="text-yellow-300 text-xs mt-2">
+                  Este correo ya está suscrito. Recibirás nuestras novedades cuando las publiquemos.
+                </p>
+              )}
               {newsletterStatus === "error" && (
                 <p className="text-red-300 text-xs mt-2">
                   Ocurrió un error. Por favor intenta de nuevo.
                 </p>
               )}
-              {newsletterStatus !== "success" &&
-                newsletterStatus !== "ya_suscrito" && (
-                  <p className="text-white/40 text-xs mt-3">
-                    Al suscribirte aceptas recibir contenido informativo de
-                    CanchaGo
-                  </p>
-                )}
+              {newsletterStatus !== "success" && (
+                <p className="text-white/40 text-xs mt-3">
+                  Al suscribirte aceptas recibir contenido informativo de CanchaGo
+                </p>
+              )}
             </div>
           </div>
         </div>
