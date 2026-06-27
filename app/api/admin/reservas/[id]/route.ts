@@ -101,7 +101,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     });
   }
 
-  // Calcular rango de hora para notificación (ej: "12:00 - 15:00" en reservas multi-hora)
+  // Rango de hora para reservas multi-hora
   let horaNotificacion = reserva.hora;
   if (reserva.grupo_reserva_id) {
     const { data: slots } = await sb
@@ -115,21 +115,40 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
   }
 
-  // Notificar al cliente por WhatsApp si tiene teléfono
-  console.log('[admin] usuario_telefono en reserva:', reserva.usuario_telefono);
-  if (reserva.usuario_telefono) {
+  // Teléfono del cliente: directo de la reserva o fallback desde usuarios
+  let clientePhone = reserva.usuario_telefono ?? null;
+  if (!clientePhone && reserva.usuario_id) {
+    const { data: usuarioData } = await sb
+      .from('usuarios')
+      .select('telefono')
+      .eq('id', reserva.usuario_id)
+      .maybeSingle();
+    clientePhone = usuarioData?.telefono ?? null;
+  }
+
+  // Coordenadas para link de Maps
+  const { data: cancha } = await sb
+    .from('canchas')
+    .select('lat, lng')
+    .eq('id', reserva.cancha_id)
+    .maybeSingle();
+
+  // WhatsApp al cliente
+  if (clientePhone) {
     await notificarEstadoReserva({
-      clientePhone: reserva.usuario_telefono,
+      clientePhone,
       canchaNombre: reserva.cancha_nombre,
       fecha:        reserva.fecha,
       hora:         horaNotificacion,
       precio:       reserva.precio,
       estado,
       reservaId:    reserva.id,
+      lat:          cancha?.lat ?? null,
+      lng:          cancha?.lng ?? null,
     });
   }
 
-  // WhatsApp al superadmin confirmando que su acción fue procesada
+  // WhatsApp al admin confirmando que su acción fue procesada
   const { data: adminData } = await sb
     .from('usuarios')
     .select('telefono')
