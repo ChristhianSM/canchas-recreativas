@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
 import { sendReservaEmail } from '@/lib/email';
-import { notificarEstadoReserva } from '@/lib/whatsapp';
+import { notificarEstadoReserva, notificarEstadoReservaAdmin } from '@/lib/whatsapp';
 import { agregarSelloCancha } from '@/lib/loyalty';
 
 // PATCH /api/reservas/update?id=xxx — actualizar estado de reserva
@@ -140,29 +140,65 @@ export async function PATCH(req: NextRequest) {
       });
     }
 
-    // WhatsApp al cliente si tiene teléfono
-    if (reserva.usuario_telefono) {
-      let horaNotificacion = reserva.hora;
-      if (reserva.grupo_reserva_id) {
-        const { data: slots } = await sb
-          .from('reservas')
-          .select('hora')
-          .eq('grupo_reserva_id', reserva.grupo_reserva_id)
-          .order('hora', { ascending: true });
-        if (slots && slots.length > 1) {
-          const horaFin = `${String(parseInt(slots[slots.length - 1].hora.split(':')[0]) + 1).padStart(2, '0')}:00`;
-          horaNotificacion = `${slots[0].hora} - ${horaFin}`;
-        }
+    // Rango de hora para reservas multi-hora
+    let horaNotificacion = reserva.hora;
+    if (reserva.grupo_reserva_id) {
+      const { data: slots } = await sb
+        .from('reservas')
+        .select('hora')
+        .eq('grupo_reserva_id', reserva.grupo_reserva_id)
+        .order('hora', { ascending: true });
+      if (slots && slots.length > 1) {
+        const horaFin = `${String(parseInt(slots[slots.length - 1].hora.split(':')[0]) + 1).padStart(2, '0')}:00`;
+        horaNotificacion = `${slots[0].hora} - ${horaFin}`;
       }
+    }
+
+    // Teléfono del cliente: directo de la reserva o fallback desde usuarios
+    let clientePhone = reserva.usuario_telefono ?? null;
+    if (!clientePhone && reserva.usuario_id) {
+      const { data: usuarioData } = await sb
+        .from('usuarios')
+        .select('telefono')
+        .eq('id', reserva.usuario_id)
+        .maybeSingle();
+      clientePhone = usuarioData?.telefono ?? null;
+    }
+
+    // Coordenadas para link de Maps
+    const { data: cancha } = await sb
+      .from('canchas')
+      .select('lat, lng')
+      .eq('id', reserva.cancha_id)
+      .maybeSingle();
+
+    // WhatsApp al cliente
+    console.log('[reservas/update] clientePhone:', clientePhone, '| estado:', estado, '| reservaId:', reserva.id);
+    if (clientePhone) {
       await notificarEstadoReserva({
-        clientePhone: reserva.usuario_telefono,
+        clientePhone,
         canchaNombre: reserva.cancha_nombre,
         fecha:        reserva.fecha,
         hora:         horaNotificacion,
         precio:       reserva.precio,
         estado,
         reservaId:    reserva.id,
+        lat:          cancha?.lat ?? null,
+        lng:          cancha?.lng ?? null,
       });
+      console.log('[reservas/update] notificarEstadoReserva completado');
+    } else {
+      console.warn('[reservas/update] clientePhone vacío, no se notificó al usuario');
+    }
+
+    // WhatsApp al admin (dueño de la cancha) confirmando que su acción fue procesada
+    const { data: adminData } = await sb
+      .from('usuarios')
+      .select('telefono')
+      .eq('id', user.id)
+      .maybeSingle();
+    if (adminData?.telefono) {
+      await notificarEstadoReservaAdmin({ adminPhone: adminData.telefono, reservaId: reserva.id, estado });
     }
 
   }

@@ -6,6 +6,7 @@ import {
   createPublicacionSlug,
   validatePublicacionBody,
 } from '@/lib/publicaciones-admin';
+import { sendNoticiaToSuscritos } from '@/lib/email';
 
 export async function GET(req: NextRequest) {
   const token = req.headers.get('authorization')?.replace('Bearer ', '');
@@ -95,6 +96,18 @@ export async function POST(req: NextRequest) {
   if (relacionError) {
     await sb.from('publicaciones').delete().eq('id', publicacion.id);
     return NextResponse.json({ error: relacionError.message }, { status: 500 });
+  }
+
+  if (body.notificarSuscritos && publicacion.estado === 'publicado') {
+    const { data: suscritos } = await sb
+      .from('suscriptores')
+      .select('id, email')
+      .eq('activo', true);
+
+    if (suscritos?.length) {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? new URL(req.url).origin;
+      void sendNoticiaToSuscritos(publicacion, suscritos, baseUrl);
+    }
   }
 
   return NextResponse.json({ ok: true, publicacion }, { status: 201 });

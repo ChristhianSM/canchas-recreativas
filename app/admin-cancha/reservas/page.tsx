@@ -125,29 +125,27 @@ export default function OwnerReservasPage() {
     setLoading(false);
   };
 
-  useEffect(() => { reload(); }, []);
+  useEffect(() => {
+    reload();
+    const onVisible = () => { if (!document.hidden) reload(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, []);
 
   const confirmar = async (id: string) => {
     setConfirmando(true);
-    
-    // Optimistic update - actualizar inmediatamente en el estado local
-    setReservas(prev => prev.map(r => 
-      r.id === id ? { ...r, estado: 'confirmada' as ReservaEstado } : r
-    ));
-    
-    // Cerrar modal inmediatamente
-    setSelected(null);
-    
-    // Hacer la petición al servidor en segundo plano
     const token = getOwnerToken();
     try {
-      await fetch(`/api/reservas/update?id=${id}`, {
+      const res = await fetch(`/api/reservas/update?id=${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ estado: 'confirmada' }),
       });
-    } catch (error) {
-      // Si falla, recargar para obtener el estado real
+      if (res.ok) {
+        await reload();
+        setSelected(null);
+      }
+    } catch {
       reload();
     } finally {
       setConfirmando(false);
@@ -156,25 +154,18 @@ export default function OwnerReservasPage() {
 
   const rechazar = async (id: string) => {
     setRechazando(true);
-    
-    // Optimistic update - actualizar inmediatamente en el estado local
-    setReservas(prev => prev.map(r => 
-      r.id === id ? { ...r, estado: 'rechazada' as ReservaEstado } : r
-    ));
-    
-    // Cerrar modal inmediatamente
-    setSelected(null);
-    
-    // Hacer la petición al servidor en segundo plano
     const token = getOwnerToken();
     try {
-      await fetch(`/api/reservas/update?id=${id}`, {
+      const res = await fetch(`/api/reservas/update?id=${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ estado: 'rechazada' }),
       });
-    } catch (error) {
-      // Si falla, recargar para obtener el estado real
+      if (res.ok) {
+        await reload();
+        setSelected(null);
+      }
+    } catch {
       reload();
     } finally {
       setRechazando(false);
@@ -269,7 +260,9 @@ export default function OwnerReservasPage() {
       const principal = slots.find(s => s.id === gid) ?? slots[0];
       const horas = slots.map(s => s.hora).sort();
       const horaFin = `${String(parseInt(horas[horas.length - 1].split(':')[0]) + 1).padStart(2, '0')}:00`;
-      resultado.push({ ...principal, hora: horas.length > 1 ? `${horas[0]} - ${horaFin}` : principal.hora });
+      // Si algún slot del grupo está pendiente, mostrar el grupo como pendiente
+      const estadoGrupo = slots.some(s => s.estado === 'pendiente') ? 'pendiente' : principal.estado;
+      resultado.push({ ...principal, estado: estadoGrupo, hora: horas.length > 1 ? `${horas[0]} - ${horaFin}` : principal.hora });
     }
     return resultado;
   }, [reservas]);

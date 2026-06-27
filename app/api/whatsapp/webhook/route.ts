@@ -180,6 +180,14 @@ async function procesarReserva(sb: any, reserva: any, accion: 'confirmar' | 'rec
     return;
   }
 
+  // Cascada: actualizar todos los slots del mismo grupo multi-hora
+  if (reserva.grupo_reserva_id) {
+    await sb.from('reservas')
+      .update({ estado })
+      .eq('grupo_reserva_id', reserva.grupo_reserva_id)
+      .neq('id', reserva.id);
+  }
+
   // Coordenadas de la cancha para link de Google Maps
   const { data: cancha } = await sb
     .from('canchas')

@@ -371,6 +371,204 @@ export async function sendReservaEmail(data: ReservaEmailData) {
   }
 }
 
+export async function sendNoticiaToSuscritos(
+  publicacion: {
+    titulo: string;
+    resumen: string;
+    contenido: string;
+    imagen_url?: string | null;
+    tipo: string;
+    slug: string;
+    deporte?: string | null;
+    fecha_inicio?: string | null;
+    fecha_fin?: string | null;
+    hora?: string | null;
+    precio?: string | null;
+  },
+  suscritos: { id: string; email: string }[],
+  baseUrl: string
+) {
+  const apiKey    = process.env.API_KEY_BREVO;
+  const fromEmail = process.env.BREVO_FROM_EMAIL;
+  const fromName  = process.env.BREVO_FROM_NAME ?? 'CanchaGo';
+
+  if (!apiKey || !fromEmail || !suscritos.length) return;
+
+  const tipoLabel: Record<string, string> = {
+    torneo: 'Torneo',
+    escuela: 'Escuela deportiva',
+    evento: 'Evento',
+    promocion: 'Promoción',
+    noticia: 'Noticia',
+    mantenimiento: 'Mantenimiento',
+    novedad: 'Novedad',
+  };
+
+  const deporteLabel: Record<string, string> = {
+    futbol: 'Fútbol',
+    voley: 'Vóley',
+    basquet: 'Básquet',
+    tenis: 'Tenis',
+    futsal: 'Futsal',
+  };
+
+  const formatFecha = (f: string) =>
+    new Date(f + 'T00:00:00').toLocaleDateString('es-PE', {
+      day: 'numeric', month: 'short', year: 'numeric',
+    });
+
+  const label   = tipoLabel[publicacion.tipo] ?? publicacion.tipo;
+  const deporte = publicacion.deporte ? deporteLabel[publicacion.deporte] ?? publicacion.deporte : null;
+
+  const fechaTexto = publicacion.fecha_inicio
+    ? publicacion.fecha_fin && publicacion.fecha_fin !== publicacion.fecha_inicio
+      ? `${formatFecha(publicacion.fecha_inicio)} – ${formatFecha(publicacion.fecha_fin)}`
+      : formatFecha(publicacion.fecha_inicio)
+    : null;
+
+  const contenidoHtml = publicacion.contenido
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\n/g, '<br/>');
+
+  const results = await Promise.allSettled(
+    suscritos.map(suscrito => {
+      const unsubscribeUrl = `${baseUrl}/api/newsletter/unsubscribe?token=${suscrito.id}`;
+      const htmlContent = `
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/></head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:32px 16px;">
+    <tr><td align="center">
+      <table width="100%" style="max-width:520px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+
+        <tr>
+          <td style="background:#111827;padding:24px 32px;text-align:center;">
+            <p style="margin:0;font-size:22px;font-weight:700;color:#ffffff;">⚽ CanchaGo</p>
+            <p style="margin:4px 0 0;font-size:12px;color:#9ca3af;">Novedades deportivas en Piura</p>
+          </td>
+        </tr>
+
+        ${publicacion.imagen_url ? `
+        <tr>
+          <td style="padding:0;line-height:0;">
+            <img src="${publicacion.imagen_url}" alt="${publicacion.titulo}" style="width:100%;max-height:260px;object-fit:cover;display:block;" />
+          </td>
+        </tr>` : ''}
+
+        <tr>
+          <td style="padding:20px 24px 0;">
+            <table cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="padding-right:6px;">
+                  <span style="display:inline-block;background:#16a34a;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;color:#ffffff;text-transform:uppercase;letter-spacing:0.5px;">${label}</span>
+                </td>
+                ${deporte ? `<td>
+                  <span style="display:inline-block;background:#f3f4f6;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;color:#374151;">${deporte}</span>
+                </td>` : ''}
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:12px 24px 0;">
+            <h1 style="margin:0;font-size:22px;font-weight:800;color:#111827;line-height:1.25;">${publicacion.titulo}</h1>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:8px 24px 0;">
+            <p style="margin:0;font-size:14px;color:#6b7280;line-height:1.6;">${publicacion.resumen}</p>
+          </td>
+        </tr>
+
+        ${fechaTexto || publicacion.hora || publicacion.precio ? `
+        <tr>
+          <td style="padding:16px 24px 0;">
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;border-radius:10px;overflow:hidden;border:1px solid #e5e7eb;">
+              ${fechaTexto ? `
+              <tr>
+                <td style="padding:12px 16px;border-bottom:1px solid #e5e7eb;">
+                  <p style="margin:0;font-size:12px;color:#6b7280;">📅 Fecha</p>
+                  <p style="margin:2px 0 0;font-size:14px;font-weight:600;color:#111827;text-transform:capitalize;">${fechaTexto}</p>
+                </td>
+              </tr>` : ''}
+              ${publicacion.hora ? `
+              <tr>
+                <td style="padding:12px 16px;border-bottom:1px solid #e5e7eb;">
+                  <p style="margin:0;font-size:12px;color:#6b7280;">🕐 Hora</p>
+                  <p style="margin:2px 0 0;font-size:14px;font-weight:600;color:#111827;">${publicacion.hora}</p>
+                </td>
+              </tr>` : ''}
+              ${publicacion.precio ? `
+              <tr>
+                <td style="padding:12px 16px;">
+                  <p style="margin:0;font-size:12px;color:#6b7280;">💰 Inscripción</p>
+                  <p style="margin:2px 0 0;font-size:15px;font-weight:700;color:#16a34a;">${publicacion.precio}</p>
+                </td>
+              </tr>` : ''}
+            </table>
+          </td>
+        </tr>` : ''}
+
+        ${contenidoHtml ? `
+        <tr>
+          <td style="padding:16px 24px 0;">
+            <p style="margin:0;font-size:14px;color:#374151;line-height:1.7;">${contenidoHtml}</p>
+          </td>
+        </tr>` : ''}
+
+        <tr>
+          <td style="padding:24px 24px 28px;text-align:center;">
+            <a href="${baseUrl}/noticias" style="display:inline-block;background:#16a34a;color:#ffffff;font-size:14px;font-weight:700;padding:13px 28px;border-radius:10px;text-decoration:none;">
+              Ver todas las noticias
+            </a>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:16px 24px;text-align:center;border-top:1px solid #f3f4f6;">
+            <p style="margin:0;font-size:11px;color:#9ca3af;line-height:1.6;">
+              Recibes este correo porque estás suscrito a las novedades de CanchaGo.<br/>
+              <a href="${unsubscribeUrl}" style="color:#9ca3af;text-decoration:underline;">Cancelar suscripción</a>
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`.trim();
+
+      return fetch('https://api.brevo.com/v3/smtp/email', {
+        method:  'POST',
+        headers: {
+          accept:           'application/json',
+          'content-type':   'application/json',
+          'api-key':        apiKey,
+        },
+        body: JSON.stringify({
+          sender:      { name: fromName, email: fromEmail },
+          to:          [{ email: suscrito.email }],
+          subject:     `📢 ${publicacion.titulo} — CanchaGo`,
+          htmlContent,
+        }),
+      });
+    })
+  );
+
+  const failed = results.filter(r => r.status === 'rejected').length;
+  if (failed > 0) {
+    console.error(`[email] ❌ ${failed}/${suscritos.length} emails de noticia fallaron`);
+  } else {
+    console.log(`[email] ✅ Noticia "${publicacion.titulo}" enviada a ${suscritos.length} suscritos`);
+  }
+}
+
 export async function sendNewsletterWelcomeEmail(email: string, unsubscribeUrl: string) {
   const apiKey    = process.env.API_KEY_BREVO;
   const fromEmail = process.env.BREVO_FROM_EMAIL;

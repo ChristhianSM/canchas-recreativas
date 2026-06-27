@@ -10,8 +10,9 @@ const TPL = {
   reservaRechazadaUsuario:  process.env.WHATSAPP_TPL_RECHAZADA_USUARIO          ?? 'reservation_rejected_user',
   reservaConfirmadaAdmin:   process.env.WHATSAPP_TPL_CONFIRMADA_ADMIN           ?? 'reservation_confirmed_admin',
   reservaRechazadaAdmin:    process.env.WHATSAPP_TPL_RECHAZADA_ADMIN            ?? 'reservation_rejected_admin',
-  reservaCanceladaAdmin:    process.env.WHATSAPP_TPL_CANCELADA_ADMIN            ?? 'reservation_cancelled_admin',
-  reservaCanceladaUsuario:  process.env.WHATSAPP_TPL_CANCELADA_USUARIO          ?? 'reservation_cancelled_user',
+  reservaCanceladaAdmin:          process.env.WHATSAPP_TPL_CANCELADA_ADMIN            ?? 'reservation_cancelled_admin',
+  reservaCanceladaUsuario:        process.env.WHATSAPP_TPL_CANCELADA_USUARIO          ?? 'reservation_cancelled_user',
+  reservaCanceladaAdminParaUsuario: process.env.WHATSAPP_TPL_CANCELADA_ADMIN_PARA_USUARIO ?? 'reservation_cancelled_by_admin',
   partidoCanceladoJugador:  process.env.WHATSAPP_TPL_PARTIDO_CANCELADO_JUGADOR  ?? 'partido_cancelado_jugador',
 };
 
@@ -217,7 +218,7 @@ export async function notificarEstadoReserva(data: {
   if (data.estado === 'confirmada') {
     const mapsLink = data.lat && data.lng
       ? `https://maps.google.com/?q=${data.lat},${data.lng}`
-      : '';
+      : 'https://tucanchago.com';
     await sendTemplate(data.clientePhone, TPL.reservaConfirmadaUsuario, [
       codigo,
       data.canchaNombre,
@@ -225,6 +226,14 @@ export async function notificarEstadoReserva(data: {
       data.hora,
       String(data.precio),
       mapsLink,
+    ]);
+  } else if (data.estado === 'cancelada') {
+    await sendTemplate(data.clientePhone, TPL.reservaCanceladaAdminParaUsuario, [
+      codigo,
+      data.canchaNombre,
+      data.fecha,
+      data.hora,
+      String(data.precio),
     ]);
   } else {
     await sendTemplate(data.clientePhone, TPL.reservaRechazadaUsuario, [
