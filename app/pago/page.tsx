@@ -343,6 +343,8 @@ function PagoContent() {
     0,
     precioRaw * horas + extraAccesorios - descuento,
   );
+  const esHoraGratis = cuponActivo?.premio_tipo === 'hora_gratis';
+  const saltarPago = soloEfectivo || esHoraGratis;
   const montoAdelanto =
     modoPago === "parcial" ? Math.round(total * 0.2) : total;
   const saldoPendiente = modoPago === "parcial" ? total - montoAdelanto : 0;
@@ -434,7 +436,7 @@ function PagoContent() {
   const handleEnviar = async () => {
     setSubmitError(null);
 
-    if (soloEfectivo) {
+    if (saltarPago) {
       if (esInvitado) {
         if (!emailInvitado.trim()) {
           setEmailError("Ingresa tu correo para recibir la confirmación");
@@ -596,21 +598,21 @@ function PagoContent() {
     }
   };
 
-  // Desktop: cuando soloEfectivo solo 2 pasos (datos + confirmar), si no 3
-  const PASOS_LABELS = soloEfectivo
+  // Desktop: cuando saltarPago solo 2 pasos (datos + confirmar), si no 3
+  const PASOS_LABELS = saltarPago
     ? (["Datos", "Confirmar"] as const)
     : (["Datos", "Pago", "Confirmar"] as const);
 
-  const PASO_INDEX: Record<string, number> = soloEfectivo
+  const PASO_INDEX: Record<string, number> = saltarPago
     ? { datos: 0, pago: 1 }
     : { datos: 0, pago: 1, metodo: 1, confirmar: 2 };
 
   // Mobile: igual que desktop
-  const MOBILE_PASOS_LABELS = soloEfectivo
+  const MOBILE_PASOS_LABELS = saltarPago
     ? (["Datos", "Confirmar"] as const)
     : (["Datos", "Pago", "Confirmar"] as const);
 
-  const MOBILE_PASO_INDEX: Record<string, number> = soloEfectivo
+  const MOBILE_PASO_INDEX: Record<string, number> = saltarPago
     ? { datos: 0, pago: 1 }
     : { datos: 0, pago: 1, metodo: 1, confirmar: 2 };
 
@@ -685,9 +687,9 @@ function PagoContent() {
   const mobileStepperJSX = makeStepperJSX(MOBILE_PASOS_LABELS, mobileIdx);
 
   const headerTitles: Record<string, string> = {
-    pago: "Tipo de pago",
+    pago: saltarPago ? "Confirmar reserva" : "Tipo de pago",
     datos: "Tus datos",
-    metodo: soloEfectivo ? "Resumen" : "Método de pago",
+    metodo: saltarPago ? "Resumen" : "Método de pago",
     confirmar: "Confirmar pago",
   };
 
@@ -699,19 +701,19 @@ function PagoContent() {
           <CheckCircle2 className="h-12 w-12 text-primary" />
         </div>
         <h1 className="mb-2 text-2xl font-bold text-foreground">
-          {soloEfectivo ? "¡Reserva recibida!" : "¡Listo, ya casi!"}
+          {esHoraGratis ? "¡Reserva gratis enviada!" : soloEfectivo ? "¡Reserva recibida!" : "¡Listo, ya casi!"}
         </h1>
         <p className="mb-3 text-muted-foreground">
-          {soloEfectivo
-            ? "Tu reserva fue registrada. Paga en efectivo el día del partido."
-            : "Tu comprobante fue recibido correctamente."}
+          {esHoraGratis
+            ? "Tu hora gratis fue aplicada. El admin confirmará tu reserva en breve."
+            : soloEfectivo
+              ? "Tu reserva fue registrada. Paga en efectivo el día del partido."
+              : "Tu comprobante fue recibido correctamente."}
         </p>
         <div className="mb-6 flex items-center gap-2 rounded-full bg-yellow-500/10 border border-yellow-500/20 px-4 py-2">
           <Clock className="h-4 w-4 text-yellow-600 shrink-0" />
           <p className="text-sm text-yellow-700 dark:text-yellow-400 font-medium">
-            {soloEfectivo
-              ? "El admin confirmará tu reserva en breve"
-              : "El admin verificará tu pago en breve"}
+            El admin confirmará tu reserva en breve
           </p>
         </div>
         {esInvitado && emailInvitado ? (
@@ -1508,6 +1510,18 @@ function PagoContent() {
                   </p>
                 </div>
               </div>
+            ) : esHoraGratis ? (
+              <div className="flex items-start gap-3 rounded-xl border border-green-500/40 bg-green-500/10 p-4">
+                <CheckCircle2 className="h-5 w-5 shrink-0 mt-0.5 text-green-600" />
+                <div>
+                  <p className="text-sm font-bold text-green-700 dark:text-green-400">
+                    Esta reserva es completamente gratis
+                  </p>
+                  <p className="text-xs text-green-600 dark:text-green-500 mt-1 leading-relaxed">
+                    Tu cupón de hora gratis cubre el costo total. No necesitas realizar ningún pago.
+                  </p>
+                </div>
+              </div>
             ) : (
               <>
                 <div>
@@ -1536,7 +1550,7 @@ function PagoContent() {
               </>
             )}
             {/* Selector de método integrado (solo en mobile, para no duplicar paso) */}
-            {!soloEfectivo && (
+            {!soloEfectivo && !esHoraGratis && (
               <div>
                 <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Método de pago
@@ -1616,13 +1630,15 @@ function PagoContent() {
                 size="lg"
                 className="w-full"
                 onClick={() =>
-                  soloEfectivo ? handleEnviar() : setPaso("confirmar")
+                  saltarPago ? handleEnviar() : setPaso("confirmar")
                 }
                 disabled={enviando}
               >
                 {soloEfectivo
                   ? (enviando ? "Confirmando..." : "Confirmar reserva (pago en cancha)")
-                  : "Ir a pagar"}
+                  : esHoraGratis
+                    ? (enviando ? "Confirmando..." : "Confirmar reserva (hora gratis)")
+                    : "Ir a pagar"}
               </Button>
               <Button
                 variant="outline"
@@ -1997,9 +2013,9 @@ function PagoContent() {
                   <Button
                     size="lg"
                     className="w-full"
-                    onClick={() => setPaso("confirmar")}
+                    onClick={() => esHoraGratis ? handleEnviar() : setPaso("confirmar")}
                   >
-                    Ir a pagar
+                    {esHoraGratis ? (enviando ? "Confirmando..." : "Confirmar reserva (hora gratis)") : "Ir a pagar"}
                   </Button>
                   <Button
                     variant="outline"
@@ -2016,7 +2032,7 @@ function PagoContent() {
         )}
 
         {/* PASO 4: CONFIRMAR PAGO */}
-        {paso === "confirmar" && !soloEfectivo && confirmarPagoJSX}
+        {paso === "confirmar" && !saltarPago && confirmarPagoJSX}
       </div>
 
       {/* ══════════════════════════════════════════════════════════
@@ -2189,7 +2205,7 @@ function PagoContent() {
                             ? "Pago completo"
                             : "Adelanto 20%"}
                         </p>
-                        {!soloEfectivo && (
+                        {!saltarPago && (
                           <div className="flex items-center gap-1.5">
                             <Image
                               src={
@@ -2286,11 +2302,23 @@ function PagoContent() {
                             </p>
                           </div>
                         </div>
+                      ) : esHoraGratis ? (
+                        <div className="flex items-start gap-3 rounded-xl border border-green-500/40 bg-green-500/10 p-4">
+                          <CheckCircle2 className="h-5 w-5 shrink-0 mt-0.5 text-green-600" />
+                          <div>
+                            <p className="text-sm font-bold text-green-700 dark:text-green-400">
+                              Esta reserva es completamente gratis
+                            </p>
+                            <p className="text-xs text-green-600 dark:text-green-500 mt-1 leading-relaxed">
+                              Tu cupón de hora gratis cubre el costo total. No necesitas realizar ningún pago.
+                            </p>
+                          </div>
+                        </div>
                       ) : (
                         modoPagoOpcionesJSX
                       )}
                     </div>
-                    {!soloEfectivo && (
+                    {!soloEfectivo && !esHoraGratis && (
                       <div>
                         <h2 className="text-base font-semibold text-foreground mb-4">
                           Método de pago
@@ -2449,12 +2477,14 @@ function PagoContent() {
                       className="w-full"
                       disabled={enviando}
                       onClick={() =>
-                        soloEfectivo ? handleEnviar() : setPaso("confirmar")
+                        saltarPago ? handleEnviar() : setPaso("confirmar")
                       }
                     >
                       {soloEfectivo
                         ? (enviando ? "Confirmando..." : "Confirmar reserva (pago en cancha)")
-                        : "Ir a pagar"}
+                        : esHoraGratis
+                          ? (enviando ? "Confirmando..." : "Confirmar reserva (hora gratis)")
+                          : "Ir a pagar"}
                     </Button>
                     <Button
                       variant="outline"
@@ -2701,9 +2731,9 @@ function PagoContent() {
                       <Button
                         size="lg"
                         className="w-full"
-                        onClick={() => setPaso("confirmar")}
+                        onClick={() => esHoraGratis ? handleEnviar() : setPaso("confirmar")}
                       >
-                        Continuar
+                        {esHoraGratis ? (enviando ? "Confirmando..." : "Confirmar reserva (hora gratis)") : "Continuar"}
                       </Button>
                     )}
                     <Button
@@ -2719,7 +2749,7 @@ function PagoContent() {
               )}
 
               {/* PASO 4: Confirmar pago (QR + comprobante) */}
-              {paso === "confirmar" && !soloEfectivo && confirmarPagoJSX}
+              {paso === "confirmar" && !saltarPago && confirmarPagoJSX}
             </div>
 
             {/* ── Columna derecha: resumen sticky ── */}

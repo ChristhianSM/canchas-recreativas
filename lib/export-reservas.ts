@@ -7,6 +7,8 @@ export type ResumenExcel = {
   ingresos: number;
   confirmadas: number;
   canceladas: number;
+  cuponesUsados?: number;
+  totalDescuentos?: number;
 };
 
 export function exportarReservasExcel(
@@ -32,6 +34,10 @@ export function exportarReservasExcel(
       ['Confirmadas',                    resumen.confirmadas],
       ['Canceladas',                     resumen.canceladas],
       ['Ingresos confirmados (S/)',       resumen.ingresos],
+      ...(resumen.cuponesUsados != null ? [
+        ['Cupones usados',               resumen.cuponesUsados],
+        ['Total descuentos (S/)',         resumen.totalDescuentos ?? 0],
+      ] : []),
     ], { origin: { r: origenFila, c: 0 } });
   }
 

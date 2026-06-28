@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   XCircle,
   Loader2,
+  Tag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -39,6 +40,8 @@ type ReservaRaw = {
   devolucion_calculada?: number | null;
   devolucion_procesada?: boolean | null;
   grupo_reserva_id?: string | null;
+  cupon_aplicado?: boolean;
+  precio_original?: number | null;
 };
 
 type Cancha = { id: string; nombre: string };
@@ -127,7 +130,13 @@ export default function AdminReportesPage() {
       acc[r.estado] = (acc[r.estado] ?? 0) + 1;
       return acc;
     }, {});
-    return { total: filtradas.length, ingresos, porEstado };
+    const conCupon = filtradas.filter((r) => r.cupon_aplicado);
+    const cuponesUsados = conCupon.length;
+    const totalDescuentos = conCupon.reduce(
+      (s, r) => s + Math.max(0, (r.precio_original ?? r.precio) - r.precio),
+      0,
+    );
+    return { total: filtradas.length, ingresos, porEstado, cuponesUsados, totalDescuentos };
   }, [filtradas]);
 
   const limpiar = () => {
@@ -161,6 +170,9 @@ export default function AdminReportesPage() {
           r.modo_pago === "parcial" ? (r.saldo_pendiente ?? "") : "",
         Método: r.metodo_pago,
         Estado: r.estado.charAt(0).toUpperCase() + r.estado.slice(1),
+        "Cupón aplicado": r.cupon_aplicado ? "Sí" : "No",
+        "Precio original (S/)": r.cupon_aplicado ? (r.precio_original ?? r.precio) : "",
+        "Descuento (S/)": r.cupon_aplicado && r.precio_original != null ? Math.max(0, r.precio_original - r.precio) : "",
         "Devolución (S/)": r.devolucion_calculada ?? "",
         "Devolución procesada": r.devolucion_procesada
           ? "Sí"
@@ -173,6 +185,8 @@ export default function AdminReportesPage() {
         ingresos: resumen.ingresos,
         confirmadas: resumen.porEstado["confirmada"] ?? 0,
         canceladas: resumen.porEstado["cancelada"] ?? 0,
+        cuponesUsados: resumen.cuponesUsados,
+        totalDescuentos: resumen.totalDescuentos,
       };
       const sufijo =
         desde && hasta
@@ -317,7 +331,7 @@ export default function AdminReportesPage() {
       </Card>
 
       {/* Tarjetas de resumen */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <Card className="border-border p-4 space-y-1">
           <div className="flex items-center gap-2 text-muted-foreground">
             <TrendingUp className="h-4 w-4" />
@@ -350,6 +364,24 @@ export default function AdminReportesPage() {
           </div>
           <p className="text-2xl font-bold text-destructive">
             {resumen.porEstado["cancelada"] ?? 0}
+          </p>
+        </Card>
+        <Card className="border-border p-4 space-y-1">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Tag className="h-4 w-4" />
+            <p className="text-xs font-medium">Cupones usados</p>
+          </div>
+          <p className="text-2xl font-bold text-purple-600">
+            {resumen.cuponesUsados}
+          </p>
+        </Card>
+        <Card className="border-border p-4 space-y-1">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Tag className="h-4 w-4" />
+            <p className="text-xs font-medium">Total descuentos</p>
+          </div>
+          <p className="text-2xl font-bold text-purple-600">
+            S/ {resumen.totalDescuentos}
           </p>
         </Card>
       </div>

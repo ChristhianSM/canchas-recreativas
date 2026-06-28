@@ -138,8 +138,8 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Validar datos requeridos
-  if (!canchaId || !canchaNombre || !fecha || !hora || !precio || !metodoPago) {
+  // Validar datos requeridos (precio puede ser 0 en caso de hora gratis)
+  if (!canchaId || !canchaNombre || !fecha || !hora || precio == null || !metodoPago) {
     return NextResponse.json({ error: 'Faltan datos requeridos' }, { status: 400 });
   }
 
@@ -166,10 +166,11 @@ export async function POST(req: NextRequest) {
   const saldoPendienteFinal: number = modoPagoFinal === 'parcial' ? saldo_pendiente : 0;
 
   // Validar cupón por cancha antes de crear la reserva
+  let cuponDetalles: { premio_tipo?: string; premio_valor?: number } | null = null;
   if (canchaCuponId && usuarioId) {
     const { data: cuponValido } = await sb
       .from('cancha_cupones')
-      .select('id')
+      .select('id, premio_tipo, premio_valor')
       .eq('id', canchaCuponId)
       .eq('usuario_id', usuarioId)
       .eq('usado', false)
@@ -178,6 +179,7 @@ export async function POST(req: NextRequest) {
     if (!cuponValido) {
       return NextResponse.json({ error: 'El cupón ya fue utilizado o no es válido' }, { status: 400 });
     }
+    cuponDetalles = cuponValido;
   }
 
   // Generar lista de horas a reservar
@@ -226,6 +228,7 @@ export async function POST(req: NextRequest) {
       precio:           precioSlot,
       precio_original:  esPrincipal ? (precioOriginal ?? precio) : precioPorHora,
       cupon_aplicado:   esPrincipal ? !!canchaCuponId : false,
+      cupon_id:         esPrincipal ? (canchaCuponId ?? null) : null,
       metodo_pago:      metodoPago,
       comprobante_url:  esPrincipal ? comprobantePublicUrl : null,
       estado:           'pendiente',
@@ -305,6 +308,13 @@ export async function POST(req: NextRequest) {
     .eq('cancha_id', canchaId)
     .maybeSingle();
 
+  const cuponInfo = cuponDetalles
+    ? cuponDetalles.premio_tipo === 'hora_gratis'          ? 'Hora gratis'
+    : cuponDetalles.premio_tipo === 'descuento_fijo'       ? `S/${cuponDetalles.premio_valor} de descuento`
+    : cuponDetalles.premio_tipo === 'descuento_porcentaje' ? `${cuponDetalles.premio_valor}% de descuento`
+    : 'Cupón aplicado'
+    : null;
+
   const duenoPhone = (dueno?.usuarios as any)?.telefono ?? process.env.ADMIN_WHATSAPP_NUMBER;
   if (duenoPhone) {
     await notificarNuevaReserva({
@@ -318,6 +328,7 @@ export async function POST(req: NextRequest) {
       clienteTelefono: usuarioTelefono,
       reservaId:       reserva.id,
       comprobanteUrl:  comprobantePublicUrl,
+      cuponInfo,
     });
   }
 

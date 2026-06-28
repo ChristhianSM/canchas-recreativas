@@ -83,8 +83,27 @@ export async function PATCH(req: NextRequest) {
       .neq('id', reservaId);
   }
 
-  if (estado === 'confirmada' && reserva.usuario_id) {
+  if (estado === 'confirmada' && reserva.usuario_id && !reserva.cupon_aplicado) {
     await agregarSelloCancha(sb, reserva.usuario_id, reserva.cancha_id);
+  }
+
+  // Restaurar cupón si la reserva fue rechazada
+  if (estado === 'rechazada') {
+    let cuponId = (reserva as any).cupon_id ?? null;
+    if (!cuponId && reserva.grupo_reserva_id) {
+      const { data: principal } = await sb
+        .from('reservas')
+        .select('cupon_id')
+        .eq('grupo_reserva_id', reserva.grupo_reserva_id)
+        .not('cupon_id', 'is', null)
+        .maybeSingle();
+      cuponId = (principal as any)?.cupon_id ?? null;
+    }
+    if (cuponId) {
+      await sb.from('cancha_cupones')
+        .update({ usado: false, usado_en: null })
+        .eq('id', cuponId);
+    }
   }
 
   // Si hay un partido vinculado a esta reserva, actualizar su estado también

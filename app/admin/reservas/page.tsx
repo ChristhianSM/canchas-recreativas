@@ -69,6 +69,8 @@ export default function AdminReservasPage() {
     devolucionProcesada: r.devolucion_procesada ?? null,
     penalidadAplicada: r.penalidad_aplicada ?? null,
     grupoReservaId: r.grupo_reserva_id ?? null,
+    cuponAplicado: r.cupon_aplicado ?? false,
+    precioOriginal: r.precio_original ?? null,
   });
 
   // Agrupa reservas multi-hora: muestra solo el slot principal con rango "12:00 - 15:00"
@@ -517,6 +519,24 @@ export default function AdminReservasPage() {
                   <p className="text-xs capitalize text-muted-foreground">{selected.metodoPago}</p>
                 </div>
               </div>
+
+              {/* Cupón de fidelización */}
+              {selected.cuponAplicado && (
+                <div className="rounded-lg border border-purple-500/20 bg-purple-500/10 p-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-purple-700 dark:text-purple-400">Cupón de fidelización</p>
+                    <Badge variant="outline" className="bg-purple-500/10 text-purple-700 border-purple-500/30 text-xs">Aplicado</Badge>
+                  </div>
+                  {selected.precioOriginal != null && selected.precioOriginal > selected.precio && (
+                    <p className="text-xs text-purple-600 dark:text-purple-500 mt-1">
+                      Precio original S/ {selected.precioOriginal} · Descuento S/ {selected.precioOriginal - selected.precio}
+                    </p>
+                  )}
+                  {selected.precio === 0 && (
+                    <p className="text-xs text-purple-600 dark:text-purple-500 mt-1">Hora gratis — sin cobro al cliente</p>
+                  )}
+                </div>
+              )}
 
               {/* Desglose de pago parcial */}
               {selected.modoPago === 'parcial' && (

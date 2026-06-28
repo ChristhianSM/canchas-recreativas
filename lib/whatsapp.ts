@@ -116,6 +116,7 @@ export async function notificarNuevaReserva(data: {
   clienteTelefono: string;
   reservaId:       string;
   comprobanteUrl?: string | null;
+  cuponInfo?:      string | null;
 }) {
   const codigo      = data.reservaId.slice(-6).toUpperCase();
   const tieneComprobante = !!(data.comprobanteUrl?.startsWith('https://'));
@@ -139,6 +140,7 @@ export async function notificarNuevaReserva(data: {
     metodoLabel,
     data.clienteNombre  || 'Cliente',
     data.clienteTelefono || 'No proporcionado',
+    data.cuponInfo || '—',
   ].map(text => ({ type: 'text', text: String(text) }));
 
   const buttons = [

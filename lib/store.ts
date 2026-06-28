@@ -30,6 +30,8 @@ export interface Reserva {
   devolucionProcesada?: boolean | null;
   penalidadAplicada?: number | null;
   grupoReservaId?: string | null;
+  cuponAplicado?: boolean;
+  precioOriginal?: number | null;
 }
 
 export interface Notificacion {

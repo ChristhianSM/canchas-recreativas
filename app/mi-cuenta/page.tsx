@@ -26,6 +26,7 @@ import {
   User,
   Mail,
   Save,
+  Loader2,
 } from "lucide-react";
 import { Header } from "@/components/header";
 import CancelarReservaSimple from "@/components/cancelar-reserva-simple";
@@ -140,7 +141,7 @@ function ReservaCard({
 
   const fechaHoraPasada = (() => {
     const [year, month, day] = r.fecha.split("-").map(Number);
-    const horaInicio = r.hora.includes(' - ') ? r.hora.split(' - ')[0] : r.hora;
+    const horaInicio = r.hora.includes(" - ") ? r.hora.split(" - ")[0] : r.hora;
     const [horaNum, minNum] = horaInicio.split(":").map(Number);
     return new Date(year, month - 1, day, horaNum, minNum, 0) < new Date();
   })();
@@ -227,10 +228,9 @@ function ReservaCard({
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Clock className="h-4 w-4" />
               <span>
-                {r.hora.includes(' - ')
+                {r.hora.includes(" - ")
                   ? r.hora
-                  : `${r.hora} - ${String((parseInt(r.hora.split(':')[0]) + 1) % 24).padStart(2, '0')}:00`
-                }
+                  : `${r.hora} - ${String((parseInt(r.hora.split(":")[0]) + 1) % 24).padStart(2, "0")}:00`}
               </span>
             </div>
             {direccion && (
@@ -242,58 +242,59 @@ function ReservaCard({
           </div>
           {!fechaHoraPasada &&
             (r.estado === "pendiente" || r.estado === "confirmada") && (
-            <div className="mt-4 flex flex-col sm:flex-row gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full sm:w-auto"
-                onClick={() => onDetalle(r)}
-              >
-                Detalles de la reservación
-              </Button>
-              {r.estado === "confirmada" && (
+              <div className="mt-4 flex flex-col sm:flex-row gap-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  className="w-auto border-green-500 text-green-600 hover:bg-green-500/10"
-                  asChild
+                  className="w-full sm:w-auto"
+                  onClick={() => onDetalle(r)}
                 >
-                  <a
-                    href={generarLinkWhatsApp(
-                      r.canchaName,
-                      r.fecha,
-                      r.hora,
-                      r.precio,
-                      canchaLocal?.address,
-                      canchaLocal?.coordinates?.lat,
-                      canchaLocal?.coordinates?.lng,
-                    )}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <svg
-                      className="h-4 w-4"
-                      viewBox="0 0 24 24"
-                      fill="currentColor"
-                    >
-                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-                    </svg>
-                  </a>
+                  Detalles de la reservación
                 </Button>
-              )}
-              <Button
-                variant="destructive"
-                size="sm"
-                className="w-full sm:w-auto"
-                onClick={() => onCancelar(r)}
-              >
-                Cancelar reservación
-              </Button>
-            </div>
-          )}
+                {r.estado === "confirmada" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-auto border-green-500 text-green-600 hover:bg-green-500/10"
+                    asChild
+                  >
+                    <a
+                      href={generarLinkWhatsApp(
+                        r.canchaName,
+                        r.fecha,
+                        r.hora,
+                        r.precio,
+                        canchaLocal?.address,
+                        canchaLocal?.coordinates?.lat,
+                        canchaLocal?.coordinates?.lng,
+                      )}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <svg
+                        className="h-4 w-4"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                      >
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                      </svg>
+                    </a>
+                  </Button>
+                )}
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="w-full sm:w-auto"
+                  onClick={() => onCancelar(r)}
+                >
+                  Cancelar reservación
+                </Button>
+              </div>
+            )}
           {(r.estado === "rechazada" ||
             r.estado === "cancelada" ||
-            (fechaHoraPasada && (r.estado === "confirmada" || r.estado === "pendiente"))) && (
+            (fechaHoraPasada &&
+              (r.estado === "confirmada" || r.estado === "pendiente"))) && (
             <div className="mt-4">
               <Button variant="outline" size="sm" asChild>
                 <Link href={`/cancha/${r.canchaId}`}>Reservar de nuevo</Link>
@@ -465,6 +466,7 @@ function MiCuentaContent() {
   const [historialCargado, setHistorialCargado] = useState(false);
   const [partHistorialCargado, setPartHistorialCargado] = useState(false);
   const [favoriteCanchasData, setFavoriteCanchasData] = useState<any[]>([]);
+  const [loadingFavs, setLoadingFavs] = useState<Set<string>>(new Set());
   const [loyalty, setLoyalty] = useState<LoyaltyData>({
     sellos: 0,
     totalReservas: 0,
@@ -477,8 +479,18 @@ function MiCuentaContent() {
   const [reservaDetalle, setReservaDetalle] = useState<Reserva | null>(null);
   const [reservaCancelar, setReservaCancelar] = useState<Reserva | null>(null);
   const { toast } = useToast();
-  const VALID_SECTIONS: Section[] = ["cuenta", "reservas", "sellos", "cupones", "favoritos", "perfil", "partidos"];
-  const initialSection = VALID_SECTIONS.includes(searchParams.get("tab") as Section)
+  const VALID_SECTIONS: Section[] = [
+    "cuenta",
+    "reservas",
+    "sellos",
+    "cupones",
+    "favoritos",
+    "perfil",
+    "partidos",
+  ];
+  const initialSection = VALID_SECTIONS.includes(
+    searchParams.get("tab") as Section,
+  )
     ? (searchParams.get("tab") as Section)
     : "cuenta";
   const [activeSection, setActiveSection] = useState<Section>(initialSection);
@@ -532,22 +544,30 @@ function MiCuentaContent() {
     const grupos = new Map<string, Reserva[]>();
     const resultado: Reserva[] = [];
     for (const r of lista) {
-      if (!r.grupoReservaId) { resultado.push(r); continue; }
+      if (!r.grupoReservaId) {
+        resultado.push(r);
+        continue;
+      }
       if (!grupos.has(r.grupoReservaId)) grupos.set(r.grupoReservaId, []);
       grupos.get(r.grupoReservaId)!.push(r);
     }
     for (const [gid, slots] of grupos) {
-      const principal = slots.find(s => s.id === gid) ?? slots[0];
-      const horas = slots.map(s => s.hora).sort();
-      const horaFin = `${String(parseInt(horas[horas.length - 1].split(':')[0]) + 1).padStart(2, '0')}:00`;
-      resultado.push({ ...principal, hora: horas.length > 1 ? `${horas[0]} - ${horaFin}` : principal.hora });
+      const principal = slots.find((s) => s.id === gid) ?? slots[0];
+      const horas = slots.map((s) => s.hora).sort();
+      const horaFin = `${String(parseInt(horas[horas.length - 1].split(":")[0]) + 1).padStart(2, "0")}:00`;
+      resultado.push({
+        ...principal,
+        hora: horas.length > 1 ? `${horas[0]} - ${horaFin}` : principal.hora,
+      });
     }
     return resultado;
   };
 
   const reload = async () => {
     const data = await apiGetReservas();
-    setReservas(agruparReservas(Array.isArray(data) ? data.map(mapReserva) : []));
+    setReservas(
+      agruparReservas(Array.isArray(data) ? data.map(mapReserva) : []),
+    );
     setLoading(false);
   };
 
@@ -577,10 +597,10 @@ function MiCuentaContent() {
   // Redirigir a home si el evento user-login indica que se cerró sesión
   useEffect(() => {
     const handleAuthChange = () => {
-      if (!getToken()) router.replace('/');
+      if (!getToken()) router.replace("/");
     };
-    window.addEventListener('user-login', handleAuthChange);
-    return () => window.removeEventListener('user-login', handleAuthChange);
+    window.addEventListener("user-login", handleAuthChange);
+    return () => window.removeEventListener("user-login", handleAuthChange);
   }, [router]);
 
   useEffect(() => {
@@ -588,7 +608,7 @@ function MiCuentaContent() {
     const token = getToken();
 
     if (!storedUser || !token) {
-      router.replace('/');
+      router.replace("/");
       return;
     }
 
@@ -651,8 +671,10 @@ function MiCuentaContent() {
   };
 
   const handleRemoveFavorite = async (canchaId: string) => {
+    setLoadingFavs((prev) => new Set(prev).add(canchaId));
     await apiToggleFavorito(canchaId);
     setFavoriteCanchasData((prev) => prev.filter((c) => c.id !== canchaId));
+    setLoadingFavs((prev) => { const s = new Set(prev); s.delete(canchaId); return s; });
   };
 
   // ── Scroll al top al cambiar de sección ──
@@ -680,7 +702,11 @@ function MiCuentaContent() {
     setPerfilLoading(true);
     fetch("/api/auth/me", { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => {
-        if (r.status === 401) { signalUnauthorized(); router.replace('/'); return null; }
+        if (r.status === 401) {
+          signalUnauthorized();
+          router.replace("/");
+          return null;
+        }
         return r.ok ? r.json() : Promise.reject();
       })
       .then((data) => {
@@ -761,7 +787,7 @@ function MiCuentaContent() {
 
   const fechaHoraPasada = (fecha: string, hora: string): boolean => {
     const [year, month, day] = fecha.split("-").map(Number);
-    const horaInicio = hora.includes(' - ') ? hora.split(' - ')[0] : hora;
+    const horaInicio = hora.includes(" - ") ? hora.split(" - ")[0] : hora;
     const [horaNum, minNum] = horaInicio.split(":").map(Number);
     return new Date(year, month - 1, day, horaNum, minNum, 0) < new Date();
   };
@@ -1029,7 +1055,7 @@ function MiCuentaContent() {
         <Header />
         <div className="grid grid-cols-[2fr_6fr] flex-1 container mx-auto px-8 lg:px-12">
           {/* ── Sidebar ────────────────────────────────────────── */}
-          <aside className="flex flex-col gap-3 p-4 pl-0 sticky top-0 self-start overflow-y-auto max-h-[calc(100vh-4rem)]">
+          <aside className="flex flex-col gap-3 p-4 pl-0 sticky top-16 self-start overflow-y-auto max-h-[calc(100vh-4rem)]">
             {/* Perfil */}
             <div className="bg-card rounded-xl p-4 flex flex-col items-center text-center">
               <div className="relative mb-3">
@@ -1111,7 +1137,8 @@ function MiCuentaContent() {
                   count={
                     canchasLoyalty.reduce(
                       (acc: number, c: any) =>
-                        acc + (c.cupones ?? []).filter((cu: any) => !cu.usado).length,
+                        acc +
+                        (c.cupones ?? []).filter((cu: any) => !cu.usado).length,
                       0,
                     ) || undefined
                   }
@@ -1182,8 +1209,8 @@ function MiCuentaContent() {
                     const img =
                       cl?.images[0] ??
                       "https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=800&h=600&fit=crop";
-                    const horaFin = proximaReserva.hora.includes(' - ')
-                      ? proximaReserva.hora.split(' - ')[1]
+                    const horaFin = proximaReserva.hora.includes(" - ")
+                      ? proximaReserva.hora.split(" - ")[1]
                       : `${String((parseInt(proximaReserva.hora.split(":")[0]) + 1) % 24).padStart(2, "0")}:00`;
                     const esHoy = proximaReserva.fecha === hoyStr;
                     const fechaLabel = esHoy
@@ -1582,12 +1609,13 @@ function MiCuentaContent() {
               </div>
             )}
 
-
             {/* ── SECCIÓN: MIS CUPONES (por cancha) ── */}
             {activeSection === "cupones" && (
               <div className="w-full max-w-2xl space-y-6">
                 <div>
-                  <h1 className="text-2xl font-bold text-foreground">Mis cupones</h1>
+                  <h1 className="text-2xl font-bold text-foreground">
+                    Mis cupones
+                  </h1>
                   <p className="text-sm text-muted-foreground mt-1">
                     Premios ganados por fidelidad en cada cancha.
                   </p>
@@ -1596,19 +1624,32 @@ function MiCuentaContent() {
                 {canchasLoyalty.length === 0 ? (
                   <div className="rounded-xl border border-dashed border-border bg-muted/20 py-16 text-center px-4">
                     <Gift className="mx-auto h-12 w-12 text-muted-foreground/40 mb-4" />
-                    <p className="text-sm font-medium text-muted-foreground">Aún no tienes cupones</p>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Aún no tienes cupones
+                    </p>
                     <p className="text-xs text-muted-foreground/70 mt-1">
-                      Reserva en canchas con programa de fidelización y acumula sellos.
+                      Reserva en canchas con programa de fidelización y acumula
+                      sellos.
                     </p>
                   </div>
                 ) : (
                   canchasLoyalty.map((cancha: any) => {
-                    const cuponesActivos = (cancha.cupones ?? []).filter((c: any) => !c.usado);
-                    const cuponesUsados  = (cancha.cupones ?? []).filter((c: any) => c.usado);
-                    const progreso = Math.min(100, Math.round((cancha.sellos / cancha.umbral) * 100));
+                    const cuponesActivos = (cancha.cupones ?? []).filter(
+                      (c: any) => !c.usado,
+                    );
+                    const cuponesUsados = (cancha.cupones ?? []).filter(
+                      (c: any) => c.usado,
+                    );
+                    const progreso = Math.min(
+                      100,
+                      Math.round((cancha.sellos / cancha.umbral) * 100),
+                    );
 
                     return (
-                      <div key={cancha.cancha_id} className="rounded-xl border border-border bg-card overflow-hidden">
+                      <div
+                        key={cancha.cancha_id}
+                        className="rounded-xl border border-border bg-card overflow-hidden"
+                      >
                         {/* Header cancha */}
                         <div className="flex items-center gap-3 border-b border-border px-5 py-4 bg-muted/30">
                           {cancha.cancha_imagen ? (
@@ -1625,14 +1666,19 @@ function MiCuentaContent() {
                             </div>
                           )}
                           <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-foreground text-sm truncate">{cancha.cancha_nombre}</p>
+                            <p className="font-semibold text-foreground text-sm truncate">
+                              {cancha.cancha_nombre}
+                            </p>
                             <p className="text-xs text-muted-foreground">
-                              {cancha.total_reservas} reserva{cancha.total_reservas !== 1 ? 's' : ''} confirmada{cancha.total_reservas !== 1 ? 's' : ''}
+                              {cancha.total_reservas} reserva
+                              {cancha.total_reservas !== 1 ? "s" : ""}{" "}
+                              confirmada{cancha.total_reservas !== 1 ? "s" : ""}
                             </p>
                           </div>
                           {cuponesActivos.length > 0 && (
                             <span className="rounded-full bg-primary px-2.5 py-0.5 text-xs font-semibold text-primary-foreground">
-                              {cuponesActivos.length} disponible{cuponesActivos.length !== 1 ? 's' : ''}
+                              {cuponesActivos.length} disponible
+                              {cuponesActivos.length !== 1 ? "s" : ""}
                             </span>
                           )}
                         </div>
@@ -1641,27 +1687,35 @@ function MiCuentaContent() {
                           {/* Tarjeta de sellos */}
                           <div className="space-y-2">
                             <div className="flex items-center justify-between text-xs">
-                              <span className="text-muted-foreground font-medium">Progreso hacia el próximo premio</span>
-                              <span className="font-semibold text-foreground">{cancha.sellos}/{cancha.umbral}</span>
+                              <span className="text-muted-foreground font-medium">
+                                Progreso hacia el próximo premio
+                              </span>
+                              <span className="font-semibold text-foreground">
+                                {cancha.sellos}/{cancha.umbral}
+                              </span>
                             </div>
                             {/* Grid de sellos */}
                             <div
                               className="grid gap-1.5"
-                              style={{ gridTemplateColumns: `repeat(${Math.min(cancha.umbral, 10)}, minmax(0,1fr))` }}
+                              style={{
+                                gridTemplateColumns: `repeat(${Math.min(cancha.umbral, 10)}, minmax(0,1fr))`,
+                              }}
                             >
-                              {Array.from({ length: cancha.umbral }).map((_, i) => (
-                                <div
-                                  key={i}
-                                  className={cn(
-                                    "aspect-square rounded-lg border-2 flex items-center justify-center text-xs transition-all",
-                                    i < cancha.sellos
-                                      ? "border-primary bg-primary text-primary-foreground"
-                                      : "border-border bg-muted/30 text-muted-foreground/30",
-                                  )}
-                                >
-                                  {i < cancha.sellos ? "★" : "○"}
-                                </div>
-                              ))}
+                              {Array.from({ length: cancha.umbral }).map(
+                                (_, i) => (
+                                  <div
+                                    key={i}
+                                    className={cn(
+                                      "aspect-square rounded-lg border-2 flex items-center justify-center text-xs transition-all",
+                                      i < cancha.sellos
+                                        ? "border-primary bg-primary text-primary-foreground"
+                                        : "border-border bg-muted/30 text-muted-foreground/30",
+                                    )}
+                                  >
+                                    {i < cancha.sellos ? "★" : "○"}
+                                  </div>
+                                ),
+                              )}
                             </div>
                             {/* Barra de progreso */}
                             <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
@@ -1671,14 +1725,22 @@ function MiCuentaContent() {
                               />
                             </div>
                             <p className="text-xs text-muted-foreground">
-                              Premio: {' '}
+                              Premio:{" "}
                               <span className="font-medium text-foreground">
-                                {cancha.premio_tipo === 'descuento_fijo'        && `S/ ${cancha.premio_valor} de descuento`}
-                                {cancha.premio_tipo === 'descuento_porcentaje'  && `${cancha.premio_valor}% de descuento`}
-                                {cancha.premio_tipo === 'hora_gratis'           && '1 hora gratis'}
-                                {cancha.premio_tipo === 'personalizado'         && (cancha.premio_descripcion || 'Premio especial')}
+                                {cancha.premio_tipo === "descuento_fijo" &&
+                                  `S/ ${cancha.premio_valor} de descuento`}
+                                {cancha.premio_tipo ===
+                                  "descuento_porcentaje" &&
+                                  `${cancha.premio_valor}% de descuento`}
+                                {cancha.premio_tipo === "hora_gratis" &&
+                                  "1 hora gratis"}
+                                {cancha.premio_tipo === "personalizado" &&
+                                  (cancha.premio_descripcion ||
+                                    "Premio especial")}
                               </span>
-                              {cancha.premio_descripcion && cancha.premio_tipo !== 'personalizado' && ` — ${cancha.premio_descripcion}`}
+                              {cancha.premio_descripcion &&
+                                cancha.premio_tipo !== "personalizado" &&
+                                ` — ${cancha.premio_descripcion}`}
                             </p>
                           </div>
 
@@ -1696,13 +1758,25 @@ function MiCuentaContent() {
                                   <Gift className="h-5 w-5 text-primary shrink-0" />
                                   <div className="flex-1 min-w-0">
                                     <p className="text-sm font-semibold text-foreground">
-                                      {c.premio_tipo === 'descuento_fijo'       && `S/ ${c.premio_valor} de descuento`}
-                                      {c.premio_tipo === 'descuento_porcentaje' && `${c.premio_valor}% de descuento`}
-                                      {c.premio_tipo === 'hora_gratis'          && '1 hora gratis'}
-                                      {c.premio_tipo === 'personalizado'        && (c.premio_descripcion || 'Premio especial')}
+                                      {c.premio_tipo === "descuento_fijo" &&
+                                        `S/ ${c.premio_valor} de descuento`}
+                                      {c.premio_tipo ===
+                                        "descuento_porcentaje" &&
+                                        `${c.premio_valor}% de descuento`}
+                                      {c.premio_tipo === "hora_gratis" &&
+                                        "1 hora gratis"}
+                                      {c.premio_tipo === "personalizado" &&
+                                        (c.premio_descripcion ||
+                                          "Premio especial")}
                                     </p>
                                     <p className="text-xs text-muted-foreground">
-                                      Ganado el {new Date(c.generado_en).toLocaleDateString('es-PE', { day: 'numeric', month: 'long' })}
+                                      Ganado el{" "}
+                                      {new Date(
+                                        c.generado_en,
+                                      ).toLocaleDateString("es-PE", {
+                                        day: "numeric",
+                                        month: "long",
+                                      })}
                                     </p>
                                   </div>
                                   <span className="rounded-full bg-primary/10 border border-primary/20 px-2 py-0.5 text-xs font-medium text-primary">
@@ -1727,13 +1801,23 @@ function MiCuentaContent() {
                                   <Gift className="h-5 w-5 text-muted-foreground shrink-0" />
                                   <div className="flex-1 min-w-0">
                                     <p className="text-sm font-medium text-foreground line-through">
-                                      {c.premio_tipo === 'descuento_fijo'       && `S/ ${c.premio_valor} de descuento`}
-                                      {c.premio_tipo === 'descuento_porcentaje' && `${c.premio_valor}% de descuento`}
-                                      {c.premio_tipo === 'hora_gratis'          && '1 hora gratis'}
-                                      {c.premio_tipo === 'personalizado'        && (c.premio_descripcion || 'Premio especial')}
+                                      {c.premio_tipo === "descuento_fijo" &&
+                                        `S/ ${c.premio_valor} de descuento`}
+                                      {c.premio_tipo ===
+                                        "descuento_porcentaje" &&
+                                        `${c.premio_valor}% de descuento`}
+                                      {c.premio_tipo === "hora_gratis" &&
+                                        "1 hora gratis"}
+                                      {c.premio_tipo === "personalizado" &&
+                                        (c.premio_descripcion ||
+                                          "Premio especial")}
                                     </p>
                                     <p className="text-xs text-muted-foreground">
-                                      Usado el {new Date(c.usado_en).toLocaleDateString('es-PE', { day: 'numeric', month: 'long' })}
+                                      Usado el{" "}
+                                      {new Date(c.usado_en).toLocaleDateString(
+                                        "es-PE",
+                                        { day: "numeric", month: "long" },
+                                      )}
                                     </p>
                                   </div>
                                   <span className="rounded-full bg-muted border border-border px-2 py-0.5 text-xs text-muted-foreground">
@@ -2155,9 +2239,12 @@ function MiCuentaContent() {
                           />
                           <button
                             onClick={() => handleRemoveFavorite(cancha.id)}
-                            className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-card/90 backdrop-blur-sm text-destructive shadow hover:bg-card transition-colors"
+                            disabled={loadingFavs.has(cancha.id)}
+                            className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-card/90 backdrop-blur-sm text-destructive shadow hover:bg-card transition-colors disabled:opacity-70"
                           >
-                            <Heart className="h-4 w-4 fill-destructive" />
+                            {loadingFavs.has(cancha.id)
+                              ? <Loader2 className="h-4 w-4 animate-spin" />
+                              : <Heart className="h-4 w-4 fill-destructive" />}
                           </button>
                         </div>
                         <div className="p-4">
@@ -2351,31 +2438,47 @@ function MiCuentaContent() {
               </div>
             )}
 
-
             {activeSection === "cupones" && (
               <div className="space-y-4">
-                <h2 className="text-xl font-bold text-foreground">Mis cupones</h2>
+                <h2 className="text-xl font-bold text-foreground">
+                  Mis cupones
+                </h2>
                 {canchasLoyalty.length === 0 ? (
                   <div className="rounded-xl border border-dashed border-border bg-muted/20 py-12 text-center px-4">
                     <Gift className="mx-auto h-10 w-10 text-muted-foreground/40 mb-3" />
-                    <p className="text-sm font-medium text-muted-foreground">Aún no tienes cupones</p>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Aún no tienes cupones
+                    </p>
                     <p className="text-xs text-muted-foreground/70 mt-1">
-                      Reserva en canchas con programa de fidelización y acumula sellos.
+                      Reserva en canchas con programa de fidelización y acumula
+                      sellos.
                     </p>
                   </div>
                 ) : (
                   canchasLoyalty.map((cancha: any) => {
-                    const cuponesActivos = (cancha.cupones ?? []).filter((c: any) => !c.usado);
-                    const progreso = Math.min(100, Math.round((cancha.sellos / cancha.umbral) * 100));
+                    const cuponesActivos = (cancha.cupones ?? []).filter(
+                      (c: any) => !c.usado,
+                    );
+                    const progreso = Math.min(
+                      100,
+                      Math.round((cancha.sellos / cancha.umbral) * 100),
+                    );
                     return (
-                      <div key={cancha.cancha_id} className="rounded-xl border border-border bg-card overflow-hidden">
+                      <div
+                        key={cancha.cancha_id}
+                        className="rounded-xl border border-border bg-card overflow-hidden"
+                      >
                         <div className="flex items-center gap-3 border-b border-border px-4 py-3 bg-muted/30">
                           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 shrink-0">
                             <MapPin className="h-4 w-4 text-primary" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-foreground text-sm truncate">{cancha.cancha_nombre}</p>
-                            <p className="text-xs text-muted-foreground">{cancha.sellos}/{cancha.umbral} sellos</p>
+                            <p className="font-semibold text-foreground text-sm truncate">
+                              {cancha.cancha_nombre}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {cancha.sellos}/{cancha.umbral} sellos
+                            </p>
                           </div>
                           {cuponesActivos.length > 0 && (
                             <span className="rounded-full bg-primary px-2.5 py-0.5 text-xs font-semibold text-primary-foreground">
@@ -2387,44 +2490,64 @@ function MiCuentaContent() {
                           {/* Barra progreso */}
                           <div className="space-y-1">
                             <div className="flex flex-wrap gap-1">
-                              {Array.from({ length: cancha.umbral }).map((_: any, i: number) => (
-                                <div
-                                  key={i}
-                                  className={cn(
-                                    "h-5 w-5 rounded text-center text-xs leading-5 border",
-                                    i < cancha.sellos
-                                      ? "border-primary bg-primary text-primary-foreground"
-                                      : "border-border bg-muted/30 text-muted-foreground/30",
-                                  )}
-                                >
-                                  {i < cancha.sellos ? "★" : "○"}
-                                </div>
-                              ))}
+                              {Array.from({ length: cancha.umbral }).map(
+                                (_: any, i: number) => (
+                                  <div
+                                    key={i}
+                                    className={cn(
+                                      "h-5 w-5 rounded text-center text-xs leading-5 border",
+                                      i < cancha.sellos
+                                        ? "border-primary bg-primary text-primary-foreground"
+                                        : "border-border bg-muted/30 text-muted-foreground/30",
+                                    )}
+                                  >
+                                    {i < cancha.sellos ? "★" : "○"}
+                                  </div>
+                                ),
+                              )}
                             </div>
                             <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                              <div className="h-full rounded-full bg-primary" style={{ width: `${progreso}%` }} />
+                              <div
+                                className="h-full rounded-full bg-primary"
+                                style={{ width: `${progreso}%` }}
+                              />
                             </div>
                           </div>
                           {/* Cupones activos */}
                           {cuponesActivos.map((c: any) => (
-                            <div key={c.id} className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2.5">
+                            <div
+                              key={c.id}
+                              className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2.5"
+                            >
                               <Gift className="h-4 w-4 text-primary shrink-0" />
                               <p className="flex-1 text-sm font-semibold text-foreground">
-                                {c.premio_tipo === 'descuento_fijo'       && `S/ ${c.premio_valor} de descuento`}
-                                {c.premio_tipo === 'descuento_porcentaje' && `${c.premio_valor}% de descuento`}
-                                {c.premio_tipo === 'hora_gratis'          && '1 hora gratis'}
-                                {c.premio_tipo === 'personalizado'        && (c.premio_descripcion || 'Premio especial')}
+                                {c.premio_tipo === "descuento_fijo" &&
+                                  `S/ ${c.premio_valor} de descuento`}
+                                {c.premio_tipo === "descuento_porcentaje" &&
+                                  `${c.premio_valor}% de descuento`}
+                                {c.premio_tipo === "hora_gratis" &&
+                                  "1 hora gratis"}
+                                {c.premio_tipo === "personalizado" &&
+                                  (c.premio_descripcion || "Premio especial")}
                               </p>
-                              <span className="text-xs text-primary font-medium">Válido</span>
+                              <span className="text-xs text-primary font-medium">
+                                Válido
+                              </span>
                             </div>
                           ))}
                           {cuponesActivos.length === 0 && (
                             <p className="text-xs text-muted-foreground text-center py-2">
-                              Premio: {cancha.premio_tipo === 'descuento_fijo' && `S/ ${cancha.premio_valor} de descuento`}
-                              {cancha.premio_tipo === 'descuento_porcentaje' && `${cancha.premio_valor}% de descuento`}
-                              {cancha.premio_tipo === 'hora_gratis' && '1 hora gratis'}
-                              {cancha.premio_tipo === 'personalizado' && (cancha.premio_descripcion || 'Premio especial')}
-                              {' '}al llegar a {cancha.umbral} sellos
+                              Premio:{" "}
+                              {cancha.premio_tipo === "descuento_fijo" &&
+                                `S/ ${cancha.premio_valor} de descuento`}
+                              {cancha.premio_tipo === "descuento_porcentaje" &&
+                                `${cancha.premio_valor}% de descuento`}
+                              {cancha.premio_tipo === "hora_gratis" &&
+                                "1 hora gratis"}
+                              {cancha.premio_tipo === "personalizado" &&
+                                (cancha.premio_descripcion ||
+                                  "Premio especial")}{" "}
+                              al llegar a {cancha.umbral} sellos
                             </p>
                           )}
                         </div>
@@ -2451,9 +2574,12 @@ function MiCuentaContent() {
                           />
                           <button
                             onClick={() => handleRemoveFavorite(cancha.id)}
-                            className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-card/90 text-destructive shadow"
+                            disabled={loadingFavs.has(cancha.id)}
+                            className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-card/90 text-destructive shadow disabled:opacity-70"
                           >
-                            <Heart className="h-3.5 w-3.5 fill-destructive" />
+                            {loadingFavs.has(cancha.id)
+                              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              : <Heart className="h-3.5 w-3.5 fill-destructive" />}
                           </button>
                         </div>
                         <div className="p-3">
@@ -2485,123 +2611,205 @@ function MiCuentaContent() {
               </div>
             )}
 
-            {activeSection === "partidos" && (() => {
-              const deporteEmoji: Record<string, string> = {
-                futbol: "⚽", futsal: "🥅", basquet: "🏀", voley: "🏐", tenis: "🎾",
-              };
-              const estadoConfig: Record<string, { label: string; cls: string }> = {
-                abierto:   { label: "Abierto",   cls: "bg-green-500/10 text-green-700 border-green-500/20" },
-                completo:  { label: "Completo",  cls: "bg-blue-500/10 text-blue-700 border-blue-500/20" },
-                cancelado: { label: "Cancelado", cls: "bg-destructive/10 text-destructive border-destructive/20" },
-                finalizado:{ label: "Finalizado",cls: "bg-muted text-muted-foreground" },
-              };
+            {activeSection === "partidos" &&
+              (() => {
+                const deporteEmoji: Record<string, string> = {
+                  futbol: "⚽",
+                  futsal: "🥅",
+                  basquet: "🏀",
+                  voley: "🏐",
+                  tenis: "🎾",
+                };
+                const estadoConfig: Record<
+                  string,
+                  { label: string; cls: string }
+                > = {
+                  abierto: {
+                    label: "Abierto",
+                    cls: "bg-green-500/10 text-green-700 border-green-500/20",
+                  },
+                  completo: {
+                    label: "Completo",
+                    cls: "bg-blue-500/10 text-blue-700 border-blue-500/20",
+                  },
+                  cancelado: {
+                    label: "Cancelado",
+                    cls: "bg-destructive/10 text-destructive border-destructive/20",
+                  },
+                  finalizado: {
+                    label: "Finalizado",
+                    cls: "bg-muted text-muted-foreground",
+                  },
+                };
 
-              const MobilePartidoCard = ({ p }: { p: PartidoItem }) => {
-                const cfg = estadoConfig[p.estado] ?? estadoConfig.abierto;
-                const esHoy = p.fecha === hoyStr;
-                const fechaLabel = esHoy
-                  ? "Hoy"
-                  : new Date(p.fecha + "T00:00:00").toLocaleDateString("es-PE", { day: "numeric", month: "long", year: "numeric" });
-                const horaFin = `${String((parseInt(p.hora.split(":")[0]) + 1) % 24).padStart(2, "0")}:00`;
-                const cuposOcupados = p.jugadores_actuales ?? 0;
-                const canchaLocal = canchas.find((c) => c.id === p.cancha_id);
-                const img = canchaLocal?.images[0] ?? "https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=800&h=600&fit=crop";
+                const MobilePartidoCard = ({ p }: { p: PartidoItem }) => {
+                  const cfg = estadoConfig[p.estado] ?? estadoConfig.abierto;
+                  const esHoy = p.fecha === hoyStr;
+                  const fechaLabel = esHoy
+                    ? "Hoy"
+                    : new Date(p.fecha + "T00:00:00").toLocaleDateString(
+                        "es-PE",
+                        { day: "numeric", month: "long", year: "numeric" },
+                      );
+                  const horaFin = `${String((parseInt(p.hora.split(":")[0]) + 1) % 24).padStart(2, "0")}:00`;
+                  const cuposOcupados = p.jugadores_actuales ?? 0;
+                  const canchaLocal = canchas.find((c) => c.id === p.cancha_id);
+                  const img =
+                    canchaLocal?.images[0] ??
+                    "https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=800&h=600&fit=crop";
+
+                  return (
+                    <Card className="overflow-hidden border-border">
+                      <div className="flex">
+                        <div className="relative w-28 shrink-0">
+                          <Image
+                            src={img}
+                            alt={p.cancha_nombre}
+                            fill
+                            className="object-cover"
+                          />
+                        </div>
+                        <div className="flex flex-1 flex-col p-3">
+                          <div className="flex items-start justify-between gap-2 mb-1.5">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <Badge variant="outline" className={cfg.cls}>
+                                {cfg.label}
+                              </Badge>
+                              <Badge
+                                variant="outline"
+                                className="bg-amber-500/10 text-amber-700 border-amber-200"
+                              >
+                                {deporteEmoji[p.deporte] ?? "🏟️"}{" "}
+                                {p.deporte.charAt(0).toUpperCase() +
+                                  p.deporte.slice(1)}
+                              </Badge>
+                            </div>
+                            <p className="text-sm font-bold text-primary shrink-0">
+                              S/ {p.precio_total}
+                            </p>
+                          </div>
+                          <p className="font-semibold text-foreground text-sm">
+                            {p.cancha_nombre}
+                          </p>
+                          <p className="text-xs text-muted-foreground font-mono">
+                            #{p.reserva_id.slice(-6).toUpperCase()}
+                          </p>
+                          <div className="mt-1.5 space-y-0.5">
+                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                              <Calendar className="h-3 w-3" />
+                              <span className="capitalize">{fechaLabel}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                              <Clock className="h-3 w-3" />
+                              <span>
+                                {p.hora} - {horaFin}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                              <Users className="h-3 w-3" />
+                              <span>
+                                {cuposOcupados}/{p.jugadores_max} jugadores ·
+                                nivel {p.nivel}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="mt-2">
+                            <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                              <div
+                                className="h-full rounded-full bg-green-500 transition-all"
+                                style={{
+                                  width: `${Math.min(100, (cuposOcupados / p.jugadores_max) * 100)}%`,
+                                }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  );
+                };
 
                 return (
-                  <Card className="overflow-hidden border-border">
-                    <div className="flex">
-                      <div className="relative w-28 shrink-0">
-                        <Image src={img} alt={p.cancha_nombre} fill className="object-cover" />
-                      </div>
-                      <div className="flex flex-1 flex-col p-3">
-                        <div className="flex items-start justify-between gap-2 mb-1.5">
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <Badge variant="outline" className={cfg.cls}>{cfg.label}</Badge>
-                            <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-200">
-                              {deporteEmoji[p.deporte] ?? "🏟️"} {p.deporte.charAt(0).toUpperCase() + p.deporte.slice(1)}
-                            </Badge>
-                          </div>
-                          <p className="text-sm font-bold text-primary shrink-0">S/ {p.precio_total}</p>
-                        </div>
-                        <p className="font-semibold text-foreground text-sm">{p.cancha_nombre}</p>
-                        <p className="text-xs text-muted-foreground font-mono">#{p.reserva_id.slice(-6).toUpperCase()}</p>
-                        <div className="mt-1.5 space-y-0.5">
-                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                            <Calendar className="h-3 w-3" />
-                            <span className="capitalize">{fechaLabel}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                            <Clock className="h-3 w-3" />
-                            <span>{p.hora} - {horaFin}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                            <Users className="h-3 w-3" />
-                            <span>{cuposOcupados}/{p.jugadores_max} jugadores · nivel {p.nivel}</span>
-                          </div>
-                        </div>
-                        <div className="mt-2">
-                          <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                            <div
-                              className="h-full rounded-full bg-green-500 transition-all"
-                              style={{ width: `${Math.min(100, (cuposOcupados / p.jugadores_max) * 100)}%` }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
-                );
-              };
-
-              return (
-                <div className="space-y-4">
-                  <h2 className="text-xl font-bold text-foreground">Mis partidos</h2>
-                  {misPartidos.length === 0 && partHistorialTotal === 0 && !partHistorialLoading ? (
-                    <EmptyState type="partidos_activos" />
-                  ) : (
-                    <Tabs defaultValue="proximos" className="w-full">
-                      <TabsList className="w-full mb-4">
-                        <TabsTrigger value="proximos" className="flex-1 gap-1.5">
-                          Próximos
-                          {misPartidos.length > 0 && (
-                            <Badge variant="secondary" className="ml-1 h-4 min-w-4 px-1 text-xs">{misPartidos.length}</Badge>
-                          )}
-                        </TabsTrigger>
-                        <TabsTrigger value="historial" className="flex-1 gap-1.5">
-                          Historial
-                          {partHistorialLoading ? (
-                            <span className="ml-1 h-3 w-3 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground" />
-                          ) : (
-                            partHistorialTotal > 0 && (
-                              <Badge variant="secondary" className="ml-1 h-4 min-w-4 px-1 text-xs">{partHistorialTotal}</Badge>
-                            )
-                          )}
-                        </TabsTrigger>
-                      </TabsList>
-                      <TabsContent value="proximos" className="space-y-3">
-                        {misPartidos.length > 0
-                          ? misPartidos.map((p) => <MobilePartidoCard key={p.id} p={p} />)
-                          : <EmptyState type="partidos_activos" />}
-                      </TabsContent>
-                      <TabsContent value="historial" className="space-y-3">
-                        {partHistorialItems.length > 0
-                          ? partHistorialItems.map((p) => <MobilePartidoCard key={p.id} p={p} />)
-                          : !partHistorialLoading && <EmptyState type="partidos_historial" />}
-                        {partHistorialItems.length < partHistorialTotal && (
-                          <button
-                            onClick={() => cargarPartidosHistorial(partHistorialPage + 1)}
-                            disabled={partHistorialLoading}
-                            className="w-full py-3 text-sm font-medium text-primary border border-primary/30 rounded-xl hover:bg-primary/5 transition-colors disabled:opacity-50"
+                  <div className="space-y-4">
+                    <h2 className="text-xl font-bold text-foreground">
+                      Mis partidos
+                    </h2>
+                    {misPartidos.length === 0 &&
+                    partHistorialTotal === 0 &&
+                    !partHistorialLoading ? (
+                      <EmptyState type="partidos_activos" />
+                    ) : (
+                      <Tabs defaultValue="proximos" className="w-full">
+                        <TabsList className="w-full mb-4">
+                          <TabsTrigger
+                            value="proximos"
+                            className="flex-1 gap-1.5"
                           >
-                            {partHistorialLoading ? "Cargando..." : `Ver más (${partHistorialTotal - partHistorialItems.length} restantes)`}
-                          </button>
-                        )}
-                      </TabsContent>
-                    </Tabs>
-                  )}
-                </div>
-              );
-            })()}
+                            Próximos
+                            {misPartidos.length > 0 && (
+                              <Badge
+                                variant="secondary"
+                                className="ml-1 h-4 min-w-4 px-1 text-xs"
+                              >
+                                {misPartidos.length}
+                              </Badge>
+                            )}
+                          </TabsTrigger>
+                          <TabsTrigger
+                            value="historial"
+                            className="flex-1 gap-1.5"
+                          >
+                            Historial
+                            {partHistorialLoading ? (
+                              <span className="ml-1 h-3 w-3 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground" />
+                            ) : (
+                              partHistorialTotal > 0 && (
+                                <Badge
+                                  variant="secondary"
+                                  className="ml-1 h-4 min-w-4 px-1 text-xs"
+                                >
+                                  {partHistorialTotal}
+                                </Badge>
+                              )
+                            )}
+                          </TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="proximos" className="space-y-3">
+                          {misPartidos.length > 0 ? (
+                            misPartidos.map((p) => (
+                              <MobilePartidoCard key={p.id} p={p} />
+                            ))
+                          ) : (
+                            <EmptyState type="partidos_activos" />
+                          )}
+                        </TabsContent>
+                        <TabsContent value="historial" className="space-y-3">
+                          {partHistorialItems.length > 0
+                            ? partHistorialItems.map((p) => (
+                                <MobilePartidoCard key={p.id} p={p} />
+                              ))
+                            : !partHistorialLoading && (
+                                <EmptyState type="partidos_historial" />
+                              )}
+                          {partHistorialItems.length < partHistorialTotal && (
+                            <button
+                              onClick={() =>
+                                cargarPartidosHistorial(partHistorialPage + 1)
+                              }
+                              disabled={partHistorialLoading}
+                              className="w-full py-3 text-sm font-medium text-primary border border-primary/30 rounded-xl hover:bg-primary/5 transition-colors disabled:opacity-50"
+                            >
+                              {partHistorialLoading
+                                ? "Cargando..."
+                                : `Ver más (${partHistorialTotal - partHistorialItems.length} restantes)`}
+                            </button>
+                          )}
+                        </TabsContent>
+                      </Tabs>
+                    )}
+                  </div>
+                );
+              })()}
 
             {activeSection === "perfil" && (
               <div className="space-y-4">
@@ -2877,10 +3085,13 @@ function MiCuentaContent() {
                   value: (() => {
                     const total = canchasLoyalty.reduce(
                       (acc: number, c: any) =>
-                        acc + (c.cupones ?? []).filter((cu: any) => !cu.usado).length,
+                        acc +
+                        (c.cupones ?? []).filter((cu: any) => !cu.usado).length,
                       0,
                     );
-                    return total > 0 ? `${total} disponible${total !== 1 ? "s" : ""}` : "Acumula sellos";
+                    return total > 0
+                      ? `${total} disponible${total !== 1 ? "s" : ""}`
+                      : "Acumula sellos";
                   })(),
                   section: "cupones" as Section,
                 },
