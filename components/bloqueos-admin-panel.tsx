@@ -20,6 +20,28 @@ import {
   labelBloqueo,
   getHorasOperacion,
 } from '@/lib/bloqueos-utils';
+import { ownerFetch } from '@/lib/api';
+
+function isOwnerEndpoint(url: string) {
+  return url.includes('/api/admin-cancha/');
+}
+
+async function panelFetch(
+  url: string,
+  token: string,
+  init?: RequestInit,
+): Promise<Response> {
+  if (isOwnerEndpoint(url)) {
+    return ownerFetch(url, init);
+  }
+  return fetch(url, {
+    ...init,
+    headers: {
+      ...(init?.headers as Record<string, string> | undefined),
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
 
 // ── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -89,9 +111,9 @@ function ConflictosModal({
     if (!confirm(`¿Cancelar la reserva de ${c.usuario_nombre?.split(' ')[0] ?? 'este cliente'} el ${new Date(c.fecha + 'T00:00:00').toLocaleDateString('es-PE', { day: 'numeric', month: 'long' })} a las ${c.hora}?`)) return;
 
     setCancelando(c.id);
-    const res = await fetch(cancelEndpoint, {
+    const res = await panelFetch(cancelEndpoint, token, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ reservaId: c.id }),
     });
 
@@ -277,9 +299,9 @@ function FormNuevoBloqueo({
 
   const crearBloqueos = async (params: BloqueoParams) => {
     const promesas = params.horas.map(hora =>
-      fetch(endpoint, {
+      panelFetch(endpoint, token, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           canchaId,
           tipo:        params.modo,
@@ -529,9 +551,8 @@ function ListaBloqueos({
 
   const handleEliminar = async (id: string) => {
     setEliminando(id);
-    await fetch(`${endpoint}?id=${id}&canchaId=${canchaId}`, {
+    await panelFetch(`${endpoint}?id=${id}&canchaId=${canchaId}`, token, {
       method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` },
     });
     setEliminando(null);
     onEliminado();
@@ -599,9 +620,7 @@ export function BloqueosAdminPanel({ canchaId, token, cancelEndpoint = '/api/adm
 
   const cargar = useCallback(async () => {
     setCargando(true);
-    const res = await fetch(`${endpoint}?canchaId=${canchaId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const res = await panelFetch(`${endpoint}?canchaId=${canchaId}`, token);
     const data = await res.json();
     setBloqueos(Array.isArray(data) ? data : []);
     setCargando(false);

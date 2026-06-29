@@ -100,6 +100,38 @@ function ownerAuthHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+export function removeOwnerToken() {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem('cp_owner_token');
+  localStorage.removeItem('cp_owner_user');
+}
+
+export function handleOwnerUnauthorized() {
+  removeOwnerToken();
+  if (typeof window !== 'undefined') {
+    window.location.replace('/admin-cancha/login');
+  }
+}
+
+/** Fetch autenticado del panel dueño; redirige al login si el token expiró (401). */
+export async function ownerFetch(
+  input: RequestInfo | URL,
+  init?: RequestInit,
+): Promise<Response> {
+  const res = await fetch(input, {
+    ...init,
+    headers: {
+      ...ownerAuthHeaders(),
+      ...(init?.headers as Record<string, string> | undefined),
+    },
+  });
+  if (res.status === 401) {
+    handleOwnerUnauthorized();
+    throw new Error('SESSION_EXPIRED');
+  }
+  return res;
+}
+
 async function adminAuthHeaders(): Promise<Record<string, string>> {
   const token = await getAdminTokenFresh();
   return token ? { Authorization: `Bearer ${token}` } : {};
@@ -292,19 +324,19 @@ export async function apiOwnerEditarCancha(id: string, data: object) {
 }
 
 export async function apiOwnerGetNoticias() {
-  const res = await fetch('/api/admin-cancha/noticias', { headers: ownerAuthHeaders() });
+  const res = await ownerFetch('/api/admin-cancha/noticias');
   return res.json();
 }
 
 export async function apiOwnerGetNoticiaPorSlug(slug: string) {
-  const res = await fetch(`/api/admin-cancha/noticias/${slug}`, { headers: ownerAuthHeaders() });
+  const res = await ownerFetch(`/api/admin-cancha/noticias/${slug}`);
   return res.json();
 }
 
 export async function apiOwnerCrearNoticia(data: CrearPublicacionBody) {
-  const res = await fetch('/api/admin-cancha/noticias', {
+  const res = await ownerFetch('/api/admin-cancha/noticias', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...ownerAuthHeaders() },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
   return res.json();
@@ -314,26 +346,25 @@ export async function apiOwnerActualizarEstadoNoticia(
   slug: string,
   estado: PublicacionEstado
 ) {
-  const res = await fetch(`/api/admin-cancha/noticias/${slug}`, {
+  const res = await ownerFetch(`/api/admin-cancha/noticias/${slug}`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', ...ownerAuthHeaders() },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ estado }),
   });
   return res.json();
 }
 
 export async function apiOwnerEliminarNoticia(slug: string) {
-  const res = await fetch(`/api/admin-cancha/noticias/${slug}`, {
+  const res = await ownerFetch(`/api/admin-cancha/noticias/${slug}`, {
     method: 'DELETE',
-    headers: ownerAuthHeaders(),
   });
   return res.json();
 }
 
 export async function apiOwnerEditarNoticia(slug: string, data: CrearPublicacionBody) {
-  const res = await fetch(`/api/admin-cancha/noticias/${slug}`, {
+  const res = await ownerFetch(`/api/admin-cancha/noticias/${slug}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...ownerAuthHeaders() },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
   return res.json();
@@ -343,9 +374,8 @@ export async function apiOwnerUploadPublicacionImage(file: File) {
   const formData = new FormData();
   formData.append('file', file);
 
-  const res = await fetch('/api/admin-cancha/noticias/upload', {
+  const res = await ownerFetch('/api/admin-cancha/noticias/upload', {
     method: 'POST',
-    headers: ownerAuthHeaders(),
     body: formData,
   });
   return res.json();

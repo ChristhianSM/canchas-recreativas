@@ -18,6 +18,7 @@ import {
   exportarReservasExcel,
   type ResumenExcel,
 } from "@/lib/export-reservas";
+import { ownerFetch } from "@/lib/api";
 
 type Reserva = {
   id: string;
@@ -68,12 +69,8 @@ export default function OwnerReportesPage() {
     const token = getOwnerToken();
     if (!token) return;
     Promise.all([
-      fetch("/api/admin-cancha/reservas", {
-        headers: { Authorization: `Bearer ${token}` },
-      }).then((r) => r.json()),
-      fetch("/api/admin-cancha/canchas", {
-        headers: { Authorization: `Bearer ${token}` },
-      }).then((r) => r.json()),
+      ownerFetch("/api/admin-cancha/reservas").then((r) => r.json()),
+      ownerFetch("/api/admin-cancha/canchas").then((r) => r.json()),
     ])
       .then(([res, can]) => {
         setReservas(Array.isArray(res) ? res : []);

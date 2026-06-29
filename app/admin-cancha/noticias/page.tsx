@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { ShieldAlert } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { AdminNoticiasPage } from '@/components/publicaciones/admin-noticias-page';
+import { ownerFetch } from '@/lib/api';
 
 function getOwnerToken() {
   if (typeof window === 'undefined') return null;
@@ -21,9 +22,7 @@ export default function OwnerNoticiasPage() {
       return;
     }
 
-    fetch('/api/admin-cancha/permisos', {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    ownerFetch('/api/admin-cancha/permisos')
       .then((res) => res.json())
       .then((data) => {
         setPuedeGestionar(Boolean(data?.puedeGestionarPublicaciones));

@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import ReservasAnalytics from '@/components/reservas-analytics';
 import { sportLabels } from '@/lib/types';
+import { ownerFetch } from '@/lib/api';
 
 type Reserva = {
   id: string; cancha_id: string; cancha_nombre: string;
@@ -56,8 +57,8 @@ export default function OwnerDashboard() {
     if (user) setOwnerName(user.nombre?.split(' ')[0] ?? '');
 
     Promise.all([
-      fetch('/api/admin-cancha/reservas', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
-      fetch('/api/admin-cancha/canchas',  { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+      ownerFetch('/api/admin-cancha/reservas').then(r => r.json()),
+      ownerFetch('/api/admin-cancha/canchas').then(r => r.json()),
     ]).then(([res, can]) => {
       setRawReservas(Array.isArray(res) ? res : []);
       setReservas(Array.isArray(res) ? res : []);

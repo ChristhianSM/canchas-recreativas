@@ -32,6 +32,7 @@ import {
   getHorasOperacion,
   type BloqueoAdmin,
 } from "@/lib/bloqueos-utils";
+import { ownerFetch } from "@/lib/api";
 
 type Cancha = {
   id: string;
@@ -111,12 +112,8 @@ function HorarioTab({
     const token = getOwnerToken();
     if (!token) return;
     Promise.all([
-      fetch("/api/admin-cancha/reservas", {
-        headers: { Authorization: `Bearer ${token}` },
-      }).then((r) => r.json()),
-      fetch(`/api/admin-cancha/bloqueos?canchaId=${canchaId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      }).then((r) => r.json()),
+      ownerFetch("/api/admin-cancha/reservas").then((r) => r.json()),
+      ownerFetch(`/api/admin-cancha/bloqueos?canchaId=${canchaId}`).then((r) => r.json()),
     ])
       .then(([resData, bloqData]) => {
         setReservas(
@@ -505,9 +502,7 @@ function FidelizacionTab({ canchaId }: { canchaId: string }) {
   useEffect(() => {
     const token = getOwnerToken();
     if (!token || !canchaId) return;
-    fetch(`/api/admin-cancha/loyalty-config?canchaId=${canchaId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    ownerFetch(`/api/admin-cancha/loyalty-config?canchaId=${canchaId}`)
       .then((r) => r.json())
       .then((data) => {
         if (data) {
@@ -527,10 +522,9 @@ function FidelizacionTab({ canchaId }: { canchaId: string }) {
     if (!token) return;
     setGuardando(true);
     setError("");
-    const res = await fetch("/api/admin-cancha/loyalty-config", {
+    const res = await ownerFetch("/api/admin-cancha/loyalty-config", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -809,9 +803,7 @@ export default function OwnerEditarCanchaPage() {
     }
 
     // Cargar cancha desde BD
-    fetch(`/api/admin-cancha/cancha?id=${id}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    ownerFetch(`/api/admin-cancha/cancha?id=${id}`)
       .then((r) => r.json())
       .then((canchaData) => {
         if (canchaData.error) {
@@ -883,11 +875,10 @@ export default function OwnerEditarCanchaPage() {
     console.log("  direccion:", direccion);
     console.log("  distrito:", distrito);
 
-    const res = await fetch(`/api/admin-cancha/cancha?id=${id}`, {
+    const res = await ownerFetch(`/api/admin-cancha/cancha?id=${id}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
         descripcion: description,
@@ -938,9 +929,8 @@ export default function OwnerEditarCanchaPage() {
       const form = new FormData();
       form.append("file", file);
       form.append("canchaId", id);
-      const res = await fetch("/api/upload", {
+      const res = await ownerFetch("/api/upload", {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
         body: form,
       });
       const data = await res.json();

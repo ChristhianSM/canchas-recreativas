@@ -10,6 +10,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ownerFetch } from '@/lib/api';
 
 type ReservaEstado = 'pendiente' | 'confirmada' | 'rechazada' | 'cancelada';
 
@@ -111,9 +112,7 @@ export default function OwnerReservasPage() {
   const reload = async () => {
     const token = getOwnerToken();
     if (!token) return;
-    const res = await fetch('/api/admin-cancha/reservas', {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const res = await ownerFetch('/api/admin-cancha/reservas');
     const data = await res.json();
     setReservas(Array.isArray(data) ? data.map((r: any) => ({
       ...r,
@@ -138,9 +137,9 @@ export default function OwnerReservasPage() {
     setConfirmando(true);
     const token = getOwnerToken();
     try {
-      const res = await fetch(`/api/reservas/update?id=${id}`, {
+      const res = await ownerFetch(`/api/reservas/update?id=${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ estado: 'confirmada' }),
       });
       if (res.ok) {
@@ -158,9 +157,9 @@ export default function OwnerReservasPage() {
     setRechazando(true);
     const token = getOwnerToken();
     try {
-      const res = await fetch(`/api/reservas/update?id=${id}`, {
+      const res = await ownerFetch(`/api/reservas/update?id=${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ estado: 'rechazada' }),
       });
       if (res.ok) {
@@ -183,9 +182,9 @@ export default function OwnerReservasPage() {
     setSelected(null);
     const token = getOwnerToken();
     try {
-      await fetch('/api/admin-cancha/reservas/cancelar', {
+      await ownerFetch('/api/admin-cancha/reservas/cancelar', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reservaId: id }),
       });
     } catch {
@@ -209,9 +208,9 @@ export default function OwnerReservasPage() {
     // Hacer la petición al servidor en segundo plano
     const token = getOwnerToken();
     try {
-      await fetch(`/api/reservas/update?id=${id}`, {
+      await ownerFetch(`/api/reservas/update?id=${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ devolucion_procesada: true }),
       });
     } catch (error) {
@@ -236,9 +235,9 @@ export default function OwnerReservasPage() {
     // Hacer la petición al servidor en segundo plano
     const token = getOwnerToken();
     try {
-      await fetch(`/api/reservas/update?id=${id}`, {
+      await ownerFetch(`/api/reservas/update?id=${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ saldo_cobrado: true }),
       });
     } catch (error) {
