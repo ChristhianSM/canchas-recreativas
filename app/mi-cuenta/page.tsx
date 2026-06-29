@@ -2076,9 +2076,11 @@ function MiCuentaContent() {
                           <p className="font-semibold text-foreground">
                             {p.cancha_nombre}
                           </p>
-                          <p className="text-xs text-muted-foreground font-mono">
-                            #{p.reserva_id.slice(-6).toUpperCase()}
-                          </p>
+                          {p.reserva_id && (
+                            <p className="text-xs text-muted-foreground font-mono">
+                              #{p.reserva_id.slice(-6).toUpperCase()}
+                            </p>
+                          )}
                           {p.cancha_distrito && (
                             <p className="text-xs text-muted-foreground">
                               {p.cancha_distrito}
@@ -2691,9 +2693,11 @@ function MiCuentaContent() {
                           <p className="font-semibold text-foreground text-sm">
                             {p.cancha_nombre}
                           </p>
-                          <p className="text-xs text-muted-foreground font-mono">
-                            #{p.reserva_id.slice(-6).toUpperCase()}
-                          </p>
+                          {p.reserva_id && (
+                            <p className="text-xs text-muted-foreground font-mono">
+                              #{p.reserva_id.slice(-6).toUpperCase()}
+                            </p>
+                          )}
                           <div className="mt-1.5 space-y-0.5">
                             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                               <Calendar className="h-3 w-3" />

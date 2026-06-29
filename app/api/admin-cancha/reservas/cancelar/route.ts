@@ -95,5 +95,26 @@ export async function POST(req: NextRequest) {
     await revertirSelloCancha(sb, reserva.usuario_id, reserva.cancha_id);
   }
 
+  // Cancelar el partido vinculado (si existe)
+  const { data: partido } = await sb
+    .from('partidos')
+    .select('id, organizador_id')
+    .eq('reserva_id', reservaId)
+    .maybeSingle();
+
+  if (partido) {
+    await sb.from('partidos').update({ estado: 'cancelado' }).eq('id', partido.id);
+
+    if (partido.organizador_id) {
+      const motivoTexto = motivo ? ` Motivo: ${motivo}.` : '';
+      await sb.from('notificaciones').insert({
+        usuario_id: partido.organizador_id,
+        reserva_id: reservaId,
+        mensaje: `Tu partido en ${reserva.cancha_nombre} del ${fechaLabel} a las ${reserva.hora} fue cancelado por el administrador.${motivoTexto}`,
+        tipo: 'cancelada',
+      });
+    }
+  }
+
   return NextResponse.json({ ok: true });
 }
