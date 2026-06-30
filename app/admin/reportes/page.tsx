@@ -42,6 +42,7 @@ type ReservaRaw = {
   grupo_reserva_id?: string | null;
   cupon_aplicado?: boolean;
   precio_original?: number | null;
+  es_reserva_directa?: boolean;
 };
 
 type Cancha = { id: string; nombre: string };
@@ -170,6 +171,7 @@ export default function AdminReportesPage() {
           r.modo_pago === "parcial" ? (r.saldo_pendiente ?? "") : "",
         Método: r.metodo_pago,
         Estado: r.estado.charAt(0).toUpperCase() + r.estado.slice(1),
+        "Tipo": r.es_reserva_directa ? "Cliente fijo" : "Online",
         "Cupón aplicado": r.cupon_aplicado ? "Sí" : "No",
         "Precio original (S/)": r.cupon_aplicado ? (r.precio_original ?? r.precio) : "",
         "Descuento (S/)": r.cupon_aplicado && r.precio_original != null ? Math.max(0, r.precio_original - r.precio) : "",
@@ -471,9 +473,13 @@ export default function AdminReportesPage() {
                       <p className="font-medium text-foreground">
                         {r.usuario_nombre}
                       </p>
-                      <p className="text-xs text-muted-foreground">
-                        {r.usuario_email}
-                      </p>
+                      {r.es_reserva_directa ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-blue-100 text-blue-700 border border-blue-200 rounded px-1.5 py-0.5 mt-0.5">
+                          Cliente fijo
+                        </span>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">{r.usuario_email}</p>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">
                       {r.cancha_nombre}

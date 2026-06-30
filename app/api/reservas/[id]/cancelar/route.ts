@@ -142,6 +142,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     if (updateError) throw updateError;
 
+    // Cancelar slots hermanos si es una reserva multi-hora
+    if (reserva.grupo_reserva_id) {
+      await sb.from('reservas')
+        .update({ estado: 'cancelada', cancelado_en: new Date().toISOString() })
+        .eq('grupo_reserva_id', reserva.grupo_reserva_id)
+        .neq('id', id);
+    }
+
     // Crear notificación para el usuario
     const fechaLabel = new Date(reserva.fecha).toLocaleDateString('es-PE', { 
       day: 'numeric', 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
 import { verifyToken } from '@/lib/admin-auth';
-import { notificarEstadoReserva } from '@/lib/whatsapp';
+import { notificarEstadoReserva, notificarAdminCancelacionPropia } from '@/lib/whatsapp';
 import { revertirSelloCancha } from '@/lib/loyalty';
 
 export async function POST(req: NextRequest) {
@@ -90,9 +90,47 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // Revertir sello por cancha si la reserva estaba confirmada
+  // Revertir sello y restaurar cupón si la reserva estaba confirmada
   if (reserva.estado === 'confirmada' && reserva.usuario_id) {
     await revertirSelloCancha(sb, reserva.usuario_id, reserva.cancha_id);
+
+    let cuponId = reserva.cupon_id ?? null;
+    if (!cuponId && reserva.grupo_reserva_id) {
+      const { data: principal } = await sb
+        .from('reservas')
+        .select('cupon_id')
+        .eq('grupo_reserva_id', reserva.grupo_reserva_id)
+        .not('cupon_id', 'is', null)
+        .maybeSingle();
+      cuponId = principal?.cupon_id ?? null;
+    }
+    if (cuponId) {
+      await sb.from('cancha_cupones')
+        .update({ usado: false, usado_en: null })
+        .eq('id', cuponId);
+    }
+  }
+
+  // WhatsApp al dueño recordándole que debe devolver el pago (solo si la reserva era paga)
+  if (reserva.precio > 0 && !reserva.cupon_aplicado) {
+    const { data: ownerData } = await sb
+      .from('usuarios')
+      .select('telefono')
+      .eq('id', user.id)
+      .maybeSingle();
+    if (ownerData?.telefono) {
+      await notificarAdminCancelacionPropia({
+        adminPhone:    ownerData.telefono,
+        reservaId,
+        clienteNombre: reserva.usuario_nombre ?? 'Cliente',
+        canchaNombre:  reserva.cancha_nombre,
+        fecha:         reserva.fecha,
+        hora:          reserva.hora,
+        precio:        reserva.precio,
+        metodoPago:    reserva.metodo_pago ?? reserva.metodoPago ?? '',
+        clientePhone:  reserva.usuario_telefono ?? '',
+      });
+    }
   }
 
   // Cancelar el partido vinculado (si existe)

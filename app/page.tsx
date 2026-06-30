@@ -87,6 +87,7 @@ type Cancha = {
   accesorios?: any[];
   horariosOcupados?: Record<string, "reservado" | "en_proceso">;
   horariosRestringidos?: string[];
+  horasOperacion?: string[];
 };
 
 const HORAS = [
@@ -166,7 +167,7 @@ function adaptCancha(c: Cancha) {
     const dateStr = getLocalDateString(d);
     const esHoy = dateStr === hoyStr;
 
-    schedule[dateStr] = HORAS.filter(
+    schedule[dateStr] = (c.horasOperacion ?? HORAS).filter(
       (hora) => !horariosRestringidos.includes(hora),
     ).map((hora) => {
       const key = `${dateStr}|${hora}`;

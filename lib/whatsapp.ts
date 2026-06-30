@@ -13,6 +13,7 @@ const TPL = {
   reservaCanceladaAdmin:          process.env.WHATSAPP_TPL_CANCELADA_ADMIN            ?? 'reservation_cancelled_admin',
   reservaCanceladaUsuario:        process.env.WHATSAPP_TPL_CANCELADA_USUARIO          ?? 'reservation_cancelled_user',
   reservaCanceladaAdminParaUsuario: process.env.WHATSAPP_TPL_CANCELADA_ADMIN_PARA_USUARIO ?? 'reservation_cancelled_by_admin',
+  canceladaPorAdminRecordatorio:    process.env.WHATSAPP_TPL_CANCELADA_POR_ADMIN_RECORDATORIO ?? 'reservation_cancelled_by_admin_refund',
   partidoCanceladoJugador:  process.env.WHATSAPP_TPL_PARTIDO_CANCELADO_JUGADOR  ?? 'partido_cancelado_jugador',
 };
 
@@ -307,6 +308,36 @@ export async function notificarCancelacionAdmin(data: {
     String(data.devolucion),
     metodoLabel,
     data.motivo,
+  ]);
+}
+
+// Recordatorio al admin cuando él mismo cancela una reserva paga (debe devolver el 100%)
+export async function notificarAdminCancelacionPropia(data: {
+  adminPhone:    string;
+  reservaId:     string;
+  clienteNombre: string;
+  canchaNombre:  string;
+  fecha:         string;
+  hora:          string;
+  precio:        number;
+  metodoPago:    string;
+  clientePhone:  string;
+}) {
+  const codigo      = data.reservaId.slice(-6).toUpperCase();
+  const metodoLabel = data.metodoPago === 'yape' ? 'Yape'
+    : data.metodoPago === 'plin' ? 'Plin'
+    : data.metodoPago === 'efectivo' ? 'Efectivo'
+    : data.metodoPago || 'No especificado';
+
+  await sendTemplate(data.adminPhone, TPL.canceladaPorAdminRecordatorio, [
+    codigo,
+    data.clienteNombre,
+    data.canchaNombre,
+    data.fecha,
+    data.hora,
+    String(data.precio),
+    metodoLabel,
+    data.clientePhone,
   ]);
 }
 
