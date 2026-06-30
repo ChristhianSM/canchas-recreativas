@@ -237,6 +237,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       await revertirSelloCancha(sb, userId, reserva.cancha_id);
     }
 
+    // Cancelar el partido vinculado (si existe)
+    const { data: partido } = await sb
+      .from('partidos')
+      .select('id')
+      .eq('reserva_id', id)
+      .maybeSingle();
+
+    if (partido) {
+      await sb.from('partidos').update({ estado: 'cancelado' }).eq('id', partido.id);
+    }
+
     return NextResponse.json({
       success: true,
       devolucion: resultado.devolucion,
