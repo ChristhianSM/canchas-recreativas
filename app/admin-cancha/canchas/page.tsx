@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { sportLabels } from '@/lib/types';
+import { ownerFetch } from '@/lib/api';
 
 type Cancha = {
   id: string; nombre: string; tipo: keyof typeof sportLabels;
@@ -28,9 +29,7 @@ export default function OwnerCanchasPage() {
     const token = getOwnerToken();
     if (!token) return;
 
-    fetch('/api/admin-cancha/canchas', {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    ownerFetch('/api/admin-cancha/canchas')
       .then(r => r.json())
       .then(data => {
         setCanchas(Array.isArray(data) ? data : []);

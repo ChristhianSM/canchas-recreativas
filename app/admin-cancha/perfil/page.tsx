@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { LoadingButton } from "@/components/loading-button";
 import { cn } from "@/lib/utils";
+import { ownerFetch } from "@/lib/api";
 
 function getOwnerToken() {
   if (typeof window === "undefined") return null;
@@ -26,7 +27,7 @@ export default function PerfilAdminCanchaPage() {
   useEffect(() => {
     const token = getOwnerToken();
     if (!token) return;
-    fetch("/api/auth/me", { headers: { Authorization: `Bearer ${token}` } })
+    ownerFetch("/api/auth/me")
       .then((r) => r.json())
       .then((data) => {
         setNombre(data.nombre ?? "");
@@ -53,12 +54,9 @@ export default function PerfilAdminCanchaPage() {
     setGuardando(true);
     setErrores({});
     try {
-      const res = await fetch("/api/auth/perfil", {
+      const res = await ownerFetch("/api/auth/perfil", {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ nombre: nombre.trim(), telefono: telefono.trim() }),
       });
       if (!res.ok) throw new Error();

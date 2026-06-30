@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { NotificationBell } from "@/components/notification-bell";
 import { cn } from "@/lib/utils";
+import { ownerFetch } from "@/lib/api";
 
 const navItems = [
   { href: "/admin-cancha", label: "Dashboard", icon: LayoutDashboard },
@@ -82,9 +83,7 @@ export default function OwnerLayout({
     const user = getOwnerUser();
     if (user) setOwnerName(user.nombre ?? "");
 
-    fetch("/api/admin-cancha/reservas", {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    ownerFetch("/api/admin-cancha/reservas")
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data)) {
@@ -99,9 +98,7 @@ export default function OwnerLayout({
       })
       .catch(() => {});
 
-    fetch("/api/admin-cancha/permisos", {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    ownerFetch("/api/admin-cancha/permisos")
       .then((r) => r.json())
       .then((data) => {
         setPuedeGestionarPublicaciones(

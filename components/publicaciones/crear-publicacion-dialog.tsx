@@ -50,6 +50,7 @@ import {
   apiOwnerEditarNoticia,
   apiOwnerUploadPublicacionImage,
   getOwnerToken,
+  ownerFetch,
 } from '@/lib/api';
 import { getAdminTokenFresh } from '@/lib/supabase-browser';
 import type { AdminNoticiasPanel } from '@/lib/publicaciones-panel';
@@ -125,9 +126,12 @@ export function CrearPublicacionDialog({
       setLoadingCanchas(true);
 
       try {
-        const res = await fetch(canchasUrl, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res =
+          panel === 'superadmin'
+            ? await fetch(canchasUrl, {
+                headers: { Authorization: `Bearer ${token}` },
+              })
+            : await ownerFetch(canchasUrl);
         const data = await res.json();
 
         if (!Array.isArray(data)) {
