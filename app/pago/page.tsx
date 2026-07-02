@@ -78,10 +78,11 @@ function PagoContent() {
   const horas = Math.max(1, Number(params.get("horas") ?? 1));
   const precioRaw = Number(params.get("precio") ?? 0);
   const fromCard = params.get("from") === "card";
+  const accsParam = params.get("accs") ?? "";
 
   const horaFin = `${String((parseInt(hora.split(":")[0]) + horas) % 24).padStart(2, "0")}:00`;
 
-  // Accesorios seleccionados — vienen del sessionStorage, no de la URL
+  // Accesorios seleccionados — vienen del sessionStorage o de la URL
   const [accesoriosSeleccionados, setAccesoriosSeleccionados] = useState<
     { id: string; nombre: string; icono: string; precio: number | null }[]
   >([]);
@@ -127,8 +128,20 @@ function PagoContent() {
       try {
         const parsed = JSON.parse(cached);
         setCancha(parsed);
-        if (parsed.accesoriosSeleccionados) {
-          setAccesoriosSeleccionados(parsed.accesoriosSeleccionados);
+        const fromStorage: any[] = parsed.accesoriosSeleccionados ?? [];
+        if (fromStorage.length > 0) {
+          setAccesoriosSeleccionados(fromStorage);
+        } else if (accsParam) {
+          const ids = decodeURIComponent(accsParam).split(',').filter(Boolean);
+          const selected = (parsed.accesorios ?? [])
+            .filter((a: any) => ids.includes(String(a.id)))
+            .map((a: any) => ({
+              id: a.id,
+              nombre: a.nombre,
+              icono: a.icono,
+              precio: a.modalidad === 'prestado' ? null : (a.precio ?? null),
+            }));
+          setAccesoriosSeleccionados(selected);
         }
         sessionStorage.removeItem(`cp_cancha_pago_${canchaId}`);
         setCanchaLoading(false);
@@ -157,6 +170,18 @@ function PagoContent() {
             yapeNumero: data.yape_numero ?? "",
             plinNumero: data.plin_numero ?? "",
           });
+          if (accsParam) {
+            const ids = decodeURIComponent(accsParam).split(',').filter(Boolean);
+            const selected = (data.accesorios ?? [])
+              .filter((a: any) => ids.includes(String(a.id)))
+              .map((a: any) => ({
+                id: a.id,
+                nombre: a.nombre,
+                icono: a.icono,
+                precio: a.modalidad === 'prestado' ? null : (a.precio ?? null),
+              }));
+            if (selected.length > 0) setAccesoriosSeleccionados(selected);
+          }
         } else {
           import("@/lib/data").then(({ getCanchaById }) => {
             const c = getCanchaById(canchaId);

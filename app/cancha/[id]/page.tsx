@@ -304,8 +304,11 @@ export default function CanchaDetailPage() {
     setReservaStep(2);
     setTimeout(() => {
       const firstSlot = selectedSlots[0];
+      const accsQuery = accesoriosSeleccionados.length > 0
+        ? `&accs=${encodeURIComponent(accesoriosSeleccionados.join(','))}`
+        : '';
       router.push(
-        `/pago?canchaId=${cancha.id}&fecha=${selectedDate}&hora=${firstSlot.time}&horas=${selectedSlots.length}&precio=${firstSlot.price}&sid=${sessionId.current}`,
+        `/pago?canchaId=${cancha.id}&fecha=${selectedDate}&hora=${firstSlot.time}&horas=${selectedSlots.length}&precio=${firstSlot.price}&sid=${sessionId.current}${accsQuery}`,
       );
     }, 800);
   };
