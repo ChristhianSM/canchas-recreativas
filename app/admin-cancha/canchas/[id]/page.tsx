@@ -1388,27 +1388,30 @@ export default function OwnerEditarCanchaPage() {
                     Máximo 6 imágenes por cancha
                   </p>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => fileRef.current?.click()}
-                  disabled={uploading || images.length >= 6}
-                >
-                  <Plus className="mr-1.5 h-3.5 w-3.5" />
-                  {uploading
-                    ? "Subiendo..."
-                    : images.length >= 6
-                      ? "Límite alcanzado"
-                      : "Subir foto"}
-                </Button>
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  onChange={handleFileUpload}
-                />
+                <div className="relative">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={uploading || images.length >= 6}
+                  >
+                    <Plus className="mr-1.5 h-3.5 w-3.5" />
+                    {uploading
+                      ? "Subiendo..."
+                      : images.length >= 6
+                        ? "Límite alcanzado"
+                        : "Subir foto"}
+                  </Button>
+                  {!uploading && images.length < 6 && (
+                    <input
+                      ref={fileRef}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      onChange={handleFileUpload}
+                    />
+                  )}
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {images.map((img, i) => (
