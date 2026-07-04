@@ -424,12 +424,7 @@ function PagoContent() {
     };
 
     img.src = objectUrl;
-    if ("decode" in img) {
-      img.decode().then(dibujar).catch(() => URL.revokeObjectURL(objectUrl));
-    } else {
-      img.onload = dibujar;
-      img.onerror = () => URL.revokeObjectURL(objectUrl);
-    }
+    img.decode().then(dibujar).catch(() => URL.revokeObjectURL(objectUrl));
   };
 
   // Validación del paso 2

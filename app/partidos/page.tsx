@@ -671,12 +671,7 @@ function CrearPartidoSheet({
     };
 
     img.src = objectUrl;
-    if ("decode" in img) {
-      img.decode().then(dibujar).catch(() => URL.revokeObjectURL(objectUrl));
-    } else {
-      img.onload = dibujar;
-      img.onerror = () => URL.revokeObjectURL(objectUrl);
-    }
+    img.decode().then(dibujar).catch(() => URL.revokeObjectURL(objectUrl));
   };
 
   const yapeDisponible = !!canchaSeleccionada?.yape_numero;
