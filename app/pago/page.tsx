@@ -396,7 +396,8 @@ function PagoContent() {
     if (!file) return;
     const objectUrl = URL.createObjectURL(file);
     const img = new window.Image();
-    img.onload = () => {
+
+    const dibujar = () => {
       const MAX = 1200;
       let width = img.naturalWidth || img.width;
       let height = img.naturalHeight || img.height;
@@ -421,8 +422,14 @@ function PagoContent() {
       setComprobante(canvas.toDataURL("image/jpeg", 0.75));
       URL.revokeObjectURL(objectUrl);
     };
-    img.onerror = () => URL.revokeObjectURL(objectUrl);
+
     img.src = objectUrl;
+    if ("decode" in img) {
+      img.decode().then(dibujar).catch(() => URL.revokeObjectURL(objectUrl));
+    } else {
+      img.onload = dibujar;
+      img.onerror = () => URL.revokeObjectURL(objectUrl);
+    }
   };
 
   // Validación del paso 2
