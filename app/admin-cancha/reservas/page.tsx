@@ -66,6 +66,8 @@ type Reserva = {
   grupo_reserva_id?: string | null;
   cupon_aplicado?: boolean;
   precio_original?: number | null;
+  seccion_id?: string | null;
+  seccion_nombre?: string | null;
 };
 
 function getOwnerToken() {
@@ -206,6 +208,7 @@ export default function OwnerReservasPage() {
             saldo_cobrado: r.saldo_cobrado ?? false,
             saldo_cobrado_en: r.saldo_cobrado_en ?? null,
             grupo_reserva_id: r.grupo_reserva_id ?? null,
+            seccion_nombre: r.seccion?.nombre ?? null,
           }))
         : [],
     );
@@ -501,6 +504,11 @@ export default function OwnerReservasPage() {
       </td>
       <td className="px-4 py-3 text-sm text-muted-foreground">
         {r.cancha_nombre}
+        {r.seccion_nombre && (
+          <span className="block text-xs font-medium text-primary">
+            Sección {r.seccion_nombre}
+          </span>
+        )}
       </td>
       <td className="px-4 py-3 text-sm text-muted-foreground">
         {new Date(r.fecha + "T00:00:00").toLocaleDateString("es-PE", {
@@ -906,6 +914,11 @@ export default function OwnerReservasPage() {
                   <p className="font-medium text-foreground">
                     {selected.cancha_nombre}
                   </p>
+                  {selected.seccion_nombre && (
+                    <p className="text-xs font-medium text-primary mt-0.5">
+                      Sección {selected.seccion_nombre}
+                    </p>
+                  )}
                 </div>
                 <div className="rounded-lg bg-muted/50 p-3">
                   <p className="text-xs text-muted-foreground">Fecha y hora</p>

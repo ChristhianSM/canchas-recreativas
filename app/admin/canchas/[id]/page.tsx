@@ -61,6 +61,8 @@ function getLunesDeSemanaAdmin(base = new Date()): Date {
 function HorarioTab({ canchaId, horasOperacion = HORAS_APP }: { canchaId: string; horasOperacion?: string[] }) {
   const [reservas, setReservas] = useState<any[]>([]);
   const [bloqueos, setBloqueos] = useState<BloqueoAdmin[]>([]);
+  const [secciones, setSecciones] = useState<{ id: string; nombre: string }[]>([]);
+  const [seccionSeleccionada, setSeccionSeleccionada] = useState<string | null>(null);
   const [cargando, setCargando] = useState(true);
   const [semana, setSemana] = useState<Date>(getLunesDeSemanaAdmin);
 
@@ -74,13 +76,15 @@ function HorarioTab({ canchaId, horasOperacion = HORAS_APP }: { canchaId: string
         fetch(`/api/admin/bloqueos?canchaId=${canchaId}`, {
           headers: { Authorization: `Bearer ${token}` },
         }).then((r) => r.json()),
+        fetch(`/api/admin/secciones?canchaId=${canchaId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }).then((r) => r.json()),
       ])
-        .then(([resData, bloqData]) => {
-          const lista = Array.isArray(resData)
-            ? resData
-            : (resData?.data ?? []);
+        .then(([resData, bloqData, secData]) => {
+          const lista = Array.isArray(resData) ? resData : (resData?.data ?? []);
           setReservas(lista.filter((r: any) => r.cancha_id === canchaId));
           setBloqueos(Array.isArray(bloqData) ? bloqData : []);
+          setSecciones(Array.isArray(secData) ? secData.filter((s: any) => s.activa) : []);
           setCargando(false);
         })
         .catch(() => setCargando(false));
@@ -98,12 +102,24 @@ function HorarioTab({ canchaId, horasOperacion = HORAS_APP }: { canchaId: string
 
   const getReserva = (dia: Date, hora: string) => {
     const fecha = toFecha(dia);
+    if (seccionSeleccionada === null) {
+      // Vista "Completa": cualquier reserva (cancha entera O sección) bloquea el slot
+      return reservas.find(
+        (r) =>
+          r.fecha === fecha &&
+          r.hora === hora &&
+          r.estado !== "cancelada" &&
+          r.estado !== "rechazada",
+      );
+    }
+    // Vista de sección: reservas de ESTA sección + reservas de cancha completa (bloquean la sección)
     return reservas.find(
       (r) =>
         r.fecha === fecha &&
         r.hora === hora &&
         r.estado !== "cancelada" &&
-        r.estado !== "rechazada",
+        r.estado !== "rechazada" &&
+        (r.seccion_id === seccionSeleccionada || r.seccion_id == null),
     );
   };
 
@@ -126,6 +142,37 @@ function HorarioTab({ canchaId, horasOperacion = HORAS_APP }: { canchaId: string
 
   return (
     <div className="space-y-4">
+      {/* Selector de sección — solo si la cancha tiene secciones */}
+      {secciones.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setSeccionSeleccionada(null)}
+            className={cn(
+              "rounded-lg px-3 py-1.5 text-xs font-medium transition-colors border",
+              seccionSeleccionada === null
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-background text-muted-foreground border-border hover:border-primary/40 hover:text-foreground",
+            )}
+          >
+            Cancha completa
+          </button>
+          {secciones.map((s) => (
+            <button
+              key={s.id}
+              onClick={() => setSeccionSeleccionada(s.id)}
+              className={cn(
+                "rounded-lg px-3 py-1.5 text-xs font-medium transition-colors border",
+                seccionSeleccionada === s.id
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-background text-muted-foreground border-border hover:border-primary/40 hover:text-foreground",
+              )}
+            >
+              Sección {s.nombre}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <button
           onClick={() => navSemana(-1)}
@@ -221,6 +268,26 @@ function HorarioTab({ canchaId, horasOperacion = HORAS_APP }: { canchaId: string
                     );
 
                   if (reserva) {
+                    // Vista "Sección X": reserva de cancha completa bloquea el slot
+                    const bloqueadaPorCompleta =
+                      seccionSeleccionada !== null && reserva.seccion_id == null;
+                    // Vista "Cancha completa": reserva de sección bloquea el slot
+                    const bloqueadaPorSeccion =
+                      seccionSeleccionada === null && reserva.seccion_id != null;
+
+                    if (bloqueadaPorCompleta || bloqueadaPorSeccion) {
+                      return (
+                        <td key={i} className="px-2 py-2 text-center bg-muted/60">
+                          <span className="text-[9px] text-muted-foreground">
+                            Bloq.
+                          </span>
+                          <span className="block text-[8px] text-muted-foreground/60">
+                            {bloqueadaPorCompleta ? "completa" : `sec. ${reserva.seccion?.nombre ?? ""}`}
+                          </span>
+                        </td>
+                      );
+                    }
+
                     const isPendiente = reserva.estado === "pendiente";
                     return (
                       <td
@@ -650,6 +717,7 @@ export default function AdminEditarCanchaPage() {
               <TabsTrigger value="ubicacion">Ubicación</TabsTrigger>
               <TabsTrigger value="servicios">Servicios</TabsTrigger>
               <TabsTrigger value="dueno">Dueño</TabsTrigger>
+              <TabsTrigger value="secciones">Secciones</TabsTrigger>
               <TabsTrigger value="resenas" onClick={() => {
                 if (resenas.length === 0 && !loadingResenas) {
                   setLoadingResenas(true);
@@ -678,7 +746,7 @@ export default function AdminEditarCanchaPage() {
                     onChange={e => setHoraApertura(e.target.value)}
                     className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   >
-                    {HORAS_APP.filter(h => h < horaCierre).map(h => (
+                    {HORAS_APP.map(h => (
                       <option key={h} value={h}>{h}</option>
                     ))}
                   </select>
@@ -690,14 +758,20 @@ export default function AdminEditarCanchaPage() {
                     onChange={e => setHoraCierre(e.target.value)}
                     className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   >
-                    {HORAS_APP.filter(h => h > horaApertura).map(h => (
-                      <option key={h} value={h}>{h}</option>
+                    {HORAS_APP.map(h => (
+                      <option key={h} value={h}>
+                        {parseInt(h) <= 5 ? `${h} (madrugada)` : h}
+                      </option>
                     ))}
                   </select>
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
-                Los usuarios solo verán horas entre <span className="font-medium text-foreground">{horaApertura}</span> y <span className="font-medium text-foreground">{horaCierre}</span>.
+                Los usuarios solo verán horas entre <span className="font-medium text-foreground">{horaApertura}</span> y <span className="font-medium text-foreground">{horaCierre}</span>
+                {horaCierre <= horaApertura && (
+                  <span className="text-primary"> (cierra en la madrugada del día siguiente)</span>
+                )}
+                .
               </p>
             </Card>
             <Card className="border-border p-5">
@@ -1257,8 +1331,213 @@ export default function AdminEditarCanchaPage() {
               ))
             )}
           </TabsContent>
+
+          {/* ── Secciones ── */}
+          <TabsContent value="secciones" className="pt-4">
+            <SeccionesAdminTab canchaId={id as string} />
+          </TabsContent>
         </Tabs>
       </div>
+    </div>
+  );
+}
+
+// ── Tab Secciones (superadmin) ────────────────────────────────────────
+type SeccionAdmin = {
+  id: string;
+  nombre: string;
+  descripcion: string | null;
+  max_jugadores: number | null;
+  precio_por_hora: number;
+  orden: number;
+  activa: boolean;
+};
+
+function SeccionesAdminTab({ canchaId }: { canchaId: string }) {
+  const { toast } = useToast();
+  const [secciones, setSecciones] = useState<SeccionAdmin[]>([]);
+  const [cargando, setCargando] = useState(true);
+  const [guardando, setGuardando] = useState(false);
+  const [mostrarForm, setMostrarForm] = useState(false);
+  const [nuevoNombre, setNuevoNombre] = useState("");
+  const [nuevoMaxJ, setNuevoMaxJ] = useState<number | "">(14);
+  const [nuevoPrecio, setNuevoPrecio] = useState<number | "">(80);
+  const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [editNombre, setEditNombre] = useState("");
+  const [editMaxJ, setEditMaxJ] = useState<number | "">("");
+  const [editPrecio, setEditPrecio] = useState<number | "">(0);
+
+  useEffect(() => {
+    getAdminTokenFresh().then((token) => {
+      fetch(`/api/admin/secciones?canchaId=${canchaId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then((r) => r.json())
+        .then((data) => setSecciones(Array.isArray(data) ? data : []))
+        .catch(() => {})
+        .finally(() => setCargando(false));
+    });
+  }, [canchaId]);
+
+  const crearSeccion = async () => {
+    if (!nuevoNombre.trim() || !nuevoPrecio) return;
+    setGuardando(true);
+    const token = await getAdminTokenFresh();
+    const res = await fetch("/api/admin/secciones", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ canchaId, nombre: nuevoNombre.trim(), maxJugadores: nuevoMaxJ || null, precioHora: Number(nuevoPrecio), orden: secciones.length }),
+    });
+    const data = await res.json();
+    setGuardando(false);
+    if (res.ok) {
+      setSecciones((prev) => [...prev, data]);
+      setNuevoNombre(""); setNuevoMaxJ(14); setNuevoPrecio(80); setMostrarForm(false);
+      toast({ title: "Sección creada", duration: 2000 });
+    } else {
+      toast({ title: "Error", description: data.error, variant: "destructive", duration: 2500 });
+    }
+  };
+
+  const guardarEdicion = async (seccionId: string) => {
+    setGuardando(true);
+    const token = await getAdminTokenFresh();
+    const res = await fetch(`/api/admin/secciones?id=${seccionId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ nombre: editNombre, maxJugadores: editMaxJ || null, precioHora: Number(editPrecio) }),
+    });
+    setGuardando(false);
+    if (res.ok) {
+      setSecciones((prev) => prev.map((s) => s.id === seccionId ? { ...s, nombre: editNombre, max_jugadores: editMaxJ as number | null, precio_por_hora: Number(editPrecio) } : s));
+      setEditandoId(null);
+      toast({ title: "Sección actualizada", duration: 2000 });
+    }
+  };
+
+  const eliminarSeccion = async (seccionId: string) => {
+    if (!confirm("¿Eliminar esta sección? Las reservas existentes no se afectan.")) return;
+    const token = await getAdminTokenFresh();
+    const res = await fetch(`/api/admin/secciones?id=${seccionId}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (res.ok) {
+      setSecciones((prev) => prev.filter((s) => s.id !== seccionId));
+      toast({ title: "Sección eliminada", duration: 2000 });
+    }
+  };
+
+  if (cargando) {
+    return (
+      <div className="flex items-center justify-center py-12 text-muted-foreground gap-2">
+        <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        <span className="text-sm">Cargando secciones...</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <Card className="border-border p-5">
+        <p className="text-sm font-medium text-foreground mb-1">Secciones de la cancha</p>
+        <p className="text-sm text-muted-foreground">
+          Si la cancha se puede dividir en partes independientes con mallas, configúralas aquí.
+          Cuando se reserva la <strong>cancha completa</strong>, todas las secciones quedan bloqueadas.
+        </p>
+      </Card>
+
+      {secciones.length > 0 && (
+        <div className="space-y-3">
+          {secciones.map((sec) => (
+            <Card key={sec.id} className="border-border p-4">
+              {editandoId === sec.id ? (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-muted-foreground">Nombre</label>
+                      <Input value={editNombre} onChange={(e) => setEditNombre(e.target.value)} placeholder="Ej: A" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-muted-foreground">Máx. jugadores</label>
+                      <Input type="number" min={2} value={editMaxJ} onChange={(e) => setEditMaxJ(e.target.value ? Number(e.target.value) : "")} placeholder="14" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-muted-foreground">Precio/hora (S/)</label>
+                      <Input type="number" min={0} value={editPrecio} onChange={(e) => setEditPrecio(e.target.value ? Number(e.target.value) : "")} />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={() => guardarEdicion(sec.id)} disabled={guardando}>Guardar</Button>
+                    <Button size="sm" variant="ghost" onClick={() => setEditandoId(null)}>Cancelar</Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary font-bold text-sm shrink-0">
+                      {sec.nombre}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Sección {sec.nombre}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {sec.max_jugadores ? `${sec.max_jugadores} jugadores · ` : ""}S/ {sec.precio_por_hora}/hora
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <Button size="sm" variant="outline" onClick={() => { setEditandoId(sec.id); setEditNombre(sec.nombre); setEditMaxJ(sec.max_jugadores ?? ""); setEditPrecio(sec.precio_por_hora); }}>
+                      Editar
+                    </Button>
+                    <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => eliminarSeccion(sec.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {secciones.length === 0 && !mostrarForm && (
+        <div className="rounded-xl border-2 border-dashed border-border p-8 text-center">
+          <p className="text-sm text-muted-foreground mb-1">Esta cancha no tiene secciones configuradas.</p>
+          <p className="text-xs text-muted-foreground">Las canchas sin secciones funcionan con el flujo normal de reserva.</p>
+        </div>
+      )}
+
+      {mostrarForm && (
+        <Card className="border-primary/30 p-5 space-y-4">
+          <p className="text-sm font-medium text-foreground">Nueva sección</p>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Nombre / Letra</label>
+              <Input value={nuevoNombre} onChange={(e) => setNuevoNombre(e.target.value)} placeholder="Ej: A, B, Mitad" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Máx. jugadores</label>
+              <Input type="number" min={2} value={nuevoMaxJ} onChange={(e) => setNuevoMaxJ(e.target.value ? Number(e.target.value) : "")} placeholder="14" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Precio/hora (S/)</label>
+              <Input type="number" min={0} value={nuevoPrecio} onChange={(e) => setNuevoPrecio(e.target.value ? Number(e.target.value) : "")} />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button onClick={crearSeccion} disabled={guardando || !nuevoNombre.trim() || !nuevoPrecio}>
+              {guardando ? "Guardando..." : "Agregar sección"}
+            </Button>
+            <Button variant="ghost" onClick={() => setMostrarForm(false)}>Cancelar</Button>
+          </div>
+        </Card>
+      )}
+
+      {!mostrarForm && (
+        <Button variant="outline" className="gap-2 w-full" onClick={() => setMostrarForm(true)}>
+          <Plus className="h-4 w-4" /> Agregar sección
+        </Button>
+      )}
     </div>
   );
 }

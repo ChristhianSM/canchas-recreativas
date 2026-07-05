@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
   if (pageParam === null) {
     const { data, error } = await sb
       .from('reservas')
-      .select('*')
+      .select('*, seccion:cancha_secciones!seccion_id(nombre)')
       .order('creado_en', { ascending: false });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json(data ?? []);
@@ -32,8 +32,8 @@ export async function GET(req: NextRequest) {
   const [countResult, dataResult] = await Promise.all([
     // Query liviana: solo la columna estado para contar con exactitud
     sb.from('reservas').select('estado'),
-    // Query paginada: datos completos de la página
-    sb.from('reservas').select('*').order('creado_en', { ascending: false }).order('id', { ascending: false }).range(offset, offset + limit - 1),
+    // Query paginada: datos completos + nombre de sección
+    sb.from('reservas').select('*, seccion:cancha_secciones!seccion_id(nombre)').order('creado_en', { ascending: false }).order('id', { ascending: false }).range(offset, offset + limit - 1),
   ]);
 
   if (dataResult.error) return NextResponse.json({ error: dataResult.error.message }, { status: 500 });

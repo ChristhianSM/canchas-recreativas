@@ -150,6 +150,7 @@ export default function AdminReservasPage() {
     grupoReservaId: r.grupo_reserva_id ?? null,
     cuponAplicado: r.cupon_aplicado ?? false,
     precioOriginal: r.precio_original ?? null,
+    seccionNombre: r.seccion?.nombre ?? null,
   });
 
   // Agrupa reservas multi-hora: muestra solo el slot principal con rango "12:00 - 15:00"
@@ -445,6 +446,11 @@ export default function AdminReservasPage() {
       </td>
       <td className="px-4 py-3 text-sm text-muted-foreground">
         {r.canchaName}
+        {r.seccionNombre && (
+          <span className="block text-xs font-medium text-primary">
+            Sección {r.seccionNombre}
+          </span>
+        )}
       </td>
       <td className="px-4 py-3 text-sm text-muted-foreground">
         {new Date(r.fecha + "T00:00:00").toLocaleDateString("es-PE", {
@@ -829,6 +835,11 @@ export default function AdminReservasPage() {
                   <p className="font-medium text-foreground">
                     {selected.canchaName}
                   </p>
+                  {selected.seccionNombre && (
+                    <p className="text-xs font-medium text-primary mt-0.5">
+                      Sección {selected.seccionNombre}
+                    </p>
+                  )}
                 </div>
                 <div className="rounded-lg bg-muted/50 p-3">
                   <p className="text-xs text-muted-foreground">Fecha y hora</p>

@@ -221,12 +221,14 @@ export async function apiCrearReserva(data: {
   modoPago?: 'completo' | 'parcial';
   montoAdelanto?: number;
   saldoPendiente?: number;
+  seccionId?: string | null;
 }) {
-  const { modoPago, montoAdelanto, saldoPendiente, ...rest } = data;
+  const { modoPago, montoAdelanto, saldoPendiente, seccionId, ...rest } = data;
   const body: Record<string, unknown> = { ...rest };
   if (modoPago !== undefined)    body.modo_pago       = modoPago;
   if (montoAdelanto !== undefined) body.monto_adelanto = montoAdelanto;
   if (saldoPendiente !== undefined) body.saldo_pendiente = saldoPendiente;
+  if (seccionId !== undefined)   body.seccionId       = seccionId;
 
   const res = await fetch('/api/reservas', {
     method: 'POST',

@@ -79,6 +79,7 @@ function PagoContent() {
   const precioRaw = Number(params.get("precio") ?? 0);
   const fromCard = params.get("from") === "card";
   const accsParam = params.get("accs") ?? "";
+  const seccionId = params.get("seccionId") ?? null;
 
   const horaFin = `${String((parseInt(hora.split(":")[0]) + horas) % 24).padStart(2, "0")}:00`;
 
@@ -228,7 +229,7 @@ function PagoContent() {
       fetch("/api/bloqueos", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ canchaId, fecha, hora, horas }),
+        body: JSON.stringify({ canchaId, fecha, hora, horas, ...(seccionId ? { seccionId } : {}) }),
       });
       router.replace("/");
       return;
@@ -245,7 +246,7 @@ function PagoContent() {
       fetch("/api/bloqueos", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ canchaId, fecha, hora, horas }),
+        body: JSON.stringify({ canchaId, fecha, hora, horas, ...(seccionId ? { seccionId } : {}) }),
       });
       router.push("/");
     }, restantes * 1000);
@@ -259,7 +260,7 @@ function PagoContent() {
           fetch("/api/bloqueos", {
             method: "DELETE",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ canchaId, fecha, hora, horas }),
+            body: JSON.stringify({ canchaId, fecha, hora, horas, ...(seccionId ? { seccionId } : {}) }),
           });
         }
       });
@@ -494,6 +495,7 @@ function PagoContent() {
         modoPago,
         montoAdelanto,
         saldoPendiente,
+        seccionId,
         ...(esInvitado && emailInvitado
           ? {
               emailInvitado,
@@ -520,7 +522,7 @@ function PagoContent() {
       fetch("/api/bloqueos", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ canchaId, fecha, hora, horas }),
+        body: JSON.stringify({ canchaId, fecha, hora, horas, ...(seccionId ? { seccionId } : {}) }),
       });
       if (cuponSeleccionado) {
         setCanchaCupones((prev) => prev.filter((c) => c.id !== cuponSeleccionado));
@@ -547,6 +549,7 @@ function PagoContent() {
       modoPago,
       montoAdelanto,
       saldoPendiente,
+      seccionId,
       ...(esInvitado && emailInvitado
         ? {
             emailInvitado,
@@ -577,7 +580,7 @@ function PagoContent() {
     fetch("/api/bloqueos", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ canchaId, fecha, hora, horas }),
+      body: JSON.stringify({ canchaId, fecha, hora, horas, ...(seccionId ? { seccionId } : {}) }),
     });
     if (cuponSeleccionado) {
       setCanchaCupones((prev) => prev.filter((c) => c.id !== cuponSeleccionado));

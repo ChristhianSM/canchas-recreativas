@@ -20,16 +20,28 @@ export type BloqueoAdmin = {
 /** Días de la semana en español (índice 0 = Domingo) */
 export const DIAS_SEMANA = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
-/** Horas disponibles en la app */
+/** Todas las horas del día (00:00 – 23:00) */
 export const HORAS_APP = [
+  '00:00','01:00','02:00','03:00','04:00','05:00',
   '06:00','07:00','08:00','09:00','10:00','11:00',
   '12:00','13:00','14:00','15:00','16:00','17:00',
   '18:00','19:00','20:00','21:00','22:00','23:00',
 ];
 
-/** Filtra HORAS_APP según el horario de operación de la cancha */
+/**
+ * Devuelve las horas de operación de la cancha en orden cronológico.
+ * Soporta horarios que cruzan la medianoche (ej: apertura 22:00 – cierre 02:00).
+ */
 export function getHorasOperacion(horaApertura = '06:00', horaCierre = '23:00'): string[] {
-  return HORAS_APP.filter(h => h >= horaApertura && h <= horaCierre);
+  if (horaCierre > horaApertura) {
+    // Rango normal dentro del mismo día
+    return HORAS_APP.filter(h => h >= horaApertura && h <= horaCierre);
+  }
+  // Cruce de medianoche: de apertura hasta 23:00, luego de 00:00 hasta cierre
+  return [
+    ...HORAS_APP.filter(h => h >= horaApertura),
+    ...HORAS_APP.filter(h => h <= horaCierre),
+  ];
 }
 
 /**
