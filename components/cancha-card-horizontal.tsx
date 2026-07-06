@@ -171,12 +171,21 @@ export function CanchaCardHorizontal({
     else                         setSelectedSlots([slot]);
   };
 
+  const tieneSecciones = (cancha.totalSecciones ?? 0) > 0;
+
   const handleReservar = async (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
 
     // Usar solo slots que existan en slotsToDisplayFiltered actual (descartar obsoletos y bloqueados)
     const validSlots = selectedSlots.filter(s => slotsToDisplayFiltered.some(sl => sl.id === s.id));
     if (validSlots.length === 0) { router.push(`/cancha/${cancha.id}`); return; }
+
+    // Si la cancha tiene secciones, el usuario debe elegir sección en el detalle
+    if (tieneSecciones) {
+      router.push(`/cancha/${cancha.id}?fecha=${displayDate}&hora=${validSlots[0].time}`);
+      return;
+    }
+
     setReservando(true);
 
     const token = typeof window !== 'undefined' ? localStorage.getItem('cp_token') : null;
@@ -385,13 +394,25 @@ export function CanchaCardHorizontal({
             <div className="shrink-0 text-right">
               <span className="text-xl font-bold text-foreground leading-none">S/ {cancha.pricePerHour}</span>
               <p className="text-[10px] text-muted-foreground mt-0.5">por hora</p>
+              {tieneSecciones && (
+                <span className="mt-1 inline-flex items-center gap-0.5 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                  {cancha.totalSecciones} secc.
+                </span>
+              )}
             </div>
           </div>
           </Link>
 
           {/* Horarios + botón */}
           <div className="mt-auto">
-            {visibleSlotsFiltered.length > 0 ? (
+            {tieneSecciones ? (
+              <button
+                onClick={handleReservar}
+                className="w-full rounded-lg bg-[#16a34a] hover:bg-[#15803d] active:scale-[0.98] text-white px-4 py-2 text-xs font-semibold transition-all flex items-center justify-center gap-1.5"
+              >
+                Elegir sección →
+              </button>
+            ) : visibleSlotsFiltered.length > 0 ? (
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="text-[11px] text-muted-foreground shrink-0">Horarios:</span>
                 {visibleSlotsFiltered.map(slot => {
@@ -426,13 +447,7 @@ export function CanchaCardHorizontal({
                   {reservando && (
                     <span className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent shrink-0" />
                   )}
-                  {reservando
-                    ? 'Reservando...'
-                    : selectedSlots.length > 1
-                    ? `Reservar ${selectedSlots.length}h`
-                    : selectedSlots.length === 1
-                    ? 'Reservar'
-                    : 'Ver horarios'}
+                  {reservando ? 'Reservando...' : selectedSlots.length > 1 ? `Reservar ${selectedSlots.length}h` : selectedSlots.length === 1 ? 'Reservar' : 'Ver horarios'}
                 </button>
               </div>
             ) : (
@@ -525,7 +540,12 @@ export function CanchaCardHorizontal({
 
           {/* Horarios */}
           <div className="mt-3">
-            {visibleSlotsFiltered.length > 0 ? (
+            {tieneSecciones ? (
+              <div className="flex w-full items-center gap-2 rounded-lg bg-primary/5 border border-primary/20 px-3 py-2 text-xs text-muted-foreground">
+                <span className="text-primary text-sm">⊞</span>
+                <span>Entra para elegir sección y horario disponible</span>
+              </div>
+            ) : visibleSlotsFiltered.length > 0 ? (
               <>
                 <p className="text-xs font-medium text-foreground mb-1.5">
                   {displayDate === getLocalDateString()
@@ -573,9 +593,16 @@ export function CanchaCardHorizontal({
 
           {/* Precio + botón Reservar */}
           <div className="flex items-center justify-between pt-3 border-t border-border">
-            <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-bold text-foreground leading-none">S/ {cancha.pricePerHour}</span>
-              <span className="text-xs text-muted-foreground">/hora</span>
+            <div className="flex flex-col">
+              <div className="flex items-baseline gap-1">
+                <span className="text-2xl font-bold text-foreground leading-none">S/ {cancha.pricePerHour}</span>
+                <span className="text-xs text-muted-foreground">/hora</span>
+              </div>
+              {tieneSecciones && (
+                <span className="mt-1 inline-flex items-center gap-0.5 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary self-start">
+                  {cancha.totalSecciones} secciones
+                </span>
+              )}
             </div>
             <button
               onClick={handleReservar}
@@ -589,9 +616,11 @@ export function CanchaCardHorizontal({
               )}
               {reservando
                 ? 'Reservando...'
-                : selectedSlots.length > 1
-                  ? `Reservar ${selectedSlots.length}h`
-                  : 'Reservar'}
+                : tieneSecciones
+                  ? 'Elegir sección →'
+                  : selectedSlots.length > 1
+                    ? `Reservar ${selectedSlots.length}h`
+                    : 'Reservar'}
             </button>
           </div>
         </div>

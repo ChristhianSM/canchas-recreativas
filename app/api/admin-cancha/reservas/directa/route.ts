@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
   const canchaIds = (relaciones ?? []).map((r: any) => r.cancha_id);
 
   const body = await req.json();
-  const { cancha_id, cancha_nombre, cliente_nombre, cliente_telefono, fecha, hora, precio, metodo_pago, semanas = 1 } = body;
+  const { cancha_id, cancha_nombre, cliente_nombre, cliente_telefono, fecha, hora, precio, metodo_pago, semanas = 1, seccion_id, seccion_nombre } = body;
 
   if (!cancha_id || !cancha_nombre || !cliente_nombre || !fecha || !hora || precio == null || !metodo_pago) {
     return NextResponse.json({ error: 'Faltan campos requeridos' }, { status: 400 });
@@ -27,5 +27,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No autorizado para esta cancha' }, { status: 403 });
   }
 
-  return crearReservasDirectas({ sb, cancha_id, cancha_nombre, cliente_nombre, cliente_telefono, fecha, hora, precio, metodo_pago, semanas });
+  return crearReservasDirectas({ sb, cancha_id, cancha_nombre, cliente_nombre, cliente_telefono, fecha, hora, precio, metodo_pago, semanas, seccion_id: seccion_id ?? null, seccion_nombre: seccion_nombre ?? null });
 }

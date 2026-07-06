@@ -646,13 +646,52 @@ export default function AdminEditarCanchaPage() {
     }
   };
 
+  const procesarImagen = (file: File): Promise<File> =>
+    new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new window.Image();
+      const dibujar = () => {
+        const MAX = 2000;
+        let w = img.naturalWidth || img.width;
+        let h = img.naturalHeight || img.height;
+        if (!w || !h) { URL.revokeObjectURL(url); reject(new Error("no-dim")); return; }
+        if (w > MAX || h > MAX) {
+          if (w > h) { h = Math.round((h * MAX) / w); w = MAX; }
+          else { w = Math.round((w * MAX) / h); h = MAX; }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { URL.revokeObjectURL(url); reject(new Error("no-ctx")); return; }
+        ctx.drawImage(img, 0, 0, w, h);
+        canvas.toBlob(
+          (blob) => {
+            URL.revokeObjectURL(url);
+            if (!blob) { reject(new Error("no-blob")); return; }
+            resolve(new File([blob], "imagen.jpg", { type: "image/jpeg" }));
+          },
+          "image/jpeg",
+          0.82,
+        );
+      };
+      img.src = url;
+      img.decode().then(dibujar).catch(() => { URL.revokeObjectURL(url); reject(new Error("decode")); });
+    });
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
     if (!files.length) return;
     setUploading(true);
     for (const file of files) {
+      let archivoFinal: File;
+      try {
+        archivoFinal = await procesarImagen(file);
+      } catch {
+        continue;
+      }
       const form = new FormData();
-      form.append("file", file);
+      form.append("file", archivoFinal);
       form.append("canchaId", id);
       const res = await fetch("/api/upload", { method: "POST", body: form });
       const data = await res.json();
@@ -1334,7 +1373,7 @@ export default function AdminEditarCanchaPage() {
 
           {/* ── Secciones ── */}
           <TabsContent value="secciones" className="pt-4">
-            <SeccionesAdminTab canchaId={id as string} />
+            <SeccionesAdminTab canchaId={id as string} horaApertura={horaApertura} horaCierre={horaCierre} />
           </TabsContent>
         </Tabs>
       </div>
@@ -1349,11 +1388,12 @@ type SeccionAdmin = {
   descripcion: string | null;
   max_jugadores: number | null;
   precio_por_hora: number;
+  precios_por_hora: Record<string, number>;
   orden: number;
   activa: boolean;
 };
 
-function SeccionesAdminTab({ canchaId }: { canchaId: string }) {
+function SeccionesAdminTab({ canchaId, horaApertura = '06:00', horaCierre = '23:00' }: { canchaId: string; horaApertura?: string; horaCierre?: string }) {
   const { toast } = useToast();
   const [secciones, setSecciones] = useState<SeccionAdmin[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -1362,10 +1402,12 @@ function SeccionesAdminTab({ canchaId }: { canchaId: string }) {
   const [nuevoNombre, setNuevoNombre] = useState("");
   const [nuevoMaxJ, setNuevoMaxJ] = useState<number | "">(14);
   const [nuevoPrecio, setNuevoPrecio] = useState<number | "">(80);
+  const [nuevosPreciosPorHora, setNuevosPreciosPorHora] = useState<Record<string, number>>({});
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [editNombre, setEditNombre] = useState("");
   const [editMaxJ, setEditMaxJ] = useState<number | "">("");
   const [editPrecio, setEditPrecio] = useState<number | "">(0);
+  const [editPreciosPorHora, setEditPreciosPorHora] = useState<Record<string, number>>({});
 
   useEffect(() => {
     getAdminTokenFresh().then((token) => {
@@ -1386,13 +1428,13 @@ function SeccionesAdminTab({ canchaId }: { canchaId: string }) {
     const res = await fetch("/api/admin/secciones", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ canchaId, nombre: nuevoNombre.trim(), maxJugadores: nuevoMaxJ || null, precioHora: Number(nuevoPrecio), orden: secciones.length }),
+      body: JSON.stringify({ canchaId, nombre: nuevoNombre.trim(), maxJugadores: nuevoMaxJ || null, precioHora: Number(nuevoPrecio), preciosPorHora: nuevosPreciosPorHora, orden: secciones.length }),
     });
     const data = await res.json();
     setGuardando(false);
     if (res.ok) {
       setSecciones((prev) => [...prev, data]);
-      setNuevoNombre(""); setNuevoMaxJ(14); setNuevoPrecio(80); setMostrarForm(false);
+      setNuevoNombre(""); setNuevoMaxJ(14); setNuevoPrecio(80); setNuevosPreciosPorHora({}); setMostrarForm(false);
       toast({ title: "Sección creada", duration: 2000 });
     } else {
       toast({ title: "Error", description: data.error, variant: "destructive", duration: 2500 });
@@ -1405,11 +1447,11 @@ function SeccionesAdminTab({ canchaId }: { canchaId: string }) {
     const res = await fetch(`/api/admin/secciones?id=${seccionId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ nombre: editNombre, maxJugadores: editMaxJ || null, precioHora: Number(editPrecio) }),
+      body: JSON.stringify({ nombre: editNombre, maxJugadores: editMaxJ || null, precioHora: Number(editPrecio), preciosPorHora: editPreciosPorHora }),
     });
     setGuardando(false);
     if (res.ok) {
-      setSecciones((prev) => prev.map((s) => s.id === seccionId ? { ...s, nombre: editNombre, max_jugadores: editMaxJ as number | null, precio_por_hora: Number(editPrecio) } : s));
+      setSecciones((prev) => prev.map((s) => s.id === seccionId ? { ...s, nombre: editNombre, max_jugadores: editMaxJ as number | null, precio_por_hora: Number(editPrecio), precios_por_hora: editPreciosPorHora } : s));
       setEditandoId(null);
       toast({ title: "Sección actualizada", duration: 2000 });
     }
@@ -1463,9 +1505,44 @@ function SeccionesAdminTab({ canchaId }: { canchaId: string }) {
                       <Input type="number" min={2} value={editMaxJ} onChange={(e) => setEditMaxJ(e.target.value ? Number(e.target.value) : "")} placeholder="14" />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-xs font-medium text-muted-foreground">Precio/hora (S/)</label>
+                      <label className="text-xs font-medium text-muted-foreground">Precio base (S/)</label>
                       <Input type="number" min={0} value={editPrecio} onChange={(e) => setEditPrecio(e.target.value ? Number(e.target.value) : "")} />
                     </div>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground">Precio por horario (opcional — deja vacío para usar el precio base)</p>
+                    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                      {getHorasOperacion(horaApertura, horaCierre).map((hora) => {
+                        const val = editPreciosPorHora[hora];
+                        return (
+                          <div key={hora} className={`rounded-lg border p-2 space-y-1 ${val !== undefined ? 'border-primary/40 bg-primary/5' : 'border-border'}`}>
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-medium">{hora}</span>
+                              {val !== undefined && (
+                                <button type="button" onClick={() => { const n = { ...editPreciosPorHora }; delete n[hora]; setEditPreciosPorHora(n); }} className="text-[10px] text-muted-foreground hover:text-destructive">✕</button>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <span className="text-[10px] text-muted-foreground">S/</span>
+                              <Input
+                                type="number" min={0}
+                                placeholder={String(editPrecio || 0)}
+                                value={val ?? ""}
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  if (v === "") { const n = { ...editPreciosPorHora }; delete n[hora]; setEditPreciosPorHora(n); }
+                                  else setEditPreciosPorHora(prev => ({ ...prev, [hora]: Number(v) }));
+                                }}
+                                className="h-7 text-xs px-1.5"
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {Object.keys(editPreciosPorHora).length > 0 && (
+                      <p className="text-xs text-primary">{Object.keys(editPreciosPorHora).length} hora{Object.keys(editPreciosPorHora).length > 1 ? 's' : ''} con precio personalizado</p>
+                    )}
                   </div>
                   <div className="flex gap-2">
                     <Button size="sm" onClick={() => guardarEdicion(sec.id)} disabled={guardando}>Guardar</Button>
@@ -1482,11 +1559,14 @@ function SeccionesAdminTab({ canchaId }: { canchaId: string }) {
                       <p className="text-sm font-medium text-foreground">Sección {sec.nombre}</p>
                       <p className="text-xs text-muted-foreground">
                         {sec.max_jugadores ? `${sec.max_jugadores} jugadores · ` : ""}S/ {sec.precio_por_hora}/hora
+                        {Object.keys(sec.precios_por_hora ?? {}).length > 0 && (
+                          <span className="ml-1 text-primary">· {Object.keys(sec.precios_por_hora).length} horarios con precio especial</span>
+                        )}
                       </p>
                     </div>
                   </div>
                   <div className="flex gap-2 shrink-0">
-                    <Button size="sm" variant="outline" onClick={() => { setEditandoId(sec.id); setEditNombre(sec.nombre); setEditMaxJ(sec.max_jugadores ?? ""); setEditPrecio(sec.precio_por_hora); }}>
+                    <Button size="sm" variant="outline" onClick={() => { setEditandoId(sec.id); setEditNombre(sec.nombre); setEditMaxJ(sec.max_jugadores ?? ""); setEditPrecio(sec.precio_por_hora); setEditPreciosPorHora(sec.precios_por_hora ?? {}); }}>
                       Editar
                     </Button>
                     <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => eliminarSeccion(sec.id)}>
@@ -1520,9 +1600,44 @@ function SeccionesAdminTab({ canchaId }: { canchaId: string }) {
               <Input type="number" min={2} value={nuevoMaxJ} onChange={(e) => setNuevoMaxJ(e.target.value ? Number(e.target.value) : "")} placeholder="14" />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">Precio/hora (S/)</label>
+              <label className="text-xs font-medium text-muted-foreground">Precio base (S/)</label>
               <Input type="number" min={0} value={nuevoPrecio} onChange={(e) => setNuevoPrecio(e.target.value ? Number(e.target.value) : "")} />
             </div>
+          </div>
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground">Precio por horario (opcional)</p>
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+              {getHorasOperacion(horaApertura, horaCierre).map((hora) => {
+                const val = nuevosPreciosPorHora[hora];
+                return (
+                  <div key={hora} className={`rounded-lg border p-2 space-y-1 ${val !== undefined ? 'border-primary/40 bg-primary/5' : 'border-border'}`}>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium">{hora}</span>
+                      {val !== undefined && (
+                        <button type="button" onClick={() => { const n = { ...nuevosPreciosPorHora }; delete n[hora]; setNuevosPreciosPorHora(n); }} className="text-[10px] text-muted-foreground hover:text-destructive">✕</button>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] text-muted-foreground">S/</span>
+                      <Input
+                        type="number" min={0}
+                        placeholder={String(nuevoPrecio || 0)}
+                        value={val ?? ""}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          if (v === "") { const n = { ...nuevosPreciosPorHora }; delete n[hora]; setNuevosPreciosPorHora(n); }
+                          else setNuevosPreciosPorHora(prev => ({ ...prev, [hora]: Number(v) }));
+                        }}
+                        className="h-7 text-xs px-1.5"
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {Object.keys(nuevosPreciosPorHora).length > 0 && (
+              <p className="text-xs text-primary">{Object.keys(nuevosPreciosPorHora).length} hora{Object.keys(nuevosPreciosPorHora).length > 1 ? 's' : ''} con precio personalizado</p>
+            )}
           </div>
           <div className="flex gap-2">
             <Button onClick={crearSeccion} disabled={guardando || !nuevoNombre.trim() || !nuevoPrecio}>

@@ -599,11 +599,13 @@ export default function CanchaDetailPage() {
     );
   }
 
+  const seccionActiva = (cancha.secciones ?? []).find((s) => s.id === seccionSeleccionada) ?? null;
+
   const schedule = buildSchedule(
     cancha.horariosRestringidos ?? [],
     cancha.horariosOcupados ?? {},
-    cancha.precio_por_hora,
-    cancha.precios_por_hora ?? {},
+    seccionActiva ? seccionActiva.precio_por_hora : cancha.precio_por_hora,
+    seccionActiva ? (seccionActiva.precios_por_hora ?? {}) : (cancha.precios_por_hora ?? {}),
     cancha.horasOperacion ?? HORAS_OPERACION,
   );
 
@@ -660,8 +662,6 @@ export default function CanchaDetailPage() {
   };
   // ─────────────────────────────────────────────────────────────────────────
 
-  // Si hay sección activa, usar su precio (puede tener precios_por_hora propios)
-  const seccionActiva = (cancha.secciones ?? []).find((s) => s.id === seccionSeleccionada) ?? null;
   const precioBase = selectedSlots.reduce((sum, s) => {
     if (seccionActiva) {
       const precioSeccion = seccionActiva.precios_por_hora?.[s.time] ?? seccionActiva.precio_por_hora;

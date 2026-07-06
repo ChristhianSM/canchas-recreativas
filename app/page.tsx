@@ -88,6 +88,7 @@ type Cancha = {
   horariosOcupados?: Record<string, "reservado" | "en_proceso">;
   horariosRestringidos?: string[];
   horasOperacion?: string[];
+  total_secciones?: number;
 };
 
 const HORAS = [
@@ -212,6 +213,7 @@ function adaptCancha(c: Cancha) {
     chalecoDisponible: c.chalecos_disponible ?? false,
     chalecosPrecio: c.chalecos_precio ?? null,
     accesorios: c.accesorios ?? [],
+    totalSecciones: c.total_secciones ?? 0,
   };
 }
 

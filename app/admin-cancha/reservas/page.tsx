@@ -146,6 +146,8 @@ export default function OwnerReservasPage() {
   const [directaForm, setDirectaForm] = useState({
     cancha_id: "",
     cancha_nombre: "",
+    seccion_id: "",
+    seccion_nombre: "",
     cliente_nombre: "",
     cliente_telefono: "",
     fecha: "",
@@ -154,6 +156,7 @@ export default function OwnerReservasPage() {
     metodo_pago: "efectivo",
     semanas: "1",
   });
+  const [seccionesCancha, setSeccionesCancha] = useState<{ id: string; nombre: string; precio_por_hora: number }[]>([]);
   const [directaResultado, setDirectaResultado] = useState<{
     created: number;
     skipped: number;
@@ -248,6 +251,18 @@ export default function OwnerReservasPage() {
       });
   }, []);
 
+  // Cargar secciones cuando cambia la cancha
+  useEffect(() => {
+    if (!directaForm.cancha_id) { setSeccionesCancha([]); return; }
+    ownerFetch(`/api/admin-cancha/secciones?canchaId=${directaForm.cancha_id}`)
+      .then(r => r.json())
+      .then((data: any[]) => {
+        if (Array.isArray(data)) setSeccionesCancha(data.map(s => ({ id: s.id, nombre: s.nombre, precio_por_hora: s.precio_por_hora })));
+        else setSeccionesCancha([]);
+      })
+      .catch(() => setSeccionesCancha([]));
+  }, [directaForm.cancha_id]);
+
   useEffect(() => {
     if (!directaForm.cancha_id || !directaForm.fecha) {
       setHorasOcupadas([]);
@@ -288,6 +303,8 @@ export default function OwnerReservasPage() {
           precio: Number(directaForm.precio),
           metodo_pago: directaForm.metodo_pago,
           semanas: Number(directaForm.semanas),
+          seccion_id: directaForm.seccion_id || null,
+          seccion_nombre: directaForm.seccion_nombre || null,
         }),
       });
       const data = await res.json();
@@ -1412,6 +1429,8 @@ export default function OwnerReservasPage() {
                         ...f,
                         cancha_id: v,
                         cancha_nombre: c?.nombre ?? "",
+                        seccion_id: "",
+                        seccion_nombre: "",
                         fecha: "",
                         hora: "",
                       }));
@@ -1424,6 +1443,41 @@ export default function OwnerReservasPage() {
                       {canchasOwner.map((c) => (
                         <SelectItem key={c.id} value={c.id}>
                           {c.nombre}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Sección — solo si la cancha tiene secciones */}
+              {seccionesCancha.length > 0 && (
+                <div className="space-y-1.5">
+                  <Label>Sección</Label>
+                  <Select
+                    value={directaForm.seccion_id || "__completa__"}
+                    onValueChange={(v) => {
+                      if (v === "__completa__") {
+                        setDirectaForm(f => ({ ...f, seccion_id: "", seccion_nombre: "" }));
+                      } else {
+                        const sec = seccionesCancha.find(s => s.id === v);
+                        setDirectaForm(f => ({
+                          ...f,
+                          seccion_id: v,
+                          seccion_nombre: sec?.nombre ?? "",
+                          precio: sec ? String(sec.precio_por_hora) : f.precio,
+                        }));
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__completa__">Cancha completa</SelectItem>
+                      {seccionesCancha.map(s => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.nombre} — S/ {s.precio_por_hora}/h
                         </SelectItem>
                       ))}
                     </SelectContent>

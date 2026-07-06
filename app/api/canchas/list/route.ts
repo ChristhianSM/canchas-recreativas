@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
 
   const { data: reservas } = await sb
     .from('reservas')
-    .select('cancha_id, fecha, hora, estado')
+    .select('cancha_id, fecha, hora, estado, seccion_id')
     .in('estado', ['pendiente', 'confirmada'])
     .gte('fecha', hoy)
     .lte('fecha', en14);
@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
   // Bloqueos temporales activos (no expirados) — sin DELETE para no hacer writes en cada lectura
   const { data: bloqueos } = await sb
     .from('bloqueos_temporales')
-    .select('cancha_id, fecha, hora')
+    .select('cancha_id, fecha, hora, seccion_id')
     .gt('expira_en', new Date().toISOString());
 
   // Horarios bloqueados por dueño (legacy)
@@ -42,26 +42,83 @@ export async function GET(req: NextRequest) {
     .from('bloqueos_admin')
     .select('*');
 
+  // Secciones por cancha — necesitamos los IDs para saber si "todas están ocupadas"
+  const { data: seccionesData } = await sb
+    .from('cancha_secciones')
+    .select('id, cancha_id')
+    .eq('activa', true);
+
+  // canchaId → Set de IDs de secciones activas
+  const seccionIdsPorCancha: Record<string, Set<string>> = {};
+  const seccionesPorCancha: Record<string, number> = {};
+  for (const s of seccionesData ?? []) {
+    if (!seccionIdsPorCancha[s.cancha_id]) seccionIdsPorCancha[s.cancha_id] = new Set();
+    seccionIdsPorCancha[s.cancha_id].add(s.id);
+    seccionesPorCancha[s.cancha_id] = (seccionesPorCancha[s.cancha_id] ?? 0) + 1;
+  }
+
   // Construir mapa de horarios ocupados por cancha
   const horariosOcupadosPorCancha: Record<string, Record<string, 'reservado' | 'en_proceso'>> = {};
+
+  // Para canchas con secciones: rastrear qué secciones están reservadas por slot
+  // canchaId → slotKey → Set<seccionId>
+  const seccionesReservadasEnSlot: Record<string, Record<string, Set<string>>> = {};
+
+  const marcarOcupado = (canchaId: string, key: string, estado: 'reservado' | 'en_proceso') => {
+    if (!horariosOcupadosPorCancha[canchaId]) horariosOcupadosPorCancha[canchaId] = {};
+    // No sobreescribir 'reservado' con 'en_proceso'
+    if (!horariosOcupadosPorCancha[canchaId][key] || estado === 'reservado') {
+      horariosOcupadosPorCancha[canchaId][key] = estado;
+    }
+  };
 
   // Procesar reservas
   for (const r of reservas ?? []) {
     const key = `${r.fecha}|${r.hora}`;
-    if (!horariosOcupadosPorCancha[r.cancha_id]) {
-      horariosOcupadosPorCancha[r.cancha_id] = {};
+    const tieneSecciones = (seccionIdsPorCancha[r.cancha_id]?.size ?? 0) > 0;
+
+    if (tieneSecciones && r.seccion_id) {
+      // Reserva de sección específica: acumular pero no bloquear el slot todavía
+      if (!seccionesReservadasEnSlot[r.cancha_id]) seccionesReservadasEnSlot[r.cancha_id] = {};
+      if (!seccionesReservadasEnSlot[r.cancha_id][key]) seccionesReservadasEnSlot[r.cancha_id][key] = new Set();
+      seccionesReservadasEnSlot[r.cancha_id][key].add(r.seccion_id);
+    } else {
+      // Reserva de cancha completa (o cancha sin secciones): bloquear directamente
+      marcarOcupado(r.cancha_id, key, r.estado === 'confirmada' ? 'reservado' : 'en_proceso');
     }
-    horariosOcupadosPorCancha[r.cancha_id][key] = r.estado === 'confirmada' ? 'reservado' : 'en_proceso';
   }
 
-  // Procesar bloqueos temporales
+  // Evaluar si todas las secciones están reservadas en algún slot
+  for (const [canchaId, slots] of Object.entries(seccionesReservadasEnSlot)) {
+    const todasLasSecciones = seccionIdsPorCancha[canchaId];
+    if (!todasLasSecciones || todasLasSecciones.size === 0) continue;
+    for (const [slotKey, reservadas] of Object.entries(slots)) {
+      const todasReservadas = [...todasLasSecciones].every(id => reservadas.has(id));
+      if (todasReservadas) marcarOcupado(canchaId, slotKey, 'reservado');
+    }
+  }
+
+  // Procesar bloqueos temporales (misma lógica de secciones)
+  const seccionesBloqueoEnSlot: Record<string, Record<string, Set<string>>> = {};
   for (const b of bloqueos ?? []) {
     const key = `${b.fecha}|${b.hora}`;
-    if (!horariosOcupadosPorCancha[b.cancha_id]) {
-      horariosOcupadosPorCancha[b.cancha_id] = {};
+    const tieneSecciones = (seccionIdsPorCancha[b.cancha_id]?.size ?? 0) > 0;
+
+    if (tieneSecciones && b.seccion_id) {
+      if (!seccionesBloqueoEnSlot[b.cancha_id]) seccionesBloqueoEnSlot[b.cancha_id] = {};
+      if (!seccionesBloqueoEnSlot[b.cancha_id][key]) seccionesBloqueoEnSlot[b.cancha_id][key] = new Set();
+      seccionesBloqueoEnSlot[b.cancha_id][key].add(b.seccion_id);
+    } else {
+      marcarOcupado(b.cancha_id, key, 'en_proceso');
     }
-    if (!horariosOcupadosPorCancha[b.cancha_id][key]) {
-      horariosOcupadosPorCancha[b.cancha_id][key] = 'en_proceso';
+  }
+
+  for (const [canchaId, slots] of Object.entries(seccionesBloqueoEnSlot)) {
+    const todasLasSecciones = seccionIdsPorCancha[canchaId];
+    if (!todasLasSecciones || todasLasSecciones.size === 0) continue;
+    for (const [slotKey, bloqueadas] of Object.entries(slots)) {
+      const todasBloqueadas = [...todasLasSecciones].every(id => bloqueadas.has(id));
+      if (todasBloqueadas) marcarOcupado(canchaId, slotKey, 'en_proceso');
     }
   }
 
@@ -107,6 +164,7 @@ export async function GET(req: NextRequest) {
     horariosOcupados: horariosOcupadosPorCancha[cancha.id] || {},
     horariosRestringidos: horariosRestringidosPorCancha[cancha.id] || [],
     horasOperacion: getHorasOperacion(cancha.hora_apertura ?? '06:00', cancha.hora_cierre ?? '23:00'),
+    total_secciones: seccionesPorCancha[cancha.id] ?? 0,
   }));
 
   return NextResponse.json(canchasConHorarios, {

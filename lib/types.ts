@@ -50,6 +50,7 @@ export interface Cancha {
   chalecoDisponible?: boolean;
   chalecosPrecio?: number | null;
   accesorios?: { id: string; nombre: string; icono: string; modalidad: 'prestado' | 'alquilado'; precio: number | null }[];
+  totalSecciones?: number;
 }
 
 export type SportType = Cancha['type'];

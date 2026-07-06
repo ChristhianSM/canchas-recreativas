@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 
 export async function crearReservasDirectas({
   sb, cancha_id, cancha_nombre, cliente_nombre, cliente_telefono,
-  fecha, hora, precio, metodo_pago, semanas, nota,
+  fecha, hora, precio, metodo_pago, semanas, nota, seccion_id, seccion_nombre,
 }: {
   sb: any;
   cancha_id: string;
@@ -15,6 +15,8 @@ export async function crearReservasDirectas({
   metodo_pago: string;
   semanas: number;
   nota?: string | null;
+  seccion_id?: string | null;
+  seccion_nombre?: string | null;
 }) {
   const nSemanas = Math.min(Math.max(1, Number(semanas)), 52);
   const fechaBase = new Date(fecha + 'T00:00:00');
@@ -27,15 +29,30 @@ export async function crearReservasDirectas({
     fechaActual.setDate(fechaBase.getDate() + i * 7);
     const fechaStr = fechaActual.toISOString().split('T')[0];
 
-    // Verificar conflicto: reserva activa en ese slot
-    const { data: conflicto } = await sb
-      .from('reservas')
-      .select('id')
-      .eq('cancha_id', cancha_id)
-      .eq('fecha', fechaStr)
-      .eq('hora', hora)
-      .in('estado', ['pendiente', 'confirmada'])
-      .maybeSingle();
+    // Verificar conflicto considerando secciones:
+    // - Si reservamos una sección específica: chequear esa sección + la cancha completa (seccion_id IS NULL)
+    // - Si reservamos la cancha completa: chequear cualquier reserva (cualquier sección o completa)
+    let conflicto: any = null;
+    if (seccion_id) {
+      // Sección específica: conflicto si hay reserva de esa misma sección O de la cancha completa
+      const { data: c1 } = await sb
+        .from('reservas').select('id').eq('cancha_id', cancha_id).eq('fecha', fechaStr).eq('hora', hora)
+        .in('estado', ['pendiente', 'confirmada']).eq('seccion_id', seccion_id).maybeSingle();
+      if (!c1) {
+        const { data: c2 } = await sb
+          .from('reservas').select('id').eq('cancha_id', cancha_id).eq('fecha', fechaStr).eq('hora', hora)
+          .in('estado', ['pendiente', 'confirmada']).is('seccion_id', null).maybeSingle();
+        conflicto = c2;
+      } else {
+        conflicto = c1;
+      }
+    } else {
+      // Cancha completa: conflicto si hay CUALQUIER reserva (cualquier sección)
+      const { data: c } = await sb
+        .from('reservas').select('id').eq('cancha_id', cancha_id).eq('fecha', fechaStr).eq('hora', hora)
+        .in('estado', ['pendiente', 'confirmada']).maybeSingle();
+      conflicto = c;
+    }
 
     if (conflicto) {
       resultados.push({ fecha: fechaStr, estado: 'conflicto' });
@@ -65,6 +82,7 @@ export async function crearReservasDirectas({
         chalecos_incluido:  false,
         cupon_aplicado:     false,
         es_reserva_directa: true,
+        ...(seccion_id ? { seccion_id } : {}),
       })
       .select()
       .single();

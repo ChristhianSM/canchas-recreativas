@@ -42,6 +42,7 @@ type Reserva = {
   cupon_aplicado?: boolean;
   precio_original?: number | null;
   es_reserva_directa?: boolean;
+  seccion?: { nombre: string } | null;
 };
 
 type Cancha = { id: string; nombre: string };
@@ -155,6 +156,7 @@ export default function OwnerReportesPage() {
         Email: r.usuario_email,
         Teléfono: r.usuario_telefono ?? "",
         Cancha: r.cancha_nombre,
+        "Sección": r.seccion?.nombre ?? "Cancha completa",
         "Fecha juego": new Date(r.fecha + "T00:00:00").toLocaleDateString(
           "es-PE",
         ),
