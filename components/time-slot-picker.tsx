@@ -66,9 +66,13 @@ function isSlotPasado(selectedDate: string, slotTime: string, allSlots?: TimeSlo
 
   const [hours, minutes] = slotTime.split(":").map(Number);
 
-  // Horarios nocturnos que cruzan medianoche: si el turno incluye slots de noche
-  // (≥18h), los slots de madrugada (<12h) pertenecen al día siguiente y nunca son pasado
-  if (hours < 12 && allSlots?.some(s => Number(s.time.split(":")[0]) >= 18)) return false;
+  // Si el horario cruza medianoche, los slots cuya hora es menor que la hora
+  // de apertura (primer slot del día) pertenecen al día siguiente.
+  // Ej: apertura 20:00, slot 00:00 → 0 < 20 → es del día siguiente, no es pasado.
+  if (allSlots && allSlots.length > 0) {
+    const horaApertura = Number(allSlots[0].time.split(":")[0]);
+    if (horaApertura > 0 && hours < horaApertura) return false;
+  }
 
   const slotDate = new Date();
   slotDate.setHours(hours, minutes, 0, 0);
@@ -251,7 +255,7 @@ export function TimeSlotPicker({
           const pasado =
             slot.status === "disponible" &&
             isSlotPasado(selectedDate, slot.time, slots);
-          const isSelected = selectedSlots.some((s) => s.id === slot.id);
+const isSelected = selectedSlots.some((s) => s.id === slot.id);
 
           return (
             <button

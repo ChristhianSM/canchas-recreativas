@@ -619,6 +619,12 @@ export default function CanchaDetailPage() {
     const dd = String(now.getDate()).padStart(2, "0");
     if (selectedDate !== `${y}-${mo}-${dd}`) return false;
     const [h, m] = slotTime.split(":").map(Number);
+    // Horario nocturno que cruza medianoche: si la hora del slot es menor que la
+    // hora de apertura (primer slot), pertenece al día siguiente y no es pasado.
+    if (inlineSlots.length > 0) {
+      const horaApertura = Number(inlineSlots[0].time.split(":")[0]);
+      if (horaApertura > 0 && h < horaApertura) return false;
+    }
     const t = new Date();
     t.setHours(h, m, 0, 0);
     return t <= now;
