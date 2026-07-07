@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
   const sb = createServiceClient();
 
   const body = await req.json();
-  const { canchaId, canchaNombre, fecha, hora, horas = 1, precio, precioOriginal, canchaCuponId, metodoPago, comprobanteUrl, emailInvitado, telefonoInvitado, whatsappInvitado, metodoDevolucion, telefonoDevolucion, actualizarTelefono, nuevoTelefono, accesoriosIncluidos, modo_pago, monto_adelanto, saldo_pendiente } = body;
+  const { canchaId, canchaNombre, fecha, hora, horas = 1, precio, precioOriginal, canchaCuponId, metodoPago, comprobanteUrl, emailInvitado, telefonoInvitado, whatsappInvitado, metodoDevolucion, telefonoDevolucion, actualizarTelefono, nuevoTelefono, accesoriosIncluidos, modo_pago, monto_adelanto, saldo_pendiente, seccionId = null } = body;
 
   // Precio por hora individual (para multi-hora)
   const precioPorHora = horas > 1 ? Math.round(precio / horas) : precio;
@@ -188,16 +188,28 @@ export async function POST(req: NextRequest) {
     `${String((horaBase + i) % 24).padStart(2, '0')}:00`
   );
 
-  // Verificar que ningún slot esté ya reservado
+  // Verificar que ningún slot esté ya reservado (respetando lógica de secciones)
   for (const slotHora of slotsAReservar) {
-    const { data: slotOcupado } = await sb
-      .from('reservas')
-      .select('id')
-      .eq('cancha_id', canchaId)
-      .eq('fecha', fecha)
-      .eq('hora', slotHora)
-      .in('estado', ['pendiente', 'confirmada'])
-      .maybeSingle();
+    const baseQuery = sb.from('reservas').select('id')
+      .eq('cancha_id', canchaId).eq('fecha', fecha).eq('hora', slotHora)
+      .in('estado', ['pendiente', 'confirmada']);
+
+    let slotOcupado: any = null;
+    if (seccionId) {
+      // Reservando sección: conflicto si hay reserva completa (seccion_id IS NULL) o de esta misma sección
+      const { data: r1 } = await baseQuery.is('seccion_id', null).maybeSingle();
+      if (r1) { slotOcupado = r1; }
+      else {
+        const { data: r2 } = await sb.from('reservas').select('id')
+          .eq('cancha_id', canchaId).eq('fecha', fecha).eq('hora', slotHora)
+          .eq('seccion_id', seccionId).in('estado', ['pendiente', 'confirmada']).maybeSingle();
+        slotOcupado = r2;
+      }
+    } else {
+      // Reservando cancha completa: conflicto si existe cualquier reserva (completa o sección)
+      const { data: r } = await baseQuery.maybeSingle();
+      slotOcupado = r;
+    }
 
     if (slotOcupado) {
       return NextResponse.json({ error: `El horario ${slotHora} ya fue reservado por otro usuario` }, { status: 409 });
@@ -237,6 +249,7 @@ export async function POST(req: NextRequest) {
       monto_adelanto:   adelantoSlot,
       saldo_pendiente:  saldoSlot,
       saldo_cobrado:    false,
+      ...(seccionId ? { seccion_id: seccionId } : {}),
     }).select().single();
 
     if (error) {

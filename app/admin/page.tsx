@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { CalendarCheck, Clock, CheckCircle2, XCircle, TrendingUp } from 'lucide-react';
 import { Card } from '@/components/ui/card';
@@ -33,6 +33,7 @@ export default function AdminDashboard() {
           usuarioPhone: r.usuario_telefono, fecha: r.fecha, hora: r.hora,
           precio: r.precio, metodoPago: r.metodo_pago, comprobante: r.comprobante_url,
           estado: r.estado, creadaEn: r.creado_en, notificado: true,
+          grupoReservaId: r.grupo_reserva_id ?? null,
         })));
       }
       if (Array.isArray(canchasData)) setCanchas(canchasData);
@@ -40,10 +41,28 @@ export default function AdminDashboard() {
     })();
   }, []);
 
-  const pendientes  = reservas.filter(r => r.estado === 'pendiente').length;
-  const confirmadas = reservas.filter(r => r.estado === 'confirmada').length;
-  const rechazadas  = reservas.filter(r => r.estado === 'rechazada').length;
-  const ingresos    = reservas.filter(r => r.estado === 'confirmada').reduce((s, r) => s + r.precio, 0);
+  // Deduplicar reservas multi-hora (una reserva de 3 horas = 3 filas, solo contar el principal)
+  const reservasUnicas = useMemo(() =>
+    reservas.filter(r => !r.grupoReservaId || r.id === r.grupoReservaId),
+  [reservas]);
+
+  // Hora fin para mostrar rango en recientes
+  const horaFinPorGrupo = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const r of reservas) {
+      if (!r.grupoReservaId || map.has(r.grupoReservaId)) continue;
+      const slots = reservas.filter(x => x.grupoReservaId === r.grupoReservaId);
+      const horas = slots.map(x => x.hora).sort();
+      const h = parseInt(horas[horas.length - 1].split(':')[0]) + 1;
+      map.set(r.grupoReservaId, `${String(h).padStart(2, '0')}:00`);
+    }
+    return map;
+  }, [reservas]);
+
+  const pendientes  = reservasUnicas.filter(r => r.estado === 'pendiente').length;
+  const confirmadas = reservasUnicas.filter(r => r.estado === 'confirmada').length;
+  const rechazadas  = reservasUnicas.filter(r => r.estado === 'rechazada').length;
+  const ingresos    = reservasUnicas.filter(r => r.estado === 'confirmada').reduce((s, r) => s + r.precio, 0);
 
   const stats = [
     { label: 'Pendientes',  value: pendientes,  icon: Clock,         color: 'text-yellow-500',  bg: 'bg-yellow-500/10',    href: '/admin/reservas' },
@@ -52,7 +71,7 @@ export default function AdminDashboard() {
     { label: 'Ingresos',    value: `S/ ${ingresos}`, icon: TrendingUp, color: 'text-primary',  bg: 'bg-primary/10' },
   ];
 
-  const recientes = reservas.slice(0, 5);
+  const recientes = reservasUnicas.slice(0, 5);
 
   const estadoBadge = (estado: Reserva['estado']) => {
     const map = {
@@ -178,7 +197,11 @@ export default function AdminDashboard() {
                       <td className="px-4 py-3 font-medium text-foreground">{r.usuarioNombre}</td>
                       <td className="px-4 py-3 text-muted-foreground">{r.canchaName}</td>
                       <td className="px-4 py-3 text-muted-foreground">{new Date(r.fecha + 'T00:00:00').toLocaleDateString('es-PE', { day: 'numeric', month: 'short' })}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{r.hora}</td>
+                      <td className="px-4 py-3 text-muted-foreground">
+                        {r.grupoReservaId && horaFinPorGrupo.has(r.grupoReservaId)
+                          ? `${r.hora} – ${horaFinPorGrupo.get(r.grupoReservaId)}`
+                          : r.hora}
+                      </td>
                       <td className="px-4 py-3 font-semibold text-primary">S/ {r.precio}</td>
                       <td className="px-4 py-3">{estadoBadge(r.estado)}</td>
                     </tr>

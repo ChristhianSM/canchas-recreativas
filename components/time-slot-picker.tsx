@@ -50,12 +50,12 @@ function formatDate(dateString: string): {
 // Cuenta slots disponibles para una fecha (excluye pasados)
 function getDisponiblesCount(slots: TimeSlot[], dateStr: string): number {
   return slots.filter(
-    (s) => s.status === "disponible" && !isSlotPasado(dateStr, s.time),
+    (s) => s.status === "disponible" && !isSlotPasado(dateStr, s.time, slots),
   ).length;
 }
 
 // Devuelve true si el slot ya pasó hoy (solo aplica cuando la fecha seleccionada es hoy)
-function isSlotPasado(selectedDate: string, slotTime: string): boolean {
+function isSlotPasado(selectedDate: string, slotTime: string, allSlots?: TimeSlot[]): boolean {
   const now = new Date();
   // Usar fecha local para evitar desfase de zona horaria (Perú UTC-5)
   const year = now.getFullYear();
@@ -65,6 +65,15 @@ function isSlotPasado(selectedDate: string, slotTime: string): boolean {
   if (selectedDate !== todayStr) return false;
 
   const [hours, minutes] = slotTime.split(":").map(Number);
+
+  // Si el horario cruza medianoche, los slots cuya hora es menor que la hora
+  // de apertura (primer slot del día) pertenecen al día siguiente.
+  // Ej: apertura 20:00, slot 00:00 → 0 < 20 → es del día siguiente, no es pasado.
+  if (allSlots && allSlots.length > 0) {
+    const horaApertura = Number(allSlots[0].time.split(":")[0]);
+    if (horaApertura > 0 && hours < horaApertura) return false;
+  }
+
   const slotDate = new Date();
   slotDate.setHours(hours, minutes, 0, 0);
   return slotDate <= now;
@@ -84,7 +93,7 @@ export function TimeSlotPicker({
 
   function handleSlotClick(slot: TimeSlot) {
     const pasado =
-      slot.status === "disponible" && isSlotPasado(selectedDate, slot.time);
+      slot.status === "disponible" && isSlotPasado(selectedDate, slot.time, slots);
     if (!slot.available || pasado) return;
 
     const isAlreadySelected = selectedSlots.some((s) => s.id === slot.id);
@@ -245,8 +254,8 @@ export function TimeSlotPicker({
           // Los ocupados/en_proceso se mantienen como están (fueron reservados antes)
           const pasado =
             slot.status === "disponible" &&
-            isSlotPasado(selectedDate, slot.time);
-          const isSelected = selectedSlots.some((s) => s.id === slot.id);
+            isSlotPasado(selectedDate, slot.time, slots);
+const isSelected = selectedSlots.some((s) => s.id === slot.id);
 
           return (
             <button

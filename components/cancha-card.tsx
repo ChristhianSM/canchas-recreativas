@@ -468,6 +468,12 @@ export function CanchaCard({
       return;
     }
 
+    // Si la cancha tiene secciones, el usuario debe elegir sección en el detalle
+    if ((cancha.totalSecciones ?? 0) > 0) {
+      router.push(`/cancha/${cancha.id}?fecha=${displayDate}&hora=${validSlots[0].time}`);
+      return;
+    }
+
     setReservando(true);
 
     const token =
@@ -518,13 +524,16 @@ export function CanchaCard({
     );
   };
 
+  const tieneSecciones = (cancha.totalSecciones ?? 0) > 0;
   const buttonLabel = reservando
     ? "Reservando..."
-    : selectedSlots.length > 1
-      ? `Reservar ${selectedSlots.length}h`
-      : selectedSlots.length === 1
-        ? "Reservar"
-        : "Ver horarios";
+    : tieneSecciones
+      ? "Elegir sección →"
+      : selectedSlots.length > 1
+        ? `Reservar ${selectedSlots.length}h`
+        : selectedSlots.length === 1
+          ? "Reservar"
+          : "Ver horarios";
 
   return (
     <>
@@ -689,72 +698,86 @@ export function CanchaCard({
               <span className="text-xs text-muted-foreground mt-0.5">
                 por hora
               </span>
+              {tieneSecciones && (
+                <span className="mt-1 inline-flex items-center gap-0.5 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                  {cancha.totalSecciones} secc.
+                </span>
+              )}
             </div>
           </div>
 
           {/* Horarios disponibles */}
           <div className="mb-3 w-full">
-            <div className="mb-2 flex items-center justify-between">
-              <p className="text-sm font-medium text-foreground">
-                {getHorariosText()}
-              </p>
-              <Link
-                href={`/cancha/${cancha.id}`}
-                onClick={(e) => e.stopPropagation()}
-                className="text-xs font-medium text-primary hover:underline flex items-center gap-0.5"
-              >
-                Ver horarios →
-              </Link>
-            </div>
-
-            {visibleSlotsFiltered.length > 0 ? (
-              <div className="flex items-center gap-1.5 w-full">
-                {visibleSlotsFiltered.map((slot) => {
-                  const isSelected = selectedSlots.some(
-                    (s) => s.id === slot.id,
-                  );
-                  return (
-                    <button
-                      key={slot.id}
-                      onClick={(e) => handleSlotClick(e, slot)}
-                      aria-pressed={isSelected}
-                      aria-label={`Seleccionar horario ${slot.time}`}
-                      className={`flex-1 min-w-0 rounded-lg border px-2 py-2 text-sm font-medium transition-all text-center ${
-                        isSelected
-                          ? "border-foreground bg-foreground text-background"
-                          : "border-border bg-background text-foreground hover:border-primary/50"
-                      }`}
-                    >
-                      {slot.time}
-                    </button>
-                  );
-                })}
-                {extraCountFiltered > 0 && (
-                  <button
-                    onClick={handleMoreClick}
-                    className="flex-shrink-0 w-12 rounded-lg border border-border bg-background px-2 py-2 text-sm font-medium text-muted-foreground hover:border-primary/50 hover:text-primary transition-all"
-                    aria-label={`Ver ${extraCountFiltered} horarios más`}
-                  >
-                    +{extraCountFiltered}
-                  </button>
-                )}
-              </div>
-            ) : nextAvailability ? (
-              <div className="flex w-full items-center gap-2 rounded-lg bg-muted/60 px-3 py-2 text-sm text-muted-foreground">
-                <CalendarDays className="h-4 w-4 shrink-0" />
-                <span>
-                  Próxima disponibilidad:{" "}
-                  <span className="font-medium text-foreground">
-                    {formatNextDate(nextAvailability.date, date)}{" "}
-                    {nextAvailability.time}
-                  </span>
-                </span>
+            {tieneSecciones ? (
+              <div className="flex w-full items-center gap-2 rounded-lg bg-primary/5 border border-primary/20 px-3 py-2.5 text-sm text-muted-foreground">
+                <span className="text-primary text-base">⊞</span>
+                <span>Entra para elegir sección y horario</span>
               </div>
             ) : (
-              <div className="flex w-full items-center gap-2 rounded-lg bg-muted/60 px-3 py-2 text-sm text-muted-foreground">
-                <CalendarDays className="h-4 w-4 shrink-0" />
-                <span>Sin disponibilidad próxima</span>
-              </div>
+              <>
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="text-sm font-medium text-foreground">
+                    {getHorariosText()}
+                  </p>
+                  <Link
+                    href={`/cancha/${cancha.id}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-xs font-medium text-primary hover:underline flex items-center gap-0.5"
+                  >
+                    Ver horarios →
+                  </Link>
+                </div>
+
+                {visibleSlotsFiltered.length > 0 ? (
+                  <div className="flex items-center gap-1.5 w-full">
+                    {visibleSlotsFiltered.map((slot) => {
+                      const isSelected = selectedSlots.some(
+                        (s) => s.id === slot.id,
+                      );
+                      return (
+                        <button
+                          key={slot.id}
+                          onClick={(e) => handleSlotClick(e, slot)}
+                          aria-pressed={isSelected}
+                          aria-label={`Seleccionar horario ${slot.time}`}
+                          className={`flex-1 min-w-0 rounded-lg border px-2 py-2 text-sm font-medium transition-all text-center ${
+                            isSelected
+                              ? "border-foreground bg-foreground text-background"
+                              : "border-border bg-background text-foreground hover:border-primary/50"
+                          }`}
+                        >
+                          {slot.time}
+                        </button>
+                      );
+                    })}
+                    {extraCountFiltered > 0 && (
+                      <button
+                        onClick={handleMoreClick}
+                        className="flex-shrink-0 w-12 rounded-lg border border-border bg-background px-2 py-2 text-sm font-medium text-muted-foreground hover:border-primary/50 hover:text-primary transition-all"
+                        aria-label={`Ver ${extraCountFiltered} horarios más`}
+                      >
+                        +{extraCountFiltered}
+                      </button>
+                    )}
+                  </div>
+                ) : nextAvailability ? (
+                  <div className="flex w-full items-center gap-2 rounded-lg bg-muted/60 px-3 py-2 text-sm text-muted-foreground">
+                    <CalendarDays className="h-4 w-4 shrink-0" />
+                    <span>
+                      Próxima disponibilidad:{" "}
+                      <span className="font-medium text-foreground">
+                        {formatNextDate(nextAvailability.date, date)}{" "}
+                        {nextAvailability.time}
+                      </span>
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex w-full items-center gap-2 rounded-lg bg-muted/60 px-3 py-2 text-sm text-muted-foreground">
+                    <CalendarDays className="h-4 w-4 shrink-0" />
+                    <span>Sin disponibilidad próxima</span>
+                  </div>
+                )}
+              </>
             )}
           </div>
 

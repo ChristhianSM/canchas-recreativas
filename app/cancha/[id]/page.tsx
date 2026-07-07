@@ -110,6 +110,7 @@ type CanchaDB = {
   max_jugadores: number | null;
   yape_numero?: string;
   plin_numero?: string;
+  secciones?: { id: string; nombre: string; descripcion: string | null; max_jugadores: number | null; precio_por_hora: number; precios_por_hora: Record<string, number>; orden: number }[];
   loyalty?: {
     umbral: number;
     premio_tipo: 'descuento_fijo' | 'descuento_porcentaje' | 'hora_gratis' | 'personalizado';
@@ -181,6 +182,8 @@ export default function CanchaDetailPage() {
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // IDs de accesorios seleccionados por el usuario
   const [accesoriosSeleccionados, setAccesoriosSeleccionados] = useState<string[]>([]);
+  // Sección seleccionada: null = cancha completa, string = uuid de sección
+  const [seccionSeleccionada, setSeccionSeleccionada] = useState<string | null>(null);
 
   const sessionId = useRef(
     typeof window !== "undefined"
@@ -263,6 +266,7 @@ export default function CanchaDetailPage() {
         fecha: selectedDate,
         hora: selectedSlots[0].time,
         horas: selectedSlots.length,
+        ...(seccionSeleccionada ? { seccionId: seccionSeleccionada } : {}),
       }),
     });
 
@@ -299,16 +303,22 @@ export default function CanchaDetailPage() {
       yapeNumero: cancha.yape_numero ?? "",
       plinNumero: cancha.plin_numero ?? "",
       loyalty: cancha.loyalty ?? null,
+      seccionId: seccionSeleccionada,
+      seccionNombre: seccionActiva?.nombre ?? null,
     }));
 
     setReservaStep(2);
     setTimeout(() => {
       const firstSlot = selectedSlots[0];
+      const precioSlot = seccionActiva
+        ? (seccionActiva.precios_por_hora?.[firstSlot.time] ?? seccionActiva.precio_por_hora)
+        : firstSlot.price;
       const accsQuery = accesoriosSeleccionados.length > 0
         ? `&accs=${encodeURIComponent(accesoriosSeleccionados.join(','))}`
         : '';
+      const seccionQuery = seccionSeleccionada ? `&seccionId=${seccionSeleccionada}` : '';
       router.push(
-        `/pago?canchaId=${cancha.id}&fecha=${selectedDate}&hora=${firstSlot.time}&horas=${selectedSlots.length}&precio=${firstSlot.price}&sid=${sessionId.current}${accsQuery}`,
+        `/pago?canchaId=${cancha.id}&fecha=${selectedDate}&hora=${firstSlot.time}&horas=${selectedSlots.length}&precio=${precioSlot}&sid=${sessionId.current}${accsQuery}${seccionQuery}`,
       );
     }, 800);
   };
@@ -349,20 +359,34 @@ export default function CanchaDetailPage() {
       .catch(() => setLoading(false));
   }, [id]);
 
+  // Recargar horarios al cambiar de sección (disponibilidad distinta por sección)
+  useEffect(() => {
+    if (!id) return;
+    const seccionParam = seccionSeleccionada ? `&seccionId=${seccionSeleccionada}` : '';
+    fetch(`/api/canchas/detail?id=${id}&t=${Date.now()}${seccionParam}`, { cache: "no-store" })
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data.error) setCancha((prev) => prev ? { ...prev, horariosOcupados: data.horariosOcupados } : prev);
+      })
+      .catch(() => {});
+    setSelectedSlots([]);
+  }, [id, seccionSeleccionada]);
+
   // Polling cada 15 segundos para mostrar bloqueos de otros usuarios en tiempo real
   useEffect(() => {
     if (!id) return;
     const interval = setInterval(() => {
       if (typeof document !== "undefined" && document.hidden) return;
-      fetch(`/api/canchas/detail?id=${id}`, { cache: "no-store" })
+      const seccionParam = seccionSeleccionada ? `&seccionId=${seccionSeleccionada}` : '';
+      fetch(`/api/canchas/detail?id=${id}${seccionParam}`, { cache: "no-store" })
         .then((r) => r.json())
         .then((data) => {
-          if (!data.error) setCancha(data);
+          if (!data.error) setCancha((prev) => prev ? { ...prev, horariosOcupados: data.horariosOcupados } : prev);
         })
         .catch(() => {});
     }, 15 * 1000);
     return () => clearInterval(interval);
-  }, [id]);
+  }, [id, seccionSeleccionada]);
 
   useEffect(() => {
     if (!cancha) return;
@@ -575,11 +599,13 @@ export default function CanchaDetailPage() {
     );
   }
 
+  const seccionActiva = (cancha.secciones ?? []).find((s) => s.id === seccionSeleccionada) ?? null;
+
   const schedule = buildSchedule(
     cancha.horariosRestringidos ?? [],
     cancha.horariosOcupados ?? {},
-    cancha.precio_por_hora,
-    cancha.precios_por_hora ?? {},
+    seccionActiva ? seccionActiva.precio_por_hora : cancha.precio_por_hora,
+    seccionActiva ? (seccionActiva.precios_por_hora ?? {}) : (cancha.precios_por_hora ?? {}),
     cancha.horasOperacion ?? HORAS_OPERACION,
   );
 
@@ -593,6 +619,12 @@ export default function CanchaDetailPage() {
     const dd = String(now.getDate()).padStart(2, "0");
     if (selectedDate !== `${y}-${mo}-${dd}`) return false;
     const [h, m] = slotTime.split(":").map(Number);
+    // Horario nocturno que cruza medianoche: si la hora del slot es menor que la
+    // hora de apertura (primer slot), pertenece al día siguiente y no es pasado.
+    if (inlineSlots.length > 0) {
+      const horaApertura = Number(inlineSlots[0].time.split(":")[0]);
+      if (horaApertura > 0 && h < horaApertura) return false;
+    }
     const t = new Date();
     t.setHours(h, m, 0, 0);
     return t <= now;
@@ -636,7 +668,13 @@ export default function CanchaDetailPage() {
   };
   // ─────────────────────────────────────────────────────────────────────────
 
-  const precioBase = selectedSlots.reduce((sum, s) => sum + s.price, 0);
+  const precioBase = selectedSlots.reduce((sum, s) => {
+    if (seccionActiva) {
+      const precioSeccion = seccionActiva.precios_por_hora?.[s.time] ?? seccionActiva.precio_por_hora;
+      return sum + precioSeccion;
+    }
+    return sum + s.price;
+  }, 0);
   const extraAccesorios = (cancha.accesorios ?? [])
     .filter(a => accesoriosSeleccionados.includes(a.id) && a.precio != null)
     .reduce((sum, a) => sum + (a.precio ?? 0), 0);
@@ -925,6 +963,60 @@ export default function CanchaDetailPage() {
               </p>
             </div>
 
+            {/* ── Selector de sección (si la cancha tiene secciones) — solo mobile ── */}
+            {(cancha.secciones ?? []).length > 0 && (
+              <div className="mb-4 lg:hidden">
+                <h2 className="mb-2 text-base font-semibold text-foreground">¿Cómo quieres reservar?</h2>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {/* Opción cancha completa */}
+                  <button
+                    type="button"
+                    onClick={() => setSeccionSeleccionada(null)}
+                    className={cn(
+                      "flex items-center gap-3 rounded-xl border-2 px-4 py-3 text-left transition-all",
+                      seccionSeleccionada === null
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-primary/30",
+                    )}
+                  >
+                    <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold", seccionSeleccionada === null ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
+                      ✦
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Cancha completa</p>
+                      <p className="text-xs text-muted-foreground">
+                        {cancha.max_jugadores ? `${cancha.max_jugadores} jugadores · ` : ""}S/ {cancha.precio_por_hora}/hora
+                      </p>
+                    </div>
+                  </button>
+                  {/* Opciones por sección */}
+                  {(cancha.secciones ?? []).map((sec) => (
+                    <button
+                      key={sec.id}
+                      type="button"
+                      onClick={() => setSeccionSeleccionada(sec.id)}
+                      className={cn(
+                        "flex items-center gap-3 rounded-xl border-2 px-4 py-3 text-left transition-all",
+                        seccionSeleccionada === sec.id
+                          ? "border-primary bg-primary/5"
+                          : "border-border hover:border-primary/30",
+                      )}
+                    >
+                      <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm font-bold", seccionSeleccionada === sec.id ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
+                        {sec.nombre}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Sección {sec.nombre}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {sec.max_jugadores ? `${sec.max_jugadores} jugadores · ` : ""}S/ {sec.precio_por_hora}/hora
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* ── Horarios inline — solo mobile, construido desde cero ── */}
             <div className="lg:hidden" ref={slotPickerRef}>
               <h2 className="mb-3 text-lg font-semibold text-foreground">
@@ -1149,6 +1241,36 @@ export default function CanchaDetailPage() {
 
             {/* Horarios - Ahora antes del mapa en desktop */}
             <div className="hidden lg:block">
+              {/* Selector de sección desktop */}
+              {(cancha.secciones ?? []).length > 0 && (
+                <div className="mb-4">
+                  <h2 className="mb-2 text-base font-semibold text-foreground">¿Cómo quieres reservar?</h2>
+                  <div className="grid grid-cols-1 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSeccionSeleccionada(null)}
+                      className={cn("flex items-center gap-3 rounded-xl border-2 px-4 py-3 text-left transition-all", seccionSeleccionada === null ? "border-primary bg-primary/5" : "border-border hover:border-primary/30")}
+                    >
+                      <div className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold", seccionSeleccionada === null ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>✦</div>
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Cancha completa</p>
+                        <p className="text-xs text-muted-foreground">{cancha.max_jugadores ? `${cancha.max_jugadores} jugadores · ` : ""}S/ {cancha.precio_por_hora}/hora</p>
+                      </div>
+                    </button>
+                    {(cancha.secciones ?? []).map((sec) => (
+                      <button key={sec.id} type="button" onClick={() => setSeccionSeleccionada(sec.id)}
+                        className={cn("flex items-center gap-3 rounded-xl border-2 px-4 py-3 text-left transition-all", seccionSeleccionada === sec.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/30")}
+                      >
+                        <div className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-sm font-bold", seccionSeleccionada === sec.id ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>{sec.nombre}</div>
+                        <div>
+                          <p className="text-sm font-medium text-foreground">Sección {sec.nombre}</p>
+                          <p className="text-xs text-muted-foreground">{sec.max_jugadores ? `${sec.max_jugadores} jugadores · ` : ""}S/ {sec.precio_por_hora}/hora</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               <h2 className="mb-4 text-lg font-semibold text-foreground">
                 Selecciona fecha y hora
               </h2>

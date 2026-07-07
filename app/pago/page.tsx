@@ -15,7 +15,6 @@ import {
   ImageIcon,
   Timer,
   Mail,
-  ExternalLink,
   Lock,
   MapPin,
 } from "lucide-react";
@@ -79,6 +78,7 @@ function PagoContent() {
   const precioRaw = Number(params.get("precio") ?? 0);
   const fromCard = params.get("from") === "card";
   const accsParam = params.get("accs") ?? "";
+  const seccionId = params.get("seccionId") ?? null;
 
   const horaFin = `${String((parseInt(hora.split(":")[0]) + horas) % 24).padStart(2, "0")}:00`;
 
@@ -94,7 +94,9 @@ function PagoContent() {
   const [paso, setPaso] = useState<Paso>("datos");
   const [copiado, setCopiado] = useState(false);
   const [canchaCupones, setCanchaCupones] = useState<any[]>([]);
-  const [cuponSeleccionado, setCuponSeleccionado] = useState<string | null>(null);
+  const [cuponSeleccionado, setCuponSeleccionado] = useState<string | null>(
+    null,
+  );
   const [comprobante, setComprobante] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [segundos, setSegundos] = useState(TIEMPO_LIMITE);
@@ -132,14 +134,14 @@ function PagoContent() {
         if (fromStorage.length > 0) {
           setAccesoriosSeleccionados(fromStorage);
         } else if (accsParam) {
-          const ids = decodeURIComponent(accsParam).split(',').filter(Boolean);
+          const ids = decodeURIComponent(accsParam).split(",").filter(Boolean);
           const selected = (parsed.accesorios ?? [])
             .filter((a: any) => ids.includes(String(a.id)))
             .map((a: any) => ({
               id: a.id,
               nombre: a.nombre,
               icono: a.icono,
-              precio: a.modalidad === 'prestado' ? null : (a.precio ?? null),
+              precio: a.modalidad === "prestado" ? null : (a.precio ?? null),
             }));
           setAccesoriosSeleccionados(selected);
         }
@@ -171,14 +173,16 @@ function PagoContent() {
             plinNumero: data.plin_numero ?? "",
           });
           if (accsParam) {
-            const ids = decodeURIComponent(accsParam).split(',').filter(Boolean);
+            const ids = decodeURIComponent(accsParam)
+              .split(",")
+              .filter(Boolean);
             const selected = (data.accesorios ?? [])
               .filter((a: any) => ids.includes(String(a.id)))
               .map((a: any) => ({
                 id: a.id,
                 nombre: a.nombre,
                 icono: a.icono,
-                precio: a.modalidad === 'prestado' ? null : (a.precio ?? null),
+                precio: a.modalidad === "prestado" ? null : (a.precio ?? null),
               }));
             if (selected.length > 0) setAccesoriosSeleccionados(selected);
           }
@@ -228,7 +232,13 @@ function PagoContent() {
       fetch("/api/bloqueos", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ canchaId, fecha, hora, horas }),
+        body: JSON.stringify({
+          canchaId,
+          fecha,
+          hora,
+          horas,
+          ...(seccionId ? { seccionId } : {}),
+        }),
       });
       router.replace("/");
       return;
@@ -245,7 +255,13 @@ function PagoContent() {
       fetch("/api/bloqueos", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ canchaId, fecha, hora, horas }),
+        body: JSON.stringify({
+          canchaId,
+          fecha,
+          hora,
+          horas,
+          ...(seccionId ? { seccionId } : {}),
+        }),
       });
       router.push("/");
     }, restantes * 1000);
@@ -259,7 +275,13 @@ function PagoContent() {
           fetch("/api/bloqueos", {
             method: "DELETE",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ canchaId, fecha, hora, horas }),
+            body: JSON.stringify({
+              canchaId,
+              fecha,
+              hora,
+              horas,
+              ...(seccionId ? { seccionId } : {}),
+            }),
           });
         }
       });
@@ -284,8 +306,12 @@ function PagoContent() {
         })
         .then((perfil) => {
           apiGetLoyalty().then((data: any) => {
-            const canchaData = (data.canchas ?? []).find((c: any) => c.cancha_id === canchaId);
-            setCanchaCupones((canchaData?.cupones ?? []).filter((c: any) => !c.usado));
+            const canchaData = (data.canchas ?? []).find(
+              (c: any) => c.cancha_id === canchaId,
+            );
+            setCanchaCupones(
+              (canchaData?.cupones ?? []).filter((c: any) => !c.usado),
+            );
           });
           const tel = perfil?.telefono || "";
           const email = perfil?.email || perfil?.correo || "";
@@ -356,19 +382,21 @@ function PagoContent() {
   const cuponActivo = canchaCupones.find((c) => c.id === cuponSeleccionado);
   const descuento = (() => {
     if (!cuponActivo) return 0;
-    if (cuponActivo.premio_tipo === "descuento_fijo") return cuponActivo.premio_valor ?? 0;
+    if (cuponActivo.premio_tipo === "descuento_fijo")
+      return cuponActivo.premio_valor ?? 0;
     if (cuponActivo.premio_tipo === "descuento_porcentaje")
-      return Math.round(precioRaw * horas * (cuponActivo.premio_valor ?? 0) / 100);
+      return Math.round(
+        (precioRaw * horas * (cuponActivo.premio_valor ?? 0)) / 100,
+      );
     if (cuponActivo.premio_tipo === "hora_gratis") return precioRaw;
     return 0;
   })();
-  const extraAccesorios = accesoriosSeleccionados
-    .reduce((sum, a) => sum + (a.precio ?? 0), 0);
-  const total = Math.max(
+  const extraAccesorios = accesoriosSeleccionados.reduce(
+    (sum, a) => sum + (a.precio ?? 0),
     0,
-    precioRaw * horas + extraAccesorios - descuento,
   );
-  const esHoraGratis = cuponActivo?.premio_tipo === 'hora_gratis';
+  const total = Math.max(0, precioRaw * horas + extraAccesorios - descuento);
+  const esHoraGratis = cuponActivo?.premio_tipo === "hora_gratis";
   const saltarPago = soloEfectivo || esHoraGratis;
   const montoAdelanto =
     modoPago === "parcial" ? Math.round(total * 0.2) : total;
@@ -401,7 +429,10 @@ function PagoContent() {
       const MAX = 1200;
       let width = img.naturalWidth || img.width;
       let height = img.naturalHeight || img.height;
-      if (!width || !height) { URL.revokeObjectURL(objectUrl); return; }
+      if (!width || !height) {
+        URL.revokeObjectURL(objectUrl);
+        return;
+      }
       if (width > MAX || height > MAX) {
         if (width > height) {
           height = Math.round((height * MAX) / width);
@@ -415,7 +446,10 @@ function PagoContent() {
       canvas.width = width;
       canvas.height = height;
       const ctx = canvas.getContext("2d");
-      if (!ctx) { URL.revokeObjectURL(objectUrl); return; }
+      if (!ctx) {
+        URL.revokeObjectURL(objectUrl);
+        return;
+      }
       ctx.fillStyle = "#FFFFFF";
       ctx.fillRect(0, 0, width, height);
       ctx.drawImage(img, 0, 0, width, height);
@@ -424,7 +458,10 @@ function PagoContent() {
     };
 
     img.src = objectUrl;
-    img.decode().then(dibujar).catch(() => URL.revokeObjectURL(objectUrl));
+    img
+      .decode()
+      .then(dibujar)
+      .catch(() => URL.revokeObjectURL(objectUrl));
   };
 
   // Validación del paso 2
@@ -494,6 +531,7 @@ function PagoContent() {
         modoPago,
         montoAdelanto,
         saldoPendiente,
+        seccionId,
         ...(esInvitado && emailInvitado
           ? {
               emailInvitado,
@@ -520,10 +558,18 @@ function PagoContent() {
       fetch("/api/bloqueos", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ canchaId, fecha, hora, horas }),
+        body: JSON.stringify({
+          canchaId,
+          fecha,
+          hora,
+          horas,
+          ...(seccionId ? { seccionId } : {}),
+        }),
       });
       if (cuponSeleccionado) {
-        setCanchaCupones((prev) => prev.filter((c) => c.id !== cuponSeleccionado));
+        setCanchaCupones((prev) =>
+          prev.filter((c) => c.id !== cuponSeleccionado),
+        );
         setCuponSeleccionado(null);
       }
       setEnviando(false);
@@ -547,6 +593,7 @@ function PagoContent() {
       modoPago,
       montoAdelanto,
       saldoPendiente,
+      seccionId,
       ...(esInvitado && emailInvitado
         ? {
             emailInvitado,
@@ -577,10 +624,18 @@ function PagoContent() {
     fetch("/api/bloqueos", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ canchaId, fecha, hora, horas }),
+      body: JSON.stringify({
+        canchaId,
+        fecha,
+        hora,
+        horas,
+        ...(seccionId ? { seccionId } : {}),
+      }),
     });
     if (cuponSeleccionado) {
-      setCanchaCupones((prev) => prev.filter((c) => c.id !== cuponSeleccionado));
+      setCanchaCupones((prev) =>
+        prev.filter((c) => c.id !== cuponSeleccionado),
+      );
       setCuponSeleccionado(null);
     }
     setEnviando(false);
@@ -618,8 +673,12 @@ function PagoContent() {
       setEmailRegistrado(data.user.email || "");
       setTelefonoRegistrado(data.user.phone || "");
       apiGetLoyalty().then((data: any) => {
-        const canchaData = (data.canchas ?? []).find((c: any) => c.cancha_id === canchaId);
-        setCanchaCupones((canchaData?.cupones ?? []).filter((c: any) => !c.usado));
+        const canchaData = (data.canchas ?? []).find(
+          (c: any) => c.cancha_id === canchaId,
+        );
+        setCanchaCupones(
+          (canchaData?.cupones ?? []).filter((c: any) => !c.usado),
+        );
       });
       setLoginModalOpen(false);
       setLoginEmail("");
@@ -732,7 +791,11 @@ function PagoContent() {
           <CheckCircle2 className="h-12 w-12 text-primary" />
         </div>
         <h1 className="mb-2 text-2xl font-bold text-foreground">
-          {esHoraGratis ? "¡Reserva gratis enviada!" : soloEfectivo ? "¡Reserva recibida!" : "¡Listo, ya casi!"}
+          {esHoraGratis
+            ? "¡Reserva gratis enviada!"
+            : soloEfectivo
+              ? "¡Reserva recibida!"
+              : "¡Listo, ya casi!"}
         </h1>
         <p className="mb-3 text-muted-foreground">
           {esHoraGratis
@@ -1033,12 +1096,19 @@ function PagoContent() {
             </span>
             <span className="text-foreground">S/ {precioRaw * horas}</span>
           </div>
-          {accesoriosSeleccionados.filter(a => (a.precio ?? 0) > 0).map(a => (
-            <div key={a.id} className="flex justify-between text-muted-foreground">
-              <span>{a.icono} {a.nombre}</span>
-              <span className="text-foreground">S/ {a.precio}</span>
-            </div>
-          ))}
+          {accesoriosSeleccionados
+            .filter((a) => (a.precio ?? 0) > 0)
+            .map((a) => (
+              <div
+                key={a.id}
+                className="flex justify-between text-muted-foreground"
+              >
+                <span>
+                  {a.icono} {a.nombre}
+                </span>
+                <span className="text-foreground">S/ {a.precio}</span>
+              </div>
+            ))}
           <div
             className={cn(
               "flex justify-between text-primary overflow-hidden transition-all duration-300",
@@ -1161,26 +1231,6 @@ function PagoContent() {
               </button>
             </div>
           </div>
-          <button
-            onClick={() => {
-              window.location.href = metodo === "yape" ? "yape://" : "plin://";
-            }}
-            className="sm:hidden flex items-center justify-center gap-3 w-full rounded-xl py-3.5 font-bold text-white active:scale-[0.98] transition-all"
-            style={{
-              backgroundColor: metodo === "yape" ? "#6C1FC6" : "#00B4D8",
-            }}
-          >
-            <Image
-              src={metodo === "yape" ? "/images/yape.png" : "/images/plin.png"}
-              alt={metodo}
-              width={22}
-              height={22}
-              className="object-contain rounded"
-            />
-            Abrir {metodo === "yape" ? "Yape" : "Plin"} · Enviar S/{" "}
-            {montoAdelanto}
-            <ExternalLink className="h-4 w-4 opacity-70" />
-          </button>
         </div>
       </Card>
       <Card className="border-border p-5 space-y-3">
@@ -1375,12 +1425,19 @@ function PagoContent() {
                   </span>
                   <span>S/ {precioRaw * horas}</span>
                 </div>
-                {accesoriosSeleccionados.filter(a => (a.precio ?? 0) > 0).map(a => (
-                  <div key={a.id} className="flex justify-between text-muted-foreground">
-                    <span>{a.icono} {a.nombre}</span>
-                    <span>S/ {a.precio}</span>
-                  </div>
-                ))}
+                {accesoriosSeleccionados
+                  .filter((a) => (a.precio ?? 0) > 0)
+                  .map((a) => (
+                    <div
+                      key={a.id}
+                      className="flex justify-between text-muted-foreground"
+                    >
+                      <span>
+                        {a.icono} {a.nombre}
+                      </span>
+                      <span>S/ {a.precio}</span>
+                    </div>
+                  ))}
                 {descuento > 0 && (
                   <div className="flex justify-between text-primary">
                     <span>🎟 Cupón</span>
@@ -1397,82 +1454,128 @@ function PagoContent() {
                   <span>🎯</span>
                   <span>
                     Esta cancha tiene programa de sellos — reserva{" "}
-                    <span className="font-medium text-foreground">{cancha.loyalty.umbral} veces</span>{" "}
+                    <span className="font-medium text-foreground">
+                      {cancha.loyalty.umbral} veces
+                    </span>{" "}
                     y gana{" "}
                     <span className="font-medium text-foreground">
-                      {cancha.loyalty.premio_tipo === "descuento_fijo"       && `S/ ${cancha.loyalty.premio_valor} de descuento`}
-                      {cancha.loyalty.premio_tipo === "descuento_porcentaje" && `${cancha.loyalty.premio_valor}% de descuento`}
-                      {cancha.loyalty.premio_tipo === "hora_gratis"          && "1 hora gratis"}
-                      {cancha.loyalty.premio_tipo === "personalizado"        && (cancha.loyalty.premio_descripcion || "un premio especial")}
+                      {cancha.loyalty.premio_tipo === "descuento_fijo" &&
+                        `S/ ${cancha.loyalty.premio_valor} de descuento`}
+                      {cancha.loyalty.premio_tipo === "descuento_porcentaje" &&
+                        `${cancha.loyalty.premio_valor}% de descuento`}
+                      {cancha.loyalty.premio_tipo === "hora_gratis" &&
+                        "1 hora gratis"}
+                      {cancha.loyalty.premio_tipo === "personalizado" &&
+                        (cancha.loyalty.premio_descripcion ||
+                          "un premio especial")}
                     </span>
                   </span>
                 </div>
               )}
             </Card>
             {cancha && (cancha.accesorios ?? []).length > 0 && (
-                <Card className="border-border p-4">
-                  <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    ¿Necesitas accesorios?
-                  </p>
-                  <div className="space-y-3">
-                    {(cancha.accesorios ?? []).map((acc: any) => {
-                      const seleccionado = accesoriosSeleccionados.some(a => a.id === acc.id);
-                      return (
-                        <label key={acc.id} className="flex items-center justify-between gap-3 cursor-pointer">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xl">{acc.icono}</span>
-                            <div>
-                              <p className="text-sm font-medium text-foreground">{acc.nombre}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {acc.modalidad === 'prestado' || acc.precio == null ? 'Gratis' : `+ S/ ${acc.precio} por reserva`}
-                              </p>
-                            </div>
+              <Card className="border-border p-4">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  ¿Necesitas accesorios?
+                </p>
+                <div className="space-y-3">
+                  {(cancha.accesorios ?? []).map((acc: any) => {
+                    const seleccionado = accesoriosSeleccionados.some(
+                      (a) => a.id === acc.id,
+                    );
+                    return (
+                      <label
+                        key={acc.id}
+                        className="flex items-center justify-between gap-3 cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl">{acc.icono}</span>
+                          <div>
+                            <p className="text-sm font-medium text-foreground">
+                              {acc.nombre}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {acc.modalidad === "prestado" ||
+                              acc.precio == null
+                                ? "Gratis"
+                                : `+ S/ ${acc.precio} por reserva`}
+                            </p>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => setAccesoriosSeleccionados(prev =>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setAccesoriosSeleccionados((prev) =>
                               seleccionado
-                                ? prev.filter(a => a.id !== acc.id)
-                                : [...prev, { id: acc.id, nombre: acc.nombre, icono: acc.icono, precio: acc.modalidad === 'prestado' ? null : acc.precio }]
-                            )}
+                                ? prev.filter((a) => a.id !== acc.id)
+                                : [
+                                    ...prev,
+                                    {
+                                      id: acc.id,
+                                      nombre: acc.nombre,
+                                      icono: acc.icono,
+                                      precio:
+                                        acc.modalidad === "prestado"
+                                          ? null
+                                          : acc.precio,
+                                    },
+                                  ],
+                            )
+                          }
+                          className={cn(
+                            "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors",
+                            seleccionado
+                              ? "bg-primary"
+                              : "bg-muted-foreground/30",
+                          )}
+                        >
+                          <span
                             className={cn(
-                              "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors",
-                              seleccionado ? "bg-primary" : "bg-muted-foreground/30",
-                            )}
-                          >
-                            <span className={cn(
                               "inline-block h-5 w-5 rounded-full bg-white shadow transition-transform",
-                              seleccionado ? "translate-x-5.5" : "translate-x-0.5",
-                            )} />
-                          </button>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </Card>
-              )}
+                              seleccionado
+                                ? "translate-x-5.5"
+                                : "translate-x-0.5",
+                            )}
+                          />
+                        </button>
+                      </label>
+                    );
+                  })}
+                </div>
+              </Card>
+            )}
             {!esInvitado && canchaCupones.length > 0 && (
               <Card className="border-primary/30 bg-primary/5 p-4">
                 <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-primary">
-                  🎟 Tienes {canchaCupones.length} cupón{canchaCupones.length !== 1 ? "es" : ""} disponible{canchaCupones.length !== 1 ? "s" : ""}
+                  🎟 Tienes {canchaCupones.length} cupón
+                  {canchaCupones.length !== 1 ? "es" : ""} disponible
+                  {canchaCupones.length !== 1 ? "s" : ""}
                 </p>
                 <div className="space-y-2">
                   {canchaCupones.map((c) => {
                     const label =
-                      c.premio_tipo === "descuento_fijo" ? `S/ ${c.premio_valor} de descuento`
-                      : c.premio_tipo === "descuento_porcentaje" ? `${c.premio_valor}% de descuento`
-                      : c.premio_tipo === "hora_gratis" ? "1 hora gratis"
-                      : c.premio_descripcion || "Premio especial";
+                      c.premio_tipo === "descuento_fijo"
+                        ? `S/ ${c.premio_valor} de descuento`
+                        : c.premio_tipo === "descuento_porcentaje"
+                          ? `${c.premio_valor}% de descuento`
+                          : c.premio_tipo === "hora_gratis"
+                            ? "1 hora gratis"
+                            : c.premio_descripcion || "Premio especial";
                     const badge =
-                      c.premio_tipo === "descuento_fijo" ? [`S/${c.premio_valor}`, "OFF"]
-                      : c.premio_tipo === "descuento_porcentaje" ? [`${c.premio_valor}%`, "OFF"]
-                      : c.premio_tipo === "hora_gratis" ? ["1H", "FREE"]
-                      : ["🎁", ""];
+                      c.premio_tipo === "descuento_fijo"
+                        ? [`S/${c.premio_valor}`, "OFF"]
+                        : c.premio_tipo === "descuento_porcentaje"
+                          ? [`${c.premio_valor}%`, "OFF"]
+                          : c.premio_tipo === "hora_gratis"
+                            ? ["1H", "FREE"]
+                            : ["🎁", ""];
                     return (
                       <button
                         key={c.id}
                         onClick={() =>
-                          setCuponSeleccionado(cuponSeleccionado === c.id ? null : c.id)
+                          setCuponSeleccionado(
+                            cuponSeleccionado === c.id ? null : c.id,
+                          )
                         }
                         className={cn(
                           "flex w-full items-center gap-3 rounded-xl border-2 border-dashed p-3 text-left transition-all",
@@ -1490,12 +1593,20 @@ function PagoContent() {
                           )}
                         >
                           <span>{badge[0]}</span>
-                          {badge[1] && <span className="text-[10px] font-normal">{badge[1]}</span>}
+                          {badge[1] && (
+                            <span className="text-[10px] font-normal">
+                              {badge[1]}
+                            </span>
+                          )}
                         </div>
                         <div className="flex-1">
-                          <p className="text-sm font-medium text-foreground">{label}</p>
+                          <p className="text-sm font-medium text-foreground">
+                            {label}
+                          </p>
                           <p className="text-xs text-muted-foreground">
-                            {cuponSeleccionado === c.id ? "✓ Aplicado" : "Toca para aplicar"}
+                            {cuponSeleccionado === c.id
+                              ? "✓ Aplicado"
+                              : "Toca para aplicar"}
                           </p>
                         </div>
                         <div
@@ -1549,7 +1660,8 @@ function PagoContent() {
                     Esta reserva es completamente gratis
                   </p>
                   <p className="text-xs text-green-600 dark:text-green-500 mt-1 leading-relaxed">
-                    Tu cupón de hora gratis cubre el costo total. No necesitas realizar ningún pago.
+                    Tu cupón de hora gratis cubre el costo total. No necesitas
+                    realizar ningún pago.
                   </p>
                 </div>
               </div>
@@ -1666,9 +1778,13 @@ function PagoContent() {
                 disabled={enviando}
               >
                 {soloEfectivo
-                  ? (enviando ? "Confirmando..." : "Confirmar reserva (pago en cancha)")
+                  ? enviando
+                    ? "Confirmando..."
+                    : "Confirmar reserva (pago en cancha)"
                   : esHoraGratis
-                    ? (enviando ? "Confirmando..." : "Confirmar reserva (hora gratis)")
+                    ? enviando
+                      ? "Confirmando..."
+                      : "Confirmar reserva (hora gratis)"
                     : "Ir a pagar"}
               </Button>
               <Button
@@ -1858,7 +1974,7 @@ function PagoContent() {
                         S/ {precioRaw * horas}
                       </span>
                     </div>
-                    {accesoriosSeleccionados.map(a => (
+                    {accesoriosSeleccionados.map((a) => (
                       <div key={a.id} className="flex justify-between">
                         <span className="text-muted-foreground flex items-center gap-1.5">
                           {a.icono} {a.nombre}
@@ -1941,9 +2057,11 @@ function PagoContent() {
                         S/ {precioRaw * horas}
                       </span>
                     </div>
-                    {accesoriosSeleccionados.map(a => (
+                    {accesoriosSeleccionados.map((a) => (
                       <div key={a.id} className="flex justify-between">
-                        <span className="text-muted-foreground">{a.icono} {a.nombre}</span>
+                        <span className="text-muted-foreground">
+                          {a.icono} {a.nombre}
+                        </span>
                         <span className="text-foreground">
                           {(a.precio ?? 0) > 0 ? `S/ ${a.precio}` : "Gratis"}
                         </span>
@@ -2044,9 +2162,15 @@ function PagoContent() {
                   <Button
                     size="lg"
                     className="w-full"
-                    onClick={() => esHoraGratis ? handleEnviar() : setPaso("confirmar")}
+                    onClick={() =>
+                      esHoraGratis ? handleEnviar() : setPaso("confirmar")
+                    }
                   >
-                    {esHoraGratis ? (enviando ? "Confirmando..." : "Confirmar reserva (hora gratis)") : "Ir a pagar"}
+                    {esHoraGratis
+                      ? enviando
+                        ? "Confirmando..."
+                        : "Confirmar reserva (hora gratis)"
+                      : "Ir a pagar"}
                   </Button>
                   <Button
                     variant="outline"
@@ -2274,47 +2398,76 @@ function PagoContent() {
               {paso === "pago" && (
                 <>
                   {cancha && (cancha.accesorios ?? []).length > 0 && (
-                      <div className="bg-white dark:bg-card rounded-xl border border-border p-6">
-                        <h2 className="text-base font-semibold text-foreground mb-4">
-                          ¿Necesitas accesorios?
-                        </h2>
-                        <div className="space-y-3">
-                          {(cancha.accesorios ?? []).map((acc: any) => {
-                            const seleccionado = accesoriosSeleccionados.some(a => a.id === acc.id);
-                            return (
-                              <label key={acc.id} className="flex items-center justify-between gap-3 cursor-pointer">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-xl">{acc.icono}</span>
-                                  <div>
-                                    <p className="text-sm font-medium text-foreground">{acc.nombre}</p>
-                                    <p className="text-xs text-muted-foreground">
-                                      {acc.modalidad === 'prestado' || acc.precio == null ? 'Gratis' : `+ S/ ${acc.precio} por reserva`}
-                                    </p>
-                                  </div>
+                    <div className="bg-white dark:bg-card rounded-xl border border-border p-6">
+                      <h2 className="text-base font-semibold text-foreground mb-4">
+                        ¿Necesitas accesorios?
+                      </h2>
+                      <div className="space-y-3">
+                        {(cancha.accesorios ?? []).map((acc: any) => {
+                          const seleccionado = accesoriosSeleccionados.some(
+                            (a) => a.id === acc.id,
+                          );
+                          return (
+                            <label
+                              key={acc.id}
+                              className="flex items-center justify-between gap-3 cursor-pointer"
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className="text-xl">{acc.icono}</span>
+                                <div>
+                                  <p className="text-sm font-medium text-foreground">
+                                    {acc.nombre}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {acc.modalidad === "prestado" ||
+                                    acc.precio == null
+                                      ? "Gratis"
+                                      : `+ S/ ${acc.precio} por reserva`}
+                                  </p>
                                 </div>
-                                <button
-                                  type="button"
-                                  onClick={() => setAccesoriosSeleccionados(prev =>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setAccesoriosSeleccionados((prev) =>
                                     seleccionado
-                                      ? prev.filter(a => a.id !== acc.id)
-                                      : [...prev, { id: acc.id, nombre: acc.nombre, icono: acc.icono, precio: acc.modalidad === 'prestado' ? null : acc.precio }]
-                                  )}
+                                      ? prev.filter((a) => a.id !== acc.id)
+                                      : [
+                                          ...prev,
+                                          {
+                                            id: acc.id,
+                                            nombre: acc.nombre,
+                                            icono: acc.icono,
+                                            precio:
+                                              acc.modalidad === "prestado"
+                                                ? null
+                                                : acc.precio,
+                                          },
+                                        ],
+                                  )
+                                }
+                                className={cn(
+                                  "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors",
+                                  seleccionado
+                                    ? "bg-primary"
+                                    : "bg-muted-foreground/30",
+                                )}
+                              >
+                                <span
                                   className={cn(
-                                    "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors",
-                                    seleccionado ? "bg-primary" : "bg-muted-foreground/30",
-                                  )}
-                                >
-                                  <span className={cn(
                                     "inline-block h-5 w-5 rounded-full bg-white shadow transition-transform",
-                                    seleccionado ? "translate-x-5.5" : "translate-x-0.5",
-                                  )} />
-                                </button>
-                              </label>
-                            );
-                          })}
-                        </div>
+                                    seleccionado
+                                      ? "translate-x-5.5"
+                                      : "translate-x-0.5",
+                                  )}
+                                />
+                              </button>
+                            </label>
+                          );
+                        })}
                       </div>
-                    )}
+                    </div>
+                  )}
                   <div className="bg-white dark:bg-card rounded-xl border border-border p-6 space-y-6">
                     <div>
                       <h2 className="text-base font-semibold text-foreground mb-4">
@@ -2341,7 +2494,8 @@ function PagoContent() {
                               Esta reserva es completamente gratis
                             </p>
                             <p className="text-xs text-green-600 dark:text-green-500 mt-1 leading-relaxed">
-                              Tu cupón de hora gratis cubre el costo total. No necesitas realizar ningún pago.
+                              Tu cupón de hora gratis cubre el costo total. No
+                              necesitas realizar ningún pago.
                             </p>
                           </div>
                         </div>
@@ -2433,20 +2587,28 @@ function PagoContent() {
                       <div className="space-y-2">
                         {canchaCupones.map((c) => {
                           const label =
-                            c.premio_tipo === "descuento_fijo" ? `S/ ${c.premio_valor} de descuento`
-                            : c.premio_tipo === "descuento_porcentaje" ? `${c.premio_valor}% de descuento`
-                            : c.premio_tipo === "hora_gratis" ? "1 hora gratis"
-                            : c.premio_descripcion || "Premio especial";
+                            c.premio_tipo === "descuento_fijo"
+                              ? `S/ ${c.premio_valor} de descuento`
+                              : c.premio_tipo === "descuento_porcentaje"
+                                ? `${c.premio_valor}% de descuento`
+                                : c.premio_tipo === "hora_gratis"
+                                  ? "1 hora gratis"
+                                  : c.premio_descripcion || "Premio especial";
                           const badge =
-                            c.premio_tipo === "descuento_fijo" ? [`S/${c.premio_valor}`, "OFF"]
-                            : c.premio_tipo === "descuento_porcentaje" ? [`${c.premio_valor}%`, "OFF"]
-                            : c.premio_tipo === "hora_gratis" ? ["1H", "FREE"]
-                            : ["🎁", ""];
+                            c.premio_tipo === "descuento_fijo"
+                              ? [`S/${c.premio_valor}`, "OFF"]
+                              : c.premio_tipo === "descuento_porcentaje"
+                                ? [`${c.premio_valor}%`, "OFF"]
+                                : c.premio_tipo === "hora_gratis"
+                                  ? ["1H", "FREE"]
+                                  : ["🎁", ""];
                           return (
                             <button
                               key={c.id}
                               onClick={() =>
-                                setCuponSeleccionado(cuponSeleccionado === c.id ? null : c.id)
+                                setCuponSeleccionado(
+                                  cuponSeleccionado === c.id ? null : c.id,
+                                )
                               }
                               className={cn(
                                 "flex w-full items-center gap-3 rounded-xl border-2 border-dashed p-3 text-left transition-all",
@@ -2464,12 +2626,20 @@ function PagoContent() {
                                 )}
                               >
                                 <span>{badge[0]}</span>
-                                {badge[1] && <span className="text-[10px] font-normal">{badge[1]}</span>}
+                                {badge[1] && (
+                                  <span className="text-[10px] font-normal">
+                                    {badge[1]}
+                                  </span>
+                                )}
                               </div>
                               <div className="flex-1">
-                                <p className="text-sm font-medium text-foreground">{label}</p>
+                                <p className="text-sm font-medium text-foreground">
+                                  {label}
+                                </p>
                                 <p className="text-xs text-muted-foreground">
-                                  {cuponSeleccionado === c.id ? "✓ Aplicado" : "Clic para aplicar"}
+                                  {cuponSeleccionado === c.id
+                                    ? "✓ Aplicado"
+                                    : "Clic para aplicar"}
                                 </p>
                               </div>
                               <div
@@ -2512,9 +2682,13 @@ function PagoContent() {
                       }
                     >
                       {soloEfectivo
-                        ? (enviando ? "Confirmando..." : "Confirmar reserva (pago en cancha)")
+                        ? enviando
+                          ? "Confirmando..."
+                          : "Confirmar reserva (pago en cancha)"
                         : esHoraGratis
-                          ? (enviando ? "Confirmando..." : "Confirmar reserva (hora gratis)")
+                          ? enviando
+                            ? "Confirmando..."
+                            : "Confirmar reserva (hora gratis)"
                           : "Ir a pagar"}
                     </Button>
                     <Button
@@ -2762,9 +2936,15 @@ function PagoContent() {
                       <Button
                         size="lg"
                         className="w-full"
-                        onClick={() => esHoraGratis ? handleEnviar() : setPaso("confirmar")}
+                        onClick={() =>
+                          esHoraGratis ? handleEnviar() : setPaso("confirmar")
+                        }
                       >
-                        {esHoraGratis ? (enviando ? "Confirmando..." : "Confirmar reserva (hora gratis)") : "Continuar"}
+                        {esHoraGratis
+                          ? enviando
+                            ? "Confirmando..."
+                            : "Confirmar reserva (hora gratis)"
+                          : "Continuar"}
                       </Button>
                     )}
                     <Button
@@ -2848,7 +3028,9 @@ function PagoContent() {
 
           <div className="my-4 flex items-center gap-3">
             <div className="h-px flex-1 bg-border" />
-            <span className="text-xs text-muted-foreground">o continúa con</span>
+            <span className="text-xs text-muted-foreground">
+              o continúa con
+            </span>
             <div className="h-px flex-1 bg-border" />
           </div>
 
@@ -2861,10 +3043,22 @@ function PagoContent() {
             }}
           >
             <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24">
-              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+              <path
+                fill="#4285F4"
+                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+              />
+              <path
+                fill="#34A853"
+                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+              />
+              <path
+                fill="#FBBC05"
+                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+              />
+              <path
+                fill="#EA4335"
+                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+              />
             </svg>
             Continuar con Google
           </Button>

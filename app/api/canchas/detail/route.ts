@@ -4,8 +4,10 @@ import { getLocalDateString, addDaysToDateString } from '@/lib/date-utils';
 import { horasBloqueadasEnFecha, BloqueoAdmin, getHorasOperacion } from '@/lib/bloqueos-utils';
 
 // GET /api/canchas/detail?id=xxx
+// GET /api/canchas/detail?id=xxx&seccionId=yyy  → horarios filtrados para esa sección
 export async function GET(req: NextRequest) {
-  const id = req.nextUrl.searchParams.get('id');
+  const id        = req.nextUrl.searchParams.get('id');
+  const seccionId = req.nextUrl.searchParams.get('seccionId'); // null = cancha completa
   if (!id) return NextResponse.json({ error: 'ID requerido' }, { status: 400 });
 
   const sb = createServiceClient();
@@ -25,20 +27,21 @@ export async function GET(req: NextRequest) {
   const [
     { data: horariosBloqueados },
     { data: bloqueosAdmin },
-    { data: reservas },
-    { data: bloqueosTmp },
+    { data: todasReservas },
+    { data: todosBloqueosTmp },
     { data: loyaltyConfig },
+    { data: secciones },
   ] = await Promise.all([
     sb.from('horarios_bloqueados').select('hora').eq('cancha_id', id),
     sb.from('bloqueos_admin').select('*').eq('cancha_id', id),
     sb.from('reservas')
-      .select('fecha, hora, estado')
+      .select('fecha, hora, estado, seccion_id')
       .eq('cancha_id', id)
       .in('estado', ['pendiente', 'confirmada'])
       .gte('fecha', hoy)
       .lte('fecha', en30),
     sb.from('bloqueos_temporales')
-      .select('fecha, hora')
+      .select('fecha, hora, seccion_id')
       .eq('cancha_id', id)
       .gt('expira_en', new Date().toISOString()),
     sb.from('cancha_loyalty_config')
@@ -46,22 +49,53 @@ export async function GET(req: NextRequest) {
       .eq('cancha_id', id)
       .eq('activo', true)
       .maybeSingle(),
+    sb.from('cancha_secciones')
+      .select('*')
+      .eq('cancha_id', id)
+      .eq('activa', true)
+      .order('orden', { ascending: true }),
   ]);
 
-  // Horarios permanentes (legacy)
   const permanentesLegacy = (horariosBloqueados ?? []).map((h: any) => h.hora as string);
+  const tieneSecciones = (secciones ?? []).length > 0;
 
-  // Mapa "fecha|hora" → estado
+  // Construir mapa de ocupación según el contexto:
+  // - Si hay secciones y se pide una sección específica → bloqueado si: reserva completa O reserva de esa sección
+  // - Si hay secciones y se pide la cancha completa (seccionId=null) → bloqueado si: cualquier reserva
+  // - Si no hay secciones → comportamiento original
   const horariosOcupados: Record<string, 'reservado' | 'en_proceso'> = {};
 
-  for (const r of reservas ?? []) {
+  for (const r of todasReservas ?? []) {
     const key = `${r.fecha}|${r.hora}`;
-    horariosOcupados[key] = r.estado === 'confirmada' ? 'reservado' : 'en_proceso';
+    const estado = r.estado === 'confirmada' ? 'reservado' : 'en_proceso';
+
+    if (!tieneSecciones) {
+      // Sin secciones: cualquier reserva bloquea el slot (comportamiento original)
+      horariosOcupados[key] = estado;
+    } else if (seccionId) {
+      // Con secciones, vista de una sección: bloquea si reserva completa (sin seccion_id) O de esta sección
+      if (r.seccion_id === null || r.seccion_id === seccionId) {
+        horariosOcupados[key] = estado;
+      }
+    } else {
+      // Con secciones, vista de cancha completa: bloquea si cualquier reserva existe
+      horariosOcupados[key] = estado;
+    }
   }
 
-  for (const b of bloqueosTmp ?? []) {
+  for (const b of todosBloqueosTmp ?? []) {
     const key = `${b.fecha}|${b.hora}`;
-    if (!horariosOcupados[key]) horariosOcupados[key] = 'en_proceso';
+    if (horariosOcupados[key]) continue;
+
+    if (!tieneSecciones) {
+      horariosOcupados[key] = 'en_proceso';
+    } else if (seccionId) {
+      if (b.seccion_id === null || b.seccion_id === seccionId) {
+        horariosOcupados[key] = 'en_proceso';
+      }
+    } else {
+      horariosOcupados[key] = 'en_proceso';
+    }
   }
 
   if ((bloqueosAdmin ?? []).length > 0) {
@@ -82,7 +116,8 @@ export async function GET(req: NextRequest) {
     horariosRestringidos: permanentesLegacy,
     horariosOcupados,
     horasOperacion,
-    loyalty: loyaltyConfig ?? null,
+    loyalty:   loyaltyConfig ?? null,
+    secciones: secciones ?? [],
   }, {
     headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' },
   });

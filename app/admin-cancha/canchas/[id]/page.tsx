@@ -105,23 +105,25 @@ function HorarioTab({
 }) {
   const [reservas, setReservas] = useState<any[]>([]);
   const [bloqueos, setBloqueos] = useState<BloqueoAdmin[]>([]);
+  const [secciones, setSecciones] = useState<{ id: string; nombre: string }[]>([]);
+  const [seccionSeleccionada, setSeccionSeleccionada] = useState<string | null>(null);
   const [cargando, setCargando] = useState(true);
   const [semana, setSemana] = useState<Date>(getLunesDeSemana);
 
   useEffect(() => {
-    const token = getOwnerToken();
-    if (!token) return;
     Promise.all([
       ownerFetch("/api/admin-cancha/reservas").then((r) => r.json()),
       ownerFetch(`/api/admin-cancha/bloqueos?canchaId=${canchaId}`).then((r) => r.json()),
+      ownerFetch(`/api/admin-cancha/secciones?canchaId=${canchaId}`).then((r) => r.json()),
     ])
-      .then(([resData, bloqData]) => {
+      .then(([resData, bloqData, secData]) => {
         setReservas(
           Array.isArray(resData)
             ? resData.filter((r: any) => r.cancha_id === canchaId)
             : [],
         );
         setBloqueos(Array.isArray(bloqData) ? bloqData : []);
+        setSecciones(Array.isArray(secData) ? secData.filter((s: any) => s.activa) : []);
         setCargando(false);
       })
       .catch(() => setCargando(false));
@@ -138,12 +140,24 @@ function HorarioTab({
 
   const getReserva = (dia: Date, hora: string) => {
     const fecha = toFecha(dia);
+    if (seccionSeleccionada === null) {
+      // Vista "Completa": cualquier reserva (de cancha entera O de sección) bloquea el slot
+      return reservas.find(
+        (r) =>
+          r.fecha === fecha &&
+          r.hora === hora &&
+          r.estado !== "cancelada" &&
+          r.estado !== "rechazada",
+      );
+    }
+    // Vista de sección: reservas de ESTA sección + reservas de cancha completa (bloquean la sección)
     return reservas.find(
       (r) =>
         r.fecha === fecha &&
         r.hora === hora &&
         r.estado !== "cancelada" &&
-        r.estado !== "rechazada",
+        r.estado !== "rechazada" &&
+        (r.seccion_id === seccionSeleccionada || r.seccion_id == null),
     );
   };
 
@@ -167,6 +181,37 @@ function HorarioTab({
 
   return (
     <div className="space-y-4">
+      {/* Selector de sección — solo si la cancha tiene secciones */}
+      {secciones.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setSeccionSeleccionada(null)}
+            className={cn(
+              "rounded-lg px-3 py-1.5 text-xs font-medium transition-colors border",
+              seccionSeleccionada === null
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-background text-muted-foreground border-border hover:border-primary/40 hover:text-foreground",
+            )}
+          >
+            Cancha completa
+          </button>
+          {secciones.map((s) => (
+            <button
+              key={s.id}
+              onClick={() => setSeccionSeleccionada(s.id)}
+              className={cn(
+                "rounded-lg px-3 py-1.5 text-xs font-medium transition-colors border",
+                seccionSeleccionada === s.id
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-background text-muted-foreground border-border hover:border-primary/40 hover:text-foreground",
+              )}
+            >
+              Sección {s.nombre}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Navegación de semana */}
       <div className="flex items-center justify-between">
         <Button variant="outline" size="icon" onClick={() => navSemana(-1)}>
@@ -259,6 +304,26 @@ function HorarioTab({
                     );
 
                   if (reserva) {
+                    // Vista "Sección X": reserva de cancha completa bloquea el slot
+                    const bloqueadaPorCompleta =
+                      seccionSeleccionada !== null && reserva.seccion_id == null;
+                    // Vista "Cancha completa": reserva de sección bloquea el slot
+                    const bloqueadaPorSeccion =
+                      seccionSeleccionada === null && reserva.seccion_id != null;
+
+                    if (bloqueadaPorCompleta || bloqueadaPorSeccion) {
+                      return (
+                        <td key={i} className="px-2 py-2 text-center bg-muted/60">
+                          <span className="text-[9px] text-muted-foreground">
+                            Bloq.
+                          </span>
+                          <span className="block text-[8px] text-muted-foreground/60">
+                            {bloqueadaPorCompleta ? "completa" : `sec. ${reserva.seccion?.nombre ?? ""}`}
+                          </span>
+                        </td>
+                      );
+                    }
+
                     const isPendiente = reserva.estado === "pendiente";
                     return (
                       <td
@@ -476,6 +541,314 @@ function UbicacionTab({
         </div>
       )}
     </Card>
+  );
+}
+
+// ── Tab de secciones ─────────────────────────────────────────────────
+type Seccion = {
+  id: string;
+  nombre: string;
+  descripcion: string | null;
+  max_jugadores: number | null;
+  precio_por_hora: number;
+  precios_por_hora: Record<string, number>;
+  orden: number;
+  activa: boolean;
+};
+
+function SeccionesTab({ canchaId, horaApertura = '06:00', horaCierre = '23:00' }: { canchaId: string; horaApertura?: string; horaCierre?: string }) {
+  const { toast } = useToast();
+  const [secciones, setSecciones] = useState<Seccion[]>([]);
+  const [cargando, setCargando] = useState(true);
+  const [guardando, setGuardando] = useState(false);
+
+  // Form nueva sección
+  const [mostrarForm, setMostrarForm] = useState(false);
+  const [nuevoNombre, setNuevoNombre] = useState("");
+  const [nuevoMaxJ, setNuevoMaxJ] = useState<number | "">(14);
+  const [nuevoPrecio, setNuevoPrecio] = useState<number | "">(80);
+  const [nuevosPreciosPorHora, setNuevosPreciosPorHora] = useState<Record<string, number>>({});
+
+  // Edición inline
+  const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [editNombre, setEditNombre] = useState("");
+  const [editMaxJ, setEditMaxJ] = useState<number | "">("");
+  const [editPrecio, setEditPrecio] = useState<number | "">(0);
+  const [editPreciosPorHora, setEditPreciosPorHora] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    const token = getOwnerToken();
+    if (!token || !canchaId) return;
+    ownerFetch(`/api/admin-cancha/secciones?canchaId=${canchaId}`)
+      .then((r) => r.json())
+      .then((data) => setSecciones(Array.isArray(data) ? data : []))
+      .catch(() => {})
+      .finally(() => setCargando(false));
+  }, [canchaId]);
+
+  const crearSeccion = async () => {
+    if (!nuevoNombre.trim() || !nuevoPrecio) return;
+    setGuardando(true);
+    const token = getOwnerToken();
+    const res = await ownerFetch("/api/admin-cancha/secciones", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        canchaId,
+        nombre: nuevoNombre.trim(),
+        maxJugadores: nuevoMaxJ || null,
+        precioHora: Number(nuevoPrecio),
+        preciosPorHora: nuevosPreciosPorHora,
+        orden: secciones.length,
+      }),
+    });
+    const data = await res.json();
+    setGuardando(false);
+    if (res.ok) {
+      setSecciones((prev) => [...prev, data]);
+      setNuevoNombre("");
+      setNuevoMaxJ(14);
+      setNuevoPrecio(80);
+      setNuevosPreciosPorHora({});
+      setMostrarForm(false);
+      toast({ title: "Sección creada", duration: 2000 });
+    } else {
+      toast({ title: "Error", description: data.error, variant: "destructive", duration: 2500 });
+    }
+  };
+
+  const guardarEdicion = async (seccionId: string) => {
+    setGuardando(true);
+    const res = await ownerFetch(`/api/admin-cancha/secciones?id=${seccionId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        nombre: editNombre,
+        maxJugadores: editMaxJ || null,
+        precioHora: Number(editPrecio),
+        preciosPorHora: editPreciosPorHora,
+      }),
+    });
+    setGuardando(false);
+    if (res.ok) {
+      setSecciones((prev) =>
+        prev.map((s) =>
+          s.id === seccionId
+            ? { ...s, nombre: editNombre, max_jugadores: editMaxJ as number | null, precio_por_hora: Number(editPrecio), precios_por_hora: editPreciosPorHora }
+            : s
+        )
+      );
+      setEditandoId(null);
+      toast({ title: "Sección actualizada", duration: 2000 });
+    }
+  };
+
+  const eliminarSeccion = async (seccionId: string) => {
+    if (!confirm("¿Eliminar esta sección? Las reservas existentes no se afectan.")) return;
+    const res = await ownerFetch(`/api/admin-cancha/secciones?id=${seccionId}`, { method: "DELETE" });
+    if (res.ok) {
+      setSecciones((prev) => prev.filter((s) => s.id !== seccionId));
+      toast({ title: "Sección eliminada", duration: 2000 });
+    }
+  };
+
+  if (cargando) {
+    return (
+      <div className="flex items-center justify-center py-12 text-muted-foreground gap-2">
+        <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        <span className="text-sm">Cargando secciones...</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Explicación */}
+      <Card className="border-border p-5">
+        <p className="text-sm font-medium text-foreground mb-1">¿Qué son las secciones?</p>
+        <p className="text-sm text-muted-foreground">
+          Si tu cancha se puede dividir con mallas en partes independientes, configúralas aquí.
+          Cada sección puede reservarse por separado. Si alguien reserva la <strong>cancha completa</strong>,
+          todas las secciones quedan bloqueadas automáticamente.
+        </p>
+      </Card>
+
+      {/* Lista de secciones */}
+      {secciones.length > 0 && (
+        <div className="space-y-3">
+          {secciones.map((sec, idx) => (
+            <Card key={sec.id} className="border-border p-4">
+              {editandoId === sec.id ? (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-muted-foreground">Nombre</label>
+                      <Input value={editNombre} onChange={(e) => setEditNombre(e.target.value)} placeholder="Ej: A" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-muted-foreground">Máx. jugadores</label>
+                      <Input type="number" min={2} value={editMaxJ} onChange={(e) => setEditMaxJ(e.target.value ? Number(e.target.value) : "")} placeholder="14" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-muted-foreground">Precio base (S/)</label>
+                      <Input type="number" min={0} value={editPrecio} onChange={(e) => setEditPrecio(e.target.value ? Number(e.target.value) : "")} />
+                    </div>
+                  </div>
+                  {/* Precios por hora */}
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground">Precio por horario (opcional — deja vacío para usar el precio base)</p>
+                    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                      {getHorasOperacion(horaApertura, horaCierre).map((hora) => {
+                        const val = editPreciosPorHora[hora];
+                        return (
+                          <div key={hora} className={`rounded-lg border p-2 space-y-1 ${val !== undefined ? 'border-primary/40 bg-primary/5' : 'border-border'}`}>
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-medium">{hora}</span>
+                              {val !== undefined && (
+                                <button type="button" onClick={() => { const n = { ...editPreciosPorHora }; delete n[hora]; setEditPreciosPorHora(n); }} className="text-[10px] text-muted-foreground hover:text-destructive">✕</button>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <span className="text-[10px] text-muted-foreground">S/</span>
+                              <Input
+                                type="number" min={0}
+                                placeholder={String(editPrecio || 0)}
+                                value={val ?? ""}
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  if (v === "") { const n = { ...editPreciosPorHora }; delete n[hora]; setEditPreciosPorHora(n); }
+                                  else setEditPreciosPorHora(prev => ({ ...prev, [hora]: Number(v) }));
+                                }}
+                                className="h-7 text-xs px-1.5"
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {Object.keys(editPreciosPorHora).length > 0 && (
+                      <p className="text-xs text-primary">{Object.keys(editPreciosPorHora).length} hora{Object.keys(editPreciosPorHora).length > 1 ? 's' : ''} con precio personalizado</p>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={() => guardarEdicion(sec.id)} disabled={guardando}>Guardar</Button>
+                    <Button size="sm" variant="ghost" onClick={() => setEditandoId(null)}>Cancelar</Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary font-bold text-sm shrink-0">
+                      {sec.nombre}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Sección {sec.nombre}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {sec.max_jugadores ? `${sec.max_jugadores} jugadores · ` : ""}
+                        S/ {sec.precio_por_hora}/hora
+                        {Object.keys(sec.precios_por_hora ?? {}).length > 0 && (
+                          <span className="ml-1 text-primary">· {Object.keys(sec.precios_por_hora).length} horarios con precio especial</span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <Button
+                      size="sm" variant="outline"
+                      onClick={() => {
+                        setEditandoId(sec.id);
+                        setEditNombre(sec.nombre);
+                        setEditMaxJ(sec.max_jugadores ?? "");
+                        setEditPrecio(sec.precio_por_hora);
+                        setEditPreciosPorHora(sec.precios_por_hora ?? {});
+                      }}
+                    >
+                      Editar
+                    </Button>
+                    <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => eliminarSeccion(sec.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {secciones.length === 0 && !mostrarForm && (
+        <div className="rounded-xl border-2 border-dashed border-border p-8 text-center">
+          <p className="text-sm text-muted-foreground mb-3">Esta cancha no tiene secciones configuradas.</p>
+          <p className="text-xs text-muted-foreground">Si tu cancha no se divide, no necesitas configurar nada aquí.</p>
+        </div>
+      )}
+
+      {/* Form nueva sección */}
+      {mostrarForm && (
+        <Card className="border-primary/30 p-5 space-y-4">
+          <p className="text-sm font-medium text-foreground">Nueva sección</p>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Nombre / Letra</label>
+              <Input value={nuevoNombre} onChange={(e) => setNuevoNombre(e.target.value)} placeholder="Ej: A, B, Mitad" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Máx. jugadores</label>
+              <Input type="number" min={2} value={nuevoMaxJ} onChange={(e) => setNuevoMaxJ(e.target.value ? Number(e.target.value) : "")} placeholder="14" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Precio base (S/)</label>
+              <Input type="number" min={0} value={nuevoPrecio} onChange={(e) => setNuevoPrecio(e.target.value ? Number(e.target.value) : "")} />
+            </div>
+          </div>
+          {/* Precios por hora opcionales */}
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground">Precio por horario (opcional)</p>
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+              {getHorasOperacion(horaApertura, horaCierre).map((hora) => {
+                const val = nuevosPreciosPorHora[hora];
+                return (
+                  <div key={hora} className={`rounded-lg border p-2 space-y-1 ${val !== undefined ? 'border-primary/40 bg-primary/5' : 'border-border'}`}>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium">{hora}</span>
+                      {val !== undefined && (
+                        <button type="button" onClick={() => { const n = { ...nuevosPreciosPorHora }; delete n[hora]; setNuevosPreciosPorHora(n); }} className="text-[10px] text-muted-foreground hover:text-destructive">✕</button>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] text-muted-foreground">S/</span>
+                      <Input
+                        type="number" min={0}
+                        placeholder={String(nuevoPrecio || 0)}
+                        value={val ?? ""}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          if (v === "") { const n = { ...nuevosPreciosPorHora }; delete n[hora]; setNuevosPreciosPorHora(n); }
+                          else setNuevosPreciosPorHora(prev => ({ ...prev, [hora]: Number(v) }));
+                        }}
+                        className="h-7 text-xs px-1.5"
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button onClick={crearSeccion} disabled={guardando || !nuevoNombre.trim() || !nuevoPrecio}>
+              {guardando ? "Guardando..." : "Agregar sección"}
+            </Button>
+            <Button variant="ghost" onClick={() => setMostrarForm(false)}>Cancelar</Button>
+          </div>
+        </Card>
+      )}
+
+      {!mostrarForm && (
+        <Button variant="outline" className="gap-2 w-full" onClick={() => setMostrarForm(true)}>
+          <Plus className="h-4 w-4" /> Agregar sección
+        </Button>
+      )}
+    </div>
   );
 }
 
@@ -916,6 +1289,39 @@ export default function OwnerEditarCanchaPage() {
   const removeImage = (idx: number) =>
     setImages((prev) => prev.filter((_, i) => i !== idx));
 
+  const procesarImagen = (file: File): Promise<File> =>
+    new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new window.Image();
+      const dibujar = () => {
+        const MAX = 2000;
+        let w = img.naturalWidth || img.width;
+        let h = img.naturalHeight || img.height;
+        if (!w || !h) { URL.revokeObjectURL(url); reject(new Error("no-dim")); return; }
+        if (w > MAX || h > MAX) {
+          if (w > h) { h = Math.round((h * MAX) / w); w = MAX; }
+          else { w = Math.round((w * MAX) / h); h = MAX; }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { URL.revokeObjectURL(url); reject(new Error("no-ctx")); return; }
+        ctx.drawImage(img, 0, 0, w, h);
+        canvas.toBlob(
+          (blob) => {
+            URL.revokeObjectURL(url);
+            if (!blob) { reject(new Error("no-blob")); return; }
+            resolve(new File([blob], "imagen.jpg", { type: "image/jpeg" }));
+          },
+          "image/jpeg",
+          0.82,
+        );
+      };
+      img.src = url;
+      img.decode().then(dibujar).catch(() => { URL.revokeObjectURL(url); reject(new Error("decode")); });
+    });
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const token = getOwnerToken();
     if (!token) return;
@@ -926,8 +1332,15 @@ export default function OwnerEditarCanchaPage() {
     setUploadError("");
 
     for (const file of files) {
+      let archivoFinal: File;
+      try {
+        archivoFinal = await procesarImagen(file);
+      } catch {
+        setUploadError("No se pudo procesar la imagen. Intenta con otra foto.");
+        continue;
+      }
       const form = new FormData();
-      form.append("file", file);
+      form.append("file", archivoFinal);
       form.append("canchaId", id);
       const res = await ownerFetch("/api/upload", {
         method: "POST",
@@ -1014,6 +1427,7 @@ export default function OwnerEditarCanchaPage() {
               <TabsTrigger value="bloqueos">Bloqueos</TabsTrigger>
               <TabsTrigger value="ubicacion">Ubicación</TabsTrigger>
               <TabsTrigger value="servicios">Servicios</TabsTrigger>
+              <TabsTrigger value="secciones">Secciones</TabsTrigger>
               <TabsTrigger value="fidelizacion">Fidelización</TabsTrigger>
             </TabsList>
           </div>
@@ -1041,10 +1455,8 @@ export default function OwnerEditarCanchaPage() {
                     onChange={(e) => setHoraApertura(e.target.value)}
                     className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   >
-                    {HORAS_APP.filter((h) => h < horaCierre).map((h) => (
-                      <option key={h} value={h}>
-                        {h}
-                      </option>
+                    {HORAS_APP.map((h) => (
+                      <option key={h} value={h}>{h}</option>
                     ))}
                   </select>
                 </div>
@@ -1057,9 +1469,9 @@ export default function OwnerEditarCanchaPage() {
                     onChange={(e) => setHoraCierre(e.target.value)}
                     className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   >
-                    {HORAS_APP.filter((h) => h > horaApertura).map((h) => (
+                    {HORAS_APP.map((h) => (
                       <option key={h} value={h}>
-                        {h}
+                        {parseInt(h) <= 5 ? `${h} (madrugada)` : h}
                       </option>
                     ))}
                   </select>
@@ -1067,13 +1479,12 @@ export default function OwnerEditarCanchaPage() {
               </div>
               <p className="text-xs text-muted-foreground">
                 Los usuarios solo verán horas entre{" "}
-                <span className="font-medium text-foreground">
-                  {horaApertura}
-                </span>{" "}
-                y{" "}
-                <span className="font-medium text-foreground">
-                  {horaCierre}
-                </span>
+                <span className="font-medium text-foreground">{horaApertura}</span>
+                {" "}y{" "}
+                <span className="font-medium text-foreground">{horaCierre}</span>
+                {horaCierre <= horaApertura && (
+                  <span className="text-primary"> (cierra en la madrugada del día siguiente)</span>
+                )}
                 .
               </p>
             </Card>
@@ -1369,6 +1780,11 @@ export default function OwnerEditarCanchaPage() {
                 </div>
               )}
             </Card>
+          </TabsContent>
+
+          {/* ── Secciones ── */}
+          <TabsContent value="secciones" className="pt-4">
+            <SeccionesTab canchaId={id as string} horaApertura={horaApertura} horaCierre={horaCierre} />
           </TabsContent>
 
           {/* ── Fidelización ── */}

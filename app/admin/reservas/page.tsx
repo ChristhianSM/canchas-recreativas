@@ -82,7 +82,10 @@ export default function AdminReservasPage() {
     precio: "",
     metodo_pago: "efectivo",
     semanas: "1",
+    seccion_id: "",
+    seccion_nombre: "",
   });
+  const [seccionesCancha, setSeccionesCancha] = useState<{ id: string; nombre: string; precio_por_hora: number }[]>([]);
   const [directaResultado, setDirectaResultado] = useState<{
     created: number;
     skipped: number;
@@ -150,6 +153,7 @@ export default function AdminReservasPage() {
     grupoReservaId: r.grupo_reserva_id ?? null,
     cuponAplicado: r.cupon_aplicado ?? false,
     precioOriginal: r.precio_original ?? null,
+    seccionNombre: r.seccion?.nombre ?? null,
   });
 
   // Agrupa reservas multi-hora: muestra solo el slot principal con rango "12:00 - 15:00"
@@ -214,6 +218,18 @@ export default function AdminReservasPage() {
   }, []);
 
   useEffect(() => {
+    if (!directaForm.cancha_id) { setSeccionesCancha([]); return; }
+    getAdminTokenFresh().then((token) => {
+      fetch(`/api/admin/secciones?canchaId=${directaForm.cancha_id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then((r) => r.json())
+        .then((d) => setSeccionesCancha(Array.isArray(d) ? d : []))
+        .catch(() => setSeccionesCancha([]));
+    });
+  }, [directaForm.cancha_id]);
+
+  useEffect(() => {
     if (!directaForm.cancha_id || !directaForm.fecha) {
       setHorasOcupadas([]);
       return;
@@ -257,6 +273,8 @@ export default function AdminReservasPage() {
           precio: Number(directaForm.precio),
           metodo_pago: directaForm.metodo_pago,
           semanas: Number(directaForm.semanas),
+          seccion_id: directaForm.seccion_id || null,
+          seccion_nombre: directaForm.seccion_nombre || null,
         }),
       });
       const data = await res.json();
@@ -445,6 +463,11 @@ export default function AdminReservasPage() {
       </td>
       <td className="px-4 py-3 text-sm text-muted-foreground">
         {r.canchaName}
+        {r.seccionNombre && (
+          <span className="block text-xs font-medium text-primary">
+            Sección {r.seccionNombre}
+          </span>
+        )}
       </td>
       <td className="px-4 py-3 text-sm text-muted-foreground">
         {new Date(r.fecha + "T00:00:00").toLocaleDateString("es-PE", {
@@ -829,6 +852,11 @@ export default function AdminReservasPage() {
                   <p className="font-medium text-foreground">
                     {selected.canchaName}
                   </p>
+                  {selected.seccionNombre && (
+                    <p className="text-xs font-medium text-primary mt-0.5">
+                      Sección {selected.seccionNombre}
+                    </p>
+                  )}
                 </div>
                 <div className="rounded-lg bg-muted/50 p-3">
                   <p className="text-xs text-muted-foreground">Fecha y hora</p>
@@ -1232,6 +1260,8 @@ export default function AdminReservasPage() {
                       cancha_nombre: c?.nombre ?? "",
                       fecha: "",
                       hora: "",
+                      seccion_id: "",
+                      seccion_nombre: "",
                     }));
                   }}
                 >
@@ -1247,6 +1277,40 @@ export default function AdminReservasPage() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {seccionesCancha.length > 0 && (
+                <div className="space-y-1.5">
+                  <Label>Sección (opcional)</Label>
+                  <Select
+                    value={directaForm.seccion_id || "__completa__"}
+                    onValueChange={(v) => {
+                      if (v === "__completa__") {
+                        setDirectaForm((f) => ({ ...f, seccion_id: "", seccion_nombre: "" }));
+                      } else {
+                        const sec = seccionesCancha.find((s) => s.id === v);
+                        setDirectaForm((f) => ({
+                          ...f,
+                          seccion_id: v,
+                          seccion_nombre: sec?.nombre ?? "",
+                          precio: sec ? String(sec.precio_por_hora) : f.precio,
+                        }));
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Cancha completa" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__completa__">Cancha completa</SelectItem>
+                      {seccionesCancha.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.nombre} — S/ {s.precio_por_hora}/h
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="col-span-2 space-y-1.5">

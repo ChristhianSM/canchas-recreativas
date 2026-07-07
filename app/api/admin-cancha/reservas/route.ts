@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await sb
     .from('reservas')
-    .select('*')
+    .select('*, seccion:cancha_secciones!seccion_id(nombre)')
     .in('cancha_id', canchaIds)
     .order('creado_en', { ascending: false });
 

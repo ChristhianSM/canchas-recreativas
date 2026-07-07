@@ -84,6 +84,7 @@ type Cancha = {
   accesorios?: any[];
   superficie?: string | null;
   max_jugadores?: number | null;
+  total_secciones?: number;
 };
 
 const HORAS = [
@@ -175,6 +176,7 @@ function adaptCancha(c: Cancha) {
     accesorios: c.accesorios ?? [],
     superficie: (c.superficie ?? null) as any,
     maxJugadores: c.max_jugadores ?? null,
+    totalSecciones: c.total_secciones ?? 0,
   };
 }
 
