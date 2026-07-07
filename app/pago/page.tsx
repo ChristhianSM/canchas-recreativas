@@ -1164,10 +1164,8 @@ function PagoContent() {
               </button>
             </div>
           </div>
-          <button
-            onClick={() => {
-              window.location.href = metodo === "yape" ? "yape://" : "plin://";
-            }}
+          <a
+            href={metodo === "yape" ? "yape://" : "plin://"}
             className="sm:hidden flex items-center justify-center gap-3 w-full rounded-xl py-3.5 font-bold text-white active:scale-[0.98] transition-all"
             style={{
               backgroundColor: metodo === "yape" ? "#6C1FC6" : "#00B4D8",
@@ -1183,7 +1181,7 @@ function PagoContent() {
             Abrir {metodo === "yape" ? "Yape" : "Plin"} · Enviar S/{" "}
             {montoAdelanto}
             <ExternalLink className="h-4 w-4 opacity-70" />
-          </button>
+          </a>
         </div>
       </Card>
       <Card className="border-border p-5 space-y-3">
