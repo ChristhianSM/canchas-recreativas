@@ -15,7 +15,6 @@ import {
   Users,
   Newspaper,
   Phone,
-  Trophy,
   X,
   ClipboardList,
 } from "lucide-react";
@@ -141,7 +140,6 @@ export function Header() {
     { href: "/", label: "Inicio", icon: Home },
     { href: "/nosotros", label: "Nosotros", icon: Users },
     { href: "/canchas", label: "Canchas", icon: Calendar },
-    { href: "/partidos", label: "Partidos", icon: Trophy },
     { href: "/noticias", label: "Noticias", icon: Newspaper },
     { href: "/contacto", label: "Contacto", icon: Phone },
     ...(user

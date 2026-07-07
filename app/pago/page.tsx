@@ -15,7 +15,6 @@ import {
   ImageIcon,
   Timer,
   Mail,
-  ExternalLink,
   Lock,
   MapPin,
 } from "lucide-react";
@@ -1232,31 +1231,6 @@ function PagoContent() {
               </button>
             </div>
           </div>
-          <a
-            href={metodo === "yape" ? "yape://abrir" : "plin://abrir"}
-            className="sm:hidden flex items-center justify-center gap-3 w-full rounded-xl py-3.5 font-bold text-white active:scale-[0.98] transition-all"
-            style={{
-              backgroundColor: metodo === "yape" ? "#6C1FC6" : "#00B4D8",
-            }}
-            onClick={(e) => {
-              // Esto evita que el navegador intente manejar el enlace de forma tradicional
-              e.preventDefault();
-              // Abre la app directamente
-              window.location.href =
-                metodo === "yape" ? "yape://abrir" : "plin://abrir";
-            }}
-          >
-            <Image
-              src={metodo === "yape" ? "/images/yape.png" : "/images/plin.png"}
-              alt={metodo}
-              width={22}
-              height={22}
-              className="object-contain rounded"
-            />
-            Abrir {metodo === "yape" ? "Yape" : "Plin"} · Enviar S/{" "}
-            {montoAdelanto}
-            <ExternalLink className="h-4 w-4 opacity-70" />
-          </a>
         </div>
       </Card>
       <Card className="border-border p-5 space-y-3">
