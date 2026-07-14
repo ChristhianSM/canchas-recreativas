@@ -42,19 +42,24 @@ export async function GET(req: NextRequest) {
     .from('bloqueos_admin')
     .select('*');
 
-  // Secciones por cancha — necesitamos los IDs para saber si "todas están ocupadas"
+  // Secciones por cancha — datos completos (precio incluido) para poder calcular
+  // en el frontend el precio más bajo disponible entre secciones
   const { data: seccionesData } = await sb
     .from('cancha_secciones')
-    .select('id, cancha_id')
-    .eq('activa', true);
+    .select('id, cancha_id, nombre, precio_por_hora, precios_por_hora, orden')
+    .eq('activa', true)
+    .order('orden', { ascending: true });
 
   // canchaId → Set de IDs de secciones activas
   const seccionIdsPorCancha: Record<string, Set<string>> = {};
   const seccionesPorCancha: Record<string, number> = {};
+  const seccionesFullPorCancha: Record<string, typeof seccionesData> = {};
   for (const s of seccionesData ?? []) {
     if (!seccionIdsPorCancha[s.cancha_id]) seccionIdsPorCancha[s.cancha_id] = new Set();
     seccionIdsPorCancha[s.cancha_id].add(s.id);
     seccionesPorCancha[s.cancha_id] = (seccionesPorCancha[s.cancha_id] ?? 0) + 1;
+    if (!seccionesFullPorCancha[s.cancha_id]) seccionesFullPorCancha[s.cancha_id] = [];
+    seccionesFullPorCancha[s.cancha_id]!.push(s);
   }
 
   // Construir mapa de horarios ocupados por cancha
@@ -122,6 +127,21 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // Mapa combinado (reservas + bloqueos temporales) de qué secciones están
+  // ocupadas en cada slot, por cancha — para que el frontend pueda calcular
+  // el precio más bajo entre las secciones que sigan libres.
+  const seccionesOcupadasPorCancha: Record<string, Record<string, string[]>> = {};
+  for (const fuente of [seccionesReservadasEnSlot, seccionesBloqueoEnSlot]) {
+    for (const [canchaId, slots] of Object.entries(fuente)) {
+      if (!seccionesOcupadasPorCancha[canchaId]) seccionesOcupadasPorCancha[canchaId] = {};
+      for (const [slotKey, ids] of Object.entries(slots)) {
+        const acumulado = new Set(seccionesOcupadasPorCancha[canchaId][slotKey] ?? []);
+        for (const id of ids) acumulado.add(id);
+        seccionesOcupadasPorCancha[canchaId][slotKey] = [...acumulado];
+      }
+    }
+  }
+
   // Procesar bloqueos admin por cancha para los próximos 14 días
   if ((bloqueosAdmin ?? []).length > 0) {
     // Agrupar bloqueos por cancha
@@ -165,6 +185,8 @@ export async function GET(req: NextRequest) {
     horariosRestringidos: horariosRestringidosPorCancha[cancha.id] || [],
     horasOperacion: getHorasOperacion(cancha.hora_apertura ?? '06:00', cancha.hora_cierre ?? '23:00'),
     total_secciones: seccionesPorCancha[cancha.id] ?? 0,
+    secciones: seccionesFullPorCancha[cancha.id] ?? [],
+    seccionesOcupadas: seccionesOcupadasPorCancha[cancha.id] ?? {},
   }));
 
   return NextResponse.json(canchasConHorarios, {

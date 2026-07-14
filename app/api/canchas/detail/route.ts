@@ -98,6 +98,8 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // Slots bloqueados por el admin (aplican a la cancha completa y a todas sus secciones)
+  const horariosBloqueadosAdmin = new Set<string>();
   if ((bloqueosAdmin ?? []).length > 0) {
     for (let i = 0; i < 30; i++) {
       const fecha = addDaysToDateString(hoy, i);
@@ -105,7 +107,28 @@ export async function GET(req: NextRequest) {
       for (const hora of horasBloq) {
         const key = `${fecha}|${hora}`;
         if (!horariosOcupados[key]) horariosOcupados[key] = 'reservado';
+        horariosBloqueadosAdmin.add(key);
       }
+    }
+  }
+
+  // Mapa de qué secciones específicas están ocupadas en cada slot — permite elegir
+  // automáticamente una sección disponible (ej. desde el listado) sin pedir por cada una.
+  const seccionesOcupadas: Record<string, string[]> = {};
+  if (tieneSecciones) {
+    const todosLosIds = (secciones ?? []).map((s) => s.id);
+    const marcarSeccion = (key: string, ids: string[]) => {
+      const acumulado = new Set(seccionesOcupadas[key] ?? []);
+      for (const sid of ids) acumulado.add(sid);
+      seccionesOcupadas[key] = [...acumulado];
+    };
+    for (const r of todasReservas ?? []) {
+      const key = `${r.fecha}|${r.hora}`;
+      marcarSeccion(key, r.seccion_id ? [r.seccion_id] : todosLosIds);
+    }
+    for (const b of todosBloqueosTmp ?? []) {
+      const key = `${b.fecha}|${b.hora}`;
+      marcarSeccion(key, b.seccion_id ? [b.seccion_id] : todosLosIds);
     }
   }
 
@@ -118,6 +141,8 @@ export async function GET(req: NextRequest) {
     horasOperacion,
     loyalty:   loyaltyConfig ?? null,
     secciones: secciones ?? [],
+    seccionesOcupadas,
+    horariosBloqueadosAdmin: [...horariosBloqueadosAdmin],
   }, {
     headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' },
   });

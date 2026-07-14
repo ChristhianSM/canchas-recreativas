@@ -168,6 +168,8 @@ create table public.bloqueos_temporales (
   expira_en   timestamptz not null,
   creado_en   timestamptz default now(),
   unique(cancha_id, fecha, hora)
+  -- Nota: esta unique se reemplaza por índices parciales por sección en la
+  -- migración fix_bloqueos_temporales_unique_seccion.sql (ver supabase/migrations).
 );
 
 alter table public.bloqueos_temporales enable row level security;

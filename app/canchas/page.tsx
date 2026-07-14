@@ -85,6 +85,13 @@ type Cancha = {
   superficie?: string | null;
   max_jugadores?: number | null;
   total_secciones?: number;
+  secciones?: {
+    id: string;
+    nombre: string;
+    precio_por_hora: number;
+    precios_por_hora?: Record<string, number>;
+  }[];
+  seccionesOcupadas?: Record<string, string[]>;
 };
 
 const HORAS = [
@@ -121,6 +128,13 @@ function adaptCancha(c: Cancha) {
     }>
   > = {};
 
+  const secciones = c.secciones ?? [];
+  const tieneSecciones = secciones.length > 0;
+  const seccionesOcupadas = c.seccionesOcupadas ?? {};
+  const precioMinSecciones = tieneSecciones
+    ? Math.min(...secciones.map((s) => s.precio_por_hora))
+    : c.precio_por_hora;
+
   // Generar próximos 30 días usando fecha local
   for (let i = 0; i < 30; i++) {
     const date = new Date();
@@ -143,6 +157,28 @@ function adaptCancha(c: Cancha) {
         available = false;
       }
 
+      if (tieneSecciones) {
+        const ocupadasIds = new Set(seccionesOcupadas[key] ?? []);
+        const libres = secciones.filter((s) => !ocupadasIds.has(s.id));
+        const disponible = available && libres.length > 0;
+        let precio = precioMinSecciones;
+        if (disponible) {
+          const precios = libres.map(
+            (s) => s.precios_por_hora?.[hora] ?? s.precio_por_hora,
+          );
+          // La cancha completa solo es una opción si ninguna sección está ocupada
+          if (ocupadasIds.size === 0) precios.push(c.precio_por_hora);
+          precio = Math.min(...precios);
+        }
+        return {
+          id: `${dateStr}-${hora}`,
+          time: hora,
+          available: disponible,
+          price: precio,
+          status: disponible ? "disponible" : status === "disponible" ? "reservado" : status,
+        };
+      }
+
       return {
         id: `${dateStr}-${hora}`, // Agregar ID único para el slot
         time: hora,
@@ -163,7 +199,7 @@ function adaptCancha(c: Cancha) {
     images: c.imagenes ?? [],
     rating: c.rating,
     reviewCount: c.total_resenas,
-    pricePerHour: c.precio_por_hora,
+    pricePerHour: tieneSecciones ? precioMinSecciones : c.precio_por_hora,
     amenities: c.amenidades ?? [],
     coordinates: { lat: c.lat, lng: c.lng },
     phone: c.telefono,

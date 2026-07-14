@@ -172,6 +172,8 @@ export function CanchaCardHorizontal({
   };
 
   const tieneSecciones = (cancha.totalSecciones ?? 0) > 0;
+  // Precio del próximo horario visible (ya considera la sección más barata disponible)
+  const precioMostrado = visibleSlotsFiltered[0]?.price ?? cancha.pricePerHour;
 
   const handleReservar = async (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
@@ -392,7 +394,7 @@ export function CanchaCardHorizontal({
               )}
             </div>
             <div className="shrink-0 text-right">
-              <span className="text-xl font-bold text-foreground leading-none">S/ {cancha.pricePerHour}</span>
+              <span className="text-xl font-bold text-foreground leading-none">S/ {precioMostrado}</span>
               <p className="text-[10px] text-muted-foreground mt-0.5">por hora</p>
               {tieneSecciones && (
                 <span className="mt-1 inline-flex items-center gap-0.5 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
@@ -595,7 +597,7 @@ export function CanchaCardHorizontal({
           <div className="flex items-center justify-between pt-3 border-t border-border">
             <div className="flex flex-col">
               <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-bold text-foreground leading-none">S/ {cancha.pricePerHour}</span>
+                <span className="text-2xl font-bold text-foreground leading-none">S/ {precioMostrado}</span>
                 <span className="text-xs text-muted-foreground">/hora</span>
               </div>
               {tieneSecciones && (

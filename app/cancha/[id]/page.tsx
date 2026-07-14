@@ -111,6 +111,8 @@ type CanchaDB = {
   yape_numero?: string;
   plin_numero?: string;
   secciones?: { id: string; nombre: string; descripcion: string | null; max_jugadores: number | null; precio_por_hora: number; precios_por_hora: Record<string, number>; orden: number }[];
+  seccionesOcupadas?: Record<string, string[]>;
+  horariosBloqueadosAdmin?: string[];
   loyalty?: {
     umbral: number;
     premio_tipo: 'descuento_fijo' | 'descuento_porcentaje' | 'hora_gratis' | 'personalizado';
@@ -359,6 +361,62 @@ export default function CanchaDetailPage() {
       .catch(() => setLoading(false));
   }, [id]);
 
+  // Al llegar desde el card con fecha/hora en la URL (ej. ?fecha=...&hora=...):
+  // respetar esa fecha/hora y preseleccionar automáticamente la sección más barata
+  // que esté realmente disponible en ese horario, en vez de dejar "cancha completa".
+  const autoSeleccionActivaRef = useRef(false);
+  // Evita que el efecto de "recargar horarios al cambiar de sección" borre el slot
+  // recién preseleccionado automáticamente (ambos efectos reaccionan al mismo cambio).
+  const skipResetSlotsRef = useRef(false);
+  useEffect(() => {
+    if (!cancha || autoSeleccionActivaRef.current) return;
+    autoSeleccionActivaRef.current = true;
+
+    const fechaParam = searchParams.get("fecha");
+    const horaParam = searchParams.get("hora");
+    const targetDate = fechaParam || today;
+    if (fechaParam) setSelectedDate(fechaParam);
+    if (!horaParam) return;
+
+    const secciones = cancha.secciones ?? [];
+    const key = `${targetDate}|${horaParam}`;
+    const bloqueadaGlobal =
+      (cancha.horariosRestringidos ?? []).includes(horaParam) ||
+      (cancha.horariosBloqueadosAdmin ?? []).includes(key);
+
+    if (bloqueadaGlobal) return;
+
+    let seccionElegida: (typeof secciones)[number] | null = null;
+    if (secciones.length > 0) {
+      const ocupadasIds = new Set(cancha.seccionesOcupadas?.[key] ?? []);
+      const libres = secciones.filter((s) => !ocupadasIds.has(s.id));
+      if (libres.length === 0) return;
+      seccionElegida = libres.reduce((min, s) => {
+        const precio = s.precios_por_hora?.[horaParam] ?? s.precio_por_hora;
+        const precioMin = min.precios_por_hora?.[horaParam] ?? min.precio_por_hora;
+        return precio < precioMin ? s : min;
+      });
+      setSeccionSeleccionada(seccionElegida.id);
+      skipResetSlotsRef.current = true;
+    } else if (cancha.horariosOcupados?.[key]) {
+      return;
+    }
+
+    // El id debe seguir el mismo formato `${fecha}-${índice}` que genera buildSchedule,
+    // para que el picker reconozca este slot como seleccionado (compara por id).
+    const horasOperacion = cancha.horasOperacion ?? HORAS_OPERACION;
+    const idx = horasOperacion.indexOf(horaParam);
+    if (idx === -1) return;
+
+    const precio = seccionElegida
+      ? (seccionElegida.precios_por_hora?.[horaParam] ?? seccionElegida.precio_por_hora)
+      : (cancha.precios_por_hora?.[horaParam] ?? cancha.precio_por_hora);
+    setSelectedSlots([
+      { id: `${targetDate}-${idx}`, time: horaParam, available: true, price: precio, status: "disponible" },
+    ]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cancha]);
+
   // Recargar horarios al cambiar de sección (disponibilidad distinta por sección)
   useEffect(() => {
     if (!id) return;
@@ -369,7 +427,11 @@ export default function CanchaDetailPage() {
         if (!data.error) setCancha((prev) => prev ? { ...prev, horariosOcupados: data.horariosOcupados } : prev);
       })
       .catch(() => {});
-    setSelectedSlots([]);
+    if (skipResetSlotsRef.current) {
+      skipResetSlotsRef.current = false;
+    } else {
+      setSelectedSlots([]);
+    }
   }, [id, seccionSeleccionada]);
 
   // Polling cada 15 segundos para mostrar bloqueos de otros usuarios en tiempo real

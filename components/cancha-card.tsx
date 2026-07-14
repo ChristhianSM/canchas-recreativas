@@ -64,7 +64,7 @@ function getAvailableSlots(
 function getNextAvailability(
   cancha: Cancha,
   fromDate: string,
-): { date: string; time: string } | null {
+): { date: string; time: string; price: number } | null {
   const today = getLocalDateString();
   const now = new Date();
   const sortedDates = Object.keys(cancha.schedule ?? {}).sort();
@@ -82,7 +82,7 @@ function getNextAvailability(
         const [h, m] = slot.time.split(":").map(Number);
         if (h * 60 + m <= now.getHours() * 60 + now.getMinutes()) continue;
       }
-      return { date: dateStr, time: slot.time };
+      return { date: dateStr, time: slot.time, price: slot.price };
     }
   }
   return null;
@@ -525,6 +525,9 @@ export function CanchaCard({
   };
 
   const tieneSecciones = (cancha.totalSecciones ?? 0) > 0;
+  // Precio del próximo horario disponible (ya considera la sección más barata disponible)
+  const precioMostrado =
+    visibleSlotsFiltered[0]?.price ?? nextAvailability?.price ?? cancha.pricePerHour;
   const buttonLabel = reservando
     ? "Reservando..."
     : tieneSecciones
@@ -693,7 +696,7 @@ export function CanchaCard({
             {/* Precio */}
             <div className="shrink-0 flex flex-col items-center justify-center text-center min-w-[64px]">
               <span className="text-xl font-bold text-foreground leading-none">
-                S/ {cancha.pricePerHour}
+                S/ {precioMostrado}
               </span>
               <span className="text-xs text-muted-foreground mt-0.5">
                 por hora
