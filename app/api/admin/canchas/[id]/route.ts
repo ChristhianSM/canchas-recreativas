@@ -13,7 +13,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const {
     descripcion, telefono, precioHora, amenidades, imagenes, horariosRestringidos,
     lat, lng, direccion, distrito,
-    preciosPorHora, accesorios,
+    preciosPorHora, preciosPorDia, accesorios,
     superficie, maxJugadores, horaApertura, horaCierre, activa,
   } = body;
 
@@ -28,6 +28,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (direccion !== undefined) updateData.direccion = direccion;
   if (distrito !== undefined) updateData.distrito = distrito;
   if (preciosPorHora !== undefined) updateData.precios_por_hora = preciosPorHora;
+  if (preciosPorDia !== undefined) updateData.precios_por_dia = preciosPorDia;
   if (accesorios !== undefined) updateData.accesorios = accesorios ?? [];
   if (superficie !== undefined) updateData.superficie = superficie;
   if (maxJugadores !== undefined) updateData.max_jugadores = maxJugadores;

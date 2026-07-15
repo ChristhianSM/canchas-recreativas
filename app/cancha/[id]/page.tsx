@@ -32,6 +32,7 @@ import { CanchaSEO } from "@/components/cancha-seo";
 import { sportLabels, TimeSlot } from "@/lib/types";
 import { apiToggleFavorito, apiGetFavoritos, getToken } from "@/lib/api";
 import { getLocalDateString } from "@/lib/date-utils";
+import { resolverPrecio, PrecioConfigurable, PreciosPorDia } from "@/lib/precio-utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 
@@ -98,6 +99,7 @@ type CanchaDB = {
   precio_por_hora: number;
   amenidades: string[];
   precios_por_hora: Record<string, number>;
+  precios_por_dia?: PreciosPorDia;
   lat: number;
   lng: number;
   telefono: string;
@@ -110,7 +112,7 @@ type CanchaDB = {
   max_jugadores: number | null;
   yape_numero?: string;
   plin_numero?: string;
-  secciones?: { id: string; nombre: string; descripcion: string | null; max_jugadores: number | null; precio_por_hora: number; precios_por_hora: Record<string, number>; orden: number }[];
+  secciones?: { id: string; nombre: string; descripcion: string | null; max_jugadores: number | null; precio_por_hora: number; precios_por_hora: Record<string, number>; precios_por_dia?: PreciosPorDia; orden: number }[];
   seccionesOcupadas?: Record<string, string[]>;
   horariosBloqueadosAdmin?: string[];
   loyalty?: {
@@ -124,8 +126,7 @@ type CanchaDB = {
 function buildSchedule(
   horariosRestringidos: string[],
   horariosOcupados: Record<string, "reservado" | "en_proceso">,
-  precioBase: number,
-  preciosPorHora: Record<string, number> = {},
+  precioConfig: PrecioConfigurable,
   horasOperacion: string[] = HORAS_OPERACION,
 ) {
   const schedule: Record<string, TimeSlot[]> = {};
@@ -148,8 +149,9 @@ function buildSchedule(
           : ocupado === "en_proceso"
             ? "en_proceso"
             : "disponible";
-      // Usar precio específico de la hora si existe, sino el precio base
-      const precio = preciosPorHora[time] ?? precioBase;
+      // Precio efectivo para esta fecha+hora: hora del día de la semana >
+      // base del día de la semana > hora "de siempre" > precio base "de siempre"
+      const precio = resolverPrecio(precioConfig, dateStr, time);
       return {
         id: `${dateStr}-${idx}`,
         time,
@@ -312,9 +314,7 @@ export default function CanchaDetailPage() {
     setReservaStep(2);
     setTimeout(() => {
       const firstSlot = selectedSlots[0];
-      const precioSlot = seccionActiva
-        ? (seccionActiva.precios_por_hora?.[firstSlot.time] ?? seccionActiva.precio_por_hora)
-        : firstSlot.price;
+      const precioSlot = firstSlot.price;
       const accsQuery = accesoriosSeleccionados.length > 0
         ? `&accs=${encodeURIComponent(accesoriosSeleccionados.join(','))}`
         : '';
@@ -392,8 +392,8 @@ export default function CanchaDetailPage() {
       const libres = secciones.filter((s) => !ocupadasIds.has(s.id));
       if (libres.length === 0) return;
       seccionElegida = libres.reduce((min, s) => {
-        const precio = s.precios_por_hora?.[horaParam] ?? s.precio_por_hora;
-        const precioMin = min.precios_por_hora?.[horaParam] ?? min.precio_por_hora;
+        const precio = resolverPrecio(s, targetDate, horaParam);
+        const precioMin = resolverPrecio(min, targetDate, horaParam);
         return precio < precioMin ? s : min;
       });
       setSeccionSeleccionada(seccionElegida.id);
@@ -408,9 +408,7 @@ export default function CanchaDetailPage() {
     const idx = horasOperacion.indexOf(horaParam);
     if (idx === -1) return;
 
-    const precio = seccionElegida
-      ? (seccionElegida.precios_por_hora?.[horaParam] ?? seccionElegida.precio_por_hora)
-      : (cancha.precios_por_hora?.[horaParam] ?? cancha.precio_por_hora);
+    const precio = resolverPrecio(seccionElegida ?? cancha, targetDate, horaParam);
     setSelectedSlots([
       { id: `${targetDate}-${idx}`, time: horaParam, available: true, price: precio, status: "disponible" },
     ]);
@@ -666,8 +664,7 @@ export default function CanchaDetailPage() {
   const schedule = buildSchedule(
     cancha.horariosRestringidos ?? [],
     cancha.horariosOcupados ?? {},
-    seccionActiva ? seccionActiva.precio_por_hora : cancha.precio_por_hora,
-    seccionActiva ? (seccionActiva.precios_por_hora ?? {}) : (cancha.precios_por_hora ?? {}),
+    seccionActiva ?? cancha,
     cancha.horasOperacion ?? HORAS_OPERACION,
   );
 
@@ -730,13 +727,7 @@ export default function CanchaDetailPage() {
   };
   // ─────────────────────────────────────────────────────────────────────────
 
-  const precioBase = selectedSlots.reduce((sum, s) => {
-    if (seccionActiva) {
-      const precioSeccion = seccionActiva.precios_por_hora?.[s.time] ?? seccionActiva.precio_por_hora;
-      return sum + precioSeccion;
-    }
-    return sum + s.price;
-  }, 0);
+  const precioBase = selectedSlots.reduce((sum, s) => sum + s.price, 0);
   const extraAccesorios = (cancha.accesorios ?? [])
     .filter(a => accesoriosSeleccionados.includes(a.id) && a.precio != null)
     .reduce((sum, a) => sum + (a.precio ?? 0), 0);

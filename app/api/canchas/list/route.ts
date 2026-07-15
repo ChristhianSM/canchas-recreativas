@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
   // en el frontend el precio más bajo disponible entre secciones
   const { data: seccionesData } = await sb
     .from('cancha_secciones')
-    .select('id, cancha_id, nombre, precio_por_hora, precios_por_hora, orden')
+    .select('id, cancha_id, nombre, precio_por_hora, precios_por_hora, precios_por_dia, orden')
     .eq('activa', true)
     .order('orden', { ascending: true });
 

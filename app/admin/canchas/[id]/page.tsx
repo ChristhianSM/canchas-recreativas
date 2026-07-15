@@ -24,6 +24,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
 import { BloqueosAdminPanel } from "@/components/bloqueos-admin-panel";
+import { PreciosPorDiaEditor } from "@/components/precios-por-dia-editor";
+import { PreciosPorDia } from "@/lib/precio-utils";
 import {
   estaBloquedoPor,
   HORAS_APP,
@@ -524,6 +526,7 @@ export default function AdminEditarCanchaPage() {
   const [adminToken, setAdminToken] = useState("");
 
   const [preciosPorHora, setPreciosPorHora] = useState<Record<string, number>>({});
+  const [preciosPorDia, setPreciosPorDia] = useState<PreciosPorDia>({});
 
   // Accesorios
   type Accesorio = { id: string; nombre: string; icono: string; modalidad: 'prestado' | 'alquilado'; precio: number | null };
@@ -572,6 +575,7 @@ export default function AdminEditarCanchaPage() {
           setDireccion(canchaData.direccion ?? "");
           setDistrito(canchaData.distrito ?? "");
           setPreciosPorHora(canchaData.precios_por_hora ?? {});
+          setPreciosPorDia(canchaData.precios_por_dia ?? {});
           setAccesorios(canchaData.accesorios ?? []);
           setSuperficie(canchaData.superficie ?? "grass_sintetico");
           setMaxJugadores(canchaData.max_jugadores ?? null);
@@ -612,6 +616,7 @@ export default function AdminEditarCanchaPage() {
         amenidades: amenities,
         imagenes: images,
         preciosPorHora,
+        preciosPorDia,
         accesorios,
         superficie,
         maxJugadores,
@@ -926,87 +931,24 @@ export default function AdminEditarCanchaPage() {
               </div>
             </Card>
 
-            {/* Precios por hora */}
+            {/* Precios por hora y por día */}
             <Card className="border-border p-5 space-y-4">
               <div>
-                <p className="font-medium text-foreground">Precios por hora</p>
+                <p className="font-medium text-foreground">Precios por hora y por día</p>
                 <p className="text-sm text-muted-foreground">
-                  Personaliza el precio de cada horario. Las horas sin precio
-                  usarán el precio base (S/ {price}).
+                  Personaliza el precio de cada horario, y opcionalmente por
+                  día de la semana (ej. fines de semana más caros). Lo que no
+                  configures usa el precio base (S/ {price}).
                 </p>
               </div>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {getHorasOperacion(horaApertura, horaCierre).map((hora) => {
-                  const valorActual = preciosPorHora[hora];
-                  const tienePersonalizado = valorActual !== undefined;
-                  return (
-                    <div
-                      key={hora}
-                      className={`rounded-xl border p-3 space-y-1.5 transition-colors ${tienePersonalizado ? "border-primary/40 bg-primary/5" : "border-border bg-card"}`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-foreground">
-                          {hora}
-                        </span>
-                        {tienePersonalizado && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const next = { ...preciosPorHora };
-                              delete next[hora];
-                              setPreciosPorHora(next);
-                            }}
-                            className="text-xs text-muted-foreground hover:text-destructive"
-                          >
-                            ✕
-                          </button>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs text-muted-foreground">
-                          S/
-                        </span>
-                        <Input
-                          type="number"
-                          min={0}
-                          placeholder={String(price)}
-                          value={valorActual ?? ""}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            if (val === "") {
-                              const next = { ...preciosPorHora };
-                              delete next[hora];
-                              setPreciosPorHora(next);
-                            } else {
-                              setPreciosPorHora((prev) => ({
-                                ...prev,
-                                [hora]: Number(val),
-                              }));
-                            }
-                          }}
-                          className="h-8 text-sm px-2"
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              {Object.keys(preciosPorHora).length > 0 && (
-                <div className="flex items-center justify-between rounded-xl bg-primary/5 border border-primary/20 px-4 py-2.5">
-                  <p className="text-sm text-primary">
-                    {Object.keys(preciosPorHora).length} hora
-                    {Object.keys(preciosPorHora).length > 1 ? "s" : ""} con
-                    precio personalizado
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setPreciosPorHora({})}
-                    className="text-xs text-muted-foreground hover:text-destructive"
-                  >
-                    Limpiar todo
-                  </button>
-                </div>
-              )}
+              <PreciosPorDiaEditor
+                precioBase={price}
+                preciosPorHora={preciosPorHora}
+                onPreciosPorHoraChange={setPreciosPorHora}
+                preciosPorDia={preciosPorDia}
+                onPreciosPorDiaChange={setPreciosPorDia}
+                horasOperacion={getHorasOperacion(horaApertura, horaCierre)}
+              />
             </Card>
 
           </TabsContent>
@@ -1389,6 +1331,7 @@ type SeccionAdmin = {
   max_jugadores: number | null;
   precio_por_hora: number;
   precios_por_hora: Record<string, number>;
+  precios_por_dia?: PreciosPorDia;
   orden: number;
   activa: boolean;
 };
@@ -1403,11 +1346,13 @@ function SeccionesAdminTab({ canchaId, horaApertura = '06:00', horaCierre = '23:
   const [nuevoMaxJ, setNuevoMaxJ] = useState<number | "">(14);
   const [nuevoPrecio, setNuevoPrecio] = useState<number | "">(80);
   const [nuevosPreciosPorHora, setNuevosPreciosPorHora] = useState<Record<string, number>>({});
+  const [nuevosPreciosPorDia, setNuevosPreciosPorDia] = useState<PreciosPorDia>({});
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [editNombre, setEditNombre] = useState("");
   const [editMaxJ, setEditMaxJ] = useState<number | "">("");
   const [editPrecio, setEditPrecio] = useState<number | "">(0);
   const [editPreciosPorHora, setEditPreciosPorHora] = useState<Record<string, number>>({});
+  const [editPreciosPorDia, setEditPreciosPorDia] = useState<PreciosPorDia>({});
 
   useEffect(() => {
     getAdminTokenFresh().then((token) => {
@@ -1428,13 +1373,13 @@ function SeccionesAdminTab({ canchaId, horaApertura = '06:00', horaCierre = '23:
     const res = await fetch("/api/admin/secciones", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ canchaId, nombre: nuevoNombre.trim(), maxJugadores: nuevoMaxJ || null, precioHora: Number(nuevoPrecio), preciosPorHora: nuevosPreciosPorHora, orden: secciones.length }),
+      body: JSON.stringify({ canchaId, nombre: nuevoNombre.trim(), maxJugadores: nuevoMaxJ || null, precioHora: Number(nuevoPrecio), preciosPorHora: nuevosPreciosPorHora, preciosPorDia: nuevosPreciosPorDia, orden: secciones.length }),
     });
     const data = await res.json();
     setGuardando(false);
     if (res.ok) {
       setSecciones((prev) => [...prev, data]);
-      setNuevoNombre(""); setNuevoMaxJ(14); setNuevoPrecio(80); setNuevosPreciosPorHora({}); setMostrarForm(false);
+      setNuevoNombre(""); setNuevoMaxJ(14); setNuevoPrecio(80); setNuevosPreciosPorHora({}); setNuevosPreciosPorDia({}); setMostrarForm(false);
       toast({ title: "Sección creada", duration: 2000 });
     } else {
       toast({ title: "Error", description: data.error, variant: "destructive", duration: 2500 });
@@ -1447,11 +1392,11 @@ function SeccionesAdminTab({ canchaId, horaApertura = '06:00', horaCierre = '23:
     const res = await fetch(`/api/admin/secciones?id=${seccionId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ nombre: editNombre, maxJugadores: editMaxJ || null, precioHora: Number(editPrecio), preciosPorHora: editPreciosPorHora }),
+      body: JSON.stringify({ nombre: editNombre, maxJugadores: editMaxJ || null, precioHora: Number(editPrecio), preciosPorHora: editPreciosPorHora, preciosPorDia: editPreciosPorDia }),
     });
     setGuardando(false);
     if (res.ok) {
-      setSecciones((prev) => prev.map((s) => s.id === seccionId ? { ...s, nombre: editNombre, max_jugadores: editMaxJ as number | null, precio_por_hora: Number(editPrecio), precios_por_hora: editPreciosPorHora } : s));
+      setSecciones((prev) => prev.map((s) => s.id === seccionId ? { ...s, nombre: editNombre, max_jugadores: editMaxJ as number | null, precio_por_hora: Number(editPrecio), precios_por_hora: editPreciosPorHora, precios_por_dia: editPreciosPorDia } : s));
       setEditandoId(null);
       toast({ title: "Sección actualizada", duration: 2000 });
     }
@@ -1510,39 +1455,16 @@ function SeccionesAdminTab({ canchaId, horaApertura = '06:00', horaCierre = '23:
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <p className="text-xs font-medium text-muted-foreground">Precio por horario (opcional — deja vacío para usar el precio base)</p>
-                    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                      {getHorasOperacion(horaApertura, horaCierre).map((hora) => {
-                        const val = editPreciosPorHora[hora];
-                        return (
-                          <div key={hora} className={`rounded-lg border p-2 space-y-1 ${val !== undefined ? 'border-primary/40 bg-primary/5' : 'border-border'}`}>
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs font-medium">{hora}</span>
-                              {val !== undefined && (
-                                <button type="button" onClick={() => { const n = { ...editPreciosPorHora }; delete n[hora]; setEditPreciosPorHora(n); }} className="text-[10px] text-muted-foreground hover:text-destructive">✕</button>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <span className="text-[10px] text-muted-foreground">S/</span>
-                              <Input
-                                type="number" min={0}
-                                placeholder={String(editPrecio || 0)}
-                                value={val ?? ""}
-                                onChange={(e) => {
-                                  const v = e.target.value;
-                                  if (v === "") { const n = { ...editPreciosPorHora }; delete n[hora]; setEditPreciosPorHora(n); }
-                                  else setEditPreciosPorHora(prev => ({ ...prev, [hora]: Number(v) }));
-                                }}
-                                className="h-7 text-xs px-1.5"
-                              />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    {Object.keys(editPreciosPorHora).length > 0 && (
-                      <p className="text-xs text-primary">{Object.keys(editPreciosPorHora).length} hora{Object.keys(editPreciosPorHora).length > 1 ? 's' : ''} con precio personalizado</p>
-                    )}
+                    <p className="text-xs font-medium text-muted-foreground">Precio por horario y por día (opcional — deja vacío para usar el precio base)</p>
+                    <PreciosPorDiaEditor
+                      precioBase={Number(editPrecio) || 0}
+                      preciosPorHora={editPreciosPorHora}
+                      onPreciosPorHoraChange={setEditPreciosPorHora}
+                      preciosPorDia={editPreciosPorDia}
+                      onPreciosPorDiaChange={setEditPreciosPorDia}
+                      horasOperacion={getHorasOperacion(horaApertura, horaCierre)}
+                      compact
+                    />
                   </div>
                   <div className="flex gap-2">
                     <Button size="sm" onClick={() => guardarEdicion(sec.id)} disabled={guardando}>Guardar</Button>
@@ -1566,7 +1488,7 @@ function SeccionesAdminTab({ canchaId, horaApertura = '06:00', horaCierre = '23:
                     </div>
                   </div>
                   <div className="flex gap-2 shrink-0">
-                    <Button size="sm" variant="outline" onClick={() => { setEditandoId(sec.id); setEditNombre(sec.nombre); setEditMaxJ(sec.max_jugadores ?? ""); setEditPrecio(sec.precio_por_hora); setEditPreciosPorHora(sec.precios_por_hora ?? {}); }}>
+                    <Button size="sm" variant="outline" onClick={() => { setEditandoId(sec.id); setEditNombre(sec.nombre); setEditMaxJ(sec.max_jugadores ?? ""); setEditPrecio(sec.precio_por_hora); setEditPreciosPorHora(sec.precios_por_hora ?? {}); setEditPreciosPorDia(sec.precios_por_dia ?? {}); }}>
                       Editar
                     </Button>
                     <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => eliminarSeccion(sec.id)}>
@@ -1605,39 +1527,16 @@ function SeccionesAdminTab({ canchaId, horaApertura = '06:00', horaCierre = '23:
             </div>
           </div>
           <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground">Precio por horario (opcional)</p>
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-              {getHorasOperacion(horaApertura, horaCierre).map((hora) => {
-                const val = nuevosPreciosPorHora[hora];
-                return (
-                  <div key={hora} className={`rounded-lg border p-2 space-y-1 ${val !== undefined ? 'border-primary/40 bg-primary/5' : 'border-border'}`}>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-medium">{hora}</span>
-                      {val !== undefined && (
-                        <button type="button" onClick={() => { const n = { ...nuevosPreciosPorHora }; delete n[hora]; setNuevosPreciosPorHora(n); }} className="text-[10px] text-muted-foreground hover:text-destructive">✕</button>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <span className="text-[10px] text-muted-foreground">S/</span>
-                      <Input
-                        type="number" min={0}
-                        placeholder={String(nuevoPrecio || 0)}
-                        value={val ?? ""}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          if (v === "") { const n = { ...nuevosPreciosPorHora }; delete n[hora]; setNuevosPreciosPorHora(n); }
-                          else setNuevosPreciosPorHora(prev => ({ ...prev, [hora]: Number(v) }));
-                        }}
-                        className="h-7 text-xs px-1.5"
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            {Object.keys(nuevosPreciosPorHora).length > 0 && (
-              <p className="text-xs text-primary">{Object.keys(nuevosPreciosPorHora).length} hora{Object.keys(nuevosPreciosPorHora).length > 1 ? 's' : ''} con precio personalizado</p>
-            )}
+            <p className="text-xs font-medium text-muted-foreground">Precio por horario y por día (opcional)</p>
+            <PreciosPorDiaEditor
+              precioBase={Number(nuevoPrecio) || 0}
+              preciosPorHora={nuevosPreciosPorHora}
+              onPreciosPorHoraChange={setNuevosPreciosPorHora}
+              preciosPorDia={nuevosPreciosPorDia}
+              onPreciosPorDiaChange={setNuevosPreciosPorDia}
+              horasOperacion={getHorasOperacion(horaApertura, horaCierre)}
+              compact
+            />
           </div>
           <div className="flex gap-2">
             <Button onClick={crearSeccion} disabled={guardando || !nuevoNombre.trim() || !nuevoPrecio}>

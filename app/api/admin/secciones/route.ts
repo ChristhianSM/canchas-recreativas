@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
   if (!await verifyAdmin(token)) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
   const body = await req.json();
-  const { canchaId, nombre, descripcion, maxJugadores, precioHora, preciosPorHora, orden } = body;
+  const { canchaId, nombre, descripcion, maxJugadores, precioHora, preciosPorHora, preciosPorDia, orden } = body;
   if (!canchaId || !nombre || !precioHora) {
     return NextResponse.json({ error: 'canchaId, nombre y precioHora son requeridos' }, { status: 400 });
   }
@@ -46,6 +46,7 @@ export async function POST(req: NextRequest) {
       max_jugadores:    maxJugadores ?? null,
       precio_por_hora:  precioHora,
       precios_por_hora: preciosPorHora ?? {},
+      precios_por_dia:  preciosPorDia ?? {},
       orden:            orden ?? 0,
     })
     .select()
@@ -64,7 +65,7 @@ export async function PATCH(req: NextRequest) {
   if (!seccionId) return NextResponse.json({ error: 'id requerido' }, { status: 400 });
 
   const body = await req.json();
-  const { nombre, descripcion, maxJugadores, precioHora, preciosPorHora, orden, activa } = body;
+  const { nombre, descripcion, maxJugadores, precioHora, preciosPorHora, preciosPorDia, orden, activa } = body;
 
   const updateData: Record<string, any> = {};
   if (nombre !== undefined)         updateData.nombre            = nombre;
@@ -72,6 +73,7 @@ export async function PATCH(req: NextRequest) {
   if (maxJugadores !== undefined)   updateData.max_jugadores     = maxJugadores ?? null;
   if (precioHora !== undefined)     updateData.precio_por_hora   = precioHora;
   if (preciosPorHora !== undefined) updateData.precios_por_hora  = preciosPorHora ?? {};
+  if (preciosPorDia !== undefined)  updateData.precios_por_dia   = preciosPorDia ?? {};
   if (orden !== undefined)          updateData.orden             = orden;
   if (activa !== undefined)         updateData.activa            = activa;
 

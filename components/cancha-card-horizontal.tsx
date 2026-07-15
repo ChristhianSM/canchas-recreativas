@@ -174,13 +174,19 @@ export function CanchaCardHorizontal({
   const tieneSecciones = (cancha.totalSecciones ?? 0) > 0;
   // Precio del próximo horario visible (ya considera la sección más barata disponible)
   const precioMostrado = visibleSlotsFiltered[0]?.price ?? cancha.pricePerHour;
+  // URL al detalle que conserva la fecha/hora filtrada (o el próximo horario visible),
+  // para que cualquier clic en el card (no solo "Reservar") llegue con eso preseleccionado.
+  const detailHora = selectedSlots[0]?.time ?? visibleSlotsFiltered[0]?.time ?? preselectedHour;
+  const detailUrl = detailHora
+    ? `/cancha/${cancha.id}?fecha=${displayDate}&hora=${detailHora}`
+    : `/cancha/${cancha.id}`;
 
   const handleReservar = async (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
 
     // Usar solo slots que existan en slotsToDisplayFiltered actual (descartar obsoletos y bloqueados)
     const validSlots = selectedSlots.filter(s => slotsToDisplayFiltered.some(sl => sl.id === s.id));
-    if (validSlots.length === 0) { router.push(`/cancha/${cancha.id}`); return; }
+    if (validSlots.length === 0) { router.push(detailUrl); return; }
 
     // Si la cancha tiene secciones, el usuario debe elegir sección en el detalle
     if (tieneSecciones) {
@@ -208,7 +214,7 @@ export function CanchaCardHorizontal({
       });
     } catch {
       setReservando(false);
-      router.push(`/cancha/${cancha.id}`);
+      router.push(detailUrl);
       return;
     }
 
@@ -295,7 +301,7 @@ export function CanchaCardHorizontal({
         onMouseLeave={() => onHover?.(null)}
         onClick={(e) => {
           if ((e.target as HTMLElement).closest('button, a')) return;
-          router.push(`/cancha/${cancha.id}`);
+          router.push(detailUrl);
         }}
         className={`group flex rounded-xl border bg-card overflow-hidden transition-all duration-200 hover:shadow-md h-[210px] md:h-[270px] cursor-pointer ${
           isHighlighted ? 'border-primary shadow-md ring-1 ring-primary/30' : 'border-border hover:border-border/60'
@@ -303,7 +309,7 @@ export function CanchaCardHorizontal({
       >
         {/* Imagen izquierda — ancho según modo */}
         <div className={`relative shrink-0 h-full ${compact ? 'w-35' : 'w-35 md:w-50'}`}>
-          <Link href={`/cancha/${cancha.id}`} className="block h-full">
+          <Link href={detailUrl} className="block h-full">
             <ImageSlider images={cancha.images} alt={cancha.name} aspectRatio="fill" className="h-full" />
           </Link>
 
@@ -320,7 +326,7 @@ export function CanchaCardHorizontal({
         <div className="flex md:hidden flex-1 flex-col p-3 min-w-0">
           {/* Fila superior: nombre + precio + corazón */}
           <div className="flex justify-between items-center gap-2 mb-2">
-            <Link href={`/cancha/${cancha.id}`} className="flex-1 min-w-0">
+            <Link href={detailUrl} className="flex-1 min-w-0">
               <h3 className="font-bold text-foreground text-lg leading-tight line-clamp-1 group-hover:text-primary transition-colors">
                 {cancha.name}
               </h3>
@@ -348,7 +354,7 @@ export function CanchaCardHorizontal({
           </div>
 
           {/* Fila 2: info izquierda + precio derecha */}
-          <Link href={`/cancha/${cancha.id}`}>
+          <Link href={detailUrl}>
           <div className="flex items-start justify-between gap-2 mb-1.5">
             <div className="flex-1 min-w-0 space-y-0.5">
               <div className="flex items-center gap-1 text-xs text-muted-foreground flex-wrap">
@@ -435,7 +441,7 @@ export function CanchaCardHorizontal({
                 })}
                 {extraCountFiltered > 0 && (
                   <button
-                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(`/cancha/${cancha.id}`); }}
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(detailUrl); }}
                     className="rounded-md border border-border px-2 py-1 text-[11px] font-medium text-muted-foreground hover:border-muted-foreground/50 transition-all"
                   >
                     +{extraCountFiltered}
@@ -456,7 +462,7 @@ export function CanchaCardHorizontal({
               <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                 <CalendarDays className="h-3 w-3" />
                 <span>Sin disponibilidad próxima</span>
-                <Link href={`/cancha/${cancha.id}`} className="ml-auto text-[#16a34a] font-medium hover:underline">
+                <Link href={detailUrl} className="ml-auto text-[#16a34a] font-medium hover:underline">
                   Ver →
                 </Link>
               </div>
@@ -510,7 +516,7 @@ export function CanchaCardHorizontal({
           </div>
 
           {/* Nombre */}
-          <Link href={`/cancha/${cancha.id}`}>
+          <Link href={detailUrl}>
             <h3 className="font-bold text-foreground text-lg leading-tight line-clamp-1 hover:text-primary transition-colors mt-1">
               {cancha.name}
             </h3>
@@ -575,7 +581,7 @@ export function CanchaCardHorizontal({
                   })}
                   {extraCountFiltered > 0 && (
                     <button
-                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(`/cancha/${cancha.id}`); }}
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(detailUrl); }}
                       className="rounded-lg border border-border px-3 py-1 text-sm font-medium text-muted-foreground hover:border-muted-foreground/60 transition-all"
                     >
                       +{extraCountFiltered}

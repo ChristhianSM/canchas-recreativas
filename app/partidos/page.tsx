@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { getToken, getStoredUser } from "@/lib/api";
 import { getLocalDateString } from "@/lib/date-utils";
+import { resolverPrecio, PreciosPorDia } from "@/lib/precio-utils";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/use-toast";
 import { MapaPartidoModal } from "@/components/mapa-partido-modal";
@@ -80,6 +81,7 @@ interface CanchaSimple {
   tipo: Deporte;
   precio_por_hora: number;
   precios_por_hora: Record<string, number>;
+  precios_por_dia?: PreciosPorDia;
   distrito: string;
   max_jugadores: number | null;
   yape_numero: string;
@@ -490,6 +492,7 @@ function CrearPartidoSheet({
             tipo: c.tipo,
             precio_por_hora: c.precio_por_hora,
             precios_por_hora: c.precios_por_hora ?? {},
+            precios_por_dia: c.precios_por_dia ?? {},
             distrito: c.distrito,
             max_jugadores: c.max_jugadores ?? null,
             yape_numero: c.yape_numero ?? "",
@@ -505,10 +508,10 @@ function CrearPartidoSheet({
 
   const canchaSeleccionada = canchas.find((c) => c.id === form.cancha_id);
 
-  const precioTotal = canchaSeleccionada
-    ? (canchaSeleccionada.precios_por_hora[form.hora] ??
-      canchaSeleccionada.precio_por_hora)
-    : 0;
+  const precioTotal =
+    canchaSeleccionada && form.fecha && form.hora
+      ? resolverPrecio(canchaSeleccionada, form.fecha, form.hora)
+      : 0;
   const maxJugadores = canchaSeleccionada?.max_jugadores ?? 22;
   const precioPorPersona =
     form.jugadores_equipo > 0

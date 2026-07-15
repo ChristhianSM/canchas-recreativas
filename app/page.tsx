@@ -25,6 +25,7 @@ import { Header } from "@/components/header";
 import { CanchaCard } from "@/components/cancha-card";
 import { SportType } from "@/lib/types";
 import { getLocalDateString } from "@/lib/date-utils";
+import { resolverPrecio, PreciosPorDia } from "@/lib/precio-utils";
 import {
   guardarUbicacion,
   guardarCiudad,
@@ -72,6 +73,8 @@ type Cancha = {
   rating: number;
   total_resenas: number;
   precio_por_hora: number;
+  precios_por_hora?: Record<string, number>;
+  precios_por_dia?: PreciosPorDia;
   amenidades: string[];
   lat: number;
   lng: number;
@@ -94,6 +97,7 @@ type Cancha = {
     nombre: string;
     precio_por_hora: number;
     precios_por_hora?: Record<string, number>;
+    precios_por_dia?: PreciosPorDia;
   }[];
   seccionesOcupadas?: Record<string, string[]>;
 };
@@ -199,11 +203,9 @@ function adaptCancha(c: Cancha) {
         const disponible = !estadoOcupado && !esPasada && libres.length > 0;
         let precio = precioMinSecciones;
         if (disponible) {
-          const precios = libres.map(
-            (s) => s.precios_por_hora?.[hora] ?? s.precio_por_hora,
-          );
+          const precios = libres.map((s) => resolverPrecio(s, dateStr, hora));
           // La cancha completa solo es una opción si ninguna sección está ocupada
-          if (ocupadasIds.size === 0) precios.push(c.precio_por_hora);
+          if (ocupadasIds.size === 0) precios.push(resolverPrecio(c, dateStr, hora));
           precio = Math.min(...precios);
         }
         return {
@@ -223,7 +225,7 @@ function adaptCancha(c: Cancha) {
         id: `${dateStr}-${hora}`,
         time: hora,
         available: !estadoOcupado && !esPasada,
-        price: c.precio_por_hora,
+        price: resolverPrecio(c, dateStr, hora),
         status: esPasada ? "en_proceso" : estadoOcupado || "disponible",
       };
     });

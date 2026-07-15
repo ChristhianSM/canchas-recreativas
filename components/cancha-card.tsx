@@ -452,7 +452,7 @@ export function CanchaCard({
   const handleMoreClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    router.push(`/cancha/${cancha.id}`);
+    router.push(detailUrl);
   };
 
   const handleReservar = async (e: React.MouseEvent) => {
@@ -464,7 +464,7 @@ export function CanchaCard({
       slotsToDisplayFiltered.some((sl) => sl.id === s.id),
     );
     if (validSlots.length === 0) {
-      router.push(`/cancha/${cancha.id}`);
+      router.push(detailUrl);
       return;
     }
 
@@ -495,7 +495,7 @@ export function CanchaCard({
       });
     } catch {
       setReservando(false);
-      router.push(`/cancha/${cancha.id}`);
+      router.push(detailUrl);
       return;
     }
 
@@ -528,6 +528,12 @@ export function CanchaCard({
   // Precio del próximo horario disponible (ya considera la sección más barata disponible)
   const precioMostrado =
     visibleSlotsFiltered[0]?.price ?? nextAvailability?.price ?? cancha.pricePerHour;
+  // URL al detalle que conserva la fecha/hora filtrada (o el próximo horario visible),
+  // para que cualquier clic en el card (no solo "Reservar") llegue con eso preseleccionado.
+  const detailHora = selectedSlots[0]?.time ?? visibleSlotsFiltered[0]?.time ?? preselectedHour;
+  const detailUrl = detailHora
+    ? `/cancha/${cancha.id}?fecha=${displayDate}&hora=${detailHora}`
+    : `/cancha/${cancha.id}`;
   const buttonLabel = reservando
     ? "Reservando..."
     : tieneSecciones
@@ -609,7 +615,7 @@ export function CanchaCard({
                     setOcupadoModal(false);
                     if (countdownRef.current)
                       clearInterval(countdownRef.current);
-                    router.push(`/cancha/${cancha.id}`);
+                    router.push(detailUrl);
                   }}
                 >
                   Actualizar horarios
@@ -624,12 +630,12 @@ export function CanchaCard({
         className="group overflow-hidden border-border bg-card transition-all hover:shadow-lg hover:shadow-primary/10 hover:-translate-y-1 cursor-pointer"
         onClick={(e) => {
           if ((e.target as HTMLElement).closest('button, a')) return;
-          router.push(`/cancha/${cancha.id}`);
+          router.push(detailUrl);
         }}
       >
         {/* Imagen */}
         <div className="relative">
-          <Link href={`/cancha/${cancha.id}`}>
+          <Link href={detailUrl}>
             <ImageSlider
               images={cancha.images}
               alt={cancha.name}
@@ -677,7 +683,7 @@ export function CanchaCard({
         {/* Contenido */}
         <div className="p-4">
           {/* Nombre — ancho completo */}
-          <Link href={`/cancha/${cancha.id}`}>
+          <Link href={detailUrl}>
             <h3 className="text-base font-bold group-hover:text-primary transition-colors mb-2 text-brand-green line-clamp-2 sm:min-h-[3rem] leading-6">
               {cancha.name}
             </h3>
@@ -723,7 +729,7 @@ export function CanchaCard({
                     {getHorariosText()}
                   </p>
                   <Link
-                    href={`/cancha/${cancha.id}`}
+                    href={detailUrl}
                     onClick={(e) => e.stopPropagation()}
                     className="text-xs font-medium text-primary hover:underline flex items-center gap-0.5"
                   >
