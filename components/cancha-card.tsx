@@ -391,6 +391,26 @@ export function CanchaCard({
     slotsToDisplayFiltered.length - visibleSlotsFiltered.length,
   );
 
+  // Lista completa del día (incluye horarios anteriores al preseleccionado) —
+  // solo para el scroll horizontal en mobile, que sí debe poder mostrar
+  // tanto horarios anteriores como posteriores al filtrado.
+  const slotsToDisplayFilteredMobile = availableSlotsForDay.filter(
+    (s) => !localOcupados.has(s.id),
+  );
+  const mobileScrollRef = useRef<HTMLDivElement>(null);
+  const selectedSlotRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || window.innerWidth >= 640) return;
+    const container = mobileScrollRef.current;
+    const target = selectedSlotRef.current;
+    if (!container || !target) return;
+    const offset =
+      target.offsetLeft - container.clientWidth / 2 + target.clientWidth / 2;
+    container.scrollLeft = Math.max(0, offset);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const startCountdown = (seconds: number) => {
     if (countdownRef.current) clearInterval(countdownRef.current);
     setCountdown(seconds);
@@ -410,9 +430,11 @@ export function CanchaCard({
     e.preventDefault();
     e.stopPropagation();
 
-    // Descartar slots obsoletos o bloqueados localmente
+    // Descartar slots obsoletos o bloqueados localmente. Se usa la lista completa
+    // del día (no la recortada de escritorio) para que la adyacencia funcione
+    // igual con horas anteriores u posteriores a la preseleccionada.
     const validSelected = selectedSlots.filter((s) =>
-      slotsToDisplayFiltered.some((sl) => sl.id === s.id),
+      slotsToDisplayFilteredMobile.some((sl) => sl.id === s.id),
     );
 
     const isSelected = validSelected.some((s) => s.id === slot.id);
@@ -437,9 +459,9 @@ export function CanchaCard({
       return;
     }
 
-    const idx = slotsToDisplayFiltered.findIndex((s) => s.id === slot.id);
+    const idx = slotsToDisplayFilteredMobile.findIndex((s) => s.id === slot.id);
     const indices = validSelected.map((s) =>
-      slotsToDisplayFiltered.findIndex((sl) => sl.id === s.id),
+      slotsToDisplayFilteredMobile.findIndex((sl) => sl.id === s.id),
     );
     const minIdx = Math.min(...indices);
     const maxIdx = Math.max(...indices);
@@ -459,9 +481,9 @@ export function CanchaCard({
     e.preventDefault();
     e.stopPropagation();
 
-    // Usar solo slots que existan en slotsToDisplayFiltered actual (descartar obsoletos y bloqueados)
+    // Usar solo slots que existan en la lista completa del día (descartar obsoletos y bloqueados)
     const validSlots = selectedSlots.filter((s) =>
-      slotsToDisplayFiltered.some((sl) => sl.id === s.id),
+      slotsToDisplayFilteredMobile.some((sl) => sl.id === s.id),
     );
     if (validSlots.length === 0) {
       router.push(detailUrl);
@@ -737,38 +759,71 @@ export function CanchaCard({
                   </Link>
                 </div>
 
-                {visibleSlotsFiltered.length > 0 ? (
-                  <div className="flex items-center gap-1.5 w-full">
-                    {visibleSlotsFiltered.map((slot) => {
-                      const isSelected = selectedSlots.some(
-                        (s) => s.id === slot.id,
-                      );
-                      return (
+                {visibleSlotsFiltered.length > 0 ||
+                slotsToDisplayFilteredMobile.length > 0 ? (
+                  <>
+                    {/* Desktop/tablet: fila fija con botón "+N" para ver más */}
+                    <div className="hidden sm:flex items-center gap-1.5 w-full">
+                      {visibleSlotsFiltered.map((slot) => {
+                        const isSelected = selectedSlots.some(
+                          (s) => s.id === slot.id,
+                        );
+                        return (
+                          <button
+                            key={slot.id}
+                            onClick={(e) => handleSlotClick(e, slot)}
+                            aria-pressed={isSelected}
+                            aria-label={`Seleccionar horario ${slot.time}`}
+                            className={`flex-1 min-w-0 rounded-lg border px-2 py-2 text-sm font-medium transition-all text-center ${
+                              isSelected
+                                ? "border-foreground bg-foreground text-background"
+                                : "border-border bg-background text-foreground hover:border-primary/50"
+                            }`}
+                          >
+                            {slot.time}
+                          </button>
+                        );
+                      })}
+                      {extraCountFiltered > 0 && (
                         <button
-                          key={slot.id}
-                          onClick={(e) => handleSlotClick(e, slot)}
-                          aria-pressed={isSelected}
-                          aria-label={`Seleccionar horario ${slot.time}`}
-                          className={`flex-1 min-w-0 rounded-lg border px-2 py-2 text-sm font-medium transition-all text-center ${
-                            isSelected
-                              ? "border-foreground bg-foreground text-background"
-                              : "border-border bg-background text-foreground hover:border-primary/50"
-                          }`}
+                          onClick={handleMoreClick}
+                          className="flex-shrink-0 w-12 rounded-lg border border-border bg-background px-2 py-2 text-sm font-medium text-muted-foreground hover:border-primary/50 hover:text-primary transition-all"
+                          aria-label={`Ver ${extraCountFiltered} horarios más`}
                         >
-                          {slot.time}
+                          +{extraCountFiltered}
                         </button>
-                      );
-                    })}
-                    {extraCountFiltered > 0 && (
-                      <button
-                        onClick={handleMoreClick}
-                        className="flex-shrink-0 w-12 rounded-lg border border-border bg-background px-2 py-2 text-sm font-medium text-muted-foreground hover:border-primary/50 hover:text-primary transition-all"
-                        aria-label={`Ver ${extraCountFiltered} horarios más`}
-                      >
-                        +{extraCountFiltered}
-                      </button>
-                    )}
-                  </div>
+                      )}
+                    </div>
+
+                    {/* Mobile: fila con scroll horizontal, incluye horarios
+                        anteriores y posteriores al filtrado */}
+                    <div
+                      ref={mobileScrollRef}
+                      className="flex sm:hidden items-center gap-1.5 w-full overflow-x-auto scrollbar-hide"
+                    >
+                      {slotsToDisplayFilteredMobile.map((slot) => {
+                        const isSelected = selectedSlots.some(
+                          (s) => s.id === slot.id,
+                        );
+                        return (
+                          <button
+                            key={slot.id}
+                            ref={isSelected ? selectedSlotRef : undefined}
+                            onClick={(e) => handleSlotClick(e, slot)}
+                            aria-pressed={isSelected}
+                            aria-label={`Seleccionar horario ${slot.time}`}
+                            className={`flex-shrink-0 min-w-14 rounded-lg border px-3 py-2 text-sm font-medium transition-all text-center ${
+                              isSelected
+                                ? "border-foreground bg-foreground text-background"
+                                : "border-border bg-background text-foreground hover:border-primary/50"
+                            }`}
+                          >
+                            {slot.time}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
                 ) : nextAvailability ? (
                   <div className="flex w-full items-center gap-2 rounded-lg bg-muted/60 px-3 py-2 text-sm text-muted-foreground">
                     <CalendarDays className="h-4 w-4 shrink-0" />
