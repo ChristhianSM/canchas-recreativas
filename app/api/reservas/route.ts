@@ -291,30 +291,38 @@ export async function POST(req: NextRequest) {
   // Enviar email al invitado (sin cuenta)
   if (!usuarioId && usuarioEmail) {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || req.headers.get('origin') || 'http://localhost:3000';
-    await sendReservaRecibidaEmail({
-      toEmail:      usuarioEmail,
-      toName:       usuarioNombre !== 'Invitado' ? usuarioNombre : 'Cliente',
-      canchaNombre,
-      fecha,
-      hora:         horaDisplay,
-      precio,
-      metodoPago,
-      reservaId:    reserva.id,
-      baseUrl,
-    });
+    try {
+      await sendReservaRecibidaEmail({
+        toEmail:      usuarioEmail,
+        toName:       usuarioNombre !== 'Invitado' ? usuarioNombre : 'Cliente',
+        canchaNombre,
+        fecha,
+        hora:         horaDisplay,
+        precio,
+        metodoPago,
+        reservaId:    reserva.id,
+        baseUrl,
+      });
+    } catch (e) {
+      console.error('[reservas] Error enviando email al invitado:', e);
+    }
   }
 
   // Notificar al cliente por WhatsApp
   if (usuarioTelefono) {
-    await notificarReservaRecibida({
-      clientePhone: usuarioTelefono,
-      canchaNombre,
-      fecha,
-      hora:      horaDisplay,
-      precio,
-      metodoPago,
-      reservaId: reserva.id,
-    });
+    try {
+      await notificarReservaRecibida({
+        clientePhone: usuarioTelefono,
+        canchaNombre,
+        fecha,
+        hora:      horaDisplay,
+        precio,
+        metodoPago,
+        reservaId: reserva.id,
+      });
+    } catch (e) {
+      console.error('[reservas] Error enviando WhatsApp al cliente:', e);
+    }
   }
 
   // Notificar al dueño de la cancha (WhatsApp + in-app)
@@ -333,30 +341,38 @@ export async function POST(req: NextRequest) {
 
   const duenoPhone = (dueno?.usuarios as any)?.telefono ?? process.env.ADMIN_WHATSAPP_NUMBER;
   if (duenoPhone) {
-    await notificarNuevaReserva({
-      adminPhone:      duenoPhone,
-      canchaNombre,
-      fecha,
-      hora:            horaDisplay,
-      precio,
-      metodoPago,
-      clienteNombre:   usuarioNombre,
-      clienteTelefono: usuarioTelefono,
-      reservaId:       reserva.id,
-      comprobanteUrl:  comprobantePublicUrl,
-      cuponInfo,
-    });
+    try {
+      await notificarNuevaReserva({
+        adminPhone:      duenoPhone,
+        canchaNombre,
+        fecha,
+        hora:            horaDisplay,
+        precio,
+        metodoPago,
+        clienteNombre:   usuarioNombre,
+        clienteTelefono: usuarioTelefono,
+        reservaId:       reserva.id,
+        comprobanteUrl:  comprobantePublicUrl,
+        cuponInfo,
+      });
+    } catch (e) {
+      console.error('[reservas] Error enviando WhatsApp al dueño:', e);
+    }
   }
 
   // Notificación in-app al dueño
   if (dueno?.usuario_id) {
     const fechaLabel = new Date(fecha).toLocaleDateString('es-PE', { day: 'numeric', month: 'long' });
-    await sb.from('notificaciones').insert({
-      usuario_id: dueno.usuario_id,
-      reserva_id: reserva.id,
-      mensaje:    `Nueva reserva: ${usuarioNombre} reservó ${canchaNombre} el ${fechaLabel} a las ${horaDisplay}. S/ ${precio} vía ${metodoPago}.`,
-      tipo:       'nueva_reserva',
-    });
+    try {
+      await sb.from('notificaciones').insert({
+        usuario_id: dueno.usuario_id,
+        reserva_id: reserva.id,
+        mensaje:    `Nueva reserva: ${usuarioNombre} reservó ${canchaNombre} el ${fechaLabel} a las ${horaDisplay}. S/ ${precio} vía ${metodoPago}.`,
+        tipo:       'nueva_reserva',
+      });
+    } catch (e) {
+      console.error('[reservas] Error creando notificación in-app al dueño:', e);
+    }
   }
 
   return NextResponse.json(reserva);
