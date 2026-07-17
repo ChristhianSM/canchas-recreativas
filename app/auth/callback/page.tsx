@@ -17,17 +17,13 @@ function AuthCallbackContent() {
     );
 
     const handleSession = async (session: any, source: string) => {
-      console.log(`[auth-callback] handleSession desde: ${source}`);
       if (handled.current) {
-        console.log(`[auth-callback] YA MANEJADO — ignorando (source: ${source})`);
         return;
       }
       handled.current = true;
 
       const user  = session.user;
       const token = session.access_token;
-
-      console.log(`[auth-callback] user.id: ${user?.id}, token: ${!!token}`);
 
       if (!token) {
         console.warn('[auth-callback] ⚠️ access_token vacío — redirigiendo a /login');
@@ -48,7 +44,6 @@ function AuthCallbackContent() {
       localStorage.setItem('cp_token', token);
       localStorage.setItem('cp_token_time', Date.now().toString());
       localStorage.setItem('cp_user', JSON.stringify({ name: nombre, email, phone: telefono }));
-      console.log('[auth-callback] ✅ localStorage guardado');
 
       fetch('/api/auth/sync-oauth', {
         method: 'POST',
@@ -59,21 +54,17 @@ function AuthCallbackContent() {
       const returnUrl = sessionStorage.getItem('oauth_return_url');
       sessionStorage.removeItem('oauth_return_url');
       window.dispatchEvent(new Event('user-login'));
-      console.log('[auth-callback] ✅ Redirigiendo a', returnUrl ?? '/');
       router.replace(returnUrl ?? '/');
     };
 
     const code = searchParams.get('code');
-    console.log(`[auth-callback] 🚀 Montado. code en URL: ${!!code}`);
 
     if (code) {
       // Guard sincrónico: previene doble exchange en React Strict Mode (doble invoke del effect)
       if (handled.current) return;
       handled.current = true;
 
-      console.log('[auth-callback] Intercambiando code por sesión (cliente)...');
       supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
-        console.log(`[auth-callback] exchangeCodeForSession → error: ${error?.message ?? 'none'}, session: ${!!data.session}`);
         if (data.session) {
           handleSession(data.session, 'exchangeCodeForSession');
         } else {
@@ -86,14 +77,12 @@ function AuthCallbackContent() {
 
     // Sin ?code= — puede ser redirect desde el server-side route o sesión en cookies
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log(`[auth-callback] onAuthStateChange → ${event}, session: ${!!session}`);
       if ((event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session) {
         await handleSession(session, `onAuthStateChange(${event})`);
       }
     });
 
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
-      console.log(`[auth-callback] getSession() → session: ${!!session}, error: ${error?.message ?? 'none'}`);
+    supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) handleSession(session, 'getSession()');
     });
 

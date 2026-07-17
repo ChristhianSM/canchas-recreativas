@@ -1207,15 +1207,6 @@ export default function OwnerEditarCanchaPage() {
     setSaving(true);
     setSaveError("");
 
-    console.log("🔍 handleSave - Valores a enviar:");
-    console.log("  descripcion:", description);
-    console.log("  telefono:", phone);
-    console.log("  precioHora:", price);
-    console.log("  lat:", lat);
-    console.log("  lng:", lng);
-    console.log("  direccion:", direccion);
-    console.log("  distrito:", distrito);
-
     const res = await ownerFetch(`/api/admin-cancha/cancha?id=${id}`, {
       method: "PATCH",
       headers: {

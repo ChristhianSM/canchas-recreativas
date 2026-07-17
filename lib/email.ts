@@ -185,8 +185,6 @@ export async function sendReservaRecibidaEmail(data: ReservaRecibidaEmailData) {
     if (!res.ok) {
       const err = await res.json();
       console.error('[email] ❌ Error Brevo (recibida):', err);
-    } else {
-      console.log(`[email] ✅ Email recibida enviado a ${toEmail}`);
     }
   } catch (err: any) {
     console.error('[email] ❌ Error de red (recibida):', err?.message ?? err);
@@ -363,8 +361,6 @@ export async function sendReservaEmail(data: ReservaEmailData) {
 
     if (!res.ok) {
       console.error('[email] ❌ Error Brevo:', res.status, JSON.stringify(responseData));
-    } else {
-      console.log(`[email] ✅ Enviado a ${toEmail} — estado: ${estado}`);
     }
   } catch (err: any) {
     console.error('[email] ❌ Error de red (confirmacion):', err?.message ?? err);
@@ -564,8 +560,6 @@ export async function sendNoticiaToSuscritos(
   const failed = results.filter(r => r.status === 'rejected').length;
   if (failed > 0) {
     console.error(`[email] ❌ ${failed}/${suscritos.length} emails de noticia fallaron`);
-  } else {
-    console.log(`[email] ✅ Noticia "${publicacion.titulo}" enviada a ${suscritos.length} suscritos`);
   }
 }
 
@@ -653,8 +647,6 @@ export async function sendNewsletterWelcomeEmail(email: string, unsubscribeUrl: 
     if (!res.ok) {
       const err = await res.json();
       console.error('[email] ❌ Error Brevo (newsletter):', err);
-    } else {
-      console.log(`[email] ✅ Email bienvenida newsletter enviado a ${email}`);
     }
   } catch (err: any) {
     console.error('[email] ❌ Error de red (newsletter):', err?.message ?? err);

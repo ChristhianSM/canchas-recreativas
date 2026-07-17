@@ -66,7 +66,6 @@ async function callMetaApi(to: string, templateName: string, components: object[
         return;
       }
 
-      console.log(`[whatsapp] ✅ Enviado a ${to} — plantilla: ${templateName} (${langCode})`);
       return;
     } catch (err: any) {
       console.error('[whatsapp] ❌ Error fetch:', err?.message);

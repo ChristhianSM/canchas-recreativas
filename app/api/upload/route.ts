@@ -77,8 +77,6 @@ export async function POST(req: NextRequest) {
       attempts++;
     } while (attempts < maxAttempts);
 
-    console.log(`[upload] Imagen comprimida: ${(buffer.byteLength / 1024).toFixed(2)}KB → ${(compressedBuffer.length / 1024).toFixed(2)}KB (calidad: ${quality}%)`);
-
     // Generar nombre de archivo con timestamp
     const fileName = `canchas/${userId}/${canchaId}/${Date.now()}.webp`;
 

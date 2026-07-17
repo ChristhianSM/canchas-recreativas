@@ -34,7 +34,6 @@ function ResetPasswordContent() {
     const allParams = Array.from(searchParams.entries());
     const debugMsg = `params: ${JSON.stringify(allParams)}, hash keys: ${Array.from(hashParams.keys()).join(',')}`;
     setDebugInfo(debugMsg);
-    console.log(debugMsg);
 
     const code      = searchParams.get('code');
     const tokenHash = hashParams.get('token_hash');

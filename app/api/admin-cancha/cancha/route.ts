@@ -60,8 +60,6 @@ export async function PATCH(req: NextRequest) {
   const body = await req.json();
   const { descripcion, telefono, precioHora, amenidades, imagenes, lat, lng, direccion, distrito, preciosPorHora, preciosPorDia, balonPrecio, chalecosPrecio, balonDisponible, chalecosDisponible, superficie, maxJugadores, yapeNumero, plinNumero, horaApertura, horaCierre, accesorios } = body;
 
-  console.log('📍 PATCH /api/admin-cancha/cancha');
-
   const updateData: Record<string, any> = {
     descripcion,
     telefono,
@@ -95,8 +93,6 @@ export async function PATCH(req: NextRequest) {
   if (accesorios  !== undefined) updateData.accesorios  = accesorios ?? [];
   if (horaApertura !== undefined) updateData.hora_apertura = horaApertura;
   if (horaCierre   !== undefined) updateData.hora_cierre   = horaCierre;
-
-  console.log('UpdateData:', JSON.stringify(updateData));
 
   const { error: canchaError } = await sb
     .from('canchas')
