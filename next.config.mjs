@@ -25,6 +25,13 @@ const nextConfig = {
   // por ruta de node_modules; si Next lo empaqueta con webpack esa resolución se
   // rompe y el worker se queda colgado sin arrojar error.
   serverExternalPackages: ['tesseract.js', 'tesseract.js-core'],
+  // El rastreador de archivos de `output: standalone` no detecta los requires
+  // dinámicos que usa tesseract.js para cargar su worker y sus .wasm, así que
+  // sin esto el paquete queda fuera del build de producción y la validación de
+  // captura de pago falla en silencio (siempre "pasa" cualquier imagen).
+  outputFileTracingIncludes: {
+    'app/api/reservas/route': ['./node_modules/tesseract.js/**', './node_modules/tesseract.js-core/**'],
+  },
   // Optimizaciones de rendimiento
   compress: true,
   poweredByHeader: false,
