@@ -616,7 +616,9 @@ function PagoContent() {
       setSubmitError(
         result.error.includes("ya fue reservado")
           ? "Este horario ya fue reservado por otro usuario. Vuelve y elige otro horario."
-          : "No se pudo crear la reserva. Intenta de nuevo.",
+          : result.error.includes("no parece una captura")
+            ? result.error
+            : "No se pudo crear la reserva. Intenta de nuevo.",
       );
       return;
     }

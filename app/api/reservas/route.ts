@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase';
 import { sendReservaRecibidaEmail } from '@/lib/email';
 import { notificarNuevaReserva, notificarReservaRecibida } from '@/lib/whatsapp';
 import { rateLimit } from '@/lib/rate-limit';
+import { pareceCapturaYapePlin } from '@/lib/validar-captura-pago';
 
 // GET — obtener reservas del usuario autenticado
 // ?tipo=historial&page=0&limit=10 → devuelve historial paginado con total
@@ -110,12 +111,28 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Si el comprobante es base64, subirlo a Supabase Storage y obtener URL pública
+  // Si el comprobante es base64, validar que sea una captura de Yape/Plin y subirlo
   let comprobantePublicUrl: string | null = comprobanteUrl ?? null;
   if (comprobanteUrl?.startsWith('data:')) {
+    const base64Data = comprobanteUrl.split(',')[1];
+    const buffer = Buffer.from(base64Data, 'base64');
+
+    if (metodoPago === 'yape' || metodoPago === 'plin') {
+      let esCapturaValida = true;
+      try {
+        esCapturaValida = await pareceCapturaYapePlin(buffer);
+      } catch (e) {
+        console.error('[reservas] Error validando captura de pago:', e);
+      }
+      if (!esCapturaValida) {
+        return NextResponse.json(
+          { error: 'La imagen no parece una captura de Yape o Plin. Puedes dejarla vacía o subir una captura real del pago.' },
+          { status: 400 }
+        );
+      }
+    }
+
     try {
-      const base64Data = comprobanteUrl.split(',')[1];
-      const buffer = Buffer.from(base64Data, 'base64');
       const mimeMatch = comprobanteUrl.match(/data:([^;]+);/);
       const mimeType = mimeMatch?.[1] ?? 'image/jpeg';
       const ext = mimeType === 'image/jpeg' ? 'jpg' : mimeType.split('/')[1] ?? 'jpg';

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
 import { getLocalDateString } from '@/lib/date-utils';
 import { notificarReservaRecibida, notificarNuevoPartido } from '@/lib/whatsapp';
+import { pareceCapturaYapePlin } from '@/lib/validar-captura-pago';
 
 // GET — listar partidos abiertos/completos desde hoy
 export async function GET(req: NextRequest) {
@@ -109,12 +110,28 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'El total del partido no puede ser menor que los cupos disponibles' }, { status: 400 });
   }
 
-  // Si el comprobante es base64, subirlo a Supabase Storage y obtener URL pública
+  // Si el comprobante es base64, validar que sea una captura de Yape/Plin y subirlo
   let comprobantePublicUrl: string | null = comprobante_url || null;
   if (comprobante_url?.startsWith('data:')) {
+    const base64Data = comprobante_url.split(',')[1];
+    const buffer = Buffer.from(base64Data, 'base64');
+
+    if (metodo_pago === 'yape' || metodo_pago === 'plin') {
+      let esCapturaValida = true;
+      try {
+        esCapturaValida = await pareceCapturaYapePlin(buffer);
+      } catch (e) {
+        console.error('[partidos] Error validando captura de pago:', e);
+      }
+      if (!esCapturaValida) {
+        return NextResponse.json(
+          { error: 'La imagen no parece una captura de Yape o Plin. Puedes dejarla vacía o subir una captura real del pago.' },
+          { status: 400 }
+        );
+      }
+    }
+
     try {
-      const base64Data = comprobante_url.split(',')[1];
-      const buffer = Buffer.from(base64Data, 'base64');
       const mimeMatch = comprobante_url.match(/data:([^;]+);/);
       const mimeType = mimeMatch?.[1] ?? 'image/jpeg';
       const ext = mimeType === 'image/jpeg' ? 'jpg' : mimeType.split('/')[1] ?? 'jpg';
