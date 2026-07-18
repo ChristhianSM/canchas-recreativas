@@ -21,6 +21,10 @@ const nextConfig = {
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   },
+  // tesseract.js usa worker_threads y resuelve sus propios archivos (core/worker)
+  // por ruta de node_modules; si Next lo empaqueta con webpack esa resolución se
+  // rompe y el worker se queda colgado sin arrojar error.
+  serverExternalPackages: ['tesseract.js', 'tesseract.js-core'],
   // Optimizaciones de rendimiento
   compress: true,
   poweredByHeader: false,

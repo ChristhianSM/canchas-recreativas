@@ -19,8 +19,6 @@ export async function agregarSelloCancha(
 
   if (error) {
     console.error('[loyalty-cancha] Error agregar_sellos_cancha:', JSON.stringify(error));
-  } else {
-    console.log(`[loyalty-cancha] +1 sello → usuario:${usuarioId} cancha:${canchaId}`);
   }
 }
 
@@ -41,8 +39,6 @@ export async function agregarSellos(
 
   if (error) {
     console.error(`[loyalty] Error agregar_sellos (${motivo}):`, JSON.stringify(error));
-  } else {
-    console.log(`[loyalty] +${cantidad} sello(s) [${motivo}] → ${usuarioId}`);
   }
 }
 
@@ -104,7 +100,6 @@ export async function revertirSelloCancha(
       .eq('cancha_id', canchaId);
   }
 
-  console.log(`[loyalty-cancha] -1 sello (cancelación) → usuario:${usuarioId} cancha:${canchaId}`);
 }
 
 // Detecta si la reserva es de un partido y otorga los sellos correctos:

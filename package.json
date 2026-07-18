@@ -63,6 +63,7 @@
     "sharp": "^0.34.5",
     "sonner": "^1.7.1",
     "tailwind-merge": "^3.3.1",
+    "tesseract.js": "^7.0.0",
     "twilio": "^6.0.2",
     "vaul": "^1.1.2",
     "xlsx": "^0.18.5",

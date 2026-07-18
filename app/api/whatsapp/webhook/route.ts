@@ -53,19 +53,11 @@ function normalizarTelefono(raw: string): string | null {
 
 async function processWebhook(payload: any) {
   const message = payload?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
-  if (!message) {
-    console.log('[webhook] 🔍 Sin message en payload');
-    return;
-  }
-
-  console.log('[webhook] 🔍 message.type:', message.type, '| from:', message.from);
+  if (!message) return;
 
   const from = message.from as string;
   const adminPhone = normalizarTelefono(from);
-  if (!adminPhone) {
-    console.log('[webhook] 🔍 No se pudo normalizar número:', from);
-    return;
-  }
+  if (!adminPhone) return;
 
   let accion: 'confirmar' | 'rechazar' | null = null;
   let codigo: string | null = null;
@@ -83,32 +75,27 @@ async function processWebhook(payload: any) {
     }
   } else if (message.type === 'button') {
     const buttonPayload: string = message.button?.payload ?? '';
-    console.log('[webhook] 🔍 button.payload:', buttonPayload);
     const match = buttonPayload.match(/^(CONFIRMAR|RECHAZAR)_([A-Z0-9]{4,8})$/);
     if (match) {
       accion  = match[1] === 'CONFIRMAR' ? 'confirmar' : 'rechazar';
       codigo  = match[2];
-    } else {
-      console.log('[webhook] 🔍 regex no coincide con payload:', buttonPayload);
     }
   }
 
-  console.log('[webhook] 🔍 accion:', accion, '| codigo:', codigo, '| adminPhone:', adminPhone);
   if (!accion) return;
 
   const sb = createServiceClient();
 
-  // Buscar canchas del admin: buscar el usuario por teléfono en cualquier formato
+  // Buscar canchas del admin: filtrar por sufijo de teléfono para cubrir formatos distintos
+  // (51987654321, +51987654321, 987654321 → todos terminan en los 9 dígitos)
   let canchaIds: string[] = [];
 
   const { data: usuarios } = await sb
     .from('usuarios')
-    .select('id, telefono');
+    .select('id, telefono')
+    .like('telefono', `%${adminPhone}`);
 
-  const usuarioEncontrado = (usuarios ?? []).find((u: any) => {
-    const norm = normalizarTelefono(u.telefono ?? '');
-    return norm === adminPhone;
-  });
+  const usuarioEncontrado = usuarios?.[0] ?? null;
 
   if (usuarioEncontrado) {
     const { data: relaciones } = await sb
@@ -117,23 +104,18 @@ async function processWebhook(payload: any) {
       .eq('usuario_id', usuarioEncontrado.id);
 
     canchaIds = (relaciones ?? []).map((r: any) => r.cancha_id).filter(Boolean);
-    console.log('[webhook] 🔍 Usuario encontrado:', usuarioEncontrado.id, '| Canchas:', canchaIds);
   }
 
   // Fallback: si el número es el del admin configurado en env, tomar todas las canchas pendientes
   if (!canchaIds.length) {
     const adminEnv = normalizarTelefono(process.env.ADMIN_WHATSAPP_NUMBER ?? '');
     if (adminEnv && adminEnv === adminPhone) {
-      console.log('[webhook] 🔍 Número coincide con ADMIN_WHATSAPP_NUMBER, buscando reservas pendientes globales');
       const { data: todasCanchas } = await sb.from('canchas').select('id');
       canchaIds = (todasCanchas ?? []).map((c: any) => c.id);
     }
   }
 
-  if (!canchaIds.length) {
-    console.log('[webhook] 🔍 No se encontraron canchas para el número:', adminPhone);
-    return;
-  }
+  if (!canchaIds.length) return;
 
   let reserva: any = null;
 
@@ -146,10 +128,7 @@ async function processWebhook(payload: any) {
       .order('creado_en', { ascending: false });
 
     reserva = (todas ?? []).find((r: any) => r.id.slice(-6).toUpperCase() === codigo);
-    if (!reserva) {
-      console.log('[webhook] 🔍 No se encontró reserva pendiente con código:', codigo, '| Canchas:', canchaIds, '| Pendientes:', (todas ?? []).map((r: any) => r.id.slice(-6).toUpperCase()));
-      return;
-    }
+    if (!reserva) return;
   } else {
     const { data: reciente } = await sb
       .from('reservas')
@@ -279,5 +258,4 @@ async function procesarReserva(sb: any, reserva: any, accion: 'confirmar' | 'rec
     estado,
   });
 
-  console.log(`[webhook] ✅ Reserva #${codigo} ${estado}`);
 }

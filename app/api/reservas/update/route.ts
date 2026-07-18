@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
+import { verifyToken } from '@/lib/admin-auth';
 import { sendReservaEmail } from '@/lib/email';
 import { notificarEstadoReserva, notificarEstadoReservaAdmin } from '@/lib/whatsapp';
 import { agregarSelloCancha } from '@/lib/loyalty';
@@ -7,14 +8,22 @@ import { agregarSelloCancha } from '@/lib/loyalty';
 // PATCH /api/reservas/update?id=xxx — actualizar estado de reserva
 export async function PATCH(req: NextRequest) {
   const token = req.headers.get('authorization')?.replace('Bearer ', '');
-  if (!token) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+  const user = await verifyToken(token);
+  if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
   const reservaId = req.nextUrl.searchParams.get('id');
   if (!reservaId) return NextResponse.json({ error: 'ID requerido' }, { status: 400 });
 
   const sb = createServiceClient();
-  const { data: { user }, error: authError } = await sb.auth.getUser(token);
-  if (authError || !user) return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
+
+  // Query 1: obtener canchas del dueño (verifica ownership en todas las operaciones)
+  const { data: relaciones } = await sb
+    .from('duenos_canchas')
+    .select('cancha_id')
+    .eq('usuario_id', user.id);
+
+  const canchaIds = (relaciones ?? []).map((r: any) => r.cancha_id).filter(Boolean);
+  if (!canchaIds.length) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
   const body = await req.json();
   const { estado, devolucion_procesada, saldo_cobrado } = body;
@@ -25,10 +34,12 @@ export async function PATCH(req: NextRequest) {
       .from('reservas')
       .update({ devolucion_procesada })
       .eq('id', reservaId)
+      .in('cancha_id', canchaIds)
       .select()
       .single();
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (!reserva) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
     return NextResponse.json(reserva);
   }
 
@@ -38,10 +49,11 @@ export async function PATCH(req: NextRequest) {
       .from('reservas')
       .select('modo_pago, saldo_cobrado')
       .eq('id', reservaId)
+      .in('cancha_id', canchaIds)
       .single();
 
     if (fetchError || !reservaActual) {
-      return NextResponse.json({ error: 'Reserva no encontrada' }, { status: 404 });
+      return NextResponse.json({ error: 'Reserva no encontrada o no autorizada' }, { status: 404 });
     }
 
     if (reservaActual.modo_pago !== 'parcial') {
@@ -66,14 +78,20 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json(reservaActualizada);
   }
 
+  if (!['confirmada', 'rechazada'].includes(estado)) {
+    return NextResponse.json({ error: 'Estado inválido' }, { status: 400 });
+  }
+
   const { data: reserva, error } = await sb
     .from('reservas')
     .update({ estado })
     .eq('id', reservaId)
+    .in('cancha_id', canchaIds)
     .select()
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!reserva) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
   // Cascada: si pertenece a un grupo multi-hora, actualizar todos los slots hermanos
   if (reserva.grupo_reserva_id && (estado === 'confirmada' || estado === 'rechazada')) {
@@ -84,7 +102,11 @@ export async function PATCH(req: NextRequest) {
   }
 
   if (estado === 'confirmada' && reserva.usuario_id && !reserva.cupon_aplicado) {
-    await agregarSelloCancha(sb, reserva.usuario_id, reserva.cancha_id);
+    try {
+      await agregarSelloCancha(sb, reserva.usuario_id, reserva.cancha_id);
+    } catch (e) {
+      console.error('[reservas/update] Error agregando sello de fidelidad:', e);
+    }
   }
 
   // Restaurar cupón si la reserva fue rechazada
@@ -135,28 +157,36 @@ export async function PATCH(req: NextRequest) {
 
     // Notificación in-app (solo usuarios registrados)
     if (reserva.usuario_id) {
-      await sb.from('notificaciones').insert({
-        usuario_id: reserva.usuario_id,
-        reserva_id: reserva.id,
-        mensaje: msg,
-        tipo: estado,
-      });
+      try {
+        await sb.from('notificaciones').insert({
+          usuario_id: reserva.usuario_id,
+          reserva_id: reserva.id,
+          mensaje: msg,
+          tipo: estado,
+        });
+      } catch (e) {
+        console.error('[reservas/update] Error creando notificación in-app:', e);
+      }
     }
 
     // Email solo para invitados (usuarios con cuenta ven la notificación en la app)
     if (!reserva.usuario_id && reserva.usuario_email) {
       const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-      await sendReservaEmail({
-        toEmail:      reserva.usuario_email,
-        toName:       reserva.usuario_nombre ?? 'Cliente',
-        canchaNombre: reserva.cancha_nombre,
-        fecha:        reserva.fecha,
-        hora:         reserva.hora,
-        precio:       reserva.precio,
-        estado,
-        reservaId:    reserva.id,
-        baseUrl,
-      });
+      try {
+        await sendReservaEmail({
+          toEmail:      reserva.usuario_email,
+          toName:       reserva.usuario_nombre ?? 'Cliente',
+          canchaNombre: reserva.cancha_nombre,
+          fecha:        reserva.fecha,
+          hora:         reserva.hora,
+          precio:       reserva.precio,
+          estado,
+          reservaId:    reserva.id,
+          baseUrl,
+        });
+      } catch (e) {
+        console.error('[reservas/update] Error enviando email al invitado:', e);
+      }
     }
 
     // Rango de hora para reservas multi-hora
@@ -192,22 +222,22 @@ export async function PATCH(req: NextRequest) {
       .maybeSingle();
 
     // WhatsApp al cliente
-    console.log('[reservas/update] clientePhone:', clientePhone, '| estado:', estado, '| reservaId:', reserva.id);
     if (clientePhone) {
-      await notificarEstadoReserva({
-        clientePhone,
-        canchaNombre: reserva.cancha_nombre,
-        fecha:        reserva.fecha,
-        hora:         horaNotificacion,
-        precio:       reserva.precio,
-        estado,
-        reservaId:    reserva.id,
-        lat:          cancha?.lat ?? null,
-        lng:          cancha?.lng ?? null,
-      });
-      console.log('[reservas/update] notificarEstadoReserva completado');
-    } else {
-      console.warn('[reservas/update] clientePhone vacío, no se notificó al usuario');
+      try {
+        await notificarEstadoReserva({
+          clientePhone,
+          canchaNombre: reserva.cancha_nombre,
+          fecha:        reserva.fecha,
+          hora:         horaNotificacion,
+          precio:       reserva.precio,
+          estado,
+          reservaId:    reserva.id,
+          lat:          cancha?.lat ?? null,
+          lng:          cancha?.lng ?? null,
+        });
+      } catch (e) {
+        console.error('[reservas/update] Error enviando WhatsApp al cliente:', e);
+      }
     }
 
     // WhatsApp al admin (dueño de la cancha) confirmando que su acción fue procesada
@@ -217,7 +247,11 @@ export async function PATCH(req: NextRequest) {
       .eq('id', user.id)
       .maybeSingle();
     if (adminData?.telefono) {
-      await notificarEstadoReservaAdmin({ adminPhone: adminData.telefono, reservaId: reserva.id, estado });
+      try {
+        await notificarEstadoReservaAdmin({ adminPhone: adminData.telefono, reservaId: reserva.id, estado });
+      } catch (e) {
+        console.error('[reservas/update] Error enviando WhatsApp al admin:', e);
+      }
     }
 
   }

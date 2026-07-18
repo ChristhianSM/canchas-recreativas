@@ -47,12 +47,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   const body = await req.json();
-  console.log('📍 BODY COMPLETO RECIBIDO:', JSON.stringify(body, null, 2));
-
   const { descripcion, telefono, precioHora, amenidades, imagenes, lat, lng, direccion, distrito, preciosPorHora } = body;
-
-  console.log('Distrito recibido:', distrito);
-  console.log('Tipo de distrito:', typeof distrito);
 
   const updateData: any = {
     descripcion,
@@ -67,8 +62,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (lng !== undefined) updateData.lng = lng;
   if (direccion !== undefined) updateData.direccion = direccion;
   if (distrito !== undefined) updateData.distrito = distrito;
-
-  console.log('UpdateData que se va a guardar:', updateData);
 
   const { error: canchaError } = await sb
     .from('canchas')
