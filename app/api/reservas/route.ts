@@ -4,6 +4,7 @@ import { sendReservaRecibidaEmail } from '@/lib/email';
 import { notificarNuevaReserva, notificarReservaRecibida } from '@/lib/whatsapp';
 import { rateLimit } from '@/lib/rate-limit';
 import { pareceCapturaYapePlin } from '@/lib/validar-captura-pago';
+import { resolverPrecio, type PrecioConfigurable } from '@/lib/precio-utils';
 
 // GET — obtener reservas del usuario autenticado
 // ?tipo=historial&page=0&limit=10 → devuelve historial paginado con total
@@ -198,6 +199,70 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'El cupón ya fue utilizado o no es válido' }, { status: 400 });
     }
     cuponDetalles = cuponValido;
+  }
+
+  // Recalcular el precio real en el servidor — nunca confiar en el precio que manda el cliente,
+  // que viaja como query param editable (?precio=) y luego en el body del POST.
+  const { data: canchaReal, error: canchaRealError } = await sb
+    .from('canchas')
+    .select('precio_por_hora, precios_por_hora, precios_por_dia, accesorios')
+    .eq('id', canchaId)
+    .maybeSingle();
+
+  if (canchaRealError || !canchaReal) {
+    return NextResponse.json({ error: 'Cancha no encontrada' }, { status: 404 });
+  }
+
+  let precioConfig: PrecioConfigurable = canchaReal;
+  if (seccionId) {
+    const { data: seccionReal, error: seccionRealError } = await sb
+      .from('cancha_secciones')
+      .select('precio_por_hora, precios_por_hora, precios_por_dia')
+      .eq('id', seccionId)
+      .eq('cancha_id', canchaId)
+      .maybeSingle();
+
+    if (seccionRealError || !seccionReal) {
+      return NextResponse.json({ error: 'Sección no encontrada' }, { status: 404 });
+    }
+    precioConfig = seccionReal;
+  }
+
+  const precioPorHoraReal = resolverPrecio(precioConfig, fecha, hora);
+  const subtotalReal = precioPorHoraReal * horas;
+
+  const accesoriosReales: any[] = canchaReal.accesorios ?? [];
+  const extraAccesoriosReal = ((accesoriosIncluidos ?? []) as any[]).reduce((sum, sel) => {
+    const real = accesoriosReales.find((a) => a.id === sel.id);
+    if (!real || real.modalidad === 'prestado') return sum;
+    return sum + (real.precio ?? 0);
+  }, 0);
+
+  let descuentoReal = 0;
+  if (cuponDetalles) {
+    if (cuponDetalles.premio_tipo === 'descuento_fijo') {
+      descuentoReal = cuponDetalles.premio_valor ?? 0;
+    } else if (cuponDetalles.premio_tipo === 'descuento_porcentaje') {
+      descuentoReal = Math.round(subtotalReal * (cuponDetalles.premio_valor ?? 0) / 100);
+    } else if (cuponDetalles.premio_tipo === 'hora_gratis') {
+      descuentoReal = precioPorHoraReal;
+    }
+  }
+
+  const totalReal = Math.max(0, subtotalReal + extraAccesoriosReal - descuentoReal);
+
+  if (Math.round(totalReal) !== Math.round(precio)) {
+    return NextResponse.json(
+      { error: 'El precio no coincide con el de la cancha. Vuelve a intentar la reserva.' },
+      { status: 400 }
+    );
+  }
+
+  if (modo_pago === 'parcial' && totalReal > 0 && Math.round(totalReal * 0.2) !== monto_adelanto) {
+    return NextResponse.json(
+      { error: 'El monto de adelanto no coincide con el 20% del precio total.' },
+      { status: 400 }
+    );
   }
 
   // Generar lista de horas a reservar
