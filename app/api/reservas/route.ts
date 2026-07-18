@@ -278,6 +278,9 @@ export async function POST(req: NextRequest) {
         .update({ usado: false, usado_en: null })
         .eq('id', canchaCuponId);
     }
+    if (insertError.code === '23505') {
+      return NextResponse.json({ error: 'El horario ya fue reservado por otro usuario' }, { status: 409 });
+    }
     return NextResponse.json({ error: insertError.message }, { status: 500 });
   }
 
