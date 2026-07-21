@@ -32,7 +32,11 @@ export interface Reserva {
   grupoReservaId?: string | null;
   cuponAplicado?: boolean;
   precioOriginal?: number | null;
+  seccionId?: string | null;
   seccionNombre?: string | null;
+  diferenciaReasignacion?: number | null;
+  diferenciaReasignacionSaldada?: boolean | null;
+  diferenciaReasignacionSaldadaEn?: string | null;
 }
 
 export interface Notificacion {

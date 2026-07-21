@@ -13,6 +13,7 @@ import {
   CalendarDays,
   PlusCircle,
   RepeatIcon,
+  ArrowLeftRight,
 } from "lucide-react";
 import { getHorasOperacion } from "@/lib/bloqueos-utils";
 import { Button } from "@/components/ui/button";
@@ -68,6 +69,9 @@ type Reserva = {
   precio_original?: number | null;
   seccion_id?: string | null;
   seccion_nombre?: string | null;
+  diferencia_reasignacion?: number | null;
+  diferencia_reasignacion_saldada?: boolean | null;
+  diferencia_reasignacion_saldada_en?: string | null;
 };
 
 function getOwnerToken() {
@@ -128,6 +132,22 @@ export default function OwnerReservasPage() {
     motivo: string;
   }>({ open: false, reservaId: null, motivo: "" });
   const [marcandoSaldo, setMarcandoSaldo] = useState(false);
+  const [marcandoDiferencia, setMarcandoDiferencia] = useState(false);
+  const [modalReasignar, setModalReasignar] = useState(false);
+  const [seccionesReasignar, setSeccionesReasignar] = useState<
+    { id: string; nombre: string; precio_por_hora: number }[]
+  >([]);
+  const [seccionElegida, setSeccionElegida] = useState("__completa__");
+  const [reasignando, setReasignando] = useState(false);
+  const [errorReasignar, setErrorReasignar] = useState<string | null>(null);
+  const [disponibilidadReasignar, setDisponibilidadReasignar] = useState<{
+    completaOcupada: boolean;
+    seccionesOcupadas: string[];
+    hayReservaCompletaBloqueando: boolean;
+    precioCompleta: number;
+    preciosPorSeccion: Record<string, number>;
+  } | null>(null);
+  const [cargandoDisponibilidad, setCargandoDisponibilidad] = useState(false);
   const [filtroFecha, setFiltroFecha] = useState("");
   const [filtroEmail, setFiltroEmail] = useState("");
   const [filtroCancha, setFiltroCancha] = useState("");
@@ -211,7 +231,11 @@ export default function OwnerReservasPage() {
             saldo_cobrado: r.saldo_cobrado ?? false,
             saldo_cobrado_en: r.saldo_cobrado_en ?? null,
             grupo_reserva_id: r.grupo_reserva_id ?? null,
+            seccion_id: r.seccion_id ?? null,
             seccion_nombre: r.seccion?.nombre ?? null,
+            diferencia_reasignacion: r.diferencia_reasignacion ?? null,
+            diferencia_reasignacion_saldada: r.diferencia_reasignacion_saldada ?? false,
+            diferencia_reasignacion_saldada_en: r.diferencia_reasignacion_saldada_en ?? null,
           }))
         : [],
     );
@@ -262,6 +286,32 @@ export default function OwnerReservasPage() {
       })
       .catch(() => setSeccionesCancha([]));
   }, [directaForm.cancha_id]);
+
+  // Verificar qué destinos ya están ocupados por otra reserva en ese mismo horario
+  useEffect(() => {
+    if (!modalReasignar || !selected) { setDisponibilidadReasignar(null); return; }
+    setCargandoDisponibilidad(true);
+    ownerFetch(`/api/admin-cancha/reservas/reasignar?reservaId=${selected.id}`)
+      .then((r) => r.json())
+      .then((data) => setDisponibilidadReasignar(data?.error ? null : data))
+      .catch(() => setDisponibilidadReasignar(null))
+      .finally(() => setCargandoDisponibilidad(false));
+  }, [modalReasignar, selected?.id]);
+
+  // Cargar secciones de la cancha de la reserva seleccionada (para poder reasignarla)
+  useEffect(() => {
+    if (!selected?.cancha_id) { setSeccionesReasignar([]); return; }
+    ownerFetch(`/api/admin-cancha/secciones?canchaId=${selected.cancha_id}`)
+      .then((r) => r.json())
+      .then((data: any[]) => {
+        setSeccionesReasignar(
+          Array.isArray(data)
+            ? data.filter((s) => s.activa !== false).map((s) => ({ id: s.id, nombre: s.nombre, precio_por_hora: s.precio_por_hora }))
+            : [],
+        );
+      })
+      .catch(() => setSeccionesReasignar([]));
+  }, [selected?.cancha_id]);
 
   useEffect(() => {
     if (!directaForm.cancha_id || !directaForm.fecha) {
@@ -448,6 +498,61 @@ export default function OwnerReservasPage() {
     }
   };
 
+  const abrirReasignar = () => {
+    setErrorReasignar(null);
+    setSeccionElegida(selected?.seccion_id ? "__completa__" : (seccionesReasignar[0]?.id ?? "__completa__"));
+    setModalReasignar(true);
+  };
+
+  const reasignarSeccion = async () => {
+    if (!selected) return;
+    const destino = seccionElegida === "__completa__" ? null : seccionElegida;
+    setErrorReasignar(null);
+    setReasignando(true);
+    try {
+      const res = await ownerFetch("/api/admin-cancha/reservas/reasignar", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reservaId: selected.id, seccionIdDestino: destino }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setErrorReasignar(data.error ?? "No se pudo reasignar la reserva");
+        return;
+      }
+      setModalReasignar(false);
+      setSelected(null);
+      await reload();
+    } catch {
+      setErrorReasignar("Error de conexión, intenta de nuevo");
+    } finally {
+      setReasignando(false);
+    }
+  };
+
+  const marcarDiferenciaSaldada = async (id: string) => {
+    setMarcandoDiferencia(true);
+    setReservas((prev) =>
+      prev.map((r) =>
+        r.id === id
+          ? { ...r, diferencia_reasignacion_saldada: true, diferencia_reasignacion_saldada_en: new Date().toISOString() }
+          : r,
+      ),
+    );
+    setSelected(null);
+    try {
+      await ownerFetch(`/api/reservas/update?id=${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ diferencia_reasignacion_saldada: true }),
+      });
+    } catch {
+      reload();
+    } finally {
+      setMarcandoDiferencia(false);
+    }
+  };
+
   // Agrupa reservas multi-hora: muestra solo el slot principal con rango "12:00 - 15:00"
   const reservasDisplay = useMemo(() => {
     const grupos = new Map<string, Reserva[]>();
@@ -484,6 +589,11 @@ export default function OwnerReservasPage() {
   // Solo las canceladas con devolución pendiente (monto > 0 y aún no procesada)
   const devolucionesPendientes = byEstado("cancelada").filter(
     (r) => (r.devolucion_calculada ?? 0) > 0 && !r.devolucion_procesada,
+  );
+
+  // Reservas reasignadas a un destino más barato: diferencia a entregar al usuario
+  const diferenciasPendientes = reservasDisplay.filter(
+    (r) => (r.diferencia_reasignacion ?? 0) > 0 && !r.diferencia_reasignacion_saldada,
   );
 
   const estadoBadge = (estado: ReservaEstado) => {
@@ -683,6 +793,13 @@ export default function OwnerReservasPage() {
               {devolucionesPendientes.length > 1 ? "s" : ""}
             </Badge>
           )}
+          {diferenciasPendientes.length > 0 && (
+            <Badge className="bg-purple-500 text-white text-sm px-3 py-1">
+              {diferenciasPendientes.length} diferencia
+              {diferenciasPendientes.length > 1 ? "s" : ""} pendiente
+              {diferenciasPendientes.length > 1 ? "s" : ""}
+            </Badge>
+          )}
           <Button
             size="sm"
             className="gap-1.5"
@@ -771,6 +888,40 @@ export default function OwnerReservasPage() {
                       size="sm"
                       variant="outline"
                       className="shrink-0 border-orange-400 text-orange-700 hover:bg-orange-100 text-xs"
+                      onClick={() => setSelected(r)}
+                    >
+                      Ver detalle
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* Alerta de diferencias pendientes por reasignación de sección */}
+      {diferenciasPendientes.length > 0 && (
+        <Card className="border-purple-200 bg-purple-50 p-4">
+          <div className="flex items-start gap-3">
+            <ArrowLeftRight className="h-5 w-5 text-purple-600 mt-0.5 shrink-0" />
+            <div className="flex-1">
+              <p className="font-semibold text-purple-800">
+                {diferenciasPendientes.length} diferencia
+                {diferenciasPendientes.length > 1 ? "s" : ""} pendiente
+                {diferenciasPendientes.length > 1 ? "s" : ""} de entregar por reasignación
+              </p>
+              <div className="mt-2 space-y-2">
+                {diferenciasPendientes.map((r) => (
+                  <div key={r.id} className="flex items-center justify-between gap-3">
+                    <p className="text-sm text-purple-700">
+                      • <span className="font-medium">{r.usuario_nombre}</span> — entregar{" "}
+                      <span className="font-bold">S/ {r.diferencia_reasignacion}</span> al llegar a jugar
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="shrink-0 border-purple-400 text-purple-700 hover:bg-purple-100 text-xs"
                       onClick={() => setSelected(r)}
                     >
                       Ver detalle
@@ -931,11 +1082,19 @@ export default function OwnerReservasPage() {
                   <p className="font-medium text-foreground">
                     {selected.cancha_nombre}
                   </p>
-                  {selected.seccion_nombre && (
-                    <p className="text-xs font-medium text-primary mt-0.5">
-                      Sección {selected.seccion_nombre}
-                    </p>
-                  )}
+                  <p className="text-xs font-medium text-primary mt-0.5">
+                    {selected.seccion_nombre ? `Sección ${selected.seccion_nombre}` : "Cancha completa"}
+                  </p>
+                  {["pendiente", "confirmada"].includes(selected.estado) &&
+                    seccionesReasignar.length > 0 && (
+                      <button
+                        onClick={abrirReasignar}
+                        className="mt-1.5 flex items-center gap-1 text-xs font-medium text-purple-600 hover:underline"
+                      >
+                        <ArrowLeftRight className="h-3 w-3" />
+                        Reasignar sección
+                      </button>
+                    )}
                 </div>
                 <div className="rounded-lg bg-muted/50 p-3">
                   <p className="text-xs text-muted-foreground">Fecha y hora</p>
@@ -983,6 +1142,51 @@ export default function OwnerReservasPage() {
                   {selected.precio === 0 && (
                     <p className="text-xs text-purple-600 dark:text-purple-500 mt-1">
                       Hora gratis — sin cobro al cliente
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Bloque diferencia por reasignación de sección */}
+              {(selected.diferencia_reasignacion ?? 0) !== 0 && (
+                <div
+                  className={`rounded-lg border p-4 space-y-2 ${
+                    selected.diferencia_reasignacion_saldada
+                      ? "border-green-200 bg-green-50"
+                      : "border-purple-200 bg-purple-50"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-foreground">
+                      {(selected.diferencia_reasignacion ?? 0) > 0
+                        ? "Diferencia a entregar al cliente"
+                        : "Diferencia a cobrar al cliente"}
+                    </p>
+                    {selected.diferencia_reasignacion_saldada ? (
+                      <Badge className="bg-green-100 text-green-700 border-green-300">✓ Resuelta</Badge>
+                    ) : (
+                      <Badge className="bg-purple-100 text-purple-700 border-purple-300">Pendiente</Badge>
+                    )}
+                  </div>
+                  <p className="text-lg font-bold text-purple-700">
+                    S/ {Math.abs(selected.diferencia_reasignacion ?? 0)}
+                  </p>
+                  {!selected.diferencia_reasignacion_saldada ? (
+                    <LoadingButton
+                      className="w-full bg-green-600 hover:bg-green-700 text-white"
+                      onClick={() => marcarDiferenciaSaldada(selected.id)}
+                      isLoading={marcandoDiferencia}
+                      loadingText="Guardando"
+                      loadingVariant="spinner"
+                    >
+                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                      {(selected.diferencia_reasignacion ?? 0) > 0 ? "✅ Ya entregué la diferencia" : "✅ Ya cobré la diferencia"}
+                    </LoadingButton>
+                  ) : (
+                    <p className="text-xs text-green-700">
+                      ✓ Diferencia resuelta
+                      {selected.diferencia_reasignacion_saldada_en &&
+                        ` el ${new Date(selected.diferencia_reasignacion_saldada_en).toLocaleDateString("es-PE", { day: "numeric", month: "long" })}`}
                     </p>
                   )}
                 </div>
@@ -1283,6 +1487,88 @@ export default function OwnerReservasPage() {
                   </div>
                 )
               )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal: reasignar sección de la reserva */}
+      <Dialog open={modalReasignar} onOpenChange={setModalReasignar}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ArrowLeftRight className="h-5 w-5 text-purple-600" />
+              Reasignar sección
+            </DialogTitle>
+          </DialogHeader>
+          {selected && (
+            <div className="space-y-4 py-2">
+              <p className="text-sm text-muted-foreground">
+                Actualmente:{" "}
+                <span className="font-medium text-foreground">
+                  {selected.seccion_nombre ? `Sección ${selected.seccion_nombre}` : "Cancha completa"}
+                </span>{" "}
+                — S/ {selected.precio}
+              </p>
+              <div className="space-y-1.5">
+                <Label>Mover a</Label>
+                <Select value={seccionElegida} onValueChange={setSeccionElegida}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(() => {
+                      const completaOcupada = !!disponibilidadReasignar?.completaOcupada;
+                      const precio = disponibilidadReasignar?.precioCompleta;
+                      return (
+                        <SelectItem value="__completa__" disabled={!selected.seccion_id || completaOcupada}>
+                          Cancha completa{precio != null ? ` — S/ ${precio}` : ""}
+                          {completaOcupada && selected.seccion_id ? " — no disponible (horario ocupado)" : ""}
+                        </SelectItem>
+                      );
+                    })()}
+                    {seccionesReasignar.map((s) => {
+                      const esActual = selected.seccion_id === s.id;
+                      const ocupada =
+                        !esActual &&
+                        !!disponibilidadReasignar &&
+                        (disponibilidadReasignar.seccionesOcupadas.includes(s.id) ||
+                          disponibilidadReasignar.hayReservaCompletaBloqueando);
+                      const precio = disponibilidadReasignar?.preciosPorSeccion[s.id];
+                      return (
+                        <SelectItem key={s.id} value={s.id} disabled={esActual || ocupada}>
+                          {s.nombre} — S/ {precio != null ? precio : s.precio_por_hora}
+                          {ocupada ? " — no disponible (horario ocupado)" : ""}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+                {cargandoDisponibilidad && (
+                  <p className="text-xs text-muted-foreground">Verificando disponibilidad...</p>
+                )}
+              </div>
+              {errorReasignar && (
+                <p className="text-sm text-destructive">{errorReasignar}</p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                El precio se recalculará según el destino. Si el cliente pagó de más, la diferencia
+                quedará pendiente de entregar cuando vaya a jugar.
+              </p>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => setModalReasignar(false)}>
+                  Cancelar
+                </Button>
+                <LoadingButton
+                  onClick={reasignarSeccion}
+                  isLoading={reasignando}
+                  loadingText="Reasignando"
+                  loadingVariant="spinner"
+                >
+                  <ArrowLeftRight className="mr-2 h-4 w-4" />
+                  Confirmar
+                </LoadingButton>
+              </div>
             </div>
           )}
         </DialogContent>

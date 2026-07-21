@@ -26,7 +26,25 @@ export async function PATCH(req: NextRequest) {
   if (!canchaIds.length) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
   const body = await req.json();
-  const { estado, devolucion_procesada, saldo_cobrado } = body;
+  const { estado, devolucion_procesada, saldo_cobrado, diferencia_reasignacion_saldada } = body;
+
+  // Si solo se está marcando la diferencia de reasignación como saldada
+  if (diferencia_reasignacion_saldada !== undefined && estado === undefined && devolucion_procesada === undefined && saldo_cobrado === undefined) {
+    const { data: reserva, error } = await sb
+      .from('reservas')
+      .update({
+        diferencia_reasignacion_saldada: diferencia_reasignacion_saldada,
+        diferencia_reasignacion_saldada_en: diferencia_reasignacion_saldada ? new Date().toISOString() : null,
+      })
+      .eq('id', reservaId)
+      .in('cancha_id', canchaIds)
+      .select()
+      .single();
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (!reserva) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+    return NextResponse.json(reserva);
+  }
 
   // Si solo se está marcando la devolución como procesada
   if (devolucion_procesada !== undefined && estado === undefined && saldo_cobrado === undefined) {
