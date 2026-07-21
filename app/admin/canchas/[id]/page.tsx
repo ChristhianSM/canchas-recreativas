@@ -496,6 +496,7 @@ export default function AdminEditarCanchaPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
+  const imagenesGuardadasRef = useRef<string[]>([]);
 
   const [cancha, setCancha] = useState<Cancha | null>(null);
   const [loading, setLoading] = useState(true);
@@ -570,6 +571,7 @@ export default function AdminEditarCanchaPage() {
           setPrice(canchaData.precio_por_hora ?? 0);
           setAmenities(canchaData.amenidades ?? []);
           setImages(canchaData.imagenes ?? []);
+          imagenesGuardadasRef.current = canchaData.imagenes ?? [];
           setLat(String(canchaData.lat ?? ""));
           setLng(String(canchaData.lng ?? ""));
           setDireccion(canchaData.direccion ?? "");
@@ -641,6 +643,7 @@ export default function AdminEditarCanchaPage() {
     // Si duenoId está vacío, no llamamos asignar-cancha (sin dueño = se mantiene sin cambios)
     setSaving(false);
     if (res.ok) {
+      imagenesGuardadasRef.current = images;
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
       toast({ title: "¡Cambios guardados!", description: <span className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 shrink-0 text-green-500" />La cancha se actualizó correctamente.</span>, duration: 2500 });
@@ -704,6 +707,20 @@ export default function AdminEditarCanchaPage() {
     }
     setUploading(false);
     if (fileRef.current) fileRef.current.value = "";
+  };
+
+  const removeImage = (idx: number) => {
+    const url = images[idx];
+    setImages((prev) => prev.filter((_, j) => j !== idx));
+    // Si aún no estaba guardada en la BD, se borra del storage al instante
+    // para no dejarla huérfana (nunca aparecería en el diff al guardar)
+    if (url && !imagenesGuardadasRef.current.includes(url)) {
+      fetch("/api/upload", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      }).catch(() => {});
+    }
   };
 
   if (loading)
@@ -1004,9 +1021,7 @@ export default function AdminEditarCanchaPage() {
                     />
                     <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
                       <button
-                        onClick={() =>
-                          setImages((prev) => prev.filter((_, j) => j !== i))
-                        }
+                        onClick={() => removeImage(i)}
                         className="flex h-8 w-8 items-center justify-center rounded-full bg-destructive text-white"
                       >
                         <Trash2 className="h-4 w-4" />

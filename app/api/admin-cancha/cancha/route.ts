@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
+import { eliminarImagenesHuerfanas } from '@/lib/storage-cleanup';
 
 // GET /api/admin-cancha/cancha?id=xxx — obtener cancha del dueño
 // PATCH /api/admin-cancha/cancha?id=xxx — editar cancha
@@ -60,6 +61,9 @@ export async function PATCH(req: NextRequest) {
   const body = await req.json();
   const { descripcion, telefono, precioHora, amenidades, imagenes, lat, lng, direccion, distrito, preciosPorHora, preciosPorDia, balonPrecio, chalecosPrecio, balonDisponible, chalecosDisponible, superficie, maxJugadores, yapeNumero, plinNumero, horaApertura, horaCierre, accesorios } = body;
 
+  // Imágenes previas, para poder limpiar del storage las que se hayan quitado
+  const { data: canchaPrevia } = await sb.from('canchas').select('imagenes').eq('id', canchaId).single();
+
   const updateData: Record<string, any> = {
     descripcion,
     telefono,
@@ -103,6 +107,8 @@ export async function PATCH(req: NextRequest) {
     console.error('Error al actualizar cancha:', canchaError);
     return NextResponse.json({ error: canchaError.message }, { status: 500 });
   }
+
+  await eliminarImagenesHuerfanas(sb, canchaPrevia?.imagenes, imagenes);
 
   return NextResponse.json({ ok: true, distrito });
 }

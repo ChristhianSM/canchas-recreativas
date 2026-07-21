@@ -1093,6 +1093,7 @@ export default function OwnerEditarCanchaPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
+  const imagenesGuardadasRef = useRef<string[]>([]);
 
   const [cancha, setCancha] = useState<Cancha | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1161,6 +1162,7 @@ export default function OwnerEditarCanchaPage() {
         setPrice(canchaData.precio_por_hora ?? 0);
         setAmenities(canchaData.amenidades ?? []);
         setImages(canchaData.imagenes ?? []);
+        imagenesGuardadasRef.current = canchaData.imagenes ?? [];
         setPreciosPorHora(canchaData.precios_por_hora ?? {});
         setPreciosPorDia(canchaData.precios_por_dia ?? {});
         setAccesorios(canchaData.accesorios ?? []);
@@ -1237,6 +1239,7 @@ export default function OwnerEditarCanchaPage() {
     const data = await res.json();
     setSaving(false);
     if (res.ok) {
+      imagenesGuardadasRef.current = images;
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
       toast({ title: "¡Cambios guardados!", description: <span className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 shrink-0 text-green-500" />La configuración de tu cancha se actualizó correctamente.</span>, duration: 2500 });
@@ -1246,8 +1249,19 @@ export default function OwnerEditarCanchaPage() {
     }
   };
 
-  const removeImage = (idx: number) =>
+  const removeImage = (idx: number) => {
+    const url = images[idx];
     setImages((prev) => prev.filter((_, i) => i !== idx));
+    // Si aún no estaba guardada en la BD, se borra del storage al instante
+    // para no dejarla huérfana (nunca aparecería en el diff al guardar)
+    if (url && !imagenesGuardadasRef.current.includes(url)) {
+      ownerFetch("/api/upload", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      }).catch(() => {});
+    }
+  };
 
   const procesarImagen = (file: File): Promise<File> =>
     new Promise((resolve, reject) => {

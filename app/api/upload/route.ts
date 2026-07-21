@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
+import { extraerPath } from '@/lib/storage-cleanup';
 import sharp from 'sharp';
 
 const MAX_IMAGES_PER_CANCHA = 6;
@@ -103,4 +104,27 @@ export async function POST(req: NextRequest) {
     console.error('[upload] Error compressing:', error);
     return NextResponse.json({ error: 'Error al procesar la imagen' }, { status: 500 });
   }
+}
+
+// Elimina una imagen del storage que aún no fue persistida en la BD
+// (subida y luego quitada dentro de la misma sesión de edición, antes de guardar)
+export async function DELETE(req: NextRequest) {
+  const token = req.headers.get('authorization')?.replace('Bearer ', '');
+  const sb = createServiceClient();
+
+  if (token) {
+    const { data: { user }, error: authError } = await sb.auth.getUser(token);
+    if (authError || !user) return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
+  }
+
+  const { url } = await req.json();
+  if (!url) return NextResponse.json({ error: 'URL requerida' }, { status: 400 });
+
+  const path = extraerPath(url);
+  if (!path) return NextResponse.json({ error: 'URL inválida' }, { status: 400 });
+
+  const { error } = await sb.storage.from('imagenes').remove([path]);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  return NextResponse.json({ ok: true });
 }

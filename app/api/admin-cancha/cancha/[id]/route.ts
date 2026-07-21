@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
 import { verifyToken } from '@/lib/admin-auth';
+import { eliminarImagenesHuerfanas } from '@/lib/storage-cleanup';
 
 // GET — obtener cancha del dueño
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -49,6 +50,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const body = await req.json();
   const { descripcion, telefono, precioHora, amenidades, imagenes, lat, lng, direccion, distrito, preciosPorHora } = body;
 
+  // Imágenes previas, para poder limpiar del storage las que se hayan quitado
+  const { data: canchaPrevia } = await sb.from('canchas').select('imagenes').eq('id', id).single();
+
   const updateData: any = {
     descripcion,
     telefono,
@@ -69,6 +73,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     .eq('id', id);
 
   if (canchaError) return NextResponse.json({ error: canchaError.message }, { status: 500 });
+
+  await eliminarImagenesHuerfanas(sb, canchaPrevia?.imagenes, imagenes);
 
   return NextResponse.json({ ok: true, distrito });
 }

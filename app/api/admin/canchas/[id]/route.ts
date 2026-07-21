@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
 import { verifyAdmin } from '@/lib/admin-auth';
+import { eliminarImagenesHuerfanas } from '@/lib/storage-cleanup';
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const token = req.headers.get('authorization')?.replace('Bearer ', '');
@@ -16,6 +17,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     preciosPorHora, preciosPorDia, accesorios,
     superficie, maxJugadores, horaApertura, horaCierre, activa,
   } = body;
+
+  // Imágenes previas, para poder limpiar del storage las que se hayan quitado
+  let canchaPrevia: { imagenes: string[] | null } | null = null;
+  if (imagenes !== undefined) {
+    const { data } = await sb.from('canchas').select('imagenes').eq('id', id).single();
+    canchaPrevia = data;
+  }
 
   const updateData: Record<string, any> = {};
   if (descripcion !== undefined) updateData.descripcion = descripcion;
@@ -42,6 +50,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     .eq('id', id);
 
   if (canchaError) return NextResponse.json({ error: canchaError.message }, { status: 500 });
+
+  if (imagenes !== undefined) {
+    await eliminarImagenesHuerfanas(sb, canchaPrevia?.imagenes, imagenes);
+  }
 
   // Actualizar horarios bloqueados
   await sb.from('horarios_bloqueados').delete().eq('cancha_id', id);
