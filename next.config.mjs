@@ -28,9 +28,12 @@ const nextConfig = {
   // El rastreador de archivos de `output: standalone` no detecta los requires
   // dinámicos que usa tesseract.js para cargar su worker y sus .wasm, así que
   // sin esto el paquete queda fuera del build de producción y la validación de
-  // captura de pago falla en silencio (siempre "pasa" cualquier imagen).
+  // captura de pago falla en silencio (siempre "pasa" cualquier imagen). También
+  // se incluye lib/tessdata (modelo de idioma empaquetado localmente) para no
+  // depender de una descarga por red en cada cold start.
   outputFileTracingIncludes: {
-    'app/api/reservas/route': ['./node_modules/tesseract.js/**', './node_modules/tesseract.js-core/**'],
+    'app/api/reservas/route': ['./node_modules/tesseract.js/**', './node_modules/tesseract.js-core/**', './lib/tessdata/**'],
+    'app/api/partidos/route': ['./node_modules/tesseract.js/**', './node_modules/tesseract.js-core/**', './lib/tessdata/**'],
   },
   // Optimizaciones de rendimiento
   compress: true,
