@@ -28,6 +28,21 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json(reserva);
   }
 
+  // Marcar diferencia de reasignación como saldada (entregada/cobrada en persona)
+  if (body.diferencia_reasignacion_saldada !== undefined) {
+    const { data: reserva, error } = await sb
+      .from('reservas')
+      .update({
+        diferencia_reasignacion_saldada: body.diferencia_reasignacion_saldada,
+        diferencia_reasignacion_saldada_en: body.diferencia_reasignacion_saldada ? new Date().toISOString() : null,
+      })
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json(reserva);
+  }
+
   const { estado } = body;
 
   if (!['confirmada', 'rechazada'].includes(estado)) {
