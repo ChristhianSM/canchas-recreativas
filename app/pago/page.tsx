@@ -17,6 +17,7 @@ import {
   Mail,
   Lock,
   MapPin,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LoadingButton } from "@/components/loading-button";
@@ -417,6 +418,12 @@ function PagoContent() {
     navigator.clipboard.writeText(num.replace(/\s/g, ""));
     setCopiado(true);
     setTimeout(() => setCopiado(false), 2000);
+  };
+
+  const handleEliminarImagen = () => {
+    setComprobante(null);
+    setSubmitError(null);
+    if (fileRef.current) fileRef.current.value = "";
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1263,14 +1270,25 @@ function PagoContent() {
                 className="object-contain"
               />
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full"
-              onClick={() => fileRef.current?.click()}
-            >
-              Cambiar imagen
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1"
+                onClick={() => fileRef.current?.click()}
+              >
+                Cambiar imagen
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 text-destructive hover:text-destructive"
+                onClick={handleEliminarImagen}
+              >
+                <Trash2 className="h-4 w-4" />
+                Eliminar
+              </Button>
+            </div>
           </div>
         ) : (
           <button
