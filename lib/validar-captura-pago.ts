@@ -1,6 +1,7 @@
 import { createWorker } from 'tesseract.js';
 import os from 'os';
 import path from 'path';
+import fs from 'fs';
 
 const PALABRAS_CLAVE = ['yape', 'plin'];
 const TIMEOUT_MS = 15_000;
@@ -20,6 +21,11 @@ function normalizar(texto: string): string {
 }
 
 async function reconocerTexto(buffer: Buffer): Promise<string> {
+  // Diagnóstico temporal: confirmar en los logs de Vercel si el modelo
+  // realmente llegó al bundle desplegado y en qué ruta se está buscando.
+  const archivoModelo = path.join(LANG_PATH, 'spa.traineddata.gz');
+  console.error(`[validar-captura-pago] cwd=${process.cwd()} langPath=${LANG_PATH} existe=${fs.existsSync(archivoModelo)}`);
+
   // cachePath apunta al tmpdir del SO porque en entornos serverless (Vercel)
   // el resto del filesystem es de solo lectura.
   const worker = await createWorker('spa', 1, { cachePath: os.tmpdir(), langPath: LANG_PATH });
