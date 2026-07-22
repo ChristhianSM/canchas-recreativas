@@ -1020,17 +1020,6 @@ export default function AdminReservasPage() {
                   <p className="text-xs font-medium text-primary mt-0.5">
                     {selected.seccionNombre ? `Sección ${selected.seccionNombre}` : "Cancha completa"}
                   </p>
-                  {["pendiente", "confirmada"].includes(selected.estado) &&
-                    seccionesReasignar.length > 0 &&
-                    new Date(`${selected.fecha}T${selected.hora.split(" - ")[0]}`) > new Date() && (
-                      <button
-                        onClick={abrirReasignar}
-                        className="mt-1.5 flex items-center gap-1 text-xs font-medium text-purple-600 hover:underline"
-                      >
-                        <ArrowLeftRight className="h-3 w-3" />
-                        Reasignar sección
-                      </button>
-                    )}
                 </div>
                 <div className="rounded-lg bg-muted/50 p-3">
                   <p className="text-xs text-muted-foreground">Fecha y hora</p>
@@ -1051,6 +1040,20 @@ export default function AdminReservasPage() {
                     {selected.metodoPago}
                   </p>
                 </div>
+              </div>
+
+              <div className="min-h-5">
+                {["pendiente", "confirmada"].includes(selected.estado) &&
+                  seccionesReasignar.length > 0 &&
+                  new Date(`${selected.fecha}T${selected.hora.split(" - ")[0]}`) > new Date() && (
+                    <button
+                      onClick={abrirReasignar}
+                      className="flex items-center gap-1.5 text-xs font-medium text-purple-600 hover:underline"
+                    >
+                      <ArrowLeftRight className="h-3.5 w-3.5" />
+                      Reasignar sección
+                    </button>
+                  )}
               </div>
 
               {/* Cupón de fidelización */}
@@ -1390,9 +1393,9 @@ export default function AdminReservasPage() {
                     })}
                   </SelectContent>
                 </Select>
-                {cargandoDisponibilidad && (
-                  <p className="text-xs text-muted-foreground">Verificando disponibilidad...</p>
-                )}
+                <p className="min-h-4 text-xs text-muted-foreground">
+                  {cargandoDisponibilidad ? "Verificando disponibilidad..." : ""}
+                </p>
               </div>
               {errorReasignar && (
                 <p className="text-sm text-destructive">{errorReasignar}</p>
