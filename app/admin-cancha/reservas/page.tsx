@@ -1086,7 +1086,8 @@ export default function OwnerReservasPage() {
                     {selected.seccion_nombre ? `Sección ${selected.seccion_nombre}` : "Cancha completa"}
                   </p>
                   {["pendiente", "confirmada"].includes(selected.estado) &&
-                    seccionesReasignar.length > 0 && (
+                    seccionesReasignar.length > 0 &&
+                    new Date(`${selected.fecha}T${selected.hora.split(" - ")[0]}`) > new Date() && (
                       <button
                         onClick={abrirReasignar}
                         className="mt-1.5 flex items-center gap-1 text-xs font-medium text-purple-600 hover:underline"

@@ -72,6 +72,12 @@ export async function reasignarSeccionReserva(
     return { ok: false, status: 400, error: 'Solo se pueden reasignar reservas pendientes o confirmadas' };
   }
 
+  // No tiene sentido mover una reserva cuyo horario ya empezó o pasó (el partido ya se jugó o está en curso)
+  const fechaHoraReserva = new Date(`${reserva.fecha}T${reserva.hora}`);
+  if (fechaHoraReserva < new Date()) {
+    return { ok: false, status: 400, error: 'No se puede reasignar una reserva cuyo horario ya pasó' };
+  }
+
   const seccionActual = reserva.seccion_id ?? null;
   if (seccionActual === seccionIdDestino) {
     return { ok: false, status: 400, error: 'La reserva ya está en ese destino' };
