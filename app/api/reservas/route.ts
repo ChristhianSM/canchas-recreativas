@@ -205,7 +205,7 @@ export async function POST(req: NextRequest) {
   // que viaja como query param editable (?precio=) y luego en el body del POST.
   const { data: canchaReal, error: canchaRealError } = await sb
     .from('canchas')
-    .select('precio_por_hora, precios_por_hora, precios_por_dia, accesorios')
+    .select('precio_por_hora, precios_por_hora, precios_por_dia, accesorios, comprobante_obligatorio')
     .eq('id', canchaId)
     .maybeSingle();
 
@@ -261,6 +261,13 @@ export async function POST(req: NextRequest) {
   if (modo_pago === 'parcial' && totalReal > 0 && Math.round(totalReal * 0.2) !== monto_adelanto) {
     return NextResponse.json(
       { error: 'El monto de adelanto no coincide con el 20% del precio total.' },
+      { status: 400 }
+    );
+  }
+
+  if (canchaReal.comprobante_obligatorio && metodoPago !== 'efectivo' && !comprobantePublicUrl) {
+    return NextResponse.json(
+      { error: 'Esta cancha requiere que subas tu comprobante de pago para completar la reserva.' },
       { status: 400 }
     );
   }

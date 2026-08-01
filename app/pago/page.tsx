@@ -172,6 +172,7 @@ function PagoContent() {
             lng: data.longitud ?? null,
             yapeNumero: data.yape_numero ?? "",
             plinNumero: data.plin_numero ?? "",
+            comprobanteObligatorio: data.comprobante_obligatorio ?? false,
           });
           if (accsParam) {
             const ids = decodeURIComponent(accsParam)
@@ -581,6 +582,13 @@ function PagoContent() {
       }
       setEnviando(false);
       setPaso("exito");
+      return;
+    }
+
+    if (cancha.comprobanteObligatorio && !comprobante) {
+      setSubmitError(
+        "Esta cancha requiere que subas tu comprobante de pago para completar la reserva.",
+      );
       return;
     }
 
@@ -1306,14 +1314,24 @@ function PagoContent() {
             </div>
           </button>
         )}
-        <div className="flex items-start gap-2 rounded-xl bg-muted/60 p-3">
-          <Shield className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-          <p className="text-xs text-muted-foreground">
-            Si no tienes el comprobante a mano, puedes enviarlo después. El
-            administrador revisará tu pago y te confirmará la reserva por
-            WhatsApp.
-          </p>
-        </div>
+        {cancha.comprobanteObligatorio ? (
+          <div className="flex items-start gap-2 rounded-xl bg-amber-500/10 border border-amber-500/20 p-3">
+            <Shield className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+            <p className="text-xs text-amber-700 dark:text-amber-400">
+              Esta cancha exige el comprobante de pago para confirmar tu
+              reserva. No podrás continuar sin subir la captura.
+            </p>
+          </div>
+        ) : (
+          <div className="flex items-start gap-2 rounded-xl bg-muted/60 p-3">
+            <Shield className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+            <p className="text-xs text-muted-foreground">
+              Si no tienes el comprobante a mano, puedes enviarlo después. El
+              administrador revisará tu pago y te confirmará la reserva por
+              WhatsApp.
+            </p>
+          </div>
+        )}
       </Card>
       {submitError && (
         <div className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
@@ -1328,8 +1346,13 @@ function PagoContent() {
           isLoading={enviando}
           loadingText="Confirmando..."
           loadingVariant="spinner"
+          disabled={cancha.comprobanteObligatorio && !comprobante}
         >
-          {comprobante ? "Confirmar pago ✓" : "Enviar sin comprobante"}
+          {comprobante
+            ? "Confirmar pago ✓"
+            : cancha.comprobanteObligatorio
+              ? "Sube tu comprobante para continuar"
+              : "Enviar sin comprobante"}
         </LoadingButton>
         <Button
           variant="outline"

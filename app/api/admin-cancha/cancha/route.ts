@@ -59,7 +59,7 @@ export async function PATCH(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { descripcion, telefono, precioHora, amenidades, imagenes, lat, lng, direccion, distrito, preciosPorHora, preciosPorDia, balonPrecio, chalecosPrecio, balonDisponible, chalecosDisponible, superficie, maxJugadores, yapeNumero, plinNumero, horaApertura, horaCierre, accesorios } = body;
+  const { descripcion, telefono, precioHora, amenidades, imagenes, lat, lng, direccion, distrito, preciosPorHora, preciosPorDia, balonPrecio, chalecosPrecio, balonDisponible, chalecosDisponible, superficie, maxJugadores, yapeNumero, plinNumero, comprobanteObligatorio, horaApertura, horaCierre, accesorios } = body;
 
   // Imágenes previas, para poder limpiar del storage las que se hayan quitado
   const { data: canchaPrevia } = await sb.from('canchas').select('imagenes').eq('id', canchaId).single();
@@ -94,6 +94,7 @@ export async function PATCH(req: NextRequest) {
 
   if (yapeNumero  !== undefined) updateData.yape_numero = yapeNumero || null;
   if (plinNumero  !== undefined) updateData.plin_numero = plinNumero || null;
+  if (comprobanteObligatorio !== undefined) updateData.comprobante_obligatorio = !!comprobanteObligatorio;
   if (accesorios  !== undefined) updateData.accesorios  = accesorios ?? [];
   if (horaApertura !== undefined) updateData.hora_apertura = horaApertura;
   if (horaCierre   !== undefined) updateData.hora_cierre   = horaCierre;

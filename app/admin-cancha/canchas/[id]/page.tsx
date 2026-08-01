@@ -1131,6 +1131,7 @@ export default function OwnerEditarCanchaPage() {
   const [distrito, setDistrito] = useState("");
   const [yapeNumero, setYapeNumero] = useState("");
   const [plinNumero, setPlinNumero] = useState("");
+  const [comprobanteObligatorio, setComprobanteObligatorio] = useState(false);
   const [yapeError, setYapeError] = useState("");
   const [plinError, setPlinError] = useState("");
   const [horaApertura, setHoraApertura] = useState("06:00");
@@ -1176,6 +1177,7 @@ export default function OwnerEditarCanchaPage() {
         setDistrito(canchaData.distrito ?? "");
         setYapeNumero(canchaData.yape_numero ?? "");
         setPlinNumero(canchaData.plin_numero ?? "");
+        setComprobanteObligatorio(canchaData.comprobante_obligatorio ?? false);
         setHoraApertura(canchaData.hora_apertura ?? "06:00");
         setHoraCierre(canchaData.hora_cierre ?? "23:00");
       })
@@ -1231,6 +1233,7 @@ export default function OwnerEditarCanchaPage() {
         distrito: distrito || undefined,
         yapeNumero: yapeNumero || null,
         plinNumero: plinNumero || null,
+        comprobanteObligatorio: yapeNumero || plinNumero ? comprobanteObligatorio : false,
         horaApertura,
         horaCierre,
       }),
@@ -1669,6 +1672,31 @@ export default function OwnerEditarCanchaPage() {
                     </>
                   )}
                 </div>
+                {(yapeNumero || plinNumero) && (
+                  <div className="flex items-start gap-2.5 rounded-xl border border-border px-3 py-2.5">
+                    <Checkbox
+                      id="comprobante-obligatorio"
+                      checked={comprobanteObligatorio}
+                      onCheckedChange={(checked) =>
+                        setComprobanteObligatorio(checked === true)
+                      }
+                      className="mt-0.5"
+                    />
+                    <label
+                      htmlFor="comprobante-obligatorio"
+                      className="text-xs leading-relaxed cursor-pointer"
+                    >
+                      <span className="font-medium text-foreground">
+                        Exigir comprobante de pago obligatorio
+                      </span>
+                      <p className="text-muted-foreground mt-0.5">
+                        Si lo activas, el cliente no podrá completar la
+                        reserva sin subir la captura de Yape/Plin. Si lo
+                        dejas apagado, podrá reservar y pagar en cancha.
+                      </p>
+                    </label>
+                  </div>
+                )}
               </div>
             </Card>
 
