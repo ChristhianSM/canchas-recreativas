@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
   const body = await req.json();
-  const { canchaId, activo, umbral, premioTipo, premioValor, premioDescripcion } = body;
+  const { canchaId, activo, umbral, premioTipo, premioValor, premioDescripcion, icono } = body;
 
   if (!canchaId) return NextResponse.json({ error: 'canchaId requerido' }, { status: 400 });
 
@@ -73,12 +73,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'premio_tipo inválido' }, { status: 400 });
   }
 
+  if (icono !== undefined && (typeof icono !== 'string' || icono.length === 0 || icono.length > 8)) {
+    return NextResponse.json({ error: 'icono inválido' }, { status: 400 });
+  }
+
   const payload: Record<string, unknown> = { actualizado_en: new Date().toISOString() };
   if (activo       !== undefined) payload.activo              = activo;
   if (umbral       !== undefined) payload.umbral              = umbral;
   if (premioTipo   !== undefined) payload.premio_tipo         = premioTipo;
   if (premioValor  !== undefined) payload.premio_valor        = premioValor;
   if (premioDescripcion !== undefined) payload.premio_descripcion = premioDescripcion;
+  if (icono        !== undefined) payload.icono               = icono;
 
   // Upsert: si no existe, lo crea; si existe, lo actualiza
   const { data, error } = await sb

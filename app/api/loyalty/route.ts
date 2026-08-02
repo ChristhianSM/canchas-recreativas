@@ -62,6 +62,7 @@ export async function GET(req: NextRequest) {
         sellos:        s.sellos,
         total_reservas: s.total_reservas,
         umbral:        config.umbral,
+        icono:         config.icono || '⭐',
         premio_tipo:   config.premio_tipo,
         premio_valor:  config.premio_valor,
         premio_descripcion: config.premio_descripcion,

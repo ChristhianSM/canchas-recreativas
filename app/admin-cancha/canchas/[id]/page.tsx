@@ -826,6 +826,10 @@ const PREMIO_TIPOS = [
   { value: "hora_gratis", label: "Hora gratis" },
   { value: "personalizado", label: "Premio personalizado" },
 ];
+const ICONO_OPCIONES = [
+  "⭐", "⚽", "🏆", "🥅", "🔥", "🐱", "🦁", "🐯",
+  "🦅", "🐺", "🐻", "🦊", "🎯", "💪", "🌟", "🚀",
+];
 
 function FidelizacionTab({ canchaId }: { canchaId: string }) {
   const [activo, setActivo] = useState(false);
@@ -833,6 +837,7 @@ function FidelizacionTab({ canchaId }: { canchaId: string }) {
   const [premioTipo, setPremioTipo] = useState("descuento_fijo");
   const [premioValor, setPremioValor] = useState(5);
   const [premioDescripcion, setPremioDesc] = useState("");
+  const [icono, setIcono] = useState("⭐");
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [guardado, setGuardado] = useState(false);
@@ -850,6 +855,7 @@ function FidelizacionTab({ canchaId }: { canchaId: string }) {
           setPremioTipo(data.premio_tipo ?? "descuento_fijo");
           setPremioValor(data.premio_valor ?? 5);
           setPremioDesc(data.premio_descripcion ?? "");
+          setIcono(data.icono ?? "⭐");
         }
         setCargando(false);
       })
@@ -873,6 +879,7 @@ function FidelizacionTab({ canchaId }: { canchaId: string }) {
         premioTipo,
         premioValor: premioTipo === "hora_gratis" ? null : premioValor,
         premioDescripcion,
+        icono,
       }),
     });
     const data = await res.json();
@@ -976,6 +983,36 @@ function FidelizacionTab({ canchaId }: { canchaId: string }) {
 
         <Separator />
 
+        {/* Ícono del sello */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-foreground">
+            Símbolo de tu sello
+          </label>
+          <p className="text-xs text-muted-foreground">
+            Es lo que verá el cliente en cada sello ganado. Elige algo
+            relacionado a tu cancha.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {ICONO_OPCIONES.map((opt) => (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => setIcono(opt)}
+                className={cn(
+                  "flex h-11 w-11 items-center justify-center rounded-full border-2 text-xl transition-all",
+                  icono === opt
+                    ? "border-primary bg-primary/10"
+                    : "border-border bg-card hover:border-primary/40",
+                )}
+              >
+                {opt}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <Separator />
+
         {/* Tipo de premio */}
         <div className="space-y-2">
           <label className="text-sm font-medium text-foreground">
@@ -1043,12 +1080,32 @@ function FidelizacionTab({ canchaId }: { canchaId: string }) {
         </div>
 
         {/* Vista previa */}
-        <div className="rounded-xl border border-dashed border-primary/30 bg-primary/5 p-4 space-y-1">
+        <div className="rounded-xl border border-dashed border-primary/30 bg-primary/5 p-4 space-y-2">
           <p className="text-xs font-medium text-primary uppercase tracking-wide">
             Vista previa del cliente
           </p>
+          <div className="flex gap-1.5">
+            {Array.from({ length: Math.min(umbral, 10) }).map((_, i) => (
+              <div
+                key={i}
+                className={cn(
+                  "flex aspect-square w-9 items-center justify-center rounded-full border-2 text-base",
+                  i === 0
+                    ? "border-primary bg-primary/15"
+                    : "border-dashed border-border bg-muted/30 text-muted-foreground/30",
+                )}
+              >
+                {i === 0 ? icono : "○"}
+              </div>
+            ))}
+            {umbral > 10 && (
+              <span className="self-center text-xs text-muted-foreground">
+                +{umbral - 10}
+              </span>
+            )}
+          </div>
           <p className="text-sm text-foreground">
-            🎯 Reserva <strong>{umbral} veces</strong> en esta cancha y gana:{" "}
+            Reserva <strong>{umbral} veces</strong> en esta cancha y gana:{" "}
             {premioTipo === "descuento_fijo" && (
               <strong>S/ {premioValor} de descuento</strong>
             )}

@@ -1696,7 +1696,7 @@ function MiCuentaContent() {
                             </div>
                             {/* Grid de sellos */}
                             <div
-                              className="grid gap-1.5"
+                              className="grid gap-2"
                               style={{
                                 gridTemplateColumns: `repeat(${Math.min(cancha.umbral, 10)}, minmax(0,1fr))`,
                               }}
@@ -1706,13 +1706,13 @@ function MiCuentaContent() {
                                   <div
                                     key={i}
                                     className={cn(
-                                      "aspect-square rounded-lg border-2 flex items-center justify-center text-xs transition-all",
+                                      "aspect-square rounded-full border-2 flex items-center justify-center text-base sm:text-lg transition-all",
                                       i < cancha.sellos
-                                        ? "border-primary bg-primary text-primary-foreground"
-                                        : "border-border bg-muted/30 text-muted-foreground/30",
+                                        ? "border-primary bg-primary/10 ring-2 ring-primary/20"
+                                        : "border-dashed border-border bg-muted/20 text-muted-foreground/25",
                                     )}
                                   >
-                                    {i < cancha.sellos ? "★" : "○"}
+                                    {i < cancha.sellos ? (cancha.icono || "⭐") : "○"}
                                   </div>
                                 ),
                               )}
@@ -2490,20 +2490,25 @@ function MiCuentaContent() {
                         </div>
                         <div className="p-4 space-y-3">
                           {/* Barra progreso */}
-                          <div className="space-y-1">
-                            <div className="flex flex-wrap gap-1">
+                          <div className="space-y-2">
+                            <div
+                              className="grid gap-2"
+                              style={{
+                                gridTemplateColumns: `repeat(${Math.min(cancha.umbral, 8)}, minmax(0,1fr))`,
+                              }}
+                            >
                               {Array.from({ length: cancha.umbral }).map(
                                 (_: any, i: number) => (
                                   <div
                                     key={i}
                                     className={cn(
-                                      "h-5 w-5 rounded text-center text-xs leading-5 border",
+                                      "aspect-square rounded-full border-2 flex items-center justify-center text-lg transition-all",
                                       i < cancha.sellos
-                                        ? "border-primary bg-primary text-primary-foreground"
-                                        : "border-border bg-muted/30 text-muted-foreground/30",
+                                        ? "border-primary bg-primary/10 ring-2 ring-primary/20"
+                                        : "border-dashed border-border bg-muted/20 text-muted-foreground/25",
                                     )}
                                   >
-                                    {i < cancha.sellos ? "★" : "○"}
+                                    {i < cancha.sellos ? (cancha.icono || "⭐") : "○"}
                                   </div>
                                 ),
                               )}
