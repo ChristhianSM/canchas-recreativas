@@ -44,6 +44,38 @@ export function getHorasOperacion(horaApertura = '06:00', horaCierre = '23:00'):
   ];
 }
 
+/** Fecha de hoy en formato 'YYYY-MM-DD', en hora local (evita el desfase de toISOString con UTC). */
+export function hoyStr(): string {
+  const hoy = new Date();
+  const y = hoy.getFullYear();
+  const mo = String(hoy.getMonth() + 1).padStart(2, '0');
+  const dd = String(hoy.getDate()).padStart(2, '0');
+  return `${y}-${mo}-${dd}`;
+}
+
+/**
+ * Indica si una hora de un día de operación ya pasó respecto al momento actual.
+ * `horasDelDia` es el listado devuelto por getHorasOperacion, usado para detectar
+ * si `hora` pertenece al tramo "madrugada" de un horario que cruza la medianoche
+ * (en ese caso no se considera pasado aunque sea numéricamente menor).
+ */
+export function esHoraPasada(fecha: string, hora: string, horasDelDia: string[]): boolean {
+  const ahora = new Date();
+  const y = ahora.getFullYear();
+  const mo = String(ahora.getMonth() + 1).padStart(2, '0');
+  const dd = String(ahora.getDate()).padStart(2, '0');
+  if (fecha !== `${y}-${mo}-${dd}`) return false;
+
+  const horaApertura = Number(horasDelDia[0]?.split(':')[0] ?? 0);
+  const h = Number(hora.split(':')[0]);
+  if (horaApertura > 0 && h < horaApertura) return false;
+
+  const [hh, mm] = hora.split(':').map(Number);
+  const objetivo = new Date();
+  objetivo.setHours(hh, mm, 0, 0);
+  return objetivo <= ahora;
+}
+
 /**
  * Dado un bloqueo y una fecha+hora, determina si ese slot está bloqueado.
  * @param bloqueo  Registro de bloqueo_admin

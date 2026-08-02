@@ -14,8 +14,10 @@ import {
   PlusCircle,
   RepeatIcon,
   ArrowLeftRight,
+  ArrowUp,
 } from "lucide-react";
-import { getHorasOperacion } from "@/lib/bloqueos-utils";
+import { cn } from "@/lib/utils";
+import { getHorasOperacion, esHoraPasada, hoyStr } from "@/lib/bloqueos-utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -160,6 +162,7 @@ export default function OwnerReservasPage() {
     { id: string; nombre: string; hora_apertura: string; hora_cierre: string }[]
   >([]);
   const [horasOcupadas, setHorasOcupadas] = useState<string[]>([]);
+  const [horasBloqueadas, setHorasBloqueadas] = useState<string[]>([]);
   const [loadingHoras, setLoadingHoras] = useState(false);
   const [modalDirecta, setModalDirecta] = useState(false);
   const [directaLoading, setDirectaLoading] = useState(false);
@@ -316,6 +319,7 @@ export default function OwnerReservasPage() {
   useEffect(() => {
     if (!directaForm.cancha_id || !directaForm.fecha) {
       setHorasOcupadas([]);
+      setHorasBloqueadas([]);
       return;
     }
     setLoadingHoras(true);
@@ -323,8 +327,14 @@ export default function OwnerReservasPage() {
       `/api/reservas/horarios-ocupados?cancha_id=${directaForm.cancha_id}&fecha=${directaForm.fecha}`,
     )
       .then((r) => r.json())
-      .then((d) => setHorasOcupadas(d.ocupadas ?? []))
-      .catch(() => setHorasOcupadas([]))
+      .then((d) => {
+        setHorasOcupadas(d.reservadas ?? []);
+        setHorasBloqueadas(d.bloqueadas ?? []);
+      })
+      .catch(() => {
+        setHorasOcupadas([]);
+        setHorasBloqueadas([]);
+      })
       .finally(() => setLoadingHoras(false));
   }, [directaForm.cancha_id, directaForm.fecha]);
 
@@ -1515,9 +1525,9 @@ export default function OwnerReservasPage() {
                 — S/ {selected.precio}
               </p>
               <div className="space-y-1.5">
-                <Label>Mover a</Label>
+                <Label htmlFor="reasignar-mover-a">Mover a</Label>
                 <Select value={seccionElegida} onValueChange={setSeccionElegida}>
-                  <SelectTrigger>
+                  <SelectTrigger id="reasignar-mover-a">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1601,10 +1611,11 @@ export default function OwnerReservasPage() {
               </p>
             </div>
             <div>
-              <label className="text-sm font-medium mb-1 block">
+              <label htmlFor="cancelar-motivo" className="text-sm font-medium mb-1 block">
                 Motivo (opcional)
               </label>
               <textarea
+                id="cancelar-motivo"
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
                 rows={3}
                 placeholder="Ej: Mantenimiento de la cancha, problema técnico..."
@@ -1710,7 +1721,7 @@ export default function OwnerReservasPage() {
               {/* Cancha — solo si el dueño tiene más de una */}
               {canchasOwner.length > 1 && (
                 <div className="space-y-1.5">
-                  <Label>Cancha</Label>
+                  <Label htmlFor="directa-cancha">Cancha</Label>
                   <Select
                     value={directaForm.cancha_id}
                     onValueChange={(v) => {
@@ -1726,7 +1737,13 @@ export default function OwnerReservasPage() {
                       }));
                     }}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger
+                      id="directa-cancha"
+                      className={cn(
+                        !directaForm.cancha_id &&
+                          "border-primary ring-2 ring-primary/20",
+                      )}
+                    >
                       <SelectValue placeholder="Seleccionar cancha" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1737,13 +1754,19 @@ export default function OwnerReservasPage() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {!directaForm.cancha_id && (
+                    <p className="flex items-center gap-1.5 text-xs font-medium text-primary">
+                      <ArrowUp className="h-3.5 w-3.5" />
+                      Elige una cancha para habilitar el resto del formulario
+                    </p>
+                  )}
                 </div>
               )}
 
               {/* Sección — solo si la cancha tiene secciones */}
               {seccionesCancha.length > 0 && (
                 <div className="space-y-1.5">
-                  <Label>Sección</Label>
+                  <Label htmlFor="directa-seccion">Sección</Label>
                   <Select
                     value={directaForm.seccion_id || "__completa__"}
                     onValueChange={(v) => {
@@ -1760,7 +1783,7 @@ export default function OwnerReservasPage() {
                       }
                     }}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="directa-seccion">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -1777,8 +1800,9 @@ export default function OwnerReservasPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="col-span-2 space-y-1.5">
-                  <Label>Nombre del cliente *</Label>
+                  <Label htmlFor="directa-nombre">Nombre del cliente *</Label>
                   <Input
+                    id="directa-nombre"
                     placeholder="Ej: Juan Pérez"
                     disabled={!directaForm.cancha_id}
                     value={directaForm.cliente_nombre}
@@ -1791,8 +1815,9 @@ export default function OwnerReservasPage() {
                   />
                 </div>
                 <div className="col-span-2 space-y-1.5">
-                  <Label>Teléfono (opcional)</Label>
+                  <Label htmlFor="directa-telefono">Teléfono (opcional)</Label>
                   <Input
+                    id="directa-telefono"
                     placeholder="987654321"
                     disabled={!directaForm.cancha_id}
                     value={directaForm.cliente_telefono}
@@ -1805,11 +1830,14 @@ export default function OwnerReservasPage() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Fecha de inicio *</Label>
+                  <Label htmlFor="directa-fecha">Fecha de inicio *</Label>
                   <Input
+                    id="directa-fecha"
                     type="date"
+                    min={hoyStr()}
                     disabled={!directaForm.cancha_id}
                     value={directaForm.fecha}
+                    onClick={(e) => e.currentTarget.showPicker?.()}
                     onChange={(e) =>
                       setDirectaForm((f) => ({
                         ...f,
@@ -1820,7 +1848,7 @@ export default function OwnerReservasPage() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Hora *</Label>
+                  <Label htmlFor="directa-hora">Hora *</Label>
                   <Select
                     value={directaForm.hora}
                     disabled={!directaForm.fecha || loadingHoras}
@@ -1828,7 +1856,7 @@ export default function OwnerReservasPage() {
                       setDirectaForm((f) => ({ ...f, hora: v }))
                     }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="directa-hora">
                       <SelectValue
                         placeholder={
                           loadingHoras
@@ -1847,23 +1875,39 @@ export default function OwnerReservasPage() {
                         const horas = c
                           ? getHorasOperacion(c.hora_apertura, c.hora_cierre)
                           : getHorasOperacion("06:00", "22:00");
-                        return horas.map((h) => (
-                          <SelectItem
-                            key={h}
-                            value={h}
-                            disabled={horasOcupadas.includes(h)}
-                          >
-                            {h}
-                            {horasOcupadas.includes(h) ? " — ocupado" : ""}
-                          </SelectItem>
-                        ));
+                        return horas.map((h) => {
+                          const pasada = esHoraPasada(
+                            directaForm.fecha,
+                            h,
+                            horas,
+                          );
+                          const ocupada = horasOcupadas.includes(h);
+                          const bloqueada = horasBloqueadas.includes(h);
+                          return (
+                            <SelectItem
+                              key={h}
+                              value={h}
+                              disabled={ocupada || bloqueada || pasada}
+                            >
+                              {h}
+                              {ocupada
+                                ? " — ocupado"
+                                : bloqueada
+                                  ? " — bloqueo admin"
+                                  : pasada
+                                    ? " — hora pasada"
+                                    : ""}
+                            </SelectItem>
+                          );
+                        });
                       })()}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Precio (S/) *</Label>
+                  <Label htmlFor="directa-precio">Precio (S/) *</Label>
                   <Input
+                    id="directa-precio"
                     type="number"
                     min="0"
                     placeholder="80"
@@ -1875,7 +1919,7 @@ export default function OwnerReservasPage() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Cobro</Label>
+                  <Label htmlFor="directa-cobro">Cobro</Label>
                   <Select
                     disabled={!directaForm.cancha_id}
                     value={directaForm.metodo_pago}
@@ -1883,7 +1927,7 @@ export default function OwnerReservasPage() {
                       setDirectaForm((f) => ({ ...f, metodo_pago: v }))
                     }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="directa-cobro">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -1894,7 +1938,10 @@ export default function OwnerReservasPage() {
                   </Select>
                 </div>
                 <div className="col-span-2 space-y-1.5">
-                  <Label className="flex items-center gap-1.5">
+                  <Label
+                    htmlFor="directa-semanas"
+                    className="flex items-center gap-1.5"
+                  >
                     <RepeatIcon className="h-3.5 w-3.5 text-muted-foreground" />
                     Repetir semanalmente durante
                   </Label>
@@ -1905,7 +1952,7 @@ export default function OwnerReservasPage() {
                       setDirectaForm((f) => ({ ...f, semanas: v }))
                     }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="directa-semanas">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>

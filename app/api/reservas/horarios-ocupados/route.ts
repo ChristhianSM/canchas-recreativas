@@ -3,13 +3,15 @@ import { createServiceClient } from '@/lib/supabase';
 import { horasBloqueadasEnFecha, type BloqueoAdmin } from '@/lib/bloqueos-utils';
 
 // GET /api/reservas/horarios-ocupados?cancha_id=X&fecha=YYYY-MM-DD
-// Devuelve las horas ya ocupadas: reservas activas + bloqueos del dueño + bloqueos admin
+// Devuelve las horas no disponibles, separadas por motivo:
+// - reservadas: hay una reserva real de un cliente
+// - bloqueadas: bloqueo del dueño o del admin (no es una reserva)
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const cancha_id = searchParams.get('cancha_id');
   const fecha     = searchParams.get('fecha');
 
-  if (!cancha_id || !fecha) return NextResponse.json({ ocupadas: [] });
+  if (!cancha_id || !fecha) return NextResponse.json({ reservadas: [], bloqueadas: [] });
 
   const sb = createServiceClient();
 
@@ -36,20 +38,24 @@ export async function GET(req: NextRequest) {
       .eq('cancha_id', cancha_id),
   ]);
 
-  const ocupadas = new Set<string>();
+  const reservadas = new Set<string>();
+  const bloqueadas = new Set<string>();
 
   // Reservas activas
-  for (const r of reservas ?? []) ocupadas.add(r.hora);
+  for (const r of reservas ?? []) reservadas.add(r.hora);
 
   // Bloqueos permanentes del dueño
-  for (const b of horariosBloqueados ?? []) ocupadas.add(b.hora);
+  for (const b of horariosBloqueados ?? []) bloqueadas.add(b.hora);
 
   // Bloqueos admin (la lógica ya está en el helper)
   const horasBloqueoAdmin = horasBloqueadasEnFecha(
     (bloqueosAdmin ?? []) as BloqueoAdmin[],
     fecha,
   );
-  for (const h of horasBloqueoAdmin) ocupadas.add(h);
+  for (const h of horasBloqueoAdmin) bloqueadas.add(h);
 
-  return NextResponse.json({ ocupadas: Array.from(ocupadas) });
+  return NextResponse.json({
+    reservadas: Array.from(reservadas),
+    bloqueadas: Array.from(bloqueadas),
+  });
 }

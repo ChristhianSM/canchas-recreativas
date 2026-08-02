@@ -38,7 +38,7 @@ html {
 
   /* ── Bordes / Inputs ── */
   --border: oklch(0.87 0.01 145);
-  --input: oklch(0.91 0.01 145);
+  --input: oklch(0.78 0.02 145);
   --ring: oklch(0.47 0.175 145);
 
   /* ── Charts ── */
