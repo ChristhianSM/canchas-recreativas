@@ -98,12 +98,14 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Slots bloqueados por el admin (aplican a la cancha completa y a todas sus secciones)
+  // Slots bloqueados por el admin — respeta la sección consultada:
+  // un bloqueo de una sección específica no afecta la disponibilidad de las demás,
+  // pero sí afecta la vista de "cancha completa" (seccionId=null).
   const horariosBloqueadosAdmin = new Set<string>();
   if ((bloqueosAdmin ?? []).length > 0) {
     for (let i = 0; i < 30; i++) {
       const fecha = addDaysToDateString(hoy, i);
-      const horasBloq = horasBloqueadasEnFecha(bloqueosAdmin as BloqueoAdmin[], fecha);
+      const horasBloq = horasBloqueadasEnFecha(bloqueosAdmin as BloqueoAdmin[], fecha, seccionId);
       for (const hora of horasBloq) {
         const key = `${fecha}|${hora}`;
         if (!horariosOcupados[key]) horariosOcupados[key] = 'reservado';
@@ -129,6 +131,16 @@ export async function GET(req: NextRequest) {
     for (const b of todosBloqueosTmp ?? []) {
       const key = `${b.fecha}|${b.hora}`;
       marcarSeccion(key, b.seccion_id ? [b.seccion_id] : todosLosIds);
+    }
+    for (const bloqueo of (bloqueosAdmin ?? []) as BloqueoAdmin[]) {
+      const idsAfectados = bloqueo.seccion_id ? [bloqueo.seccion_id] : todosLosIds;
+      for (let i = 0; i < 30; i++) {
+        const fecha = addDaysToDateString(hoy, i);
+        const horasBloq = horasBloqueadasEnFecha([bloqueo], fecha);
+        for (const hora of horasBloq) {
+          marcarSeccion(`${fecha}|${hora}`, idsAfectados);
+        }
+      }
     }
   }
 

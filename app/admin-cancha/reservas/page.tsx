@@ -324,7 +324,7 @@ export default function OwnerReservasPage() {
     }
     setLoadingHoras(true);
     fetch(
-      `/api/reservas/horarios-ocupados?cancha_id=${directaForm.cancha_id}&fecha=${directaForm.fecha}`,
+      `/api/reservas/horarios-ocupados?cancha_id=${directaForm.cancha_id}&fecha=${directaForm.fecha}&seccion_id=${directaForm.seccion_id || ""}`,
     )
       .then((r) => r.json())
       .then((d) => {
@@ -336,7 +336,7 @@ export default function OwnerReservasPage() {
         setHorasBloqueadas([]);
       })
       .finally(() => setLoadingHoras(false));
-  }, [directaForm.cancha_id, directaForm.fecha]);
+  }, [directaForm.cancha_id, directaForm.fecha, directaForm.seccion_id]);
 
   const submitDirecta = async () => {
     if (
@@ -1771,13 +1771,14 @@ export default function OwnerReservasPage() {
                     value={directaForm.seccion_id || "__completa__"}
                     onValueChange={(v) => {
                       if (v === "__completa__") {
-                        setDirectaForm(f => ({ ...f, seccion_id: "", seccion_nombre: "" }));
+                        setDirectaForm(f => ({ ...f, seccion_id: "", seccion_nombre: "", hora: "" }));
                       } else {
                         const sec = seccionesCancha.find(s => s.id === v);
                         setDirectaForm(f => ({
                           ...f,
                           seccion_id: v,
                           seccion_nombre: sec?.nombre ?? "",
+                          hora: "",
                           precio: sec ? String(sec.precio_por_hora) : f.precio,
                         }));
                       }

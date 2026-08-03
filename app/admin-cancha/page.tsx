@@ -187,7 +187,7 @@ export default function OwnerDashboard() {
   };
 
   const esBloqueado = (dia: Date, hora: string) =>
-    bloqueos.some(b => estaBloquedoPor(b, toFecha(dia), hora));
+    bloqueos.some(b => estaBloquedoPor(b, toFecha(dia), hora, seccionActiva));
 
   const navSemana = (dir: -1 | 1) => {
     const s = new Date(semana);

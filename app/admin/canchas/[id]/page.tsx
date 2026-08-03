@@ -126,7 +126,7 @@ function HorarioTab({ canchaId, horasOperacion = HORAS_APP }: { canchaId: string
   };
 
   const esBloqueado = (dia: Date, hora: string) =>
-    bloqueos.some((b) => estaBloquedoPor(b, toFecha(dia), hora));
+    bloqueos.some((b) => estaBloquedoPor(b, toFecha(dia), hora, seccionSeleccionada));
 
   const navSemana = (dir: -1 | 1) => {
     const s = new Date(semana);
