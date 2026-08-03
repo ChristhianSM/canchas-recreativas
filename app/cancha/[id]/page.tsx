@@ -380,14 +380,12 @@ export default function CanchaDetailPage() {
 
     const secciones = cancha.secciones ?? [];
     const key = `${targetDate}|${horaParam}`;
-    const bloqueadaGlobal =
-      (cancha.horariosRestringidos ?? []).includes(horaParam) ||
-      (cancha.horariosBloqueadosAdmin ?? []).includes(key);
-
-    if (bloqueadaGlobal) return;
 
     let seccionElegida: (typeof secciones)[number] | null = null;
     if (secciones.length > 0) {
+      // Cancha con secciones: "bloqueadaGlobal"/horariosOcupados reflejan la vista de
+      // "cancha completa" (bloqueada si CUALQUIER sección está ocupada), así que no sirven
+      // para descartar la búsqueda acá — hay que buscar directo si queda alguna sección libre.
       const ocupadasIds = new Set(cancha.seccionesOcupadas?.[key] ?? []);
       const libres = secciones.filter((s) => !ocupadasIds.has(s.id));
       if (libres.length === 0) return;
@@ -398,8 +396,13 @@ export default function CanchaDetailPage() {
       });
       setSeccionSeleccionada(seccionElegida.id);
       skipResetSlotsRef.current = true;
-    } else if (cancha.horariosOcupados?.[key]) {
-      return;
+    } else {
+      // Cancha sin secciones: acá sí es la palabra final — si está bloqueada, no hay nada que elegir.
+      const bloqueadaGlobal =
+        (cancha.horariosRestringidos ?? []).includes(horaParam) ||
+        (cancha.horariosBloqueadosAdmin ?? []).includes(key);
+      if (bloqueadaGlobal) return;
+      if (cancha.horariosOcupados?.[key]) return;
     }
 
     // El id debe seguir el mismo formato `${fecha}-${índice}` que genera buildSchedule,

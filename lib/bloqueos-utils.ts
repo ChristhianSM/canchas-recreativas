@@ -13,6 +13,7 @@ export type BloqueoAdmin = {
   fecha_hasta?: string | null;
   hora_inicio: string;            // 'HH:MM'
   hora_fin?: string | null;       // 'HH:MM' o null
+  seccion_id?: string | null;     // null = aplica a toda la cancha
   motivo?: string | null;
   creado_en?: string;
 };
@@ -78,11 +79,27 @@ export function esHoraPasada(fecha: string, hora: string, horasDelDia: string[])
 
 /**
  * Dado un bloqueo y una fecha+hora, determina si ese slot está bloqueado.
- * @param bloqueo  Registro de bloqueo_admin
- * @param fecha    'YYYY-MM-DD'
- * @param hora     'HH:MM'
+ * @param bloqueo      Registro de bloqueo_admin
+ * @param fecha        'YYYY-MM-DD'
+ * @param hora         'HH:MM'
+ * @param viewSeccionId  Sección que se está consultando (null = cancha completa / cancha sin secciones).
+ *   Un bloqueo con seccion_id=null siempre aplica (bloquea toda la cancha).
+ *   Si se consulta la cancha completa (viewSeccionId=null), cualquier bloqueo de sección también aplica
+ *   (no se puede ofrecer la cancha completa si una sección está bloqueada).
+ *   Si se consulta una sección específica, solo aplican los bloqueos de esa misma sección (o los globales).
  */
-export function estaBloquedoPor(bloqueo: BloqueoAdmin, fecha: string, hora: string): boolean {
+export function estaBloquedoPor(
+  bloqueo: BloqueoAdmin,
+  fecha: string,
+  hora: string,
+  viewSeccionId: string | null = null,
+): boolean {
+  const afectaEstaVista =
+    bloqueo.seccion_id == null ||
+    viewSeccionId == null ||
+    bloqueo.seccion_id === viewSeccionId;
+  if (!afectaEstaVista) return false;
+
   // Verificar si la hora cae dentro del rango del bloqueo
   if (!horaEnRango(hora, bloqueo.hora_inicio, bloqueo.hora_fin)) return false;
 
@@ -128,10 +145,15 @@ function horaEnRango(hora: string, inicio: string, fin?: string | null): boolean
 
 /**
  * Dado un array de bloqueos y una fecha, retorna las horas bloqueadas.
+ * @param viewSeccionId  Ver estaBloquedoPor — null = cancha completa / sin secciones.
  */
-export function horasBloqueadasEnFecha(bloqueos: BloqueoAdmin[], fecha: string): string[] {
+export function horasBloqueadasEnFecha(
+  bloqueos: BloqueoAdmin[],
+  fecha: string,
+  viewSeccionId: string | null = null,
+): string[] {
   return HORAS_APP.filter(hora =>
-    bloqueos.some(b => estaBloquedoPor(b, fecha, hora))
+    bloqueos.some(b => estaBloquedoPor(b, fecha, hora, viewSeccionId))
   );
 }
 

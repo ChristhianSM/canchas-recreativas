@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
   const body = await req.json();
-  const { canchaId, tipo, fecha, dia_semana, fecha_desde, fecha_hasta, hora_inicio, hora_fin, motivo } = body;
+  const { canchaId, tipo, fecha, dia_semana, fecha_desde, fecha_hasta, hora_inicio, hora_fin, motivo, seccion_id } = body;
 
   if (!canchaId || !tipo || !hora_inicio)
     return NextResponse.json({ error: 'Faltan campos requeridos: canchaId, tipo, hora_inicio' }, { status: 400 });
@@ -75,9 +75,11 @@ export async function POST(req: NextRequest) {
   const fechasAChequear = getFechasAChequear(tipo, fecha, dia_semana, fecha_desde, fecha_hasta);
 
   if (fechasAChequear.length > 0 && horasAfectadas.length > 0) {
+    // Si el bloqueo es de una sección específica: solo conflictan reservas de esa
+    // misma sección o de la cancha completa. Si es de toda la cancha: cualquier reserva.
     const { data: conflictos } = await sb
       .from('reservas')
-      .select('id, fecha, hora, usuario_nombre')
+      .select('id, fecha, hora, usuario_nombre, seccion_id')
       .eq('cancha_id', canchaId)
       .in('fecha', fechasAChequear)
       .in('hora', horasAfectadas)
@@ -88,9 +90,12 @@ export async function POST(req: NextRequest) {
     const ahoraISO = new Date().toISOString();
     const hoyStr   = ahoraISO.split('T')[0];
     const ahoraH   = ahoraISO.substring(11, 16);
-    const conflictosFuturos = (conflictos ?? []).filter(r =>
-      r.fecha > hoyStr || (r.fecha === hoyStr && r.hora.substring(0, 5) > ahoraH)
-    );
+    const conflictosFuturos = (conflictos ?? []).filter(r => {
+      const esFuturo = r.fecha > hoyStr || (r.fecha === hoyStr && r.hora.substring(0, 5) > ahoraH);
+      if (!esFuturo) return false;
+      if (!seccion_id) return true;
+      return r.seccion_id === null || r.seccion_id === seccion_id;
+    });
 
     if (conflictosFuturos.length > 0) {
       const lista = conflictosFuturos.map(r => {
@@ -119,6 +124,7 @@ export async function POST(req: NextRequest) {
       fecha_hasta: tipo === 'recurrente_semanal' ? (fecha_hasta ?? null) : null,
       hora_inicio,
       hora_fin:    hora_fin ?? null,
+      seccion_id:  seccion_id ?? null,
       motivo:      motivo ?? null,
       creado_por:  user.id,
     })

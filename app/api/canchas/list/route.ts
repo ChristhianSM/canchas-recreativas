@@ -127,22 +127,10 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Mapa combinado (reservas + bloqueos temporales) de qué secciones están
-  // ocupadas en cada slot, por cancha — para que el frontend pueda calcular
-  // el precio más bajo entre las secciones que sigan libres.
-  const seccionesOcupadasPorCancha: Record<string, Record<string, string[]>> = {};
-  for (const fuente of [seccionesReservadasEnSlot, seccionesBloqueoEnSlot]) {
-    for (const [canchaId, slots] of Object.entries(fuente)) {
-      if (!seccionesOcupadasPorCancha[canchaId]) seccionesOcupadasPorCancha[canchaId] = {};
-      for (const [slotKey, ids] of Object.entries(slots)) {
-        const acumulado = new Set(seccionesOcupadasPorCancha[canchaId][slotKey] ?? []);
-        for (const id of ids) acumulado.add(id);
-        seccionesOcupadasPorCancha[canchaId][slotKey] = [...acumulado];
-      }
-    }
-  }
-
   // Procesar bloqueos admin por cancha para los próximos 14 días
+  // Igual que con reservas: un bloqueo de una sección específica no debe ocultar
+  // toda la cancha del listado si las demás secciones siguen libres.
+  const seccionesBloqueoAdminEnSlot: Record<string, Record<string, Set<string>>> = {};
   if ((bloqueosAdmin ?? []).length > 0) {
     // Agrupar bloqueos por cancha
     const bloqueosPorCancha: Record<string, BloqueoAdmin[]> = {};
@@ -151,20 +139,56 @@ export async function GET(req: NextRequest) {
       bloqueosPorCancha[b.cancha_id].push(b as BloqueoAdmin);
     }
 
-    // Para cada cancha con bloqueos admin, marcar los slots bloqueados
-    for (const [canchaId, bloqueos] of Object.entries(bloqueosPorCancha)) {
-      if (!horariosOcupadosPorCancha[canchaId]) {
-        horariosOcupadosPorCancha[canchaId] = {};
-      }
+    for (const [canchaId, bloqueosCancha] of Object.entries(bloqueosPorCancha)) {
+      const tieneSecciones = (seccionIdsPorCancha[canchaId]?.size ?? 0) > 0;
+      const bloqueosGlobales = bloqueosCancha.filter(b => !b.seccion_id);
+      const bloqueosPorSeccion = tieneSecciones ? bloqueosCancha.filter(b => b.seccion_id) : [];
+
       for (let i = 0; i < 14; i++) {
         const fecha = addDaysToDateString(hoy, i);
-        const horasBloq = horasBloqueadasEnFecha(bloqueos, fecha);
-        for (const hora of horasBloq) {
-          const key = `${fecha}|${hora}`;
-          if (!horariosOcupadosPorCancha[canchaId][key]) {
-            horariosOcupadosPorCancha[canchaId][key] = 'reservado';
+
+        // Bloqueos de toda la cancha (o cancha sin secciones): bloquean directo
+        const relevantesGlobales = tieneSecciones ? bloqueosGlobales : bloqueosCancha;
+        if (relevantesGlobales.length > 0) {
+          const horasBloq = horasBloqueadasEnFecha(relevantesGlobales, fecha);
+          for (const hora of horasBloq) marcarOcupado(canchaId, `${fecha}|${hora}`, 'reservado');
+        }
+
+        // Bloqueos de una sección específica: acumular, no bloquear el slot todavía
+        for (const b of bloqueosPorSeccion) {
+          const horasBloq = horasBloqueadasEnFecha([b], fecha);
+          for (const hora of horasBloq) {
+            const key = `${fecha}|${hora}`;
+            if (!seccionesBloqueoAdminEnSlot[canchaId]) seccionesBloqueoAdminEnSlot[canchaId] = {};
+            if (!seccionesBloqueoAdminEnSlot[canchaId][key]) seccionesBloqueoAdminEnSlot[canchaId][key] = new Set();
+            seccionesBloqueoAdminEnSlot[canchaId][key].add(b.seccion_id as string);
           }
         }
+      }
+    }
+
+    // Si TODAS las secciones quedan bloqueadas por bloqueos admin en un slot, recién ahí bloquear la cancha completa
+    for (const [canchaId, slots] of Object.entries(seccionesBloqueoAdminEnSlot)) {
+      const todasLasSecciones = seccionIdsPorCancha[canchaId];
+      if (!todasLasSecciones || todasLasSecciones.size === 0) continue;
+      for (const [slotKey, bloqueadas] of Object.entries(slots)) {
+        const todasBloqueadas = [...todasLasSecciones].every(id => bloqueadas.has(id));
+        if (todasBloqueadas) marcarOcupado(canchaId, slotKey, 'reservado');
+      }
+    }
+  }
+
+  // Mapa combinado (reservas + bloqueos temporales + bloqueos admin) de qué secciones
+  // están ocupadas en cada slot, por cancha — para que el frontend pueda calcular
+  // el precio más bajo entre las secciones que sigan libres.
+  const seccionesOcupadasPorCancha: Record<string, Record<string, string[]>> = {};
+  for (const fuente of [seccionesReservadasEnSlot, seccionesBloqueoEnSlot, seccionesBloqueoAdminEnSlot]) {
+    for (const [canchaId, slots] of Object.entries(fuente)) {
+      if (!seccionesOcupadasPorCancha[canchaId]) seccionesOcupadasPorCancha[canchaId] = {};
+      for (const [slotKey, ids] of Object.entries(slots)) {
+        const acumulado = new Set(seccionesOcupadasPorCancha[canchaId][slotKey] ?? []);
+        for (const id of ids) acumulado.add(id);
+        seccionesOcupadasPorCancha[canchaId][slotKey] = [...acumulado];
       }
     }
   }

@@ -47,6 +47,8 @@ async function panelFetch(
 
 type Modo = 'permanente' | 'fecha_especifica' | 'recurrente_semanal';
 
+type Seccion = { id: string; nombre: string };
+
 type Conflicto = {
   id: string;
   fecha: string;
@@ -62,6 +64,7 @@ type BloqueoParams = {
   fechaDesde: string;
   fechaHasta: string;
   motivo: string;
+  seccionId: string | null;
 };
 
 interface Props {
@@ -266,6 +269,7 @@ function FormNuevoBloqueo({
   onCreado,
   bloqueosExistentes,
   horasOperacion = HORAS_APP,
+  secciones,
 }: {
   canchaId: string;
   token: string;
@@ -274,6 +278,7 @@ function FormNuevoBloqueo({
   onCreado: () => void;
   bloqueosExistentes: BloqueoAdmin[];
   horasOperacion?: string[];
+  secciones: Seccion[];
 }) {
   const [modo, setModo]             = useState<Modo>('fecha_especifica');
   const [horas, setHoras]           = useState<string[]>([]);
@@ -282,6 +287,7 @@ function FormNuevoBloqueo({
   const [fechaDesde, setFechaDesde] = useState('');
   const [fechaHasta, setFechaHasta] = useState('');
   const [motivo, setMotivo]         = useState('');
+  const [seccionId, setSeccionId]   = useState<string | null>(null);
   const [guardando, setGuardando]   = useState(false);
   const [error, setError]           = useState('');
   const [conflictos, setConflictos] = useState<Conflicto[]>([]);
@@ -290,6 +296,9 @@ function FormNuevoBloqueo({
 
   const horasBloqueadas = bloqueosExistentes
     .filter(b => {
+      // Solo importa como "ya bloqueada" si afecta el mismo contexto de sección que se está creando
+      const mismaSeccion = b.seccion_id == null || seccionId == null || b.seccion_id === seccionId;
+      if (!mismaSeccion) return false;
       if (modo === 'permanente') return b.tipo === 'permanente';
       if (modo === 'fecha_especifica' && fecha) return b.tipo === 'fecha_especifica' && b.fecha === fecha;
       if (modo === 'recurrente_semanal') return b.tipo === 'recurrente_semanal' && b.dia_semana === diaSemana;
@@ -310,6 +319,7 @@ function FormNuevoBloqueo({
           fecha_desde: params.modo === 'recurrente_semanal' && params.fechaDesde ? params.fechaDesde : undefined,
           fecha_hasta: params.modo === 'recurrente_semanal' && params.fechaHasta ? params.fechaHasta : undefined,
           hora_inicio: hora,
+          seccion_id:  params.seccionId || undefined,
           motivo:      params.motivo || undefined,
         }),
       }).then(r => r.json())
@@ -352,7 +362,7 @@ function FormNuevoBloqueo({
     setGuardando(true);
     setError('');
 
-    const params: BloqueoParams = { modo, horas, fecha, diaSemana, fechaDesde, fechaHasta, motivo };
+    const params: BloqueoParams = { modo, horas, fecha, diaSemana, fechaDesde, fechaHasta, motivo, seccionId };
     const ok = await crearBloqueos(params);
     setGuardando(false);
 
@@ -488,6 +498,46 @@ function FormNuevoBloqueo({
           </div>
         )}
 
+        {secciones.length > 0 && (
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-foreground">¿Qué bloquear?</label>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setSeccionId(null)}
+                className={cn(
+                  'rounded-lg border-2 px-3 py-2 text-xs font-medium transition-all',
+                  seccionId === null
+                    ? 'border-primary bg-primary text-primary-foreground'
+                    : 'border-border bg-card text-foreground hover:border-primary/40',
+                )}
+              >
+                Toda la cancha
+              </button>
+              {secciones.map(s => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => setSeccionId(s.id)}
+                  className={cn(
+                    'rounded-lg border-2 px-3 py-2 text-xs font-medium transition-all',
+                    seccionId === s.id
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'border-border bg-card text-foreground hover:border-primary/40',
+                  )}
+                >
+                  Sección {s.nombre}
+                </button>
+              ))}
+            </div>
+            {seccionId !== null && (
+              <p className="text-xs text-muted-foreground">
+                Solo se bloqueará esta sección — las demás y la cancha completa seguirán ofreciéndose normalmente donde no choquen con ella.
+              </p>
+            )}
+          </div>
+        )}
+
         <div className="space-y-2">
           <label className="text-sm font-medium text-foreground">
             Horas a bloquear
@@ -540,14 +590,17 @@ function ListaBloqueos({
   token,
   endpoint,
   onEliminado,
+  secciones,
 }: {
   bloqueos: BloqueoAdmin[];
   canchaId: string;
   token: string;
   endpoint: string;
   onEliminado: () => void;
+  secciones: Seccion[];
 }) {
   const [eliminando, setEliminando] = useState<string | null>(null);
+  const nombreSeccion = (id: string) => secciones.find(s => s.id === id)?.nombre ?? '?';
 
   const handleEliminar = async (id: string) => {
     setEliminando(id);
@@ -582,6 +635,11 @@ function ListaBloqueos({
             <div className="flex-1 min-w-0 space-y-1">
               <div className="flex flex-wrap items-center gap-2">
                 {badgeModo(b.tipo)}
+                {b.seccion_id && (
+                  <Badge className="bg-purple-500/15 text-purple-600 border-purple-500/30 text-xs">
+                    Sección {nombreSeccion(b.seccion_id)}
+                  </Badge>
+                )}
                 <span className="text-sm font-medium text-foreground truncate">{labelBloqueo(b)}</span>
               </div>
               {b.motivo && <p className="text-xs text-muted-foreground">{b.motivo}</p>}
@@ -616,7 +674,9 @@ function ListaBloqueos({
 
 export function BloqueosAdminPanel({ canchaId, token, cancelEndpoint = '/api/admin-cancha/reservas/cancelar', endpoint = '/api/admin-cancha/bloqueos', horasOperacion }: Props) {
   const [bloqueos, setBloqueos] = useState<BloqueoAdmin[]>([]);
+  const [secciones, setSecciones] = useState<Seccion[]>([]);
   const [cargando, setCargando] = useState(true);
+  const seccionesEndpoint = endpoint.replace('/bloqueos', '/secciones');
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -628,9 +688,22 @@ export function BloqueosAdminPanel({ canchaId, token, cancelEndpoint = '/api/adm
 
   useEffect(() => { cargar(); }, [cargar]);
 
+  useEffect(() => {
+    panelFetch(`${seccionesEndpoint}?canchaId=${canchaId}`, token)
+      .then(r => r.json())
+      .then((data: any[]) => {
+        setSecciones(
+          Array.isArray(data)
+            ? data.filter(s => s.activa).map(s => ({ id: s.id, nombre: s.nombre }))
+            : [],
+        );
+      })
+      .catch(() => setSecciones([]));
+  }, [canchaId, token, seccionesEndpoint]);
+
   return (
     <div className="space-y-6">
-      <FormNuevoBloqueo canchaId={canchaId} token={token} cancelEndpoint={cancelEndpoint} endpoint={endpoint} onCreado={cargar} bloqueosExistentes={bloqueos} horasOperacion={horasOperacion} />
+      <FormNuevoBloqueo canchaId={canchaId} token={token} cancelEndpoint={cancelEndpoint} endpoint={endpoint} onCreado={cargar} bloqueosExistentes={bloqueos} horasOperacion={horasOperacion} secciones={secciones} />
 
       <div className="space-y-3">
         <div className="flex items-center justify-between">
@@ -653,7 +726,7 @@ export function BloqueosAdminPanel({ canchaId, token, cancelEndpoint = '/api/adm
             ))}
           </div>
         ) : (
-          <ListaBloqueos bloqueos={bloqueos} canchaId={canchaId} token={token} endpoint={endpoint} onEliminado={cargar} />
+          <ListaBloqueos bloqueos={bloqueos} canchaId={canchaId} token={token} endpoint={endpoint} onEliminado={cargar} secciones={secciones} />
         )}
       </div>
     </div>
