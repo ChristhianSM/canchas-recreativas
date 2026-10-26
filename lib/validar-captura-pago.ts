@@ -1,4 +1,5 @@
 import { createWorker } from 'tesseract.js';
+import sharp from 'sharp';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
@@ -26,11 +27,21 @@ async function reconocerTexto(buffer: Buffer): Promise<string> {
   const archivoModelo = path.join(LANG_PATH, 'spa.traineddata.gz');
   console.error(`[validar-captura-pago] cwd=${process.cwd()} langPath=${LANG_PATH} existe=${fs.existsSync(archivoModelo)}`);
 
+  // Re-codificar a PNG con sharp (libvips) antes de pasarle el buffer a tesseract.
+  // Algunas capturas reales (ciertos PNG de pantalla, perfiles de color o metadata
+  // que arma WhatsApp/el teléfono) hacen que el decodificador interno de tesseract
+  // (Leptonica) falle con "Error attempting to read image" — y ese error específico
+  // no llega como un rechazo normal de la promesa, sino como uncaughtException que
+  // tumba el proceso (el try/catch de quien llama a pareceCapturaYapePlin no alcanza
+  // a atraparlo). sharp decodifica con libvips, mucho más tolerante con formatos
+  // reales de teléfono, así que tesseract siempre recibe un PNG limpio.
+  const bufferNormalizado = await sharp(buffer).png().toBuffer();
+
   // cachePath apunta al tmpdir del SO porque en entornos serverless (Vercel)
   // el resto del filesystem es de solo lectura.
   const worker = await createWorker('spa', 1, { cachePath: os.tmpdir(), langPath: LANG_PATH });
   try {
-    const { data: { text } } = await worker.recognize(buffer);
+    const { data: { text } } = await worker.recognize(bufferNormalizado);
     return text;
   } finally {
     await worker.terminate();
